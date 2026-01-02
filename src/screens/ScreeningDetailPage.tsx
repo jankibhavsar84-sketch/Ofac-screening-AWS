@@ -6,6 +6,7 @@ import { z } from "zod";
 import { latestResultState, submissionsState, type BatchSubmission, type SingleSubmission } from "../state/submissions";
 import { parseCsv, parseExcel, type BatchRow } from "../utils/batchParse";
 import { matchBatch, type EntityExample } from "../api/openSanctions";
+import { CountryAutosuggest } from "../components/CountryAutosuggest";
 
 type CustomerType = "Person" | "Entity";
 
@@ -57,6 +58,22 @@ const defaultState: FormState = {
 function safeTrim(v: string) {
   return (v ?? "").trim();
 }
+
+function parseISODate(s: string): Date | null {
+  const v = safeTrim(s);
+  if (!v) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+
+  const d = new Date(v + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return null;
+
+  // ensure it matches exactly (prevents 2024-02-31 rolling)
+  const [yy, mm, dd] = v.split("-").map(Number);
+  if (d.getUTCFullYear() !== yy || d.getUTCMonth() + 1 !== mm || d.getUTCDate() !== dd) return null;
+
+  return d;
+}
+
 function uuid() {
   return crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
@@ -179,6 +196,7 @@ export function ScreeningDetailPage() {
       firstName: z.string(),
       lastName: z.string(),
       fullName: z.string(),
+      dateOfBirth: z.string(), // ✅ add
     });
     return base.superRefine((data, ctx) => {
       if (data.customerType === "Person") {
@@ -187,6 +205,24 @@ export function ScreeningDetailPage() {
       } else {
         if (!safeTrim(data.fullName)) ctx.addIssue({ code: "custom", path: ["fullName"], message: "Full Name (Organization) is required for Entity." });
       }
+      const dob = safeTrim((data as any).dateOfBirth ?? "");
+      if (dob) {
+        const d = parseISODate(dob);
+        if (!d) {
+          ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB must be a valid date in YYYY-MM-DD format." });
+        } else {
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          if (d > today) {
+            ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB cannot be a future date." });
+          }
+          const oldest = new Date(today);
+          oldest.setFullYear(oldest.getFullYear() - 100);
+          if (d < oldest) {
+            ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB cannot be more than 100 years old." });
+          }
+        }
+      }  
     });
   }, []);
 
@@ -547,21 +583,22 @@ export function ScreeningDetailPage() {
                 <input value={form.dateOfBirth} onChange={(e) => update("dateOfBirth", e.target.value)} placeholder="1980-01-01" />
               </div>
 
-              <div className="field col-6">
-                <div className="labelRow">
-                  <label>Country of Citizenship</label>
-                  <span className="hint">Prefer ISO2 (US, IN)</span>
-                </div>
-                <input value={form.countryOfCitizenship} onChange={(e) => update("countryOfCitizenship", e.target.value)} placeholder="US" />
-              </div>
+              <CountryAutosuggest
+                label="Country of Citizenship"
+                value={form.countryOfCitizenship}
+                onChange={(v) => update("countryOfCitizenship", v)}
+                hint="Type country name or ISO2 (US, IN)"
+              />
 
-              <div className="field col-12">
-                <div className="labelRow">
-                  <label>Country of Birth</label>
-                  <span className="hint">Optional</span>
-                </div>
-                <input value={form.countryOfBirth} onChange={(e) => update("countryOfBirth", e.target.value)} placeholder="US" />
-              </div>
+
+              <CountryAutosuggest
+                label="Country of Birth"
+                value={form.countryOfBirth}
+                onChange={(v) => update("countryOfBirth", v)}
+                hint="Type country name or ISO2"
+              />
+
+
             </div>
           </div>
 
@@ -593,10 +630,12 @@ export function ScreeningDetailPage() {
                 <label>Zip</label>
                 <input value={form.zip} onChange={(e) => update("zip", e.target.value)} />
               </div>
-              <div className="field col-12">
-                <label>Country</label>
-                <input value={form.country} onChange={(e) => update("country", e.target.value)} placeholder="US" />
-              </div>
+              <CountryAutosuggest
+                label="Country"
+                value={form.country}
+                onChange={(v) => update("country", v)}
+                hint="Type country name or ISO2"
+              />
 
               <div className="field col-4">
                 <label>ID Code</label>
