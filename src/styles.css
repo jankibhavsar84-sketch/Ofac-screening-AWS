@@ -506,3 +506,11 @@ pre{
   font-size: 12px;
   line-height: 1.45;
 }
+
+.tabLink:hover {
+  color: rgba(226, 232, 240, 1) !important;
+}
+.hintSmall {
+  color: var(--muted);
+  font-size: 12px;
+}

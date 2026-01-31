@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
-import { Link } from "@tanstack/react-router";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { z } from "zod";
 import { latestResultState, submissionsState, type BatchSubmission, type SingleSubmission } from "../state/submissions";
@@ -67,7 +66,6 @@ function parseISODate(s: string): Date | null {
   const d = new Date(v + "T00:00:00");
   if (Number.isNaN(d.getTime())) return null;
 
-  // ensure it matches exactly (prevents 2024-02-31 rolling)
   const [yy, mm, dd] = v.split("-").map(Number);
   if (d.getUTCFullYear() !== yy || d.getUTCMonth() + 1 !== mm || d.getUTCDate() !== dd) return null;
 
@@ -77,23 +75,18 @@ function parseISODate(s: string): Date | null {
 function uuid() {
   return crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
+
 function displayNameFor(form: { customerType: CustomerType; firstName: string; lastName: string; fullName: string }) {
   return form.customerType === "Person"
     ? [safeTrim(form.firstName), safeTrim(form.lastName)].filter(Boolean).join(" ")
     : safeTrim(form.fullName);
 }
 
-/**
- * OpenSanctions examples show nationality like "us" and datasets like "us_ofac_sdn". :contentReference[oaicite:4]{index=4}
- * If you pass full country names, matching may be weaker.
- * Best practice: use ISO-2 codes (US, IN, AE, etc). You can enter those in the UI.
- */
 function toCountryCode(input: string) {
   const v = safeTrim(input).toLowerCase();
   if (!v) return "";
-  // Accept already-typed ISO2
   if (v.length === 2) return v;
-  // Minimal helpful map (you can extend later)
+
   const map: Record<string, string> = {
     "united states": "us",
     usa: "us",
@@ -103,15 +96,13 @@ function toCountryCode(input: string) {
     uk: "gb",
     canada: "ca",
   };
-  return map[v] ?? v; // fallback
+  return map[v] ?? v;
 }
 
 function buildEntityExampleFromForm(form: FormState): EntityExample {
   if (form.customerType === "Person") {
     const name = [safeTrim(form.firstName), safeTrim(form.middleName), safeTrim(form.lastName)].filter(Boolean).join(" ");
-    const props: Record<string, any> = {
-      name: [name],
-    };
+    const props: Record<string, any> = { name: [name] };
 
     if (safeTrim(form.aliasName)) props.alias = [safeTrim(form.aliasName)];
     if (safeTrim(form.dateOfBirth)) props.birthDate = [safeTrim(form.dateOfBirth)];
@@ -127,11 +118,11 @@ function buildEntityExampleFromForm(form: FormState): EntityExample {
     return { schema: "Person", properties: props };
   }
 
-  // Entity
   const props: Record<string, any> = { name: [safeTrim(form.fullName)] };
   if (safeTrim(form.aliasName)) props.alias = [safeTrim(form.aliasName)];
   if (safeTrim(form.country)) props.country = [toCountryCode(form.country)];
   if (safeTrim(form.idNumber)) props.registrationNumber = [safeTrim(form.idNumber)];
+
   const addressBits = [form.addressLine1, form.addressLine2, form.city, form.state, form.zip, form.country]
     .map(safeTrim)
     .filter(Boolean)
@@ -145,9 +136,12 @@ function buildEntityExampleFromBatchRow(r: BatchRow & Partial<FormState>): Entit
   if (r.customerType === "Person") {
     const name = [safeTrim(r.firstName || ""), safeTrim(r.middleName || ""), safeTrim(r.lastName || "")].filter(Boolean).join(" ");
     const props: Record<string, any> = { name: [name] };
+
     if (safeTrim(r.aliasName || "")) props.alias = [safeTrim(r.aliasName || "")];
     if (safeTrim((r as any).dateOfBirth || r.dateOfBirth || "")) props.birthDate = [safeTrim((r as any).dateOfBirth || r.dateOfBirth || "")];
-    if (safeTrim((r as any).countryOfCitizenship || r.countryOfCitizenship || "")) props.nationality = [toCountryCode(safeTrim((r as any).countryOfCitizenship || r.countryOfCitizenship || ""))];
+    if (safeTrim((r as any).countryOfCitizenship || r.countryOfCitizenship || "")) {
+      props.nationality = [toCountryCode(safeTrim((r as any).countryOfCitizenship || r.countryOfCitizenship || ""))];
+    }
     if (safeTrim((r as any).idNumber || "")) props.idNumber = [safeTrim((r as any).idNumber || "")];
 
     const addressBits = [(r as any).addressLine1, (r as any).addressLine2, (r as any).city, (r as any).state, (r as any).zip, (r as any).country]
@@ -174,8 +168,24 @@ function buildEntityExampleFromBatchRow(r: BatchRow & Partial<FormState>): Entit
 }
 
 function classifyHit(results: { match: boolean }[]) {
-  // ScoredEntityResponse has boolean "match" in the spec. :contentReference[oaicite:5]{index=5}
   return results?.some((r) => r.match) ? "HIT" : "NO_HIT";
+}
+
+function csvEscape(v: any) {
+  const s = String(v ?? "");
+  if (/[,"\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 export function ScreeningDetailPage() {
@@ -188,6 +198,9 @@ export function ScreeningDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [batchSubmitting, setBatchSubmitting] = useState(false);
 
+  const [batchFile, setBatchFile] = useState<File | null>(null);
+  const [batchFileName, setBatchFileName] = useState<string>("");
+
   const isPerson = form.customerType === "Person";
 
   const schema = useMemo(() => {
@@ -196,8 +209,9 @@ export function ScreeningDetailPage() {
       firstName: z.string(),
       lastName: z.string(),
       fullName: z.string(),
-      dateOfBirth: z.string(), // ✅ add
+      dateOfBirth: z.string(),
     });
+
     return base.superRefine((data, ctx) => {
       if (data.customerType === "Person") {
         if (!safeTrim(data.firstName)) ctx.addIssue({ code: "custom", path: ["firstName"], message: "First Name is required for Person." });
@@ -205,6 +219,7 @@ export function ScreeningDetailPage() {
       } else {
         if (!safeTrim(data.fullName)) ctx.addIssue({ code: "custom", path: ["fullName"], message: "Full Name (Organization) is required for Entity." });
       }
+
       const dob = safeTrim((data as any).dateOfBirth ?? "");
       if (dob) {
         const d = parseISODate(dob);
@@ -213,21 +228,27 @@ export function ScreeningDetailPage() {
         } else {
           const now = new Date();
           const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          if (d > today) {
-            ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB cannot be a future date." });
-          }
+          if (d > today) ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB cannot be a future date." });
+
           const oldest = new Date(today);
           oldest.setFullYear(oldest.getFullYear() - 100);
-          if (d < oldest) {
-            ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB cannot be more than 100 years old." });
-          }
+          if (d < oldest) ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB cannot be more than 100 years old." });
         }
-      }  
+      }
     });
   }, []);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((p) => ({ ...p, [key]: value }));
+  }
+
+  function clearAll() {
+    setForm(defaultState);
+    setBatchFile(null);
+    setBatchFileName("");
+    setError(null);
+    setFileError(null);
+    setLatest(null); // ✅ clears result from last run
   }
 
   function downloadCsvTemplate() {
@@ -253,50 +274,12 @@ export function ScreeningDetailPage() {
     ];
 
     const sample = [
-      [
-        "Person",
-        "John",
-        "",
-        "Doe",
-        "",
-        "Johnny",
-        "123 Main St",
-        "",
-        "New York",
-        "NY",
-        "10001",
-        "US",
-        "SSN",
-        "123-45-6789",
-        "US",
-        "US",
-        "1980-01-01",
-        "US",
-      ],
-      [
-        "Entity",
-        "",
-        "",
-        "",
-        "ACME Holdings LLC",
-        "",
-        "200 Business Rd",
-        "Suite 10",
-        "Newark",
-        "NJ",
-        "07102",
-        "US",
-        "EIN",
-        "12-3456789",
-        "US",
-        "",
-        "",
-        "US",
-      ],
+      ["Person", "John", "", "Doe", "", "Johnny", "123 Main St", "", "New York", "NY", "10001", "US", "SSN", "123-45-6789", "US", "US", "1980-01-01", "US"],
+      ["Entity", "", "", "", "ACME Holdings LLC", "", "200 Business Rd", "Suite 10", "Newark", "NJ", "07102", "US", "EIN", "12-3456789", "US", "", "", "US"],
     ];
 
     const lines = [headers.join(","), ...sample.map((r) => r.map(csvEscape).join(","))].join("\n");
-    downloadBlob(new Blob([lines], { type: "text/csv;charset=utf-8" }), "tapan_ofac_template.csv");
+    downloadBlob(new Blob([lines], { type: "text/csv;charset=utf-8" }), "prudential_ofac_template.csv");
   }
 
   function downloadExcelTemplate() {
@@ -348,11 +331,10 @@ export function ScreeningDetailPage() {
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     const out = XLSX.write(wb, { type: "array", bookType: "xlsx" });
 
-    downloadBlob(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "tapan_ofac_template.xlsx");
+    downloadBlob(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "prudential_ofac_template.xlsx");
   }
 
-  async function onSubmitSingle(e: React.FormEvent) {
-    e.preventDefault();
+  async function submitSingle() {
     setError(null);
 
     const parsed = schema.safeParse(form);
@@ -365,9 +347,6 @@ export function ScreeningDetailPage() {
     try {
       const key = "single";
       const example = buildEntityExampleFromForm(form);
-
-      // One query in the batch request.
-      // Request format is "queries": { "entity1": { schema, properties } } :contentReference[oaicite:6]{index=6}
       const resp = await matchBatch({ [key]: example });
       const matches = resp.responses[key];
       const result = classifyHit(matches?.results ?? []);
@@ -405,7 +384,7 @@ export function ScreeningDetailPage() {
     }
   }
 
-  async function handleBatchFile(file: File) {
+  async function submitBatch(file: File) {
     setFileError(null);
     setBatchSubmitting(true);
 
@@ -419,7 +398,6 @@ export function ScreeningDetailPage() {
 
       if (rows.length === 0) throw new Error("No rows found in the file.");
 
-      // Build queries map (ONE API CALL)
       const queries: Record<string, EntityExample> = {};
       const rowMeta: { key: string; displayName: string; customerType: CustomerType }[] = [];
 
@@ -434,7 +412,6 @@ export function ScreeningDetailPage() {
         const key = `row_${idx + 1}`;
         rowMeta.push({ key, displayName: display || `(Row ${idx + 1})`, customerType });
 
-        // validate name requirements
         if (customerType === "Person" && (!safeTrim(r.firstName || "") || !safeTrim(r.lastName || ""))) return;
         if (customerType === "Entity" && !safeTrim(r.fullName || "")) return;
 
@@ -475,6 +452,10 @@ export function ScreeningDetailPage() {
       const next = [entry, ...submissions].slice(0, 200);
       setSubmissions(next);
       setLatest(entry);
+
+      // After successful batch submit, clear selection (optional)
+      setBatchFile(null);
+      setBatchFileName("");
     } catch (err: any) {
       setFileError(err?.message ?? "Batch processing failed.");
     } finally {
@@ -482,20 +463,28 @@ export function ScreeningDetailPage() {
     }
   }
 
+  async function onUnifiedSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    // One button, one flow:
+    // - If batch file is selected => batch submit
+    // - Else => single submit
+    if (batchFile) {
+      await submitBatch(batchFile);
+    } else {
+      await submitSingle();
+    }
+  }
+
   return (
     <div className="workspace">
-      {/* LEFT: form + batch + templates */}
-      <form onSubmit={onSubmitSingle} className="panel">
+      <form onSubmit={onUnifiedSubmit} className="panel">
         <div className="panelHeader">
           <div>
-            <h2>OFAC Screening Detail</h2>
-            <p>Single customer screening or batch upload (CSV/XLSX).</p>
+            <h2>OFAC Screening</h2>
+            <p>Prudential screening: on-demand or batch (CSV/XLSX).</p>
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <Link to="/results" className="pill">
-              View Results
-            </Link>
-          </div>
+          <span className="pill">Prudential</span>
         </div>
 
         <div className="panelBody">
@@ -590,15 +579,12 @@ export function ScreeningDetailPage() {
                 hint="Type country name or ISO2 (US, IN)"
               />
 
-
               <CountryAutosuggest
                 label="Country of Birth"
                 value={form.countryOfBirth}
                 onChange={(v) => update("countryOfBirth", v)}
                 hint="Type country name or ISO2"
               />
-
-
             </div>
           </div>
 
@@ -630,6 +616,7 @@ export function ScreeningDetailPage() {
                 <label>Zip</label>
                 <input value={form.zip} onChange={(e) => update("zip", e.target.value)} />
               </div>
+
               <CountryAutosuggest
                 label="Country"
                 value={form.country}
@@ -652,7 +639,7 @@ export function ScreeningDetailPage() {
             </div>
           </div>
 
-          {/* Batch upload + templates */}
+          {/* Batch */}
           <div className="section">
             <div className="sectionTitle">
               <h3>Batch Processing</h3>
@@ -665,21 +652,35 @@ export function ScreeningDetailPage() {
                   <label>Upload File</label>
                   <span className="hint">Allowed: .csv, .xlsx, .xls</span>
                 </div>
+
                 <input
                   type="file"
                   accept=".csv,.xlsx,.xls"
                   onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handleBatchFile(f);
-                    e.currentTarget.value = "";
+                    const f = e.target.files?.[0] ?? null;
+                    setBatchFile(f);
+                    setBatchFileName(f?.name ?? "");
+                    setFileError(null);
                   }}
                 />
+
+                {batchFileName && (
+                  <div className="hintSmall" style={{ marginTop: 8 }}>
+                    Selected file: <b>{batchFileName}</b>
+                  </div>
+                )}
+
                 {fileError && (
-                  <div className="alert alertError">
+                  <div className="alert alertError" style={{ marginTop: 10 }}>
                     <b>Batch Error:</b> {fileError}
                   </div>
                 )}
-                {batchSubmitting && <div className="alert">Processing batch (single API call)…</div>}
+
+                {(batchSubmitting || submitting) && (
+                  <div className="alert" style={{ marginTop: 10 }}>
+                    Processing screening…
+                  </div>
+                )}
               </div>
 
               <div className="field col-12">
@@ -700,10 +701,16 @@ export function ScreeningDetailPage() {
                 <div className="helpBox" style={{ marginTop: 12 }}>
                   <b>How to use the template</b>
                   <ul style={{ marginTop: 8, lineHeight: 1.6 }}>
-                    <li><b>Person</b>: set <code>customerType</code>=Person and fill <code>firstName</code> + <code>lastName</code></li>
-                    <li><b>Entity</b>: set <code>customerType</code>=Entity and fill <code>fullName</code></li>
-                    <li>Best results: use ISO2 for <code>country</code> / <code>countryOfCitizenship</code> (US, IN, GB)</li>
-                    <li>Save as CSV or XLSX and upload</li>
+                    <li>
+                      <b>Person</b>: set <code>customerType</code>=Person and fill <code>firstName</code> + <code>lastName</code>
+                    </li>
+                    <li>
+                      <b>Entity</b>: set <code>customerType</code>=Entity and fill <code>fullName</code>
+                    </li>
+                    <li>
+                      Best results: use ISO2 for <code>country</code> / <code>countryOfCitizenship</code> (US, IN, GB)
+                    </li>
+                    <li>Save as CSV or XLSX and upload. Screening happens only when you click Submit.</li>
                   </ul>
                 </div>
               </div>
@@ -717,12 +724,21 @@ export function ScreeningDetailPage() {
           )}
 
           <div className="actions">
-            <button type="button" className="btnGhost" onClick={() => setForm(defaultState)} disabled={submitting || batchSubmitting}>
+            <button type="button" className="btnGhost" onClick={clearAll} disabled={submitting || batchSubmitting}>
               Clear
             </button>
+
             <button type="submit" className="btnPrimary" disabled={submitting || batchSubmitting}>
-              {submitting ? "Submitting..." : "Submit Screening"}
+              {batchFile ? (batchSubmitting ? "Submitting Batch..." : "Submit Screening") : submitting ? "Submitting..." : "Submit Screening"}
             </button>
+          </div>
+
+          <div className="hintSmall" style={{ marginTop: 10 }}>
+            {batchFile ? (
+              <>Mode: <b>BATCH</b> (file selected). Click Submit Screening to run batch.</>
+            ) : (
+              <>Mode: <b>SINGLE</b> (no file selected). Click Submit Screening to run single.</>
+            )}
           </div>
         </div>
       </form>
@@ -743,7 +759,7 @@ function LatestResultPanel() {
           <h2>Latest Screening Result</h2>
           <p>Most recent single/batch submission.</p>
         </div>
-        <span className="pill">Tapan Inc.</span>
+        <span className="pill">Prudential</span>
       </div>
 
       <div className="panelBody">
@@ -784,28 +800,11 @@ function LatestResultPanel() {
                   <span>{it.result}</span>
                 </div>
               ))}
-              {latest.items.length > 50 && <div style={{ marginTop: 10, color: "var(--muted)" }}>Showing first 50. View full history on Results page.</div>}
+              {latest.items.length > 50 && <div style={{ marginTop: 10, color: "var(--muted)" }}>Showing first 50. View full history on Results tab.</div>}
             </div>
           </div>
         )}
       </div>
     </div>
   );
-}
-
-function csvEscape(v: any) {
-  const s = String(v ?? "");
-  if (/[,"\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
