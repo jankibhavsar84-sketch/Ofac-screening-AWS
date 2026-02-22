@@ -1092,7 +1092,6 @@ export function ScreeningDetailPage() {
                         <CountryAutosuggest
                           label={i === 0 ? "Country" : ""}
                           value={c}
-                          hint="Type name or ISO2"
                           onChange={(v) => {
                             const next = [...primaryName.countries];
                             next[i] = v;
