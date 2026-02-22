@@ -1032,7 +1032,7 @@ export function ScreeningDetailPage() {
                   <div className="sectionRow" style={{ marginTop: 10 }}>
                     <div className="sectionTitleSmall">Countries</div>
                     <button type="button" className="btnAddSmall" onClick={() => addCountry(n.id)}>
-                      + Add
+                      + Add Country
                     </button>
                   </div>
 
@@ -1056,7 +1056,7 @@ export function ScreeningDetailPage() {
                   <div className="sectionRow" style={{ marginTop: 10 }}>
                     <div className="sectionTitleSmall">Addresses</div>
                     <button type="button" className="btnAddSmall" onClick={() => addAddress(n.id)}>
-                      + Add
+                      + Add Address
                     </button>
                   </div>
 
@@ -1081,7 +1081,7 @@ export function ScreeningDetailPage() {
                   <div className="sectionRow" style={{ marginTop: 10 }}>
                     <div className="sectionTitleSmall">Identification Documents</div>
                     <button type="button" className="btnAddSmall" onClick={() => addIdDoc(n.id)}>
-                      + Add
+                      + Add Id
                     </button>
                   </div>
 
