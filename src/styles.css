@@ -331,6 +331,23 @@ textarea{min-height:90px;resize:vertical}
 .inlineTrashBtn{
   margin-bottom:2px;
 }
+.orDivider{
+  display:flex;
+  align-items:center;
+  color:#7a8aa0;
+  font-size:12px;
+  font-weight:600;
+  margin:8px 0 12px;
+}
+.orDivider::before,
+.orDivider::after{
+  content:"";
+  flex:1;
+  border-top:1px solid #d8e0e8;
+}
+.orDivider span{
+  padding:0 10px;
+}
 
 .stack{display:flex;flex-direction:column;gap:10px}
 

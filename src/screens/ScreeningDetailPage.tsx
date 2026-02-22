@@ -112,11 +112,6 @@ const ID_TYPE_OPTIONS = [
   "Other",
 ] as const;
 
-const NAME_MODE_OPTIONS: SelectOption<"split" | "full">[] = [
-  { value: "split", label: "First / Last" },
-  { value: "full", label: "Full Name" },
-];
-
 function uuid() {
   return crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
@@ -162,18 +157,18 @@ function buildEntityExampleFromNameItem(item: NameItem): EntityExample {
   const schema = uiTypeToSchema(item.uiType);
 
   // Name
-  let primaryName = "";
+  const nameValues: string[] = [];
   if (item.uiType === "Individual") {
-    if (item.nameMode === "split") {
-      primaryName = [safeTrim(item.firstName), safeTrim(item.middleName), safeTrim(item.lastName)].filter(Boolean).join(" ");
-    } else {
-      primaryName = safeTrim(item.fullName);
-    }
+    const splitName = [safeTrim(item.firstName), safeTrim(item.middleName), safeTrim(item.lastName)].filter(Boolean).join(" ");
+    const fullName = safeTrim(item.fullName);
+    if (splitName) nameValues.push(splitName);
+    if (fullName && fullName.toLowerCase() !== splitName.toLowerCase()) nameValues.push(fullName);
   } else {
-    primaryName = safeTrim(item.fullName);
+    const fullName = safeTrim(item.fullName);
+    if (fullName) nameValues.push(fullName);
   }
 
-  const props: Record<string, any> = { name: [primaryName] };
+  const props: Record<string, any> = { name: nameValues };
 
   // alias
   if (safeTrim(item.aliasName)) props.alias = [safeTrim(item.aliasName)];
@@ -444,11 +439,10 @@ export function ScreeningDetailPage() {
         countries: z.array(z.string()),
       }).superRefine((data, ctx) => {
         if (data.uiType === "Individual") {
-          if (data.nameMode === "split") {
-            if (!safeTrim(data.firstName)) ctx.addIssue({ code: "custom", path: ["firstName"], message: "First Name required for Individual." });
-            if (!safeTrim(data.lastName)) ctx.addIssue({ code: "custom", path: ["lastName"], message: "Last Name required for Individual." });
-          } else {
-            if (!safeTrim(data.fullName)) ctx.addIssue({ code: "custom", path: ["fullName"], message: "Full Name required (Individual full-name mode)." });
+          const hasSplit = !!safeTrim(data.firstName) && !!safeTrim(data.lastName);
+          const hasFull = !!safeTrim(data.fullName);
+          if (!hasSplit && !hasFull) {
+            ctx.addIssue({ code: "custom", path: ["firstName"], message: "Provide First+Last name or Full Name for Individual." });
           }
 
           const dob = safeTrim(data.dateOfBirth);
@@ -610,9 +604,8 @@ export function ScreeningDetailPage() {
 
         let displayName = "";
         if (n.uiType === "Individual") {
-          displayName = n.nameMode === "split"
-            ? [safeTrim(n.firstName), safeTrim(n.lastName)].filter(Boolean).join(" ")
-            : safeTrim(n.fullName);
+          const splitName = [safeTrim(n.firstName), safeTrim(n.lastName)].filter(Boolean).join(" ");
+          displayName = safeTrim(n.fullName) || splitName;
         } else {
           displayName = safeTrim(n.fullName);
         }
@@ -1003,43 +996,34 @@ export function ScreeningDetailPage() {
                     </div>
                   </div>
 
-                  {n.uiType === "Individual" ? (
-                    <div className="field singleNameModeField">
-                      <label>Name Mode</label>
-                      <FormSelect
-                        value={n.nameMode}
-                        onChange={(mode) => updateNameItem(n.id, { nameMode: mode })}
-                        options={NAME_MODE_OPTIONS}
-                      />
-                    </div>
-                  ) : null}
-
                   {/* Individual name inputs */}
                   {n.uiType === "Individual" ? (
                     <>
-                      {n.nameMode === "split" ? (
-                        <div className="grid3">
-                          <div className="field">
-                            <label>First Name *</label>
-                            <input value={n.firstName} onChange={(e) => updateNameItem(n.id, { firstName: e.target.value })} />
-                          </div>
-                          <div className="field">
-                            <label>Middle Name</label>
-                            <input value={n.middleName} onChange={(e) => updateNameItem(n.id, { middleName: e.target.value })} />
-                          </div>
-                          <div className="field">
-                            <label>Last Name *</label>
-                            <input value={n.lastName} onChange={(e) => updateNameItem(n.id, { lastName: e.target.value })} />
-                          </div>
+                      <div className="grid3">
+                        <div className="field">
+                          <label>First Name</label>
+                          <input value={n.firstName} onChange={(e) => updateNameItem(n.id, { firstName: e.target.value })} />
                         </div>
-                      ) : (
-                        <div className="grid2">
-                          <div className="field" style={{ gridColumn: "1 / -1" }}>
-                            <label>Full Name *</label>
-                            <input value={n.fullName} onChange={(e) => updateNameItem(n.id, { fullName: e.target.value })} />
-                          </div>
+                        <div className="field">
+                          <label>Middle Name</label>
+                          <input value={n.middleName} onChange={(e) => updateNameItem(n.id, { middleName: e.target.value })} />
                         </div>
-                      )}
+                        <div className="field">
+                          <label>Last Name</label>
+                          <input value={n.lastName} onChange={(e) => updateNameItem(n.id, { lastName: e.target.value })} />
+                        </div>
+                      </div>
+
+                      <div className="orDivider">
+                        <span>AND / OR</span>
+                      </div>
+
+                      <div className="grid2">
+                        <div className="field" style={{ gridColumn: "1 / -1" }}>
+                          <label>Full Name</label>
+                          <input value={n.fullName} onChange={(e) => updateNameItem(n.id, { fullName: e.target.value })} />
+                        </div>
+                      </div>
 
                       <div className="field">
                         <label>Date of Birth</label>
