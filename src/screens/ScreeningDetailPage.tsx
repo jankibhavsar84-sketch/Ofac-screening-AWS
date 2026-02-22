@@ -539,13 +539,40 @@ export function ScreeningDetailPage() {
     setNames((prev) => prev.map((n) => (n.id === id ? { ...n, countries: [...n.countries, ""] } : n)));
   }
 
+  function removeCountry(id: string, index: number) {
+    setNames((prev) =>
+      prev.map((n) => {
+        if (n.id !== id || n.countries.length <= 1) return n;
+        return { ...n, countries: n.countries.filter((_, i) => i !== index) };
+      })
+    );
+  }
+
   function addAddress(id: string) {
     setNames((prev) => prev.map((n) => (n.id === id ? { ...n, addresses: [...n.addresses, ""] } : n)));
+  }
+
+  function removeAddress(id: string, index: number) {
+    setNames((prev) =>
+      prev.map((n) => {
+        if (n.id !== id || n.addresses.length <= 1) return n;
+        return { ...n, addresses: n.addresses.filter((_, i) => i !== index) };
+      })
+    );
   }
 
   function addIdDoc(id: string) {
     setNames((prev) =>
       prev.map((n) => (n.id === id ? { ...n, ids: [...n.ids, { idType: "", idNumber: "", idCountry: "" }] } : n))
+    );
+  }
+
+  function removeIdDoc(id: string, index: number) {
+    setNames((prev) =>
+      prev.map((n) => {
+        if (n.id !== id || n.ids.length <= 1) return n;
+        return { ...n, ids: n.ids.filter((_, i) => i !== index) };
+      })
     );
   }
 
@@ -1038,17 +1065,29 @@ export function ScreeningDetailPage() {
 
                   <div className="stack">
                     {n.countries.map((c, i) => (
-                      <CountryAutosuggest
-                        key={i}
-                        label={i === 0 ? "Country" : ""}
-                        value={c}
-                        hint="Type name or ISO2"
-                        onChange={(v) => {
-                          const next = [...n.countries];
-                          next[i] = v;
-                          updateNameItem(n.id, { countries: next });
-                        }}
-                      />
+                      <div key={i} className="inlineItemRow">
+                        <CountryAutosuggest
+                          label={i === 0 ? "Country" : ""}
+                          value={c}
+                          hint="Type name or ISO2"
+                          onChange={(v) => {
+                            const next = [...n.countries];
+                            next[i] = v;
+                            updateNameItem(n.id, { countries: next });
+                          }}
+                        />
+                        {i > 0 ? (
+                          <button
+                            type="button"
+                            className="iconRemoveBtn inlineTrashBtn"
+                            onClick={() => removeCountry(n.id, i)}
+                            aria-label={`Remove country ${i + 1}`}
+                            title="Remove country"
+                          >
+                            {"\u{1F5D1}"}
+                          </button>
+                        ) : null}
+                      </div>
                     ))}
                   </div>
 
@@ -1062,17 +1101,30 @@ export function ScreeningDetailPage() {
 
                   <div className="stack">
                     {n.addresses.map((a, i) => (
-                      <div className="field" key={i}>
-                        <label>{i === 0 ? "Address" : ""}</label>
-                        <input
-                          placeholder="Full address line"
-                          value={a}
-                          onChange={(e) => {
-                            const next = [...n.addresses];
-                            next[i] = e.target.value;
-                            updateNameItem(n.id, { addresses: next });
-                          }}
-                        />
+                      <div className="inlineItemRow" key={i}>
+                        <div className="field inlineFieldFill">
+                          <label>{i === 0 ? "Address" : ""}</label>
+                          <input
+                            placeholder="Full address line"
+                            value={a}
+                            onChange={(e) => {
+                              const next = [...n.addresses];
+                              next[i] = e.target.value;
+                              updateNameItem(n.id, { addresses: next });
+                            }}
+                          />
+                        </div>
+                        {i > 0 ? (
+                          <button
+                            type="button"
+                            className="iconRemoveBtn inlineTrashBtn"
+                            onClick={() => removeAddress(n.id, i)}
+                            aria-label={`Remove address ${i + 1}`}
+                            title="Remove address"
+                          >
+                            {"\u{1F5D1}"}
+                          </button>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -1087,42 +1139,55 @@ export function ScreeningDetailPage() {
 
                   <div className="stack">
                     {n.ids.map((doc, i) => (
-                      <div className="grid3" key={i}>
-                        <div className="field">
-                          <label>{i === 0 ? "ID Type" : ""}</label>
-                          <input
-                            value={doc.idType}
-                            onChange={(e) => {
-                              const next = [...n.ids];
-                              next[i] = { ...next[i], idType: e.target.value };
-                              updateNameItem(n.id, { ids: next });
-                            }}
-                          />
+                      <div className="inlineItemRow" key={i}>
+                        <div className="grid3 inlineFieldFill">
+                          <div className="field">
+                            <label>{i === 0 ? "ID Type" : ""}</label>
+                            <input
+                              value={doc.idType}
+                              onChange={(e) => {
+                                const next = [...n.ids];
+                                next[i] = { ...next[i], idType: e.target.value };
+                                updateNameItem(n.id, { ids: next });
+                              }}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>{i === 0 ? "ID Number" : ""}</label>
+                            <input
+                              value={doc.idNumber}
+                              onChange={(e) => {
+                                const next = [...n.ids];
+                                next[i] = { ...next[i], idNumber: e.target.value };
+                                updateNameItem(n.id, { ids: next });
+                              }}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>{i === 0 ? "ID Country" : ""}</label>
+                            <CountryAutosuggest
+                              label=""
+                              value={doc.idCountry}
+                              hint="ISO2 preferred"
+                              onChange={(v) => {
+                                const next = [...n.ids];
+                                next[i] = { ...next[i], idCountry: v };
+                                updateNameItem(n.id, { ids: next });
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div className="field">
-                          <label>{i === 0 ? "ID Number" : ""}</label>
-                          <input
-                            value={doc.idNumber}
-                            onChange={(e) => {
-                              const next = [...n.ids];
-                              next[i] = { ...next[i], idNumber: e.target.value };
-                              updateNameItem(n.id, { ids: next });
-                            }}
-                          />
-                        </div>
-                        <div className="field">
-                          <label>{i === 0 ? "ID Country" : ""}</label>
-                          <CountryAutosuggest
-                            label=""
-                            value={doc.idCountry}
-                            hint="ISO2 preferred"
-                            onChange={(v) => {
-                              const next = [...n.ids];
-                              next[i] = { ...next[i], idCountry: v };
-                              updateNameItem(n.id, { ids: next });
-                            }}
-                          />
-                        </div>
+                        {i > 0 ? (
+                          <button
+                            type="button"
+                            className="iconRemoveBtn inlineTrashBtn"
+                            onClick={() => removeIdDoc(n.id, i)}
+                            aria-label={`Remove identification row ${i + 1}`}
+                            title="Remove ID"
+                          >
+                            {"\u{1F5D1}"}
+                          </button>
+                        ) : null}
                       </div>
                     ))}
                   </div>

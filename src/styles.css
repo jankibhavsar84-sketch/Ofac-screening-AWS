@@ -320,6 +320,17 @@ textarea{min-height:90px;resize:vertical}
 .iconRemoveBtn:hover{
   background:#f8fafc;
 }
+.inlineItemRow{
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+}
+.inlineFieldFill{
+  flex:1;
+}
+.inlineTrashBtn{
+  margin-bottom:2px;
+}
 
 .stack{display:flex;flex-direction:column;gap:10px}
 
