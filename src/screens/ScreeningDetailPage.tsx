@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { useRecoilState } from "recoil";
 import { z } from "zod";
@@ -29,10 +29,82 @@ type NameItem =
 
 type StatusFilter = "All Statuses" | "Clear" | "Potential Match" | "Pending" | "Match";
 type TypeFilter = "All Types" | UiType;
+type SelectOption<T extends string> = { value: T; label: string };
+
+function FormSelect<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: SelectOption<T>[];
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const selected = options.find((o) => o.value === value) ?? options[0];
+
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (!rootRef.current) return;
+      if (e.target instanceof Node && !rootRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
+
+  return (
+    <div ref={rootRef} className="formSelectWrap">
+      <button
+        type="button"
+        className="formSelectBtn"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span>{selected?.label ?? value}</span>
+        <span className="formSelectCaret">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open ? (
+        <div className="formSelectMenu" role="listbox">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`formSelectOption ${opt.value === value ? "active" : ""}`}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function safeTrim(v: string) {
   return (v ?? "").trim();
 }
+
+const ENTITY_TYPE_OPTIONS: SelectOption<UiType>[] = [
+  { value: "Individual", label: "Individual" },
+  { value: "Organization", label: "Organization" },
+  { value: "Vessel", label: "Vessel" },
+  { value: "Aircraft", label: "Aircraft" },
+];
+
+const NAME_MODE_OPTIONS: SelectOption<"split" | "full">[] = [
+  { value: "split", label: "First / Last" },
+  { value: "full", label: "Full Name" },
+];
 
 function uuid() {
   return crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -862,10 +934,9 @@ export function ScreeningDetailPage() {
                   <div className="grid2">
                     <div className="field">
                       <label>Entity Type</label>
-                      <select
+                      <FormSelect
                         value={n.uiType}
-                        onChange={(e) => {
-                          const uiType = e.target.value as UiType;
+                        onChange={(uiType) => {
                           updateNameItem(n.id, {
                             uiType,
                             nameMode: uiType === "Individual" ? n.nameMode : "full",
@@ -874,24 +945,18 @@ export function ScreeningDetailPage() {
                             middleName: uiType === "Individual" ? n.middleName : "",
                           });
                         }}
-                      >
-                        <option value="Individual">Individual</option>
-                        <option value="Organization">Organization</option>
-                        <option value="Vessel">Vessel</option>
-                        <option value="Aircraft">Aircraft</option>
-                      </select>
+                        options={ENTITY_TYPE_OPTIONS}
+                      />
                     </div>
 
                     {n.uiType === "Individual" ? (
                       <div className="field">
                         <label>Name Mode</label>
-                        <select
+                        <FormSelect
                           value={n.nameMode}
-                          onChange={(e) => updateNameItem(n.id, { nameMode: e.target.value as any })}
-                        >
-                          <option value="split">First / Last</option>
-                          <option value="full">Full Name</option>
-                        </select>
+                          onChange={(mode) => updateNameItem(n.id, { nameMode: mode })}
+                          options={NAME_MODE_OPTIONS}
+                        />
                       </div>
                     ) : (
                       <div className="field">
@@ -1430,3 +1495,4 @@ function SummaryCards() {
     </div>
   );
 }
+
