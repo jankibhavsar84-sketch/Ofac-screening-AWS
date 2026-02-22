@@ -1514,6 +1514,53 @@ function TemplateCard(props: {
     </div>
   );
 }
+
+type SummaryTone = "total" | "clear" | "potential" | "match" | "pending";
+
+function SummaryCardIcon({ tone }: { tone: SummaryTone }) {
+  if (tone === "total") {
+    return (
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <line x1="4" y1="20" x2="20" y2="20" />
+        <line x1="7" y1="17" x2="7" y2="10" />
+        <line x1="12" y1="17" x2="12" y2="6" />
+        <line x1="17" y1="17" x2="17" y2="13" />
+      </svg>
+    );
+  }
+  if (tone === "clear") {
+    return (
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="m9 12 2 2 4-4" />
+      </svg>
+    );
+  }
+  if (tone === "potential") {
+    return (
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 3 2 20h20L12 3z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <circle cx="12" cy="17" r="1" />
+      </svg>
+    );
+  }
+  if (tone === "match") {
+    return (
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <line x1="12" y1="7" x2="12" y2="12" />
+      <line x1="12" y1="12" x2="15" y2="14" />
+    </svg>
+  );
+}
+
 function SummaryCards() {
   const [submissions] = useRecoilState(submissionsState);
 
@@ -1570,32 +1617,27 @@ function SummaryCards() {
     return { total, clear, potential, match, pending };
   }, [submissions]);
 
+  const items: { tone: SummaryTone; label: string; value: number }[] = [
+    { tone: "total", label: "TOTAL SCREENINGS", value: counts.total },
+    { tone: "clear", label: "CLEAR", value: counts.clear },
+    { tone: "potential", label: "POTENTIAL MATCHES", value: counts.potential },
+    { tone: "match", label: "MATCHES", value: counts.match },
+    { tone: "pending", label: "PENDING", value: counts.pending },
+  ];
+
   return (
     <div className="summaryGrid">
-      <div className="summaryCard">
-        <div className="summaryLabel">TOTAL SCREENED</div>
-        <div className="summaryValue">{counts.total}</div>
-      </div>
-
-      <div className="summaryCard">
-        <div className="summaryLabel">CLEAR</div>
-        <div className="summaryValue">{counts.clear}</div>
-      </div>
-
-      <div className="summaryCard">
-        <div className="summaryLabel">POTENTIAL MATCHES</div>
-        <div className="summaryValue">{counts.potential}</div>
-      </div>
-
-      <div className="summaryCard">
-        <div className="summaryLabel">MATCHES</div>
-        <div className="summaryValue">{counts.match}</div>
-      </div>
-
-      <div className="summaryCard">
-        <div className="summaryLabel">PENDING</div>
-        <div className="summaryValue">{counts.pending}</div>
-      </div>
+      {items.map((item) => (
+        <div key={item.tone} className={`summaryCard summaryCard--${item.tone}`}>
+          <div className="summaryTop">
+            <div className="summaryLabel">{item.label}</div>
+            <div className="summaryIconBubble" aria-hidden="true">
+              <SummaryCardIcon tone={item.tone} />
+            </div>
+          </div>
+          <div className="summaryValue">{item.value}</div>
+        </div>
+      ))}
     </div>
   );
 }
