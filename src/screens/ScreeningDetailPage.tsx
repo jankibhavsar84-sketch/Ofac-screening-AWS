@@ -101,6 +101,17 @@ const ENTITY_TYPE_OPTIONS: SelectOption<UiType>[] = [
   { value: "Aircraft", label: "Aircraft" },
 ];
 
+const ID_TYPE_OPTIONS = [
+  "Passport",
+  "National ID",
+  "Driver's License",
+  "Tax ID/EIN",
+  "Company Registration Number",
+  "Business License",
+  "IATA Number",
+  "Other",
+] as const;
+
 const NAME_MODE_OPTIONS: SelectOption<"split" | "full">[] = [
   { value: "split", label: "First / Last" },
   { value: "full", label: "Full Name" },
@@ -394,7 +405,7 @@ export function ScreeningDetailPage() {
       dateOfBirth: "",
       countries: [""],
       addresses: [""],
-      ids: [{ idType: "", idNumber: "", idCountry: "" }],
+      ids: [{ idType: "Passport", idNumber: "", idCountry: "" }],
     },
   ]);
 
@@ -481,7 +492,7 @@ export function ScreeningDetailPage() {
           dateOfBirth: "",
           countries: [""],
           addresses: [""],
-          ids: [{ idType: "", idNumber: "", idCountry: "" }],
+          ids: [{ idType: "Passport", idNumber: "", idCountry: "" }],
         },
       ]);
       setNotes("");
@@ -526,7 +537,7 @@ export function ScreeningDetailPage() {
         dateOfBirth: "",
         countries: [""],
         addresses: [""],
-        ids: [{ idType: "", idNumber: "", idCountry: "" }],
+        ids: [{ idType: "Passport", idNumber: "", idCountry: "" }],
       },
     ]);
   }
@@ -563,7 +574,7 @@ export function ScreeningDetailPage() {
 
   function addIdDoc(id: string) {
     setNames((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, ids: [...n.ids, { idType: "", idNumber: "", idCountry: "" }] } : n))
+      prev.map((n) => (n.id === id ? { ...n, ids: [...n.ids, { idType: "Passport", idNumber: "", idCountry: "" }] } : n))
     );
   }
 
@@ -1143,14 +1154,20 @@ export function ScreeningDetailPage() {
                         <div className="grid3 inlineFieldFill">
                           <div className="field">
                             <label>{i === 0 ? "ID Type" : ""}</label>
-                            <input
+                            <select
                               value={doc.idType}
                               onChange={(e) => {
                                 const next = [...n.ids];
                                 next[i] = { ...next[i], idType: e.target.value };
                                 updateNameItem(n.id, { ids: next });
                               }}
-                            />
+                            >
+                              {ID_TYPE_OPTIONS.map((type) => (
+                                <option key={type} value={type}>
+                                  {type}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                           <div className="field">
                             <label>{i === 0 ? "ID Number" : ""}</label>
