@@ -915,19 +915,28 @@ export function ScreeningDetailPage() {
               {/* Names section with +Add */}
               <div className="sectionRow">
                 <div className="sectionTitle">Names</div>
-                <button type="button" className="btnAdd" onClick={addName}>
-                  + Add
-                </button>
               </div>
 
               {names.map((n, idx) => (
                 <div key={n.id} className="nameCard">
                   <div className="nameCardTop">
-                    <div className="nameCardLabel">Primary Name #{idx + 1}</div>
+                    <div className="nameCardLabel">{idx === 0 ? "Primary Name" : `AKA/Alias #${idx}`}</div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" className="btnGhostSmall" onClick={() => removeName(n.id)} disabled={names.length <= 1}>
-                        Remove
-                      </button>
+                      {idx === 0 ? (
+                        <button type="button" className="btnAdd" onClick={addName}>
+                          + Add AKA/Alias
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="iconRemoveBtn"
+                          onClick={() => removeName(n.id)}
+                          aria-label={`Remove AKA/Alias ${idx}`}
+                          title="Remove"
+                        >
+                          x
+                        </button>
+                      )}
                     </div>
                   </div>
 
