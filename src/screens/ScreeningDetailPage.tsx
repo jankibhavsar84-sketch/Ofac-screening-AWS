@@ -1063,7 +1063,7 @@ export function ScreeningDetailPage() {
                       <div className="field dobFieldCompact">
                         <label>Date of Birth</label>
                         <input
-                          placeholder="YYYY-MM-DD"
+                          type="date"
                           value={primaryName.dateOfBirth}
                           onChange={(e) => updateNameItem(primaryName.id, { dateOfBirth: e.target.value })}
                         />
