@@ -408,6 +408,7 @@ export function ScreeningDetailPage() {
   const [batchError, setBatchError] = useState<string | null>(null);
   const [singleError, setSingleError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const selectedEntityType: UiType = names[0]?.uiType ?? "Individual";
 
   // Results filters + paging
   const [search, setSearch] = useState("");
@@ -497,13 +498,26 @@ export function ScreeningDetailPage() {
     setNames((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n)));
   }
 
+  function setEntityTypeForAll(uiType: UiType) {
+    setNames((prev) =>
+      prev.map((n) => ({
+        ...n,
+        uiType,
+        nameMode: uiType === "Individual" ? n.nameMode : "full",
+        firstName: uiType === "Individual" ? n.firstName : "",
+        lastName: uiType === "Individual" ? n.lastName : "",
+        middleName: uiType === "Individual" ? n.middleName : "",
+      }))
+    );
+  }
+
   function addName() {
     setNames((prev) => [
       ...prev,
       {
         id: uuid(),
-        uiType: "Individual",
-        nameMode: "split",
+        uiType: prev[0]?.uiType ?? "Individual",
+        nameMode: (prev[0]?.uiType ?? "Individual") === "Individual" ? "split" : "full",
         firstName: "",
         lastName: "",
         middleName: "",
@@ -912,6 +926,17 @@ export function ScreeningDetailPage() {
 
           <div className="cardBody">
             <form onSubmit={submitSingle}>
+              <div className="singleEntityTypeRow">
+                <div className="field singleEntityTypeField">
+                  <label>Entity Type *</label>
+                  <FormSelect
+                    value={selectedEntityType}
+                    onChange={(uiType) => setEntityTypeForAll(uiType)}
+                    options={ENTITY_TYPE_OPTIONS}
+                  />
+                </div>
+              </div>
+
               {/* Names section with +Add */}
               <div className="sectionRow">
                 <div className="sectionTitle">Names</div>
@@ -940,40 +965,21 @@ export function ScreeningDetailPage() {
                     </div>
                   </div>
 
-                  <div className="grid2">
-                    <div className="field">
-                      <label>Entity Type</label>
+                  {n.uiType === "Individual" ? (
+                    <div className="field singleNameModeField">
+                      <label>Name Mode</label>
                       <FormSelect
-                        value={n.uiType}
-                        onChange={(uiType) => {
-                          updateNameItem(n.id, {
-                            uiType,
-                            nameMode: uiType === "Individual" ? n.nameMode : "full",
-                            firstName: uiType === "Individual" ? n.firstName : "",
-                            lastName: uiType === "Individual" ? n.lastName : "",
-                            middleName: uiType === "Individual" ? n.middleName : "",
-                          });
-                        }}
-                        options={ENTITY_TYPE_OPTIONS}
+                        value={n.nameMode}
+                        onChange={(mode) => updateNameItem(n.id, { nameMode: mode })}
+                        options={NAME_MODE_OPTIONS}
                       />
                     </div>
-
-                    {n.uiType === "Individual" ? (
-                      <div className="field">
-                        <label>Name Mode</label>
-                        <FormSelect
-                          value={n.nameMode}
-                          onChange={(mode) => updateNameItem(n.id, { nameMode: mode })}
-                          options={NAME_MODE_OPTIONS}
-                        />
-                      </div>
-                    ) : (
-                      <div className="field">
-                        <label>Alias (Optional)</label>
-                        <input value={n.aliasName} onChange={(e) => updateNameItem(n.id, { aliasName: e.target.value })} />
-                      </div>
-                    )}
-                  </div>
+                  ) : (
+                    <div className="field">
+                      <label>Alias (Optional)</label>
+                      <input value={n.aliasName} onChange={(e) => updateNameItem(n.id, { aliasName: e.target.value })} />
+                    </div>
+                  )}
 
                   {/* Individual name inputs */}
                   {n.uiType === "Individual" ? (
