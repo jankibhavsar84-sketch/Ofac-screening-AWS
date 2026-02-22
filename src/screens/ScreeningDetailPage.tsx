@@ -415,6 +415,8 @@ export function ScreeningDetailPage() {
   const [singleError, setSingleError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const selectedEntityType: UiType = names[0]?.uiType ?? "Individual";
+  const primaryName = names[0];
+  const aliasNames = names.slice(1);
 
   // Results filters + paging
   const [search, setSearch] = useState("");
@@ -504,36 +506,40 @@ export function ScreeningDetailPage() {
   }
 
   function setEntityTypeForAll(uiType: UiType) {
-    setNames((prev) =>
-      prev.map((n) => ({
+    setNames((prev) => {
+      const normalized = prev.map((n) => ({
         ...n,
         uiType,
         nameMode: uiType === "Individual" ? n.nameMode : "full",
         firstName: uiType === "Individual" ? n.firstName : "",
         lastName: uiType === "Individual" ? n.lastName : "",
         middleName: uiType === "Individual" ? n.middleName : "",
-      }))
-    );
+      }));
+      return uiType === "Individual" ? normalized : normalized.slice(0, 1);
+    });
   }
 
   function addName() {
-    setNames((prev) => [
-      ...prev,
-      {
-        id: uuid(),
-        uiType: prev[0]?.uiType ?? "Individual",
-        nameMode: (prev[0]?.uiType ?? "Individual") === "Individual" ? "split" : "full",
-        firstName: "",
-        lastName: "",
-        middleName: "",
-        fullName: "",
-        aliasName: "",
-        dateOfBirth: "",
-        countries: [""],
-        addresses: [""],
-        ids: [{ idType: "Passport", idNumber: "", idCountry: "" }],
-      },
-    ]);
+    setNames((prev) => {
+      if ((prev[0]?.uiType ?? "Individual") !== "Individual") return prev;
+      return [
+        ...prev,
+        {
+          id: uuid(),
+          uiType: "Individual",
+          nameMode: "split",
+          firstName: "",
+          lastName: "",
+          middleName: "",
+          fullName: "",
+          aliasName: "",
+          dateOfBirth: "",
+          countries: [""],
+          addresses: [""],
+          ids: [{ idType: "Passport", idNumber: "", idCountry: "" }],
+        },
+      ];
+    });
   }
 
   function removeName(id: string) {
@@ -973,44 +979,34 @@ export function ScreeningDetailPage() {
                 <div className="sectionTitle">Names</div>
               </div>
 
-              {names.map((n, idx) => (
-                <div key={n.id} className="nameCard">
+              {primaryName ? (
+                <div key={primaryName.id} className="nameCard">
                   <div className="nameCardTop">
-                    <div className="nameCardLabel">{idx === 0 ? "Primary Name" : `AKA/Alias #${idx}`}</div>
+                    <div className="nameCardLabel">Primary Name</div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      {idx === 0 ? (
+                      {primaryName.uiType === "Individual" ? (
                         <button type="button" className="btnAdd" onClick={addName}>
                           + Add AKA/Alias
                         </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="iconRemoveBtn"
-                          onClick={() => removeName(n.id)}
-                          aria-label={`Remove AKA/Alias ${idx}`}
-                          title="Remove"
-                        >
-                          x
-                        </button>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
                   {/* Individual name inputs */}
-                  {n.uiType === "Individual" ? (
+                  {primaryName.uiType === "Individual" ? (
                     <>
                       <div className="grid3">
                         <div className="field">
                           <label>First Name</label>
-                          <input value={n.firstName} onChange={(e) => updateNameItem(n.id, { firstName: e.target.value })} />
+                          <input value={primaryName.firstName} onChange={(e) => updateNameItem(primaryName.id, { firstName: e.target.value })} />
                         </div>
                         <div className="field">
                           <label>Middle Name</label>
-                          <input value={n.middleName} onChange={(e) => updateNameItem(n.id, { middleName: e.target.value })} />
+                          <input value={primaryName.middleName} onChange={(e) => updateNameItem(primaryName.id, { middleName: e.target.value })} />
                         </div>
                         <div className="field">
                           <label>Last Name</label>
-                          <input value={n.lastName} onChange={(e) => updateNameItem(n.id, { lastName: e.target.value })} />
+                          <input value={primaryName.lastName} onChange={(e) => updateNameItem(primaryName.id, { lastName: e.target.value })} />
                         </div>
                       </div>
 
@@ -1021,20 +1017,63 @@ export function ScreeningDetailPage() {
                       <div className="grid2">
                         <div className="field" style={{ gridColumn: "1 / -1" }}>
                           <label>Full Name</label>
-                          <input value={n.fullName} onChange={(e) => updateNameItem(n.id, { fullName: e.target.value })} />
+                          <input value={primaryName.fullName} onChange={(e) => updateNameItem(primaryName.id, { fullName: e.target.value })} />
                         </div>
                       </div>
 
+                      {aliasNames.map((alias, aliasIdx) => (
+                        <div key={alias.id} style={{ marginTop: 12 }}>
+                          <div className="nameCardTop">
+                            <div className="nameCardLabel">{`AKA/Alias #${aliasIdx + 1}`}</div>
+                            <button
+                              type="button"
+                              className="iconRemoveBtn"
+                              onClick={() => removeName(alias.id)}
+                              aria-label={`Remove AKA/Alias ${aliasIdx + 1}`}
+                              title="Remove"
+                            >
+                              x
+                            </button>
+                          </div>
+
+                          <div className="grid3">
+                            <div className="field">
+                              <label>First Name</label>
+                              <input value={alias.firstName} onChange={(e) => updateNameItem(alias.id, { firstName: e.target.value })} />
+                            </div>
+                            <div className="field">
+                              <label>Middle Name</label>
+                              <input value={alias.middleName} onChange={(e) => updateNameItem(alias.id, { middleName: e.target.value })} />
+                            </div>
+                            <div className="field">
+                              <label>Last Name</label>
+                              <input value={alias.lastName} onChange={(e) => updateNameItem(alias.id, { lastName: e.target.value })} />
+                            </div>
+                          </div>
+
+                          <div className="grid2">
+                            <div className="field" style={{ gridColumn: "1 / -1" }}>
+                              <label>Full Name</label>
+                              <input value={alias.fullName} onChange={(e) => updateNameItem(alias.id, { fullName: e.target.value })} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
                       <div className="field">
                         <label>Date of Birth</label>
-                        <input placeholder="YYYY-MM-DD" value={n.dateOfBirth} onChange={(e) => updateNameItem(n.id, { dateOfBirth: e.target.value })} />
+                        <input
+                          placeholder="YYYY-MM-DD"
+                          value={primaryName.dateOfBirth}
+                          onChange={(e) => updateNameItem(primaryName.id, { dateOfBirth: e.target.value })}
+                        />
                       </div>
                     </>
                   ) : (
                     <div className="grid2">
                       <div className="field" style={{ gridColumn: "1 / -1" }}>
                         <label>Primary Name *</label>
-                        <input value={n.fullName} onChange={(e) => updateNameItem(n.id, { fullName: e.target.value })} />
+                        <input value={primaryName.fullName} onChange={(e) => updateNameItem(primaryName.id, { fullName: e.target.value })} />
                       </div>
                     </div>
                   )}
@@ -1042,29 +1081,29 @@ export function ScreeningDetailPage() {
                   {/* Countries (multi) */}
                   <div className="sectionRow" style={{ marginTop: 10 }}>
                     <div className="sectionTitleSmall">Countries</div>
-                    <button type="button" className="btnAddSmall" onClick={() => addCountry(n.id)}>
+                    <button type="button" className="btnAddSmall" onClick={() => addCountry(primaryName.id)}>
                       + Add Country
                     </button>
                   </div>
 
                   <div className="stack">
-                    {n.countries.map((c, i) => (
+                    {primaryName.countries.map((c, i) => (
                       <div key={i} className="inlineItemRow">
                         <CountryAutosuggest
                           label={i === 0 ? "Country" : ""}
                           value={c}
                           hint="Type name or ISO2"
                           onChange={(v) => {
-                            const next = [...n.countries];
+                            const next = [...primaryName.countries];
                             next[i] = v;
-                            updateNameItem(n.id, { countries: next });
+                            updateNameItem(primaryName.id, { countries: next });
                           }}
                         />
                         {i > 0 ? (
                           <button
                             type="button"
                             className="iconRemoveBtn inlineTrashBtn"
-                            onClick={() => removeCountry(n.id, i)}
+                            onClick={() => removeCountry(primaryName.id, i)}
                             aria-label={`Remove country ${i + 1}`}
                             title="Remove country"
                           >
@@ -1078,13 +1117,13 @@ export function ScreeningDetailPage() {
                   {/* Addresses (multi) */}
                   <div className="sectionRow" style={{ marginTop: 10 }}>
                     <div className="sectionTitleSmall">Addresses</div>
-                    <button type="button" className="btnAddSmall" onClick={() => addAddress(n.id)}>
+                    <button type="button" className="btnAddSmall" onClick={() => addAddress(primaryName.id)}>
                       + Add Address
                     </button>
                   </div>
 
                   <div className="stack">
-                    {n.addresses.map((a, i) => (
+                    {primaryName.addresses.map((a, i) => (
                       <div className="inlineItemRow" key={i}>
                         <div className="field inlineFieldFill">
                           <label>{i === 0 ? "Address" : ""}</label>
@@ -1092,9 +1131,9 @@ export function ScreeningDetailPage() {
                             placeholder="Full address line"
                             value={a}
                             onChange={(e) => {
-                              const next = [...n.addresses];
+                              const next = [...primaryName.addresses];
                               next[i] = e.target.value;
-                              updateNameItem(n.id, { addresses: next });
+                              updateNameItem(primaryName.id, { addresses: next });
                             }}
                           />
                         </div>
@@ -1102,7 +1141,7 @@ export function ScreeningDetailPage() {
                           <button
                             type="button"
                             className="iconRemoveBtn inlineTrashBtn"
-                            onClick={() => removeAddress(n.id, i)}
+                            onClick={() => removeAddress(primaryName.id, i)}
                             aria-label={`Remove address ${i + 1}`}
                             title="Remove address"
                           >
@@ -1116,13 +1155,13 @@ export function ScreeningDetailPage() {
                   {/* IDs (multi) */}
                   <div className="sectionRow" style={{ marginTop: 10 }}>
                     <div className="sectionTitleSmall">Identification Documents</div>
-                    <button type="button" className="btnAddSmall" onClick={() => addIdDoc(n.id)}>
+                    <button type="button" className="btnAddSmall" onClick={() => addIdDoc(primaryName.id)}>
                       + Add Id
                     </button>
                   </div>
 
                   <div className="stack">
-                    {n.ids.map((doc, i) => (
+                    {primaryName.ids.map((doc, i) => (
                       <div className="inlineItemRow" key={i}>
                         <div className="grid3 inlineFieldFill">
                           <div className="field">
@@ -1130,9 +1169,9 @@ export function ScreeningDetailPage() {
                             <select
                               value={doc.idType}
                               onChange={(e) => {
-                                const next = [...n.ids];
+                                const next = [...primaryName.ids];
                                 next[i] = { ...next[i], idType: e.target.value };
-                                updateNameItem(n.id, { ids: next });
+                                updateNameItem(primaryName.id, { ids: next });
                               }}
                             >
                               {ID_TYPE_OPTIONS.map((type) => (
@@ -1147,9 +1186,9 @@ export function ScreeningDetailPage() {
                             <input
                               value={doc.idNumber}
                               onChange={(e) => {
-                                const next = [...n.ids];
+                                const next = [...primaryName.ids];
                                 next[i] = { ...next[i], idNumber: e.target.value };
-                                updateNameItem(n.id, { ids: next });
+                                updateNameItem(primaryName.id, { ids: next });
                               }}
                             />
                           </div>
@@ -1157,9 +1196,9 @@ export function ScreeningDetailPage() {
                             label={i === 0 ? "ID Country" : ""}
                             value={doc.idCountry}
                             onChange={(v) => {
-                              const next = [...n.ids];
+                              const next = [...primaryName.ids];
                               next[i] = { ...next[i], idCountry: v };
-                              updateNameItem(n.id, { ids: next });
+                              updateNameItem(primaryName.id, { ids: next });
                             }}
                           />
                         </div>
@@ -1167,7 +1206,7 @@ export function ScreeningDetailPage() {
                           <button
                             type="button"
                             className="iconRemoveBtn inlineTrashBtn"
-                            onClick={() => removeIdDoc(n.id, i)}
+                            onClick={() => removeIdDoc(primaryName.id, i)}
                             aria-label={`Remove identification row ${i + 1}`}
                             title="Remove ID"
                           >
@@ -1178,7 +1217,7 @@ export function ScreeningDetailPage() {
                     ))}
                   </div>
                 </div>
-              ))}
+              ) : null}
 
               {/* Notes at the end */}
               <div className="field" style={{ marginTop: 12 }}>
