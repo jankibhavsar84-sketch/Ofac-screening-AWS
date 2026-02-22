@@ -350,6 +350,9 @@ textarea{min-height:90px;resize:vertical}
 }
 
 .stack{display:flex;flex-direction:column;gap:10px}
+.dobFieldCompact{
+  max-width:240px;
+}
 
 .errorBox{
   margin-top:12px;

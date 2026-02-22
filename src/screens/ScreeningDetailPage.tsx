@@ -1060,7 +1060,7 @@ export function ScreeningDetailPage() {
                         </div>
                       ))}
 
-                      <div className="field">
+                      <div className="field dobFieldCompact">
                         <label>Date of Birth</label>
                         <input
                           placeholder="YYYY-MM-DD"
