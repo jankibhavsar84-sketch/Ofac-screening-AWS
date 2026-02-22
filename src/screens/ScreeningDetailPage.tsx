@@ -1027,12 +1027,12 @@ export function ScreeningDetailPage() {
                             <div className="nameCardLabel">{`AKA/Alias #${aliasIdx + 1}`}</div>
                             <button
                               type="button"
-                              className="iconRemoveBtn"
+                              className="iconRemoveBtn inlineTrashBtn"
                               onClick={() => removeName(alias.id)}
                               aria-label={`Remove AKA/Alias ${aliasIdx + 1}`}
-                              title="Remove"
+                              title="Remove AKA/Alias"
                             >
-                              x
+                              {"\u{1F5D1}"}
                             </button>
                           </div>
 
