@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { z } from "zod";
+import { IsoDateInput } from "../components/IsoDateInput";
 
 type CustomerType = "Person" | "Entity";
 
@@ -459,7 +460,7 @@ export function ScreeningPage() {
                   <label>Date of Birth</label>
                   <span className="hint">Optional</span>
                 </div>
-                <input type="date" value={form.dateOfBirth} onChange={(e) => update("dateOfBirth", e.target.value)} />
+                <IsoDateInput value={form.dateOfBirth} onChange={(value) => update("dateOfBirth", value)} />
               </div>
 
               {/* Country autosuggest */}

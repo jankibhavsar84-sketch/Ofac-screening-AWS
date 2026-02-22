@@ -6,6 +6,7 @@ import { submissionsState, latestResultState, type Submission, type BatchSubmiss
 import { matchBatch, type EntityExample } from "../api/openSanctions";
 import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutosuggest";
+import { IsoDateInput } from "../components/IsoDateInput";
 
 type Mode = "SINGLE" | "BATCH";
 type UiType = "Individual" | "Organization" | "Vessel" | "Aircraft";
@@ -1062,10 +1063,9 @@ export function ScreeningDetailPage() {
 
                       <div className="field dobFieldCompact">
                         <label>Date of Birth</label>
-                        <input
-                          type="date"
+                        <IsoDateInput
                           value={primaryName.dateOfBirth}
-                          onChange={(e) => updateNameItem(primaryName.id, { dateOfBirth: e.target.value })}
+                          onChange={(value) => updateNameItem(primaryName.id, { dateOfBirth: value })}
                         />
                       </div>
                     </>

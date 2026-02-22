@@ -277,6 +277,39 @@ input:focus, select:focus, textarea:focus{
   border-color:#c7d2fe;
   box-shadow:0 0 0 4px rgba(99, 102, 241, 0.12);
 }
+.isoDateWrap{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.isoDateText{
+  flex:1;
+}
+.isoDateBtn{
+  border:1px solid var(--border);
+  background:#fff;
+  color:#334155;
+  border-radius:10px;
+  padding:10px 12px;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.isoDateBtn:hover{
+  background:#f8fafc;
+  border-color:#d8e3f2;
+}
+.isoDateBtn:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+.isoDatePickerInput{
+  position:absolute;
+  width:1px;
+  height:1px;
+  opacity:0;
+  pointer-events:none;
+}
 
 input::placeholder, textarea::placeholder{color:#94a3b8}
 
