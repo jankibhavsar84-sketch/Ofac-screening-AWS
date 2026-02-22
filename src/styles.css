@@ -291,9 +291,13 @@ input:focus, select:focus, textarea:focus{
   color:#334155;
   border-radius:10px;
   padding:10px 12px;
-  font-size:12px;
-  font-weight:800;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   cursor:pointer;
+}
+.isoDateIcon{
+  display:block;
 }
 .isoDateBtn:hover{
   background:#f8fafc;
