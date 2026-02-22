@@ -1163,18 +1163,15 @@ export function ScreeningDetailPage() {
                               }}
                             />
                           </div>
-                          <div className="field">
-                            <label>{i === 0 ? "ID Country" : ""}</label>
-                            <CountryAutosuggest
-                              label=""
-                              value={doc.idCountry}
-                              onChange={(v) => {
-                                const next = [...n.ids];
-                                next[i] = { ...next[i], idCountry: v };
-                                updateNameItem(n.id, { ids: next });
-                              }}
-                            />
-                          </div>
+                          <CountryAutosuggest
+                            label={i === 0 ? "ID Country" : ""}
+                            value={doc.idCountry}
+                            onChange={(v) => {
+                              const next = [...n.ids];
+                              next[i] = { ...next[i], idCountry: v };
+                              updateNameItem(n.id, { ids: next });
+                            }}
+                          />
                         </div>
                         {i > 0 ? (
                           <button

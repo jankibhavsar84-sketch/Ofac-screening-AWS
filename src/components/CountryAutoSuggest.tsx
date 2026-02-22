@@ -77,11 +77,15 @@ export function CountryAutosuggest({ label, value, onChange, placeholder, hint }
   }
 
   return (
-    <div ref={rootRef} className="field col-6 countryAutosuggest">
-      <div className="labelRow">
+    <div ref={rootRef} className="field countryAutosuggest">
+      {hint ? (
+        <div className="labelRow">
+          <label>{label}</label>
+          <span className="hint">{hint}</span>
+        </div>
+      ) : (
         <label>{label}</label>
-        {hint ? <span className="hint">{hint}</span> : null}
-      </div>
+      )}
 
       <input
         value={displayValue}
