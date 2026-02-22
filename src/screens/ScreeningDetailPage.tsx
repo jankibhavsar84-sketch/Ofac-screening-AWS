@@ -1168,7 +1168,6 @@ export function ScreeningDetailPage() {
                             <CountryAutosuggest
                               label=""
                               value={doc.idCountry}
-                              hint="ISO2 preferred"
                               onChange={(v) => {
                                 const next = [...n.ids];
                                 next[i] = { ...next[i], idCountry: v };
