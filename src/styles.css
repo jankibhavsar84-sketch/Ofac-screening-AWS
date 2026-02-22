@@ -52,8 +52,14 @@ a{color:inherit}
 
 .appShell{min-height:100vh;background:var(--bg)}
 .topHeader{
-  display:flex;align-items:center;justify-content:space-between;
   padding:18px 22px;border-bottom:1px solid var(--border);background:#fff;
+}
+.topHeaderInner{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
 }
 .brandRow{display:flex;align-items:center;gap:12}
 .brandIcon{
@@ -71,6 +77,12 @@ a{color:inherit}
 }
 .navLink.active{
   background:#f1f5ff;color:#1e293b;font-weight:700;
+}
+
+@media(max-width:850px){
+  .topHeaderInner{
+    flex-wrap:wrap;
+  }
 }
 
 .pageMain{padding:22px}
