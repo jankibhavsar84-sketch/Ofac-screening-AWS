@@ -1012,12 +1012,7 @@ export function ScreeningDetailPage() {
                         options={NAME_MODE_OPTIONS}
                       />
                     </div>
-                  ) : (
-                    <div className="field">
-                      <label>Alias (Optional)</label>
-                      <input value={n.aliasName} onChange={(e) => updateNameItem(n.id, { aliasName: e.target.value })} />
-                    </div>
-                  )}
+                  ) : null}
 
                   {/* Individual name inputs */}
                   {n.uiType === "Individual" ? (
@@ -1046,15 +1041,9 @@ export function ScreeningDetailPage() {
                         </div>
                       )}
 
-                      <div className="grid2">
-                        <div className="field">
-                          <label>Date of Birth</label>
-                          <input placeholder="YYYY-MM-DD" value={n.dateOfBirth} onChange={(e) => updateNameItem(n.id, { dateOfBirth: e.target.value })} />
-                        </div>
-                        <div className="field">
-                          <label>Alias (Optional)</label>
-                          <input value={n.aliasName} onChange={(e) => updateNameItem(n.id, { aliasName: e.target.value })} />
-                        </div>
+                      <div className="field">
+                        <label>Date of Birth</label>
+                        <input placeholder="YYYY-MM-DD" value={n.dateOfBirth} onChange={(e) => updateNameItem(n.id, { dateOfBirth: e.target.value })} />
                       </div>
                     </>
                   ) : (
