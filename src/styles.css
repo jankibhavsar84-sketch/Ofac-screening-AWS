@@ -1,3 +1,12 @@
+/*
+  Global design polish
+  - Sharper typography (Inter + proper smoothing)
+  - Cleaner spacing + consistent UI rhythm
+  - Subtle app background to make cards feel elevated
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 :root{
   --bg:#ffffff;
   --card:#ffffff;
@@ -24,7 +33,21 @@
 }
 
 *{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+html,body{
+  margin:0;
+  padding:0;
+  background:#f8fafc; /* cleaner “app surface” like the screenshots */
+  color:var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02" 1, "cv03" 1, "cv04" 1, "cv11" 1;
+}
+
+/* Make default text feel crisp and “bank UI” clean */
+body{font-size:14px; line-height:1.45; letter-spacing:-0.01em;}
+
 a{color:inherit}
 
 .appShell{min-height:100vh;background:var(--bg)}
@@ -119,9 +142,66 @@ input,select,textarea{
   border-radius:10px;
   padding:10px 12px;
   font-size:14px;
+  font-family:inherit;
   outline:none;
   background:#fff;
 }
+
+select option{
+  font-family:inherit;
+}
+
+.countryAutosuggest{
+  position:relative;
+}
+
+.countrySuggestions{
+  position:absolute;
+  top:calc(100% + 6px);
+  left:0;
+  right:0;
+  z-index:30;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:10px;
+  box-shadow:0 10px 22px rgba(15, 23, 42, 0.12);
+  max-height:240px;
+  overflow:auto;
+}
+
+.countryOption{
+  width:100%;
+  text-align:left;
+  padding:9px 12px;
+  border:0;
+  background:#fff;
+  color:var(--text);
+  font-family:inherit;
+  font-size:14px;
+  cursor:pointer;
+}
+
+.countryOption:hover{
+  background:#f8fafc;
+}
+
+/* cleaner focus for accessibility without looking “browser default” */
+input:focus, select:focus, textarea:focus{
+  border-color:#c7d2fe;
+  box-shadow:0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+input::placeholder, textarea::placeholder{color:#94a3b8}
+
+/* Buttons: consistent interactions */
+button{font-family:inherit}
+.tabBtn, .btnGhost, .btnGhostSmall{transition:background .15s ease,border-color .15s ease, color .15s ease}
+.tabBtn:hover{background:#0b1220;color:#fff;border-color:#0b1220}
+.btnGhost:hover,.btnGhostSmall:hover{background:#f8fafc;border-color:#d8e3f2}
+.btnAdd:hover,.btnAddSmall:hover{background:#e9efff}
+.btnRunWide{transition:transform .06s ease, filter .15s ease}
+.btnRunWide:hover{filter:brightness(1.05)}
+.btnRunWide:active{transform:translateY(1px)}
 textarea{min-height:90px;resize:vertical}
 
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}

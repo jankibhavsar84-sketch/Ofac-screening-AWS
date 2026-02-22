@@ -1,4 +1,4 @@
-import React, { useId, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getData } from "country-list";
 
 type Props = {
@@ -14,8 +14,8 @@ function normalize(s: string) {
 }
 
 export function CountryAutosuggest({ label, value, onChange, placeholder, hint }: Props) {
-  const id = useId();
-  const listId = `${id}-countries`;
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
 
   // [{ code: 'US', name: 'United States' }, ...]
   const countries = useMemo(() => getData(), []);
@@ -26,6 +26,25 @@ export function CountryAutosuggest({ label, value, onChange, placeholder, hint }
     const found = countries.find((c) => c.code.toUpperCase() === iso);
     return found ? `${found.code} - ${found.name}` : value;
   }, [value, countries]);
+
+  const suggestions = useMemo(() => {
+    const q = normalize(displayValue).toLowerCase();
+    if (!q) return countries.slice(0, 12);
+    return countries
+      .filter((c) => c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
+      .slice(0, 12);
+  }, [countries, displayValue]);
+
+  useEffect(() => {
+    function onDocMouseDown(e: MouseEvent) {
+      if (!rootRef.current) return;
+      if (e.target instanceof Node && !rootRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, []);
 
   function handleInput(raw: string) {
     const txt = normalize(raw);
@@ -58,24 +77,38 @@ export function CountryAutosuggest({ label, value, onChange, placeholder, hint }
   }
 
   return (
-    <div className="field col-6">
+    <div ref={rootRef} className="field col-6 countryAutosuggest">
       <div className="labelRow">
         <label>{label}</label>
         {hint ? <span className="hint">{hint}</span> : null}
       </div>
 
       <input
-        list={listId}
         value={displayValue}
         onChange={(e) => handleInput(e.target.value)}
+        onFocus={() => setOpen(true)}
         placeholder={placeholder ?? "Type country name or ISO2 (US, IN)"}
+        autoComplete="off"
       />
 
-      <datalist id={listId}>
-        {countries.map((c) => (
-          <option key={c.code} value={`${c.code} - ${c.name}`} />
-        ))}
-      </datalist>
+      {open && suggestions.length > 0 ? (
+        <div className="countrySuggestions" role="listbox" aria-label="Country suggestions">
+          {suggestions.map((c) => (
+            <button
+              key={c.code}
+              type="button"
+              className="countryOption"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(c.code.toUpperCase());
+                setOpen(false);
+              }}
+            >
+              {c.code} - {c.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
