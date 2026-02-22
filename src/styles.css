@@ -61,7 +61,7 @@ a{color:inherit}
   justify-content:space-between;
   gap:12px;
 }
-.brandRow{display:flex;align-items:center;gap:12}
+.brandRow{display:flex;align-items:center;gap:16px}
 .brandIcon{
   width:38px;height:38px;border-radius:12px;background:#0f172a;color:#fff;
   display:flex;align-items:center;justify-content:center;
