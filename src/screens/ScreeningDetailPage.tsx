@@ -1,92 +1,60 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState } from "recoil";
 import { z } from "zod";
-import { latestResultState, submissionsState, type BatchSubmission, type SingleSubmission } from "../state/submissions";
-import { parseCsv, parseExcel, type BatchRow } from "../utils/batchParse";
+import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
 import { matchBatch, type EntityExample } from "../api/openSanctions";
+import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutosuggest";
 
-type CustomerType = "Person" | "Entity";
+type Mode = "SINGLE" | "BATCH";
+type UiType = "Individual" | "Organization" | "Vessel" | "Aircraft";
 
-type FormState = {
-  customerType: CustomerType;
-  firstName: string;
-  lastName: string;
-  middleName: string;
-  fullName: string;
-  aliasName: string;
+type IdDoc = { idType: string; idNumber: string; idCountry: string };
+type NameItem =
+  | {
+      id: string;
+      uiType: UiType;
+      nameMode: "split" | "full"; // "split" only meaningful for Individual
+      firstName: string;
+      lastName: string;
+      middleName: string;
+      fullName: string; // also used for org/vessel/aircraft
+      aliasName: string;
+      dateOfBirth: string; // optional, Individual only
+      countries: string[];
+      addresses: string[];
+      ids: IdDoc[];
+    };
 
-  addressLine1: string;
-  addressLine2: string;
-  city: string;
-  state: string;
-  zip: string;
-  country: string;
-
-  idCode: string;
-  idNumber: string;
-  idIssueCountry: string;
-
-  countryOfBirth: string;
-  dateOfBirth: string;
-  countryOfCitizenship: string;
-};
-
-const defaultState: FormState = {
-  customerType: "Person",
-  firstName: "",
-  lastName: "",
-  middleName: "",
-  fullName: "",
-  aliasName: "",
-  addressLine1: "",
-  addressLine2: "",
-  city: "",
-  state: "",
-  zip: "",
-  country: "",
-  idCode: "",
-  idNumber: "",
-  idIssueCountry: "",
-  countryOfBirth: "",
-  dateOfBirth: "",
-  countryOfCitizenship: "",
-};
+type StatusFilter = "All Statuses" | "Clear" | "Potential Match" | "Pending" | "Match";
+type TypeFilter = "All Types" | UiType;
 
 function safeTrim(v: string) {
   return (v ?? "").trim();
-}
-
-function parseISODate(s: string): Date | null {
-  const v = safeTrim(s);
-  if (!v) return null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
-
-  const d = new Date(v + "T00:00:00");
-  if (Number.isNaN(d.getTime())) return null;
-
-  const [yy, mm, dd] = v.split("-").map(Number);
-  if (d.getUTCFullYear() !== yy || d.getUTCMonth() + 1 !== mm || d.getUTCDate() !== dd) return null;
-
-  return d;
 }
 
 function uuid() {
   return crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-function displayNameFor(form: { customerType: CustomerType; firstName: string; lastName: string; fullName: string }) {
-  return form.customerType === "Person"
-    ? [safeTrim(form.firstName), safeTrim(form.lastName)].filter(Boolean).join(" ")
-    : safeTrim(form.fullName);
+function parseISODate(s: string): Date | null {
+  const v = safeTrim(s);
+  if (!v) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const d = new Date(v + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return null;
+
+  const [yy, mm, dd] = v.split("-").map(Number);
+  if (d.getUTCFullYear() !== yy || d.getUTCMonth() + 1 !== mm || d.getUTCDate() !== dd) return null;
+  return d;
 }
 
+// map country -> ISO2 if user types full name
 function toCountryCode(input: string) {
   const v = safeTrim(input).toLowerCase();
   if (!v) return "";
   if (v.length === 2) return v;
-
   const map: Record<string, string> = {
     "united states": "us",
     usa: "us",
@@ -99,82 +67,78 @@ function toCountryCode(input: string) {
   return map[v] ?? v;
 }
 
-function buildEntityExampleFromForm(form: FormState): EntityExample {
-  if (form.customerType === "Person") {
-    const name = [safeTrim(form.firstName), safeTrim(form.middleName), safeTrim(form.lastName)].filter(Boolean).join(" ");
-    const props: Record<string, any> = { name: [name] };
-
-    if (safeTrim(form.aliasName)) props.alias = [safeTrim(form.aliasName)];
-    if (safeTrim(form.dateOfBirth)) props.birthDate = [safeTrim(form.dateOfBirth)];
-    if (safeTrim(form.countryOfCitizenship)) props.nationality = [toCountryCode(form.countryOfCitizenship)];
-    if (safeTrim(form.idNumber)) props.idNumber = [safeTrim(form.idNumber)];
-
-    const addressBits = [form.addressLine1, form.addressLine2, form.city, form.state, form.zip, form.country]
-      .map(safeTrim)
-      .filter(Boolean)
-      .join(", ");
-    if (addressBits) props.address = [addressBits];
-
-    return { schema: "Person", properties: props };
-  }
-
-  const props: Record<string, any> = { name: [safeTrim(form.fullName)] };
-  if (safeTrim(form.aliasName)) props.alias = [safeTrim(form.aliasName)];
-  if (safeTrim(form.country)) props.country = [toCountryCode(form.country)];
-  if (safeTrim(form.idNumber)) props.registrationNumber = [safeTrim(form.idNumber)];
-
-  const addressBits = [form.addressLine1, form.addressLine2, form.city, form.state, form.zip, form.country]
-    .map(safeTrim)
-    .filter(Boolean)
-    .join(", ");
-  if (addressBits) props.address = [addressBits];
-
-  return { schema: "Company", properties: props };
+function uiTypeToSchema(ui: UiType): EntityExample["schema"] {
+  if (ui === "Individual") return "Person";
+  if (ui === "Organization") return "Company";
+  // These are supported in OpenSanctions entity models; if your API rejects, we can switch to "Company"
+  if (ui === "Vessel") return "Vessel";
+  return "Aircraft";
 }
 
-function buildEntityExampleFromBatchRow(r: BatchRow & Partial<FormState>): EntityExample {
-  if (r.customerType === "Person") {
-    const name = [safeTrim(r.firstName || ""), safeTrim(r.middleName || ""), safeTrim(r.lastName || "")].filter(Boolean).join(" ");
-    const props: Record<string, any> = { name: [name] };
+function buildEntityExampleFromNameItem(item: NameItem): EntityExample {
+  const schema = uiTypeToSchema(item.uiType);
 
-    if (safeTrim(r.aliasName || "")) props.alias = [safeTrim(r.aliasName || "")];
-    if (safeTrim((r as any).dateOfBirth || r.dateOfBirth || "")) props.birthDate = [safeTrim((r as any).dateOfBirth || r.dateOfBirth || "")];
-    if (safeTrim((r as any).countryOfCitizenship || r.countryOfCitizenship || "")) {
-      props.nationality = [toCountryCode(safeTrim((r as any).countryOfCitizenship || r.countryOfCitizenship || ""))];
+  // Name
+  let primaryName = "";
+  if (item.uiType === "Individual") {
+    if (item.nameMode === "split") {
+      primaryName = [safeTrim(item.firstName), safeTrim(item.middleName), safeTrim(item.lastName)].filter(Boolean).join(" ");
+    } else {
+      primaryName = safeTrim(item.fullName);
     }
-    if (safeTrim((r as any).idNumber || "")) props.idNumber = [safeTrim((r as any).idNumber || "")];
-
-    const addressBits = [(r as any).addressLine1, (r as any).addressLine2, (r as any).city, (r as any).state, (r as any).zip, (r as any).country]
-      .map(safeTrim)
-      .filter(Boolean)
-      .join(", ");
-    if (addressBits) props.address = [addressBits];
-
-    return { schema: "Person", properties: props };
+  } else {
+    primaryName = safeTrim(item.fullName);
   }
 
-  const props: Record<string, any> = { name: [safeTrim((r as any).fullName || r.fullName || "")] };
-  if (safeTrim((r as any).aliasName || "")) props.alias = [safeTrim((r as any).aliasName || "")];
-  if (safeTrim((r as any).country || "")) props.country = [toCountryCode(safeTrim((r as any).country || ""))];
-  if (safeTrim((r as any).idNumber || "")) props.registrationNumber = [safeTrim((r as any).idNumber || "")];
+  const props: Record<string, any> = { name: [primaryName] };
 
-  const addressBits = [(r as any).addressLine1, (r as any).addressLine2, (r as any).city, (r as any).state, (r as any).zip, (r as any).country]
-    .map(safeTrim)
-    .filter(Boolean)
-    .join(", ");
-  if (addressBits) props.address = [addressBits];
+  // alias
+  if (safeTrim(item.aliasName)) props.alias = [safeTrim(item.aliasName)];
 
-  return { schema: "Company", properties: props };
+  // DOB (individual only)
+  if (item.uiType === "Individual" && safeTrim(item.dateOfBirth)) props.birthDate = [safeTrim(item.dateOfBirth)];
+
+  // countries (multi)
+  const isoCountries = (item.countries || []).map((c) => toCountryCode(c)).filter(Boolean);
+  if (isoCountries.length) {
+    // For persons: nationality; for org: country; for vessel/aircraft: country is acceptable
+    if (schema === "Person") props.nationality = isoCountries;
+    else props.country = isoCountries;
+  }
+
+  // addresses (multi)
+  const addr = (item.addresses || []).map(safeTrim).filter(Boolean);
+  if (addr.length) props.address = addr;
+
+  // IDs (multi) -> put idNumber list
+  const idNumbers = (item.ids || []).map((x) => safeTrim(x.idNumber)).filter(Boolean);
+  if (idNumbers.length) {
+    if (schema === "Person") props.idNumber = idNumbers;
+    else props.registrationNumber = idNumbers;
+  }
+
+  return { schema, properties: props };
 }
 
-function classifyHit(results: { match: boolean }[]) {
+type EngineStatus = "NO_HIT" | "HIT" | "ERROR";
+type UiStatus = "Clear" | "Potential Match" | "Pending" | "Match";
+
+function engineToUiStatus(s: EngineStatus, manualMatch?: boolean): UiStatus {
+  if (manualMatch) return "Match";
+  if (s === "NO_HIT") return "Clear";
+  if (s === "HIT") return "Potential Match";
+  return "Pending";
+}
+
+function classifyEngine(results: { match: boolean }[]): EngineStatus {
   return results?.some((r) => r.match) ? "HIT" : "NO_HIT";
 }
 
-function csvEscape(v: any) {
-  const s = String(v ?? "");
-  if (/[,"\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
+function badge(status: UiStatus) {
+  if (status === "Clear") return <span className="statusPill statusClear">Clear</span>;
+  if (status === "Potential Match") return <span className="statusPill statusPotential">Potential Match</span>;
+  if (status === "Pending") return <span className="statusPill statusPending">Pending</span>;
+  return <span className="statusPill statusMatch">Match</span>;
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -188,121 +152,120 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ScreeningDetailPage() {
-  const [form, setForm] = useState<FormState>(defaultState);
-  const [submissions, setSubmissions] = useRecoilState(submissionsState);
-  const setLatest = useSetRecoilState(latestResultState);
+function csvEscape(v: any) {
+  const s = String(v ?? "");
+  if (/[,"\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
 
-  const [error, setError] = useState<string | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [batchSubmitting, setBatchSubmitting] = useState(false);
+function downloadTemplate(kind: UiType | "Mixed", format: "csv" | "xlsx") {
+  // Base fields you already parse; extra fields are ok (ignored if not used)
+  const headers = [
+    "customerType", // Person/Entity
+    "firstName",
+    "middleName",
+    "lastName",
+    "fullName",
+    "aliasName",
+    "dateOfBirth",
+    "countries",      // comma separated optional
+    "addresses",      // comma separated optional
+    "idType",
+    "idNumber",
+    "idCountry",
+    // extra demo fields
+    "imoNumber",
+    "tailNumber",
+  ];
 
-  const [batchFile, setBatchFile] = useState<File | null>(null);
-  const [batchFileName, setBatchFileName] = useState<string>("");
+  const sampleRows: any[] = [];
 
-  const isPerson = form.customerType === "Person";
-
-  const schema = useMemo(() => {
-    const base = z.object({
-      customerType: z.enum(["Person", "Entity"]),
-      firstName: z.string(),
-      lastName: z.string(),
-      fullName: z.string(),
-      dateOfBirth: z.string(),
+  if (kind === "Individual") {
+    sampleRows.push({
+      customerType: "Person",
+      firstName: "John",
+      middleName: "",
+      lastName: "Doe",
+      fullName: "",
+      aliasName: "Johnny",
+      dateOfBirth: "1980-01-01",
+      countries: "US,CA",
+      addresses: "123 Main St, New York, NY 10001",
+      idType: "Passport",
+      idNumber: "X1234567",
+      idCountry: "US",
+      imoNumber: "",
+      tailNumber: "",
     });
-
-    return base.superRefine((data, ctx) => {
-      if (data.customerType === "Person") {
-        if (!safeTrim(data.firstName)) ctx.addIssue({ code: "custom", path: ["firstName"], message: "First Name is required for Person." });
-        if (!safeTrim(data.lastName)) ctx.addIssue({ code: "custom", path: ["lastName"], message: "Last Name is required for Person." });
-      } else {
-        if (!safeTrim(data.fullName)) ctx.addIssue({ code: "custom", path: ["fullName"], message: "Full Name (Organization) is required for Entity." });
-      }
-
-      const dob = safeTrim((data as any).dateOfBirth ?? "");
-      if (dob) {
-        const d = parseISODate(dob);
-        if (!d) {
-          ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB must be a valid date in YYYY-MM-DD format." });
-        } else {
-          const now = new Date();
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          if (d > today) ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB cannot be a future date." });
-
-          const oldest = new Date(today);
-          oldest.setFullYear(oldest.getFullYear() - 100);
-          if (d < oldest) ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB cannot be more than 100 years old." });
-        }
-      }
+  } else if (kind === "Organization") {
+    sampleRows.push({
+      customerType: "Entity",
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      fullName: "ACME Holdings LLC",
+      aliasName: "",
+      dateOfBirth: "",
+      countries: "US",
+      addresses: "200 Business Rd, Newark, NJ 07102",
+      idType: "EIN",
+      idNumber: "12-3456789",
+      idCountry: "US",
+      imoNumber: "",
+      tailNumber: "",
     });
-  }, []);
-
-  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((p) => ({ ...p, [key]: value }));
-  }
-
-  function clearAll() {
-    setForm(defaultState);
-    setBatchFile(null);
-    setBatchFileName("");
-    setError(null);
-    setFileError(null);
-    setLatest(null); // ✅ clears result from last run
-  }
-
-  function downloadCsvTemplate() {
-    const headers = [
-      "customerType",
-      "firstName",
-      "middleName",
-      "lastName",
-      "fullName",
-      "aliasName",
-      "addressLine1",
-      "addressLine2",
-      "city",
-      "state",
-      "zip",
-      "country",
-      "idCode",
-      "idNumber",
-      "idIssueCountry",
-      "countryOfBirth",
-      "dateOfBirth",
-      "countryOfCitizenship",
-    ];
-
-    const sample = [
-      ["Person", "John", "", "Doe", "", "Johnny", "123 Main St", "", "New York", "NY", "10001", "US", "SSN", "123-45-6789", "US", "US", "1980-01-01", "US"],
-      ["Entity", "", "", "", "ACME Holdings LLC", "", "200 Business Rd", "Suite 10", "Newark", "NJ", "07102", "US", "EIN", "12-3456789", "US", "", "", "US"],
-    ];
-
-    const lines = [headers.join(","), ...sample.map((r) => r.map(csvEscape).join(","))].join("\n");
-    downloadBlob(new Blob([lines], { type: "text/csv;charset=utf-8" }), "prudential_ofac_template.csv");
-  }
-
-  function downloadExcelTemplate() {
-    const rows = [
+  } else if (kind === "Vessel") {
+    sampleRows.push({
+      customerType: "Entity",
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      fullName: "MV Example Vessel",
+      aliasName: "",
+      dateOfBirth: "",
+      countries: "PA",
+      addresses: "",
+      idType: "IMO",
+      idNumber: "9395044",
+      idCountry: "",
+      imoNumber: "9395044",
+      tailNumber: "",
+    });
+  } else if (kind === "Aircraft") {
+    sampleRows.push({
+      customerType: "Entity",
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      fullName: "Example Aircraft",
+      aliasName: "",
+      dateOfBirth: "",
+      countries: "US",
+      addresses: "",
+      idType: "Tail",
+      idNumber: "N123AB",
+      idCountry: "US",
+      imoNumber: "",
+      tailNumber: "N123AB",
+    });
+  } else {
+    // Mixed
+    sampleRows.push(
       {
         customerType: "Person",
         firstName: "John",
         middleName: "",
         lastName: "Doe",
         fullName: "",
-        aliasName: "Johnny",
-        addressLine1: "123 Main St",
-        addressLine2: "",
-        city: "New York",
-        state: "NY",
-        zip: "10001",
-        country: "US",
-        idCode: "SSN",
-        idNumber: "123-45-6789",
-        idIssueCountry: "US",
-        countryOfBirth: "US",
+        aliasName: "",
         dateOfBirth: "1980-01-01",
-        countryOfCitizenship: "US",
+        countries: "US",
+        addresses: "",
+        idType: "Passport",
+        idNumber: "X1234567",
+        idCountry: "US",
+        imoNumber: "",
+        tailNumber: "",
       },
       {
         customerType: "Entity",
@@ -311,499 +274,1158 @@ export function ScreeningDetailPage() {
         lastName: "",
         fullName: "ACME Holdings LLC",
         aliasName: "",
-        addressLine1: "200 Business Rd",
-        addressLine2: "Suite 10",
-        city: "Newark",
-        state: "NJ",
-        zip: "07102",
-        country: "US",
-        idCode: "EIN",
-        idNumber: "12-3456789",
-        idIssueCountry: "US",
-        countryOfBirth: "",
         dateOfBirth: "",
-        countryOfCitizenship: "US",
-      },
-    ];
-
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    const out = XLSX.write(wb, { type: "array", bookType: "xlsx" });
-
-    downloadBlob(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "prudential_ofac_template.xlsx");
+        countries: "CA",
+        addresses: "",
+        idType: "Reg",
+        idNumber: "REG-001",
+        idCountry: "CA",
+        imoNumber: "",
+        tailNumber: "",
+      }
+    );
   }
 
-  async function submitSingle() {
-    setError(null);
+  if (format === "csv") {
+    const lines = [
+      headers.join(","),
+      ...sampleRows.map((r) => headers.map((h) => csvEscape((r as any)[h])).join(",")),
+    ].join("\n");
+    downloadBlob(new Blob([lines], { type: "text/csv;charset=utf-8" }), `ofac_${kind.toLowerCase()}_template.csv`);
+    return;
+  }
 
-    const parsed = schema.safeParse(form);
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Fix validation errors.");
-      return;
+  const ws = XLSX.utils.json_to_sheet(sampleRows, { header: headers });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Template");
+  const out = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+  downloadBlob(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `ofac_${kind.toLowerCase()}_template.xlsx`);
+}
+
+export function ScreeningDetailPage() {
+  const [mode, setMode] = useState<Mode>("SINGLE");
+
+  const [submissions, setSubmissions] = useRecoilState(submissionsState);
+  const [, setLatest] = useRecoilState(latestResultState);
+
+  // SINGLE (multi-add)
+  const [names, setNames] = useState<NameItem[]>([
+    {
+      id: uuid(),
+      uiType: "Individual",
+      nameMode: "split",
+      firstName: "",
+      lastName: "",
+      middleName: "",
+      fullName: "",
+      aliasName: "",
+      dateOfBirth: "",
+      countries: [""],
+      addresses: [""],
+      ids: [{ idType: "", idNumber: "", idCountry: "" }],
+    },
+  ]);
+
+  const [notes, setNotes] = useState("");
+
+  // BATCH
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [batchName, setBatchName] = useState("");
+  const [batchFile, setBatchFile] = useState<File | null>(null);
+  const [batchFileName, setBatchFileName] = useState("");
+  const [batchError, setBatchError] = useState<string | null>(null);
+  const [singleError, setSingleError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Results filters + paging
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All Statuses");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("All Types");
+  const [page, setPage] = useState(1);
+
+  // dropzone
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const singleSchema = useMemo(() => {
+    // Validate each name item basic requirements + DOB rules for individual only
+    return z.array(
+      z.object({
+        uiType: z.enum(["Individual", "Organization", "Vessel", "Aircraft"]),
+        nameMode: z.enum(["split", "full"]),
+        firstName: z.string(),
+        lastName: z.string(),
+        fullName: z.string(),
+        dateOfBirth: z.string(),
+        countries: z.array(z.string()),
+      }).superRefine((data, ctx) => {
+        if (data.uiType === "Individual") {
+          if (data.nameMode === "split") {
+            if (!safeTrim(data.firstName)) ctx.addIssue({ code: "custom", path: ["firstName"], message: "First Name required for Individual." });
+            if (!safeTrim(data.lastName)) ctx.addIssue({ code: "custom", path: ["lastName"], message: "Last Name required for Individual." });
+          } else {
+            if (!safeTrim(data.fullName)) ctx.addIssue({ code: "custom", path: ["fullName"], message: "Full Name required (Individual full-name mode)." });
+          }
+
+          const dob = safeTrim(data.dateOfBirth);
+          if (dob) {
+            const d = parseISODate(dob);
+            if (!d) {
+              ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB must be valid YYYY-MM-DD." });
+            } else {
+              const now = new Date();
+              const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+              if (d > today) ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB cannot be in the future." });
+              const oldest = new Date(today);
+              oldest.setFullYear(oldest.getFullYear() - 100);
+              if (d < oldest) ctx.addIssue({ code: "custom", path: ["dateOfBirth"], message: "DOB cannot be more than 100 years old." });
+            }
+          }
+        } else {
+          // Non-individual: full name required
+          if (!safeTrim(data.fullName)) ctx.addIssue({ code: "custom", path: ["fullName"], message: "Name is required." });
+        }
+      })
+    );
+  }, []);
+
+  function clearAll() {
+    setSingleError(null);
+    setBatchError(null);
+    setLatest(null);
+
+    if (mode === "SINGLE") {
+      setNames([
+        {
+          id: uuid(),
+          uiType: "Individual",
+          nameMode: "split",
+          firstName: "",
+          lastName: "",
+          middleName: "",
+          fullName: "",
+          aliasName: "",
+          dateOfBirth: "",
+          countries: [""],
+          addresses: [""],
+          ids: [{ idType: "", idNumber: "", idCountry: "" }],
+        },
+      ]);
+      setNotes("");
+    } else {
+      setBatchName("");
+      setBatchFile(null);
+      setBatchFileName("");
+      setTemplatesOpen(false);
     }
+  }
 
+  // ---------- Single tab +Add handlers ----------
+  function updateNameItem(id: string, patch: Partial<NameItem>) {
+    setNames((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n)));
+  }
+
+  function addName() {
+    setNames((prev) => [
+      ...prev,
+      {
+        id: uuid(),
+        uiType: "Individual",
+        nameMode: "split",
+        firstName: "",
+        lastName: "",
+        middleName: "",
+        fullName: "",
+        aliasName: "",
+        dateOfBirth: "",
+        countries: [""],
+        addresses: [""],
+        ids: [{ idType: "", idNumber: "", idCountry: "" }],
+      },
+    ]);
+  }
+
+  function removeName(id: string) {
+    setNames((prev) => (prev.length <= 1 ? prev : prev.filter((n) => n.id !== id)));
+  }
+
+  function addCountry(id: string) {
+    setNames((prev) => prev.map((n) => (n.id === id ? { ...n, countries: [...n.countries, ""] } : n)));
+  }
+
+  function addAddress(id: string) {
+    setNames((prev) => prev.map((n) => (n.id === id ? { ...n, addresses: [...n.addresses, ""] } : n)));
+  }
+
+  function addIdDoc(id: string) {
+    setNames((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, ids: [...n.ids, { idType: "", idNumber: "", idCountry: "" }] } : n))
+    );
+  }
+
+  // ---------- Submit Single (multi-query) ----------
+  async function submitSingle(e: React.FormEvent) {
+    e.preventDefault();
+    setSingleError(null);
     setSubmitting(true);
+
     try {
-      const key = "single";
-      const example = buildEntityExampleFromForm(form);
-      const resp = await matchBatch({ [key]: example });
-      const matches = resp.responses[key];
-      const result = classifyHit(matches?.results ?? []);
+      const parsed = singleSchema.safeParse(names);
+      if (!parsed.success) {
+        setSingleError(parsed.error.issues[0]?.message ?? "Fix validation errors.");
+        setSubmitting(false);
+        return;
+      }
 
+      // Build one API call containing multiple queries
+      const queries: Record<string, EntityExample> = {};
+      const meta: { key: string; uiType: UiType; displayName: string }[] = [];
+
+      names.forEach((n, idx) => {
+        const key = `single_${idx + 1}`;
+
+        let displayName = "";
+        if (n.uiType === "Individual") {
+          displayName = n.nameMode === "split"
+            ? [safeTrim(n.firstName), safeTrim(n.lastName)].filter(Boolean).join(" ")
+            : safeTrim(n.fullName);
+        } else {
+          displayName = safeTrim(n.fullName);
+        }
+
+        meta.push({ key, uiType: n.uiType, displayName: displayName || `(Item ${idx + 1})` });
+        queries[key] = buildEntityExampleFromNameItem(n);
+      });
+
+      const resp = await matchBatch(queries);
+
+      // Convert to a single "SINGLE" submission containing multiple items (still SINGLE mode for your history)
+      // We store as SingleSubmission but keep details so results table can read it
       const entry: SingleSubmission = {
         id: uuid(),
         createdAt: new Date().toISOString(),
         mode: "SINGLE",
-        customerType: form.customerType,
-        displayName: displayNameFor(form),
-        result,
-        message: matches?.results?.[0]?.caption ? `Top match: ${matches.results[0].caption}` : undefined,
-        details: matches,
+        customerType: "Person", // not used by new results table; keep for backward compatibility
+        displayName: `Single Screening (${meta.length})`,
+        result: "NO_HIT",
+        message: notes ? `Notes: ${notes}` : undefined,
+        details: { meta, responses: resp.responses, notes },
       };
 
-      const next = [entry, ...submissions].slice(0, 200);
+      // derive top result for the main record (if any potential match -> HIT)
+      let anyHit = false;
+      let anyError = false;
+
+      meta.forEach((m) => {
+        const matches = resp.responses[m.key];
+        if (!matches) {
+          anyError = true;
+          return;
+        }
+        const engine = classifyEngine(matches.results ?? []);
+        if (engine === "HIT") anyHit = true;
+      });
+
+      entry.result = anyHit ? "HIT" : anyError ? "ERROR" : "NO_HIT";
+
+      const next = [entry, ...submissions].slice(0, 500);
       setSubmissions(next);
       setLatest(entry);
+      setPage(1);
     } catch (err: any) {
-      setError(err?.message ?? "Failed to screen.");
-      const entry: SingleSubmission = {
-        id: uuid(),
-        createdAt: new Date().toISOString(),
-        mode: "SINGLE",
-        customerType: form.customerType,
-        displayName: displayNameFor(form) || "(Unknown)",
-        result: "ERROR",
-        message: err?.message ?? "ERROR",
-      };
-      const next = [entry, ...submissions].slice(0, 200);
-      setSubmissions(next);
-      setLatest(entry);
+      setSingleError(err?.message ?? "Failed to screen.");
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function submitBatch(file: File) {
-    setFileError(null);
-    setBatchSubmitting(true);
+  // ---------- Batch submit ----------
+  async function submitBatch(e: React.FormEvent) {
+    e.preventDefault();
+    setBatchError(null);
 
+    if (!safeTrim(batchName)) {
+      setBatchError("Batch Name is required.");
+      return;
+    }
+    if (!batchFile) {
+      setBatchError("Please drop or select a CSV/XLSX file.");
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      const name = file.name.toLowerCase();
+      const name = batchFile.name.toLowerCase();
       let rows: any[] = [];
 
-      if (name.endsWith(".csv")) rows = await parseCsv(file);
-      else if (name.endsWith(".xlsx") || name.endsWith(".xls")) rows = await parseExcel(file);
+      if (name.endsWith(".csv")) rows = await parseCsv(batchFile);
+      else if (name.endsWith(".xlsx") || name.endsWith(".xls")) rows = await parseExcel(batchFile);
       else throw new Error("Only CSV or Excel files are allowed.");
 
-      if (rows.length === 0) throw new Error("No rows found in the file.");
+      if (!rows.length) throw new Error("No rows found in the file.");
 
+      // Build queries (one API call)
       const queries: Record<string, EntityExample> = {};
-      const rowMeta: { key: string; displayName: string; customerType: CustomerType }[] = [];
+      const rowMeta: { key: string; displayName: string; uiType: UiType }[] = [];
 
       rows.forEach((r, idx) => {
         const customerType = r.customerType === "Entity" ? "Entity" : "Person";
+        const uiType: UiType =
+          customerType === "Person" ? "Individual" : "Organization";
 
         const display =
-          customerType === "Person"
+          uiType === "Individual"
             ? [safeTrim(r.firstName || ""), safeTrim(r.lastName || "")].filter(Boolean).join(" ")
             : safeTrim(r.fullName || "");
 
         const key = `row_${idx + 1}`;
-        rowMeta.push({ key, displayName: display || `(Row ${idx + 1})`, customerType });
+        rowMeta.push({ key, displayName: display || `(Row ${idx + 1})`, uiType });
 
-        if (customerType === "Person" && (!safeTrim(r.firstName || "") || !safeTrim(r.lastName || ""))) return;
-        if (customerType === "Entity" && !safeTrim(r.fullName || "")) return;
+        // required names
+        if (uiType === "Individual" && (!safeTrim(r.firstName || "") || !safeTrim(r.lastName || ""))) return;
+        if (uiType !== "Individual" && !safeTrim(r.fullName || "")) return;
 
-        queries[key] = buildEntityExampleFromBatchRow(r);
+        // Reuse your existing batchRow conversion idea
+        const item: NameItem = {
+          id: key,
+          uiType,
+          nameMode: uiType === "Individual" ? "split" : "full",
+          firstName: safeTrim(r.firstName || ""),
+          lastName: safeTrim(r.lastName || ""),
+          middleName: safeTrim(r.middleName || ""),
+          fullName: safeTrim(r.fullName || ""),
+          aliasName: safeTrim(r.aliasName || ""),
+          dateOfBirth: safeTrim(r.dateOfBirth || ""),
+          countries: safeTrim(r.countries || "") ? String(r.countries).split(",").map((x) => safeTrim(x)) : [safeTrim(r.country || "")].filter(Boolean),
+          addresses: safeTrim(r.addresses || "") ? String(r.addresses).split(",").map((x) => safeTrim(x)) : [],
+          ids: [
+            {
+              idType: safeTrim(r.idType || r.idCode || ""),
+              idNumber: safeTrim(r.idNumber || ""),
+              idCountry: safeTrim(r.idCountry || r.idIssueCountry || ""),
+            },
+          ],
+        };
+
+        queries[key] = buildEntityExampleFromNameItem(item);
       });
 
-      if (Object.keys(queries).length === 0) throw new Error("All rows are invalid (missing required names).");
+      if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
 
       const resp = await matchBatch(queries);
 
       const items: BatchSubmission["items"] = rowMeta.map((m) => {
         const matches = resp.responses[m.key];
         if (!matches) {
-          return { customerType: m.customerType, displayName: m.displayName, result: "ERROR", message: "Invalid row (missing required name)" };
+          return { customerType: m.uiType === "Individual" ? "Person" : "Entity", displayName: m.displayName, result: "ERROR", message: "Invalid row" };
         }
-        const result = classifyHit(matches.results ?? []);
+        const engine = classifyEngine(matches.results ?? []);
         return {
-          customerType: m.customerType,
+          customerType: m.uiType === "Individual" ? "Person" : "Entity",
           displayName: m.displayName,
-          result,
+          result: engine === "HIT" ? "HIT" : engine === "NO_HIT" ? "NO_HIT" : "ERROR",
           message: matches?.results?.[0]?.caption ? `Top match: ${matches.results[0].caption}` : undefined,
-          details: matches,
+          details: { uiType: m.uiType, matches },
         };
       });
 
-      const overall: BatchSubmission["overallResult"] =
+      const overall =
         items.some((i) => i.result === "HIT") ? "HIT" : items.some((i) => i.result === "ERROR") ? "ERROR" : "NO_HIT";
 
       const entry: BatchSubmission = {
         id: uuid(),
         createdAt: new Date().toISOString(),
         mode: "BATCH",
-        fileName: file.name,
+        fileName: batchFile.name,
         overallResult: overall,
         items,
       };
 
-      const next = [entry, ...submissions].slice(0, 200);
+      const next = [entry, ...submissions].slice(0, 500);
       setSubmissions(next);
       setLatest(entry);
 
-      // After successful batch submit, clear selection (optional)
+      // reset batch inputs after success
       setBatchFile(null);
       setBatchFileName("");
+      setBatchName("");
+      setTemplatesOpen(false);
+      setPage(1);
     } catch (err: any) {
-      setFileError(err?.message ?? "Batch processing failed.");
+      setBatchError(err?.message ?? "Batch screening failed.");
     } finally {
-      setBatchSubmitting(false);
+      setSubmitting(false);
     }
   }
 
-  async function onUnifiedSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // ---------- Flatten results (used under BOTH tabs) ----------
+  type ResultRow = {
+    id: string;
+    entity: string;
+    type: UiType;
+    country: string;
+    engineStatus: EngineStatus;
+    manualMatch: boolean;
+    uiStatus: UiStatus;
+    risk: number;
+    date: string;
+    raw: any;
+  };
 
-    // One button, one flow:
-    // - If batch file is selected => batch submit
-    // - Else => single submit
-    if (batchFile) {
-      await submitBatch(batchFile);
-    } else {
-      await submitSingle();
-    }
+  const flattened: ResultRow[] = useMemo(() => {
+    const rows: ResultRow[] = [];
+
+    submissions.forEach((s: Submission) => {
+      const created = new Date((s as any).createdAt).toLocaleDateString();
+
+      // SINGLE: our new single submission stores details.meta + responses
+      if (s.mode === "SINGLE" && (s as any).details?.meta && (s as any).details?.responses) {
+        const meta = (s as any).details.meta as { key: string; uiType: UiType; displayName: string }[];
+        const responses = (s as any).details.responses as Record<string, any>;
+
+        meta.forEach((m) => {
+          const matches = responses[m.key];
+          let engine: EngineStatus = "ERROR";
+          if (matches) engine = classifyEngine(matches.results ?? []);
+
+          const manualMatch = Boolean((matches as any)?.manualMatch === true); // not present initially
+          const ui = engineToUiStatus(engine, manualMatch);
+
+          // simple risk heuristic: 0 clear, 1 potential, 0 pending
+          const risk = ui === "Potential Match" ? 1 : ui === "Match" ? 2 : 0;
+
+          // country best effort (from stored request isn't kept here; optional)
+          rows.push({
+            id: `${s.id}_${m.key}`,
+            entity: m.displayName,
+            type: m.uiType,
+            country: "",
+            engineStatus: engine,
+            manualMatch,
+            uiStatus: ui,
+            risk,
+            date: created,
+            raw: { submission: s, m, matches },
+          });
+        });
+
+        return;
+      }
+
+      // Legacy SINGLE (older structure)
+      if (s.mode === "SINGLE") {
+        const engine = (s as any).result as EngineStatus;
+        const uiType: UiType = (s as any).customerType === "Entity" ? "Organization" : "Individual";
+        const manualMatch = Boolean((s as any).manualMatch === true);
+        const ui = engineToUiStatus(engine, manualMatch);
+        rows.push({
+          id: s.id,
+          entity: (s as any).displayName,
+          type: uiType,
+          country: "",
+          engineStatus: engine,
+          manualMatch,
+          uiStatus: ui,
+          risk: ui === "Potential Match" ? 1 : ui === "Match" ? 2 : 0,
+          date: created,
+          raw: s,
+        });
+        return;
+      }
+
+      // BATCH
+      if (s.mode === "BATCH") {
+        (s as any).items.forEach((it: any, idx: number) => {
+          const engine = it.result as EngineStatus;
+          const uiType: UiType = it.details?.uiType ?? (it.customerType === "Entity" ? "Organization" : "Individual");
+          const manualMatch = Boolean(it.manualMatch === true);
+          const ui = engineToUiStatus(engine, manualMatch);
+          rows.push({
+            id: `${s.id}_${idx}`,
+            entity: it.displayName,
+            type: uiType,
+            country: "",
+            engineStatus: engine,
+            manualMatch,
+            uiStatus: ui,
+            risk: ui === "Potential Match" ? 1 : ui === "Match" ? 2 : 0,
+            date: created,
+            raw: { submission: s, item: it },
+          });
+        });
+      }
+    });
+
+    return rows;
+  }, [submissions]);
+
+  // ---------- Filters ----------
+  const filtered = useMemo(() => {
+    const q = safeTrim(search).toLowerCase();
+
+    return flattened.filter((r) => {
+      // All types
+      if (typeFilter !== "All Types" && r.type !== typeFilter) return false;
+
+      // All statuses
+      if (statusFilter !== "All Statuses" && r.uiStatus !== statusFilter) return false;
+
+      // Search across entity + raw JSON (any field in screening & results)
+      if (!q) return true;
+
+      const blob = JSON.stringify(r.raw ?? {});
+      const hay = `${r.entity} ${r.type} ${r.country} ${r.uiStatus} ${r.date} ${blob}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [flattened, search, statusFilter, typeFilter]);
+
+  // ---------- Pagination (10) ----------
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageSafe = Math.min(page, totalPages);
+  const startIdx = (pageSafe - 1) * pageSize;
+  const pageRows = filtered.slice(startIdx, startIdx + pageSize);
+
+  // ---------- Mark as Match (manual true positive) ----------
+  function markAsMatch(row: ResultRow) {
+    // We store manualMatch flag inside raw object where possible; easiest durable is to store in submissionsState
+    setSubmissions((prev) =>
+      prev.map((s: any) => {
+        // SINGLE new structure
+        if (s.mode === "SINGLE" && row.id.startsWith(s.id) && s.details?.responses) {
+          const key = row.id.replace(`${s.id}_`, "");
+          const responses = { ...(s.details.responses ?? {}) };
+          if (responses[key]) responses[key] = { ...responses[key], manualMatch: true };
+          return { ...s, details: { ...s.details, responses } };
+        }
+        // BATCH
+        if (s.mode === "BATCH" && row.id.startsWith(s.id + "_")) {
+          const idx = Number(row.id.replace(`${s.id}_`, ""));
+          const items = [...s.items];
+          if (items[idx]) items[idx] = { ...items[idx], manualMatch: true };
+          return { ...s, items };
+        }
+        // legacy SINGLE
+        if (s.mode === "SINGLE" && s.id === row.id) {
+          return { ...s, manualMatch: true };
+        }
+        return s;
+      })
+    );
   }
 
   return (
-    <div className="workspace">
-      <form onSubmit={onUnifiedSubmit} className="panel">
-        <div className="panelHeader">
-          <div>
-            <h2>OFAC Screening</h2>
-            <p>Prudential screening: on-demand or batch (CSV/XLSX).</p>
+    <div className="page">
+      {/* Tabs row like screenshot */}
+      <SummaryCards />
+      <div className="tabsRow">
+        <button className={mode === "SINGLE" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("SINGLE")} type="button">
+          <span className="tabIcon">🔍</span> Single Screening
+        </button>
+        <button className={mode === "BATCH" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("BATCH")} type="button">
+          <span className="tabIcon">📄</span> Batch Screening
+        </button>
+
+        <button className="btnGhost" type="button" onClick={clearAll} disabled={submitting} style={{ marginLeft: "auto" }}>
+          Clear
+        </button>
+      </div>
+
+      {/* SINGLE */}
+      {mode === "SINGLE" && (
+        <div className="card">
+          <div className="cardHeader">
+            <h2>Single Entity Screening</h2>
           </div>
-          <span className="pill">Prudential</span>
+
+          <div className="cardBody">
+            <form onSubmit={submitSingle}>
+              {/* Names section with +Add */}
+              <div className="sectionRow">
+                <div className="sectionTitle">Names</div>
+                <button type="button" className="btnAdd" onClick={addName}>
+                  + Add
+                </button>
+              </div>
+
+              {names.map((n, idx) => (
+                <div key={n.id} className="nameCard">
+                  <div className="nameCardTop">
+                    <div className="nameCardLabel">Primary Name #{idx + 1}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button type="button" className="btnGhostSmall" onClick={() => removeName(n.id)} disabled={names.length <= 1}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid2">
+                    <div className="field">
+                      <label>Entity Type</label>
+                      <select
+                        value={n.uiType}
+                        onChange={(e) => {
+                          const uiType = e.target.value as UiType;
+                          updateNameItem(n.id, {
+                            uiType,
+                            nameMode: uiType === "Individual" ? n.nameMode : "full",
+                            firstName: uiType === "Individual" ? n.firstName : "",
+                            lastName: uiType === "Individual" ? n.lastName : "",
+                            middleName: uiType === "Individual" ? n.middleName : "",
+                          });
+                        }}
+                      >
+                        <option value="Individual">Individual</option>
+                        <option value="Organization">Organization</option>
+                        <option value="Vessel">Vessel</option>
+                        <option value="Aircraft">Aircraft</option>
+                      </select>
+                    </div>
+
+                    {n.uiType === "Individual" ? (
+                      <div className="field">
+                        <label>Name Mode</label>
+                        <select
+                          value={n.nameMode}
+                          onChange={(e) => updateNameItem(n.id, { nameMode: e.target.value as any })}
+                        >
+                          <option value="split">First / Last</option>
+                          <option value="full">Full Name</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="field">
+                        <label>Alias (Optional)</label>
+                        <input value={n.aliasName} onChange={(e) => updateNameItem(n.id, { aliasName: e.target.value })} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Individual name inputs */}
+                  {n.uiType === "Individual" ? (
+                    <>
+                      {n.nameMode === "split" ? (
+                        <div className="grid3">
+                          <div className="field">
+                            <label>First Name *</label>
+                            <input value={n.firstName} onChange={(e) => updateNameItem(n.id, { firstName: e.target.value })} />
+                          </div>
+                          <div className="field">
+                            <label>Middle Name</label>
+                            <input value={n.middleName} onChange={(e) => updateNameItem(n.id, { middleName: e.target.value })} />
+                          </div>
+                          <div className="field">
+                            <label>Last Name *</label>
+                            <input value={n.lastName} onChange={(e) => updateNameItem(n.id, { lastName: e.target.value })} />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid2">
+                          <div className="field" style={{ gridColumn: "1 / -1" }}>
+                            <label>Full Name *</label>
+                            <input value={n.fullName} onChange={(e) => updateNameItem(n.id, { fullName: e.target.value })} />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid2">
+                        <div className="field">
+                          <label>Date of Birth</label>
+                          <input placeholder="YYYY-MM-DD" value={n.dateOfBirth} onChange={(e) => updateNameItem(n.id, { dateOfBirth: e.target.value })} />
+                        </div>
+                        <div className="field">
+                          <label>Alias (Optional)</label>
+                          <input value={n.aliasName} onChange={(e) => updateNameItem(n.id, { aliasName: e.target.value })} />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="grid2">
+                      <div className="field" style={{ gridColumn: "1 / -1" }}>
+                        <label>Primary Name *</label>
+                        <input value={n.fullName} onChange={(e) => updateNameItem(n.id, { fullName: e.target.value })} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Countries (multi) */}
+                  <div className="sectionRow" style={{ marginTop: 10 }}>
+                    <div className="sectionTitleSmall">Countries</div>
+                    <button type="button" className="btnAddSmall" onClick={() => addCountry(n.id)}>
+                      + Add
+                    </button>
+                  </div>
+
+                  <div className="stack">
+                    {n.countries.map((c, i) => (
+                      <CountryAutosuggest
+                        key={i}
+                        label={i === 0 ? "Country" : ""}
+                        value={c}
+                        hint="Type name or ISO2"
+                        onChange={(v) => {
+                          const next = [...n.countries];
+                          next[i] = v;
+                          updateNameItem(n.id, { countries: next });
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Addresses (multi) */}
+                  <div className="sectionRow" style={{ marginTop: 10 }}>
+                    <div className="sectionTitleSmall">Addresses</div>
+                    <button type="button" className="btnAddSmall" onClick={() => addAddress(n.id)}>
+                      + Add
+                    </button>
+                  </div>
+
+                  <div className="stack">
+                    {n.addresses.map((a, i) => (
+                      <div className="field" key={i}>
+                        <label>{i === 0 ? "Address" : ""}</label>
+                        <input
+                          placeholder="Full address line"
+                          value={a}
+                          onChange={(e) => {
+                            const next = [...n.addresses];
+                            next[i] = e.target.value;
+                            updateNameItem(n.id, { addresses: next });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* IDs (multi) */}
+                  <div className="sectionRow" style={{ marginTop: 10 }}>
+                    <div className="sectionTitleSmall">Identification Documents</div>
+                    <button type="button" className="btnAddSmall" onClick={() => addIdDoc(n.id)}>
+                      + Add
+                    </button>
+                  </div>
+
+                  <div className="stack">
+                    {n.ids.map((doc, i) => (
+                      <div className="grid3" key={i}>
+                        <div className="field">
+                          <label>{i === 0 ? "ID Type" : ""}</label>
+                          <input
+                            value={doc.idType}
+                            onChange={(e) => {
+                              const next = [...n.ids];
+                              next[i] = { ...next[i], idType: e.target.value };
+                              updateNameItem(n.id, { ids: next });
+                            }}
+                          />
+                        </div>
+                        <div className="field">
+                          <label>{i === 0 ? "ID Number" : ""}</label>
+                          <input
+                            value={doc.idNumber}
+                            onChange={(e) => {
+                              const next = [...n.ids];
+                              next[i] = { ...next[i], idNumber: e.target.value };
+                              updateNameItem(n.id, { ids: next });
+                            }}
+                          />
+                        </div>
+                        <div className="field">
+                          <label>{i === 0 ? "ID Country" : ""}</label>
+                          <CountryAutosuggest
+                            label=""
+                            value={doc.idCountry}
+                            hint="ISO2 preferred"
+                            onChange={(v) => {
+                              const next = [...n.ids];
+                              next[i] = { ...next[i], idCountry: v };
+                              updateNameItem(n.id, { ids: next });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Notes at the end */}
+              <div className="field" style={{ marginTop: 12 }}>
+                <label>Notes</label>
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Additional notes or context..." />
+              </div>
+
+              {singleError ? <div className="errorBox">{singleError}</div> : null}
+
+              <button className="btnRunWide" type="submit" disabled={submitting}>
+                {submitting ? "Running..." : "Run OFAC Screening"}
+              </button>
+            </form>
+          </div>
         </div>
+      )}
 
-        <div className="panelBody">
-          {/* Customer section */}
-          <div className="section">
-            <div className="sectionTitle">
-              <h3>Customer</h3>
-              <span>Names required by type</span>
-            </div>
-
-            <div className="grid">
-              <div className="field col-12">
-                <div className="labelRow">
-                  <label>Customer Type</label>
-                  <span className="hint">Person / Entity</span>
-                </div>
-                <select value={form.customerType} onChange={(e) => update("customerType", e.target.value as CustomerType)}>
-                  <option value="Person">Person</option>
-                  <option value="Entity">Entity</option>
-                </select>
-              </div>
-
-              {isPerson ? (
-                <>
-                  <div className="field col-6">
-                    <div className="labelRow">
-                      <label>
-                        First Name <span className="req">*</span>
-                      </label>
-                    </div>
-                    <input value={form.firstName} onChange={(e) => update("firstName", e.target.value)} placeholder="First name" />
-                  </div>
-
-                  <div className="field col-6">
-                    <div className="labelRow">
-                      <label>
-                        Last Name <span className="req">*</span>
-                      </label>
-                    </div>
-                    <input value={form.lastName} onChange={(e) => update("lastName", e.target.value)} placeholder="Last name" />
-                  </div>
-
-                  <div className="field col-12">
-                    <div className="labelRow">
-                      <label>Middle Name</label>
-                      <span className="hint">Optional</span>
-                    </div>
-                    <input value={form.middleName} onChange={(e) => update("middleName", e.target.value)} placeholder="Middle name" />
-                  </div>
-                </>
-              ) : (
-                <div className="field col-12">
-                  <div className="labelRow">
-                    <label>
-                      Full Name (Organization) <span className="req">*</span>
-                    </label>
-                  </div>
-                  <input value={form.fullName} onChange={(e) => update("fullName", e.target.value)} placeholder="Organization name" />
-                </div>
-              )}
-
-              <div className="field col-12">
-                <div className="labelRow">
-                  <label>Alias Name</label>
-                  <span className="hint">Optional</span>
-                </div>
-                <input value={form.aliasName} onChange={(e) => update("aliasName", e.target.value)} placeholder="AKA / alternate spelling" />
-              </div>
-            </div>
+      {/* BATCH */}
+      {mode === "BATCH" && (
+        <div className="card">
+          <div className="cardHeader">
+            <h2>Batch Screening</h2>
           </div>
 
-          {/* Demographics */}
-          <div className="section">
-            <div className="sectionTitle">
-              <h3>Demographics</h3>
-              <span>Improves match quality</span>
-            </div>
-
-            <div className="grid">
-              <div className="field col-6">
-                <div className="labelRow">
-                  <label>Date of Birth</label>
-                  <span className="hint">YYYY-MM-DD</span>
-                </div>
-                <input value={form.dateOfBirth} onChange={(e) => update("dateOfBirth", e.target.value)} placeholder="1980-01-01" />
+          <div className="cardBody">
+            {/* Accordion header */}
+            <button
+              type="button"
+              className="accordionHeader"
+              onClick={() => setTemplatesOpen((v) => !v)}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span className="accordionIcon">⬇</span>
+                <span>Download Screening Templates</span>
+                <span className="badgeCount">5 templates</span>
               </div>
+              <span className="chev">{templatesOpen ? "▴" : "▾"}</span>
+            </button>
 
-              <CountryAutosuggest
-                label="Country of Citizenship"
-                value={form.countryOfCitizenship}
-                onChange={(v) => update("countryOfCitizenship", v)}
-                hint="Type country name or ISO2 (US, IN)"
-              />
-
-              <CountryAutosuggest
-                label="Country of Birth"
-                value={form.countryOfBirth}
-                onChange={(v) => update("countryOfBirth", v)}
-                hint="Type country name or ISO2"
-              />
-            </div>
-          </div>
-
-          {/* Address + ID */}
-          <div className="section">
-            <div className="sectionTitle">
-              <h3>Address & ID</h3>
-              <span>Optional</span>
-            </div>
-
-            <div className="grid">
-              <div className="field col-12">
-                <label>Address Line 1</label>
-                <input value={form.addressLine1} onChange={(e) => update("addressLine1", e.target.value)} />
-              </div>
-              <div className="field col-12">
-                <label>Address Line 2</label>
-                <input value={form.addressLine2} onChange={(e) => update("addressLine2", e.target.value)} />
-              </div>
-              <div className="field col-4">
-                <label>City</label>
-                <input value={form.city} onChange={(e) => update("city", e.target.value)} />
-              </div>
-              <div className="field col-4">
-                <label>State</label>
-                <input value={form.state} onChange={(e) => update("state", e.target.value)} />
-              </div>
-              <div className="field col-4">
-                <label>Zip</label>
-                <input value={form.zip} onChange={(e) => update("zip", e.target.value)} />
-              </div>
-
-              <CountryAutosuggest
-                label="Country"
-                value={form.country}
-                onChange={(v) => update("country", v)}
-                hint="Type country name or ISO2"
-              />
-
-              <div className="field col-4">
-                <label>ID Code</label>
-                <input value={form.idCode} onChange={(e) => update("idCode", e.target.value)} placeholder="SSN / EIN / Passport" />
-              </div>
-              <div className="field col-4">
-                <label>ID Number</label>
-                <input value={form.idNumber} onChange={(e) => update("idNumber", e.target.value)} />
-              </div>
-              <div className="field col-4">
-                <label>ID Issue Country</label>
-                <input value={form.idIssueCountry} onChange={(e) => update("idIssueCountry", e.target.value)} placeholder="US" />
-              </div>
-            </div>
-          </div>
-
-          {/* Batch */}
-          <div className="section">
-            <div className="sectionTitle">
-              <h3>Batch Processing</h3>
-              <span>CSV / Excel</span>
-            </div>
-
-            <div className="grid">
-              <div className="field col-12">
-                <div className="labelRow">
-                  <label>Upload File</label>
-                  <span className="hint">Allowed: .csv, .xlsx, .xls</span>
-                </div>
-
-                <input
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] ?? null;
-                    setBatchFile(f);
-                    setBatchFileName(f?.name ?? "");
-                    setFileError(null);
-                  }}
+            {/* Accordion content */}
+            {templatesOpen && (
+              <div className="templateGrid5">
+                <TemplateCard
+                  title="Individual Screening"
+                  desc="Persons, employees, customers, beneficial owners"
+                  chips={["entity name", "entity type", "date of birth", "+5 more"]}
+                  onCsv={() => downloadTemplate("Individual", "csv")}
                 />
-
-                {batchFileName && (
-                  <div className="hintSmall" style={{ marginTop: 8 }}>
-                    Selected file: <b>{batchFileName}</b>
-                  </div>
-                )}
-
-                {fileError && (
-                  <div className="alert alertError" style={{ marginTop: 10 }}>
-                    <b>Batch Error:</b> {fileError}
-                  </div>
-                )}
-
-                {(batchSubmitting || submitting) && (
-                  <div className="alert" style={{ marginTop: 10 }}>
-                    Processing screening…
-                  </div>
-                )}
+                <TemplateCard
+                  title="Organization Screening"
+                  desc="Companies, vendors, partners, subsidiaries"
+                  chips={["entity name", "entity type", "dba name", "+5 more"]}
+                  onCsv={() => downloadTemplate("Organization", "csv")}
+                />
+                <TemplateCard
+                  title="Vessel Screening"
+                  desc="Ships, tankers, cargo vessels, maritime assets"
+                  chips={["entity name", "entity type", "imo number", "+5 more"]}
+                  onCsv={() => downloadTemplate("Vessel", "csv")}
+                />
+                <TemplateCard
+                  title="Aircraft Screening"
+                  desc="Aircraft, jets, aviation assets"
+                  chips={["entity name", "entity type", "tail number", "+5 more"]}
+                  onCsv={() => downloadTemplate("Aircraft", "csv")}
+                />
+                <TemplateCard
+                  title="Mixed / Combined"
+                  desc="Combined list of individuals and organizations"
+                  chips={["entity name", "entity type", "dba name", "+8 more"]}
+                  onCsv={() => downloadTemplate("Mixed", "csv")}
+                />
               </div>
-
-              <div className="field col-12">
-                <div className="labelRow">
-                  <label>Template</label>
-                  <span className="hint">Download and fill required name fields</span>
-                </div>
-
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button type="button" className="btnGhost" onClick={downloadCsvTemplate}>
-                    Download CSV Template
-                  </button>
-                  <button type="button" className="btnGhost" onClick={downloadExcelTemplate}>
-                    Download Excel Template
-                  </button>
-                </div>
-
-                <div className="helpBox" style={{ marginTop: 12 }}>
-                  <b>How to use the template</b>
-                  <ul style={{ marginTop: 8, lineHeight: 1.6 }}>
-                    <li>
-                      <b>Person</b>: set <code>customerType</code>=Person and fill <code>firstName</code> + <code>lastName</code>
-                    </li>
-                    <li>
-                      <b>Entity</b>: set <code>customerType</code>=Entity and fill <code>fullName</code>
-                    </li>
-                    <li>
-                      Best results: use ISO2 for <code>country</code> / <code>countryOfCitizenship</code> (US, IN, GB)
-                    </li>
-                    <li>Save as CSV or XLSX and upload. Screening happens only when you click Submit.</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {error && (
-            <div className="alert alertError">
-              <b>Error:</b> {error}
-            </div>
-          )}
-
-          <div className="actions">
-            <button type="button" className="btnGhost" onClick={clearAll} disabled={submitting || batchSubmitting}>
-              Clear
-            </button>
-
-            <button type="submit" className="btnPrimary" disabled={submitting || batchSubmitting}>
-              {batchFile ? (batchSubmitting ? "Submitting Batch..." : "Submit Screening") : submitting ? "Submitting..." : "Submit Screening"}
-            </button>
-          </div>
-
-          <div className="hintSmall" style={{ marginTop: 10 }}>
-            {batchFile ? (
-              <>Mode: <b>BATCH</b> (file selected). Click Submit Screening to run batch.</>
-            ) : (
-              <>Mode: <b>SINGLE</b> (no file selected). Click Submit Screening to run single.</>
             )}
+
+            <div className="field" style={{ marginTop: 14 }}>
+              <label>Batch Name *</label>
+              <input value={batchName} onChange={(e) => setBatchName(e.target.value)} placeholder="e.g., Q1 2024 Vendor Screening" />
+            </div>
+
+            {/* Dropzone */}
+            <div
+              className={dragOver ? "dropzone dragOver" : "dropzone"}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const f = e.dataTransfer.files?.[0] ?? null;
+                if (!f) return;
+                setBatchFile(f);
+                setBatchFileName(f.name);
+                setBatchError(null);
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="dropIconCircle">⬆</div>
+              <div className="dropText">
+                {batchFileName ? (
+                  <>
+                    Selected: <b>{batchFileName}</b>
+                  </>
+                ) : (
+                  <>Drop your file here or click to browse</>
+                )}
+              </div>
+              <div className="dropSub">Supports CSV and Excel files</div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  if (!f) return;
+                  setBatchFile(f);
+                  setBatchFileName(f.name);
+                  setBatchError(null);
+                  e.currentTarget.value = "";
+                }}
+              />
+            </div>
+
+            {batchError ? <div className="errorBox">{batchError}</div> : null}
+
+            <form onSubmit={submitBatch}>
+              <button className="btnBatchWide" type="submit" disabled={submitting}>
+                {submitting ? "Starting..." : "Start Batch Screening"}
+              </button>
+            </form>
           </div>
         </div>
-      </form>
+      )}
 
-      {/* RIGHT: Latest result panel */}
-      <LatestResultPanel />
+      {/* Screening Results (under BOTH tabs) */}
+      <div className="card" style={{ marginTop: 18 }}>
+        <div className="resultsHeader">
+          <h2>Screening Results</h2>
+
+          <div className="resultsFilters">
+            <div className="searchBox">
+              <span className="searchIcon">🔍</span>
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search entities..."
+              />
+            </div>
+
+            <select
+              className="filterSelect"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as StatusFilter);
+                setPage(1);
+              }}
+            >
+              <option>All Statuses</option>
+              <option>Clear</option>
+              <option>Potential Match</option>
+              <option>Pending</option>
+              <option>Match</option>
+            </select>
+
+            <select
+              className="filterSelect"
+              value={typeFilter}
+              onChange={(e) => {
+                setTypeFilter(e.target.value as TypeFilter);
+                setPage(1);
+              }}
+            >
+              <option>All Types</option>
+              <option>Individual</option>
+              <option>Organization</option>
+              <option>Vessel</option>
+              <option>Aircraft</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="cardBody">
+          <div className="tableWrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{ width: 220 }}>Entity</th>
+                  <th style={{ width: 120 }}>Type</th>
+                  <th style={{ width: 120 }}>Country</th>
+                  <th style={{ width: 140 }}>Status</th>
+                  <th style={{ width: 120 }}>Risk Score</th>
+                  <th style={{ width: 120 }}>Date</th>
+                  <th style={{ width: 110, textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="emptyRow">
+                      No results found.
+                    </td>
+                  </tr>
+                ) : (
+                  pageRows.map((r) => (
+                    <tr key={r.id}>
+                      <td className="entityCell">
+                        <span className="entityIcon" aria-hidden="true">
+                          {r.type === "Individual" ? "👤" : r.type === "Organization" ? "🏢" : r.type === "Vessel" ? "🛳️" : "✈️"}
+                        </span>
+                        <span>{r.entity}</span>
+                      </td>
+                      <td className="muted">{r.type}</td>
+                      <td className="muted">{r.country || "—"}</td>
+                      <td>{badge(r.uiStatus)}</td>
+                      <td>
+                        <div className="riskWrap">
+                          <div className="riskBar">
+                            <div className="riskFill" style={{ width: `${Math.min(100, r.risk * 50)}%` }} />
+                          </div>
+                          <div className="muted" style={{ width: 34, textAlign: "right" }}>
+                            {r.risk}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="muted">{r.date}</td>
+                      <td style={{ textAlign: "right" }}>
+                        <button type="button" className="iconBtn" title="Mark as Match" onClick={() => markAsMatch(r)}>
+                          ✓
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+
+            {/* Pagination like screenshot */}
+            <div className="pagerRow">
+              <div className="muted">
+                Showing {filtered.length === 0 ? 0 : startIdx + 1} to {Math.min(filtered.length, startIdx + pageSize)} of {filtered.length} results
+              </div>
+
+              <div className="pagerRight">
+                <button className="pagerBtn" disabled={pageSafe <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} type="button">
+                  ‹
+                </button>
+                <div className="pagerText">Page {pageSafe} of {totalPages}</div>
+                <button className="pagerBtn" disabled={pageSafe >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} type="button">
+                  ›
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function LatestResultPanel() {
-  const [latest] = useRecoilState(latestResultState);
-
+function TemplateCard(props: {
+  title: string;
+  desc: string;
+  chips: string[];
+  onCsv: () => void;
+}) {
   return (
-    <div className="panel">
-      <div className="panelHeader">
+    <div className="templateCard">
+      <div className="templateTop">
         <div>
-          <h2>Latest Screening Result</h2>
-          <p>Most recent single/batch submission.</p>
+          <div className="templateTitle">{props.title}</div>
+          <div className="templateDesc">{props.desc}</div>
         </div>
-        <span className="pill">Prudential</span>
+
+        <button type="button" className="templateCsvBtn" onClick={props.onCsv}>
+          CSV
+        </button>
       </div>
 
-      <div className="panelBody">
-        {!latest && <div className="alert" style={{ color: "var(--muted)" }}>No results yet. Submit a screening or upload a file.</div>}
+      <div className="chipRow">
+        {props.chips.map((c, i) => (
+          <span className="chip" key={i}>
+            {c}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+function SummaryCards() {
+  const [submissions] = useRecoilState(submissionsState);
 
-        {latest && latest.mode === "SINGLE" && (
-          <div className={`alert ${latest.result === "HIT" ? "alertError" : latest.result === "NO_HIT" ? "alertSuccess" : "alertError"}`}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-              <div>
-                <b>{latest.displayName}</b>
-                <div style={{ marginTop: 6, opacity: 0.9 }}>
-                  Result: <b>{latest.result}</b>
-                  {latest.message ? <div style={{ marginTop: 6 }}>{latest.message}</div> : null}
-                </div>
-              </div>
-              <span className={`pill ${latest.result === "HIT" ? "resultPillHit" : "resultPillNoHit"}`}>{latest.result}</span>
-            </div>
-            {latest.message ? <div className="wrapText" style={{ marginTop: 6 }}>{latest.message}</div> : null}
-          </div>
-        )}
+  // Count “result rows” the same way your table does (SINGLE multi + BATCH items + legacy)
+  const counts = useMemo(() => {
+    let total = 0;
+    let clear = 0;
+    let potential = 0;
+    let pending = 0;
+    let match = 0;
 
-        {latest && latest.mode === "BATCH" && (
-          <div className={`alert ${latest.overallResult === "HIT" ? "alertError" : latest.overallResult === "NO_HIT" ? "alertSuccess" : "alertError"}`}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-              <div>
-                <b>Batch: {latest.fileName}</b>
-                <div style={{ marginTop: 6 }}>
-                  Overall Result: <b>{latest.overallResult}</b> • Items: <b>{latest.items.length}</b>
-                </div>
-              </div>
-              <span className={`pill ${latest.overallResult === "HIT" ? "resultPillHit" : "resultPillNoHit"}`}>{latest.overallResult}</span>
-            </div>
+    const bump = (status: "Clear" | "Potential Match" | "Pending" | "Match") => {
+      total += 1;
+      if (status === "Clear") clear += 1;
+      if (status === "Potential Match") potential += 1;
+      if (status === "Pending") pending += 1;
+      if (status === "Match") match += 1;
+    };
 
-            <div style={{ marginTop: 12 }}>
-              {latest.items.slice(0, 50).map((it, idx) => (
-                <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(148,163,184,.12)" }}>
-                  <span>{it.displayName}</span>
-                  <span>{it.result}</span>
-                </div>
-              ))}
-              {latest.items.length > 50 && <div style={{ marginTop: 10, color: "var(--muted)" }}>Showing first 50. View full history on Results tab.</div>}
-            </div>
-          </div>
-        )}
+    submissions.forEach((s: any) => {
+      // New SINGLE multi
+      if (s.mode === "SINGLE" && s.details?.meta && s.details?.responses) {
+        const meta = s.details.meta as { key: string }[];
+        meta.forEach((m) => {
+          const resp = s.details.responses[m.key];
+          const manual = Boolean(resp?.manualMatch === true);
+          const engine: any = resp ? (resp.results?.some((r: any) => r.match) ? "HIT" : "NO_HIT") : "ERROR";
+          const ui = manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : "Pending";
+          bump(ui);
+        });
+        return;
+      }
+
+      // BATCH
+      if (s.mode === "BATCH" && Array.isArray(s.items)) {
+        s.items.forEach((it: any) => {
+          const manual = Boolean(it.manualMatch === true);
+          const engine: any = it.result;
+          const ui = manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : "Pending";
+          bump(ui);
+        });
+        return;
+      }
+
+      // Legacy SINGLE
+      if (s.mode === "SINGLE") {
+        const manual = Boolean(s.manualMatch === true);
+        const engine: any = s.result;
+        const ui = manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : "Pending";
+        bump(ui);
+      }
+    });
+
+    return { total, clear, potential, match, pending };
+  }, [submissions]);
+
+  return (
+    <div className="summaryGrid">
+      <div className="summaryCard">
+        <div className="summaryLabel">TOTAL SCREENED</div>
+        <div className="summaryValue">{counts.total}</div>
+      </div>
+
+      <div className="summaryCard">
+        <div className="summaryLabel">CLEAR</div>
+        <div className="summaryValue">{counts.clear}</div>
+      </div>
+
+      <div className="summaryCard">
+        <div className="summaryLabel">POTENTIAL MATCHES</div>
+        <div className="summaryValue">{counts.potential}</div>
+      </div>
+
+      <div className="summaryCard">
+        <div className="summaryLabel">MATCHES</div>
+        <div className="summaryValue">{counts.match}</div>
+      </div>
+
+      <div className="summaryCard">
+        <div className="summaryLabel">PENDING</div>
+        <div className="summaryValue">{counts.pending}</div>
       </div>
     </div>
   );

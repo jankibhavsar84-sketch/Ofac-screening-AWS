@@ -1,49 +1,28 @@
 import * as React from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
-export default function IntroPage() {
+export const Route = createFileRoute("/intro")({
+  component: Intro,
+});
+
+function Intro() {
   return (
     <div className="page">
       <div className="card">
         <div className="cardHeader">
-          <h1>How this application works</h1>
-          <p>Prudential OFAC screening — on-demand and batch screening in one UI.</p>
+          <h2>How this application works</h2>
         </div>
-
-        <div className="cardBody prose">
-          <ol>
-            <li>
-              Go to <b>Screening</b> tab.
-            </li>
-            <li>
-              Choose <b>Customer Type</b>:
-              <ul>
-                <li><b>Person</b>: First Name + Last Name are required</li>
-                <li><b>Entity</b>: Full Name (Organization) is required</li>
-              </ul>
-            </li>
-            <li>
-              Optional fields (DOB, citizenship, address, ID) improve match quality.
-            </li>
-            <li>
-              For <b>Batch</b>:
-              <ul>
-                <li>Download the CSV/XLSX template</li>
-                <li>Fill rows (required name fields)</li>
-                <li>Select the file — it will <b>not</b> screen yet</li>
-                <li>Click <b>Submit Screening</b> to run the batch</li>
-              </ul>
-            </li>
-            <li>
-              Results appear:
-              <ul>
-                <li>Immediately in the <b>Latest Screening Result</b> panel</li>
-                <li>In <b>Results & Queue</b> tab (history with pagination)</li>
-              </ul>
-            </li>
+        <div className="cardBody">
+          <ol className="introList">
+            <li><b>Single Screening</b>: add one or more entities and run screening.</li>
+            <li><b>Batch Screening</b>: upload CSV/XLSX and screen all rows in one run.</li>
+            <li>Results show <b>Clear</b>, <b>Potential Match</b>, <b>Pending</b>, or <b>Match</b> (manual).</li>
           </ol>
 
-          <div className="note">
-            <b>Tip:</b> Citizenship / Birth / Country fields support autosuggest. You can also type ISO2 (US, IN, GB).
+          <div style={{ marginTop: 16 }}>
+            <Link to="/screening" className="btnPrimary">
+              Go to Screening
+            </Link>
           </div>
         </div>
       </div>
