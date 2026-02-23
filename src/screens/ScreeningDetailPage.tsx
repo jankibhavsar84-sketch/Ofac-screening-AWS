@@ -5,7 +5,7 @@ import { z } from "zod";
 import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
 import { matchBatch, type EntityExample } from "../api/openSanctions";
 import { parseCsv, parseExcel } from "../utils/batchParse";
-import { CountryAutosuggest } from "../components/CountryAutosuggest";
+import { CountryAutosuggest } from "../components/CountryAutoSuggest";
 import { IsoDateInput } from "../components/IsoDateInput";
 
 type Mode = "SINGLE" | "BATCH";
@@ -218,6 +218,11 @@ function badge(status: UiStatus) {
   if (status === "Potential Match") return <span className="statusPill statusPotential">Potential Match</span>;
   if (status === "Pending") return <span className="statusPill statusPending">Pending</span>;
   return <span className="statusPill statusMatch">Match</span>;
+}
+
+function formatMatchingScore(score: number | null) {
+  if (typeof score !== "number" || Number.isNaN(score)) return "—";
+  return `${(score * 100).toFixed(2)}%`;
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -791,7 +796,7 @@ export function ScreeningDetailPage() {
     engineStatus: EngineStatus;
     manualMatch: boolean;
     uiStatus: UiStatus;
-    risk: number;
+    matchingScore: number | null;
     date: string;
     raw: any;
   };
@@ -814,9 +819,8 @@ export function ScreeningDetailPage() {
 
           const manualMatch = Boolean((matches as any)?.manualMatch === true); // not present initially
           const ui = engineToUiStatus(engine, manualMatch);
-
-          // simple risk heuristic: 0 clear, 1 potential, 0 pending
-          const risk = ui === "Potential Match" ? 1 : ui === "Match" ? 2 : 0;
+          const matchingScore =
+            typeof matches?.results?.[0]?.score === "number" ? matches.results[0].score : null;
 
           // country best effort (from stored request isn't kept here; optional)
           rows.push({
@@ -827,7 +831,7 @@ export function ScreeningDetailPage() {
             engineStatus: engine,
             manualMatch,
             uiStatus: ui,
-            risk,
+            matchingScore,
             date: created,
             raw: { submission: s, m, matches },
           });
@@ -850,7 +854,12 @@ export function ScreeningDetailPage() {
           engineStatus: engine,
           manualMatch,
           uiStatus: ui,
-          risk: ui === "Potential Match" ? 1 : ui === "Match" ? 2 : 0,
+          matchingScore:
+            typeof (s as any)?.details?.results?.[0]?.score === "number"
+              ? (s as any).details.results[0].score
+              : typeof (s as any)?.details?.score === "number"
+                ? (s as any).details.score
+                : null,
           date: created,
           raw: s,
         });
@@ -872,7 +881,10 @@ export function ScreeningDetailPage() {
             engineStatus: engine,
             manualMatch,
             uiStatus: ui,
-            risk: ui === "Potential Match" ? 1 : ui === "Match" ? 2 : 0,
+            matchingScore:
+              typeof it?.details?.matches?.results?.[0]?.score === "number"
+                ? it.details.matches.results[0].score
+                : null,
             date: created,
             raw: { submission: s, item: it },
           });
@@ -1417,7 +1429,7 @@ export function ScreeningDetailPage() {
                   <th style={{ width: 120 }}>Type</th>
                   <th style={{ width: 120 }}>Country</th>
                   <th style={{ width: 140 }}>Status</th>
-                  <th style={{ width: 120 }}>Risk Score</th>
+                  <th style={{ width: 140 }}>Matching Score</th>
                   <th style={{ width: 120 }}>Date</th>
                   <th style={{ width: 110, textAlign: "right" }}>Actions</th>
                 </tr>
@@ -1441,16 +1453,7 @@ export function ScreeningDetailPage() {
                       <td className="muted">{r.type}</td>
                       <td className="muted">{r.country || "—"}</td>
                       <td>{badge(r.uiStatus)}</td>
-                      <td>
-                        <div className="riskWrap">
-                          <div className="riskBar">
-                            <div className="riskFill" style={{ width: `${Math.min(100, r.risk * 50)}%` }} />
-                          </div>
-                          <div className="muted" style={{ width: 34, textAlign: "right" }}>
-                            {r.risk}
-                          </div>
-                        </div>
-                      </td>
+                      <td className="muted">{formatMatchingScore(r.matchingScore)}</td>
                       <td className="muted">{r.date}</td>
                       <td style={{ textAlign: "right" }}>
                         <button type="button" className="iconBtn" title="Mark as Match" onClick={() => markAsMatch(r)}>
