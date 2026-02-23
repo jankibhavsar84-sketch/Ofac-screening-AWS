@@ -1,5 +1,4 @@
 import { type FormEvent, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { useRecoilState } from "recoil";
 import { z } from "zod";
 import { usersState, type UserRole } from "../state/users";
@@ -167,22 +166,6 @@ export function ManageUsersPage() {
 
   return (
     <div className="page">
-      <div className="userAdminHero">
-        <div className="userAdminHeroLeft">
-          <div className="userAdminHeroIcon" aria-hidden="true">
-            <SectionIcon kind="shield" />
-          </div>
-          <div>
-            <h1 className="userAdminTitle">User Administration</h1>
-            <div className="userAdminSub">Manage team members and their access levels</div>
-          </div>
-        </div>
-        <Link to="/screening" className="btnGhost userAdminBackBtn">
-          <span aria-hidden="true"><SectionIcon kind="back" /></span>
-          Back to Dashboard
-        </Link>
-      </div>
-
       <div className="card">
         <div className="cardHeader">
           <h2>Role Permissions</h2>
