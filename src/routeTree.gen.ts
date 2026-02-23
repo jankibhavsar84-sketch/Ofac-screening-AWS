@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScreeningRouteImport } from './routes/screening'
+import { Route as ManageUsersRouteImport } from './routes/manage-users'
 import { Route as IntroRouteImport } from './routes/intro'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ScreeningRoute = ScreeningRouteImport.update({
   id: '/screening',
   path: '/screening',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManageUsersRoute = ManageUsersRouteImport.update({
+  id: '/manage-users',
+  path: '/manage-users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IntroRoute = IntroRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/intro': typeof IntroRoute
+  '/manage-users': typeof ManageUsersRoute
   '/screening': typeof ScreeningRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/intro': typeof IntroRoute
+  '/manage-users': typeof ManageUsersRoute
   '/screening': typeof ScreeningRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/intro': typeof IntroRoute
+  '/manage-users': typeof ManageUsersRoute
   '/screening': typeof ScreeningRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/intro' | '/screening'
+  fullPaths: '/' | '/intro' | '/manage-users' | '/screening'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/intro' | '/screening'
-  id: '__root__' | '/' | '/intro' | '/screening'
+  to: '/' | '/intro' | '/manage-users' | '/screening'
+  id: '__root__' | '/' | '/intro' | '/manage-users' | '/screening'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   IntroRoute: typeof IntroRoute
+  ManageUsersRoute: typeof ManageUsersRoute
   ScreeningRoute: typeof ScreeningRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/screening'
       fullPath: '/screening'
       preLoaderRoute: typeof ScreeningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manage-users': {
+      id: '/manage-users'
+      path: '/manage-users'
+      fullPath: '/manage-users'
+      preLoaderRoute: typeof ManageUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/intro': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IntroRoute: IntroRoute,
+  ManageUsersRoute: ManageUsersRoute,
   ScreeningRoute: ScreeningRoute,
 }
 export const routeTree = rootRouteImport

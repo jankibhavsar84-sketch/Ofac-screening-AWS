@@ -25,6 +25,9 @@ function RootLayout() {
             <Link to="/screening" className="navLink" activeProps={{ className: "navLink active" }}>
               Screening
             </Link>
+            <Link to="/manage-users" className="navLink" activeProps={{ className: "navLink active" }}>
+              Manage Users
+            </Link>
           </nav>
         </div>
       </header>
