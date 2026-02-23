@@ -101,6 +101,18 @@ function RoleIcon({ role }: { role: UserRole }) {
   );
 }
 
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
 export function ManageUsersPage() {
   const [users, setUsers] = useRecoilState(usersState);
   const [inviteFullName, setInviteFullName] = useState("");
@@ -147,6 +159,10 @@ export function ManageUsersPage() {
     setInviteEmail("");
     setInviteRole("Analyst");
     setSuccess("User added successfully.");
+  }
+
+  function removeUser(userId: string) {
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
   }
 
   return (
@@ -268,6 +284,15 @@ export function ManageUsersPage() {
                       <RoleIcon role={user.role} />
                       {user.role}
                     </span>
+                    <button
+                      type="button"
+                      className="teamRemoveBtn"
+                      onClick={() => removeUser(user.id)}
+                      aria-label={`Remove ${user.name}`}
+                      title="Remove user"
+                    >
+                      <TrashIcon />
+                    </button>
                   </div>
                 </div>
               ))}

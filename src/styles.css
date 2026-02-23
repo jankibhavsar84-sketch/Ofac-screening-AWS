@@ -448,16 +448,16 @@ textarea{min-height:90px;resize:vertical}
 }
 .userAdminTitle{
   margin:0;
-  font-size:40px;
-  line-height:1;
-  font-weight:900;
-  letter-spacing:-0.02em;
+  font-size:16px;
+  line-height:1.2;
+  font-weight:800;
+  letter-spacing:0;
   color:#172338;
 }
 .userAdminSub{
-  margin-top:8px;
+  margin-top:2px;
   color:#64748b;
-  font-size:14px;
+  font-size:12px;
 }
 .userAdminBackBtn{
   display:inline-flex;
@@ -636,6 +636,22 @@ textarea{min-height:90px;resize:vertical}
   border-color:#d8e1ee;
   color:#4f5f75;
 }
+.teamRemoveBtn{
+  width:30px;
+  height:30px;
+  border:1px solid #f1b8c3;
+  border-radius:999px;
+  background:#fff5f7;
+  color:#d7264f;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.teamRemoveBtn:hover{
+  background:#ffe8ee;
+  border-color:#ec9fb0;
+}
 
 @media(max-width:1100px){
   .rolePermissionGrid{
@@ -657,9 +673,6 @@ textarea{min-height:90px;resize:vertical}
   }
 }
 @media(max-width:650px){
-  .userAdminTitle{
-    font-size:32px;
-  }
   .rolePermissionGrid{
     grid-template-columns:1fr;
   }
