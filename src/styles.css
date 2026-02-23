@@ -422,30 +422,252 @@ textarea{min-height:90px;resize:vertical}
   font-size:13px;
 }
 
-.manageUsersSub{
-  margin:0 0 12px 0;
-  color:var(--muted);
-}
-.manageFormGrid{
-  display:grid;
-  grid-template-columns:repeat(2, minmax(0, 1fr));
+.userAdminHero{
+  margin-bottom:18px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
   gap:12px;
 }
-.manageFieldWide{
-  grid-column:1 / -1;
-}
-.manageActions{
-  margin-top:12px;
+.userAdminHeroLeft{
   display:flex;
+  align-items:flex-start;
+  gap:12px;
+}
+.userAdminHeroIcon{
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  background:#0f1f3a;
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 10px 20px rgba(15,23,42,.12);
+  flex-shrink:0;
+}
+.userAdminTitle{
+  margin:0;
+  font-size:40px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:-0.02em;
+  color:#172338;
+}
+.userAdminSub{
+  margin-top:8px;
+  color:#64748b;
+  font-size:14px;
+}
+.userAdminBackBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  white-space:nowrap;
+}
+.userAdminSectionTitle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.userAdminInlineIcon{
+  color:#5865f2;
+  display:inline-flex;
+}
+.userCount{
+  margin-left:4px;
+  font-size:14px;
+  color:#94a3b8;
+  font-weight:700;
+}
+
+.rolePermissionGrid{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:12px;
+}
+.rolePermissionCard{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  background:#fff;
+}
+.rolePermissionHead{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-weight:800;
+  font-size:13px;
+}
+.rolePermissionDesc{
+  margin-top:8px;
+  font-size:12px;
+  line-height:1.4;
+}
+.rolePermissionCard--admin{
+  background:#fff5f7;
+  border-color:#f7c3cf;
+  color:#d7264f;
+}
+.rolePermissionCard--complianceofficer{
+  background:#f3f5ff;
+  border-color:#b8c2ff;
+  color:#4b56d7;
+}
+.rolePermissionCard--analyst{
+  background:#fff9ed;
+  border-color:#f4d080;
+  color:#cf7a00;
+}
+.rolePermissionCard--viewer{
+  background:#f8fafc;
+  border-color:#d8e1ee;
+  color:#4f5f75;
+}
+
+.inviteGrid{
+  display:grid;
+  grid-template-columns:2fr 1fr auto;
+  align-items:flex-end;
+  gap:12px;
+}
+.inviteActionField{
+  display:flex;
+}
+.btnInvite{
+  border:none;
+  background:#8b86e8;
+  color:#fff;
+  border-radius:10px;
+  padding:10px 16px;
+  font-weight:800;
+  display:flex;
+  align-items:center;
   gap:10px;
-  justify-content:flex-end;
+  cursor:pointer;
+}
+.btnInvite:hover{
+  filter:brightness(1.05);
+}
+.btnInviteIcon{
+  display:inline-flex;
+}
+
+.emptyTeam{
+  color:#64748b;
+  border:1px dashed #d8e1ee;
+  border-radius:12px;
+  padding:12px;
+}
+.teamMemberList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.teamMemberRow{
+  border:1px solid #dfe7f2;
+  border-radius:12px;
+  background:#f8fafd;
+  padding:12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.teamMemberLeft{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.teamAvatar{
+  width:32px;
+  height:32px;
+  border-radius:999px;
+  background:linear-gradient(135deg,#7c6cf4,#4f6bf7);
+  color:#fff;
+  font-weight:900;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+}
+.teamName{
+  font-weight:800;
+  color:#1e293b;
+}
+.teamEmail{
+  color:#64748b;
+  font-size:13px;
+}
+.teamMemberRight{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.teamRoleBadge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid transparent;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.teamRoleBadge--admin{
+  background:#fff1f4;
+  border-color:#f7c3cf;
+  color:#d7264f;
+}
+.teamRoleBadge--complianceofficer{
+  background:#f0f2ff;
+  border-color:#bec7ff;
+  color:#4b56d7;
+}
+.teamRoleBadge--analyst{
+  background:#fff9ed;
+  border-color:#f4d080;
+  color:#cf7a00;
+}
+.teamRoleBadge--viewer{
+  background:#f8fafc;
+  border-color:#d8e1ee;
+  color:#4f5f75;
+}
+.teamRoleSelect{
+  min-width:170px;
+}
+
+@media(max-width:1100px){
+  .rolePermissionGrid{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
 }
 @media(max-width:850px){
-  .manageFormGrid{
+  .userAdminHero{
+    flex-wrap:wrap;
+  }
+  .inviteGrid{
     grid-template-columns:1fr;
   }
-  .manageFieldWide{
-    grid-column:auto;
+  .inviteActionField{
+    justify-content:flex-end;
+  }
+  .teamMemberRow{
+    flex-wrap:wrap;
+  }
+}
+@media(max-width:650px){
+  .userAdminTitle{
+    font-size:32px;
+  }
+  .rolePermissionGrid{
+    grid-template-columns:1fr;
+  }
+  .teamRoleSelect{
+    min-width:140px;
   }
 }
 
