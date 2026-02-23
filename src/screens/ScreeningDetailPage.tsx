@@ -1166,6 +1166,7 @@ export function ScreeningDetailPage() {
                           <div className="field">
                             <label>{i === 0 ? "ID Type" : ""}</label>
                             <select
+                              className="idTypeSelect"
                               value={doc.idType}
                               onChange={(e) => {
                                 const next = [...primaryName.ids];
