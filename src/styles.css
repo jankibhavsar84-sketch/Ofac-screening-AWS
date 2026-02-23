@@ -527,7 +527,7 @@ textarea{min-height:90px;resize:vertical}
 
 .inviteGrid{
   display:grid;
-  grid-template-columns:2fr 1fr auto;
+  grid-template-columns:1.4fr 1.8fr 1fr auto;
   align-items:flex-end;
   gap:12px;
 }

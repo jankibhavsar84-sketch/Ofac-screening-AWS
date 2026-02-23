@@ -14,6 +14,7 @@ const roleDescriptions: Record<UserRole, string> = {
 };
 
 const inviteSchema = z.object({
+  fullName: z.string().trim().min(1, "Full name is required."),
   email: z.string().trim().email("Enter a valid email address."),
   role: z.enum(["Admin", "Compliance Officer", "Analyst", "Viewer"]),
 });
@@ -28,11 +29,6 @@ function toTitleCase(input: string): string {
     .map((p) => (p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : ""))
     .join(" ")
     .trim();
-}
-
-function deriveNameFromEmail(email: string): string {
-  const local = email.split("@")[0] ?? "";
-  return toTitleCase(local.replace(/[._-]+/g, " ") || "Team Member");
 }
 
 function userInitial(name: string): string {
@@ -107,6 +103,7 @@ function RoleIcon({ role }: { role: UserRole }) {
 
 export function ManageUsersPage() {
   const [users, setUsers] = useRecoilState(usersState);
+  const [inviteFullName, setInviteFullName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<UserRole>("Analyst");
   const [error, setError] = useState<string | null>(null);
@@ -122,7 +119,7 @@ export function ManageUsersPage() {
     setError(null);
     setSuccess(null);
 
-    const parsed = inviteSchema.safeParse({ email: inviteEmail, role: inviteRole });
+    const parsed = inviteSchema.safeParse({ fullName: inviteFullName, email: inviteEmail, role: inviteRole });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Please fix validation errors.");
       return;
@@ -138,7 +135,7 @@ export function ManageUsersPage() {
     setUsers((prev) => [
       {
         id: uuid(),
-        name: deriveNameFromEmail(email),
+        name: toTitleCase(parsed.data.fullName),
         email,
         role: parsed.data.role,
         createdAt: new Date().toISOString(),
@@ -146,9 +143,10 @@ export function ManageUsersPage() {
       ...prev,
     ]);
 
+    setInviteFullName("");
     setInviteEmail("");
     setInviteRole("Analyst");
-    setSuccess("Invite sent and user added.");
+    setSuccess("User added successfully.");
   }
 
   function updateRole(userId: string, role: UserRole) {
@@ -198,11 +196,20 @@ export function ManageUsersPage() {
             <span className="userAdminInlineIcon" aria-hidden="true">
               <SectionIcon kind="invite" />
             </span>
-            Invite New User
+            Add New User
           </h2>
         </div>
         <div className="cardBody">
           <form onSubmit={submitInvite} className="inviteGrid">
+            <div className="field inviteNameField">
+              <label>Full Name</label>
+              <input
+                type="text"
+                placeholder="e.g. John Smith"
+                value={inviteFullName}
+                onChange={(e) => setInviteFullName(e.target.value)}
+              />
+            </div>
             <div className="field inviteEmailField">
               <label>Email Address</label>
               <input
@@ -227,7 +234,7 @@ export function ManageUsersPage() {
                 <span className="btnInviteIcon" aria-hidden="true">
                   <SectionIcon kind="invite" />
                 </span>
-                Send Invite
+                Add User
               </button>
             </div>
           </form>
