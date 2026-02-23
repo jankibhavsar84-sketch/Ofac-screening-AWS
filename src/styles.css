@@ -636,9 +636,6 @@ textarea{min-height:90px;resize:vertical}
   border-color:#d8e1ee;
   color:#4f5f75;
 }
-.teamRoleSelect{
-  min-width:170px;
-}
 
 @media(max-width:1100px){
   .rolePermissionGrid{
@@ -665,9 +662,6 @@ textarea{min-height:90px;resize:vertical}
   }
   .rolePermissionGrid{
     grid-template-columns:1fr;
-  }
-  .teamRoleSelect{
-    min-width:140px;
   }
 }
 

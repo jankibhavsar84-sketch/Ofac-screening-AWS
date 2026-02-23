@@ -149,10 +149,6 @@ export function ManageUsersPage() {
     setSuccess("User added successfully.");
   }
 
-  function updateRole(userId: string, role: UserRole) {
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
-  }
-
   return (
     <div className="page">
       <div className="userAdminHero">
@@ -272,17 +268,6 @@ export function ManageUsersPage() {
                       <RoleIcon role={user.role} />
                       {user.role}
                     </span>
-                    <select
-                      className="teamRoleSelect"
-                      value={user.role}
-                      onChange={(e) => updateRole(user.id, e.target.value as UserRole)}
-                    >
-                      {ROLE_OPTIONS.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 </div>
               ))}
