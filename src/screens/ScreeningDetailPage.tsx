@@ -225,17 +225,17 @@ function formatMatchingScore(score: number | null) {
   return `${(score * 100).toFixed(2)}%`;
 }
 
-function getTopMatchFromRaw(raw: any): { caption?: string; name?: string; id?: string; score?: number } | null {
-  const direct = raw?.matches?.results?.[0];
-  if (direct && typeof direct === "object") return direct;
+function getHitMatchesFromRaw(raw: any): { name: string; matchingScore: number | null }[] {
+  const direct = raw?.matches?.results;
+  const batch = raw?.item?.details?.matches?.results;
+  const legacy = raw?.details?.results ?? raw?.details?.matches?.results;
+  const results: any[] = Array.isArray(direct) ? direct : Array.isArray(batch) ? batch : Array.isArray(legacy) ? legacy : [];
 
-  const batch = raw?.item?.details?.matches?.results?.[0];
-  if (batch && typeof batch === "object") return batch;
-
-  const legacy = raw?.details?.results?.[0] ?? raw?.details?.matches?.results?.[0];
-  if (legacy && typeof legacy === "object") return legacy;
-
-  return null;
+  const matched = results.filter((r) => r && typeof r === "object" && r.match === true);
+  return matched.map((r) => ({
+    name: safeTrim(String(r.caption ?? r.name ?? r.id ?? "")) || "Unknown entity",
+    matchingScore: typeof r.score === "number" ? r.score : null,
+  }));
 }
 
 function ViewIcon() {
@@ -945,19 +945,14 @@ export function ScreeningDetailPage() {
   const pageRows = filtered.slice(startIdx, startIdx + pageSize);
   const [hitEntityDialog, setHitEntityDialog] = useState<{
     sourceEntity: string;
-    ofacEntityName: string;
-    matchingScore: number | null;
+    hits: { name: string; matchingScore: number | null }[];
   } | null>(null);
 
   function openHitEntity(row: ResultRow) {
-    const top = getTopMatchFromRaw(row.raw);
-    const ofacEntityName =
-      safeTrim(String(top?.caption ?? top?.name ?? top?.id ?? "")) || "No OFAC match entity found";
-    const matchingScore = typeof top?.score === "number" ? top.score : row.matchingScore;
+    const hits = getHitMatchesFromRaw(row.raw);
     setHitEntityDialog({
       sourceEntity: row.entity,
-      ofacEntityName,
-      matchingScore,
+      hits,
     });
   }
 
@@ -1518,12 +1513,19 @@ export function ScreeningDetailPage() {
                 <strong>{hitEntityDialog.sourceEntity}</strong>
               </div>
               <div className="hitEntityRow">
-                <span className="muted">OFAC Match Entity Name</span>
-                <strong>{hitEntityDialog.ofacEntityName}</strong>
-              </div>
-              <div className="hitEntityRow">
-                <span className="muted">Matching Score</span>
-                <strong>{formatMatchingScore(hitEntityDialog.matchingScore)}</strong>
+                <span className="muted">OFAC Hit Entities</span>
+                {hitEntityDialog.hits.length === 0 ? (
+                  <strong>No OFAC hit entity found.</strong>
+                ) : (
+                  <div className="hitEntityList">
+                    {hitEntityDialog.hits.map((hit, idx) => (
+                      <div className="hitEntityItem" key={`${hit.name}_${idx}`}>
+                        <span>{hit.name}</span>
+                        <span className="muted">{formatMatchingScore(hit.matchingScore)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
