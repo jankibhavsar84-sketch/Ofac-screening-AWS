@@ -225,6 +225,28 @@ function formatMatchingScore(score: number | null) {
   return `${(score * 100).toFixed(2)}%`;
 }
 
+function getTopMatchFromRaw(raw: any): { caption?: string; name?: string; id?: string; score?: number } | null {
+  const direct = raw?.matches?.results?.[0];
+  if (direct && typeof direct === "object") return direct;
+
+  const batch = raw?.item?.details?.matches?.results?.[0];
+  if (batch && typeof batch === "object") return batch;
+
+  const legacy = raw?.details?.results?.[0] ?? raw?.details?.matches?.results?.[0];
+  if (legacy && typeof legacy === "object") return legacy;
+
+  return null;
+}
+
+function ViewIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -921,33 +943,22 @@ export function ScreeningDetailPage() {
   const pageSafe = Math.min(page, totalPages);
   const startIdx = (pageSafe - 1) * pageSize;
   const pageRows = filtered.slice(startIdx, startIdx + pageSize);
+  const [hitEntityDialog, setHitEntityDialog] = useState<{
+    sourceEntity: string;
+    ofacEntityName: string;
+    matchingScore: number | null;
+  } | null>(null);
 
-  // ---------- Mark as Match (manual true positive) ----------
-  function markAsMatch(row: ResultRow) {
-    // We store manualMatch flag inside raw object where possible; easiest durable is to store in submissionsState
-    setSubmissions((prev) =>
-      prev.map((s: any) => {
-        // SINGLE new structure
-        if (s.mode === "SINGLE" && row.id.startsWith(s.id) && s.details?.responses) {
-          const key = row.id.replace(`${s.id}_`, "");
-          const responses = { ...(s.details.responses ?? {}) };
-          if (responses[key]) responses[key] = { ...responses[key], manualMatch: true };
-          return { ...s, details: { ...s.details, responses } };
-        }
-        // BATCH
-        if (s.mode === "BATCH" && row.id.startsWith(s.id + "_")) {
-          const idx = Number(row.id.replace(`${s.id}_`, ""));
-          const items = [...s.items];
-          if (items[idx]) items[idx] = { ...items[idx], manualMatch: true };
-          return { ...s, items };
-        }
-        // legacy SINGLE
-        if (s.mode === "SINGLE" && s.id === row.id) {
-          return { ...s, manualMatch: true };
-        }
-        return s;
-      })
-    );
+  function openHitEntity(row: ResultRow) {
+    const top = getTopMatchFromRaw(row.raw);
+    const ofacEntityName =
+      safeTrim(String(top?.caption ?? top?.name ?? top?.id ?? "")) || "No OFAC match entity found";
+    const matchingScore = typeof top?.score === "number" ? top.score : row.matchingScore;
+    setHitEntityDialog({
+      sourceEntity: row.entity,
+      ofacEntityName,
+      matchingScore,
+    });
   }
 
   return (
@@ -1431,7 +1442,7 @@ export function ScreeningDetailPage() {
                   <th style={{ width: 140 }}>Status</th>
                   <th style={{ width: 140 }}>Matching Score</th>
                   <th style={{ width: 120 }}>Date</th>
-                  <th style={{ width: 110, textAlign: "right" }}>Actions</th>
+                  <th style={{ width: 110, textAlign: "right" }}>Hit Entity</th>
                 </tr>
               </thead>
               <tbody>
@@ -1456,8 +1467,14 @@ export function ScreeningDetailPage() {
                       <td className="muted">{formatMatchingScore(r.matchingScore)}</td>
                       <td className="muted">{r.date}</td>
                       <td style={{ textAlign: "right" }}>
-                        <button type="button" className="iconBtn" title="Mark as Match" onClick={() => markAsMatch(r)}>
-                          ✓
+                        <button
+                          type="button"
+                          className="iconBtn"
+                          title="View hit entity"
+                          aria-label={`View hit entity for ${r.entity}`}
+                          onClick={() => openHitEntity(r)}
+                        >
+                          <ViewIcon />
                         </button>
                       </td>
                     </tr>
@@ -1485,6 +1502,33 @@ export function ScreeningDetailPage() {
           </div>
         </div>
       </div>
+
+      {hitEntityDialog ? (
+        <div className="hitEntityOverlay" onClick={() => setHitEntityDialog(null)} role="dialog" aria-modal="true" aria-label="Hit entity details">
+          <div className="hitEntityModal" onClick={(e) => e.stopPropagation()}>
+            <div className="hitEntityHeader">
+              <h3>Hit Entity Details</h3>
+              <button type="button" className="iconBtn" onClick={() => setHitEntityDialog(null)} aria-label="Close hit entity details">
+                ×
+              </button>
+            </div>
+            <div className="hitEntityBody">
+              <div className="hitEntityRow">
+                <span className="muted">Source Entity</span>
+                <strong>{hitEntityDialog.sourceEntity}</strong>
+              </div>
+              <div className="hitEntityRow">
+                <span className="muted">OFAC Match Entity Name</span>
+                <strong>{hitEntityDialog.ofacEntityName}</strong>
+              </div>
+              <div className="hitEntityRow">
+                <span className="muted">Matching Score</span>
+                <strong>{formatMatchingScore(hitEntityDialog.matchingScore)}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1645,4 +1689,5 @@ function SummaryCards() {
     </div>
   );
 }
+
 

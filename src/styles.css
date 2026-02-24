@@ -865,6 +865,46 @@ textarea{min-height:90px;resize:vertical}
   cursor:pointer;
   font-weight:900;
 }
+.hitEntityOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+  padding:16px;
+}
+.hitEntityModal{
+  width:min(560px, 100%);
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:0 20px 45px rgba(15,23,42,.25);
+}
+.hitEntityHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+}
+.hitEntityHeader h3{
+  margin:0;
+  font-size:16px;
+}
+.hitEntityBody{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:16px;
+}
+.hitEntityRow{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
 
 .pagerRow{
   display:flex;
