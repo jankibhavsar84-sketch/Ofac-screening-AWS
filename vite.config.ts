@@ -9,11 +9,10 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      "/opensanctions": {
-        target: "https://api.opensanctions.org",
+      "/api": {
+        target: "http://localhost:8000",
         changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/opensanctions/, ""),
+        secure: false,
       },
     },
   },

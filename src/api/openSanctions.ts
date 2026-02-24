@@ -1,12 +1,10 @@
 export type EntityExample = {
-  schema: string; // "Person" | "Company" | "Organization"
+  schema: string;
   properties: Record<string, any>;
 };
 
 export type EntityMatchQuery = {
   queries: Record<string, EntityExample>;
-  weights?: Record<string, number>;
-  config?: Record<string, any>;
 };
 
 export type ScoredEntity = {
@@ -31,6 +29,28 @@ export type EntityMatchResponse = {
   limit: number;
 };
 
+type JobStatus = "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED";
+
+type JobAccepted = {
+  job_id: string;
+  status: JobStatus;
+  submitted_at: string;
+  total_items: number;
+};
+
+type JobProgress = {
+  job_id: string;
+  status: JobStatus;
+  submitted_at: string;
+  total_items: number;
+  completed_items: number;
+  failed_items: number;
+  pending_items: number;
+  processing_items: number;
+  responses?: Record<string, EntityMatches>;
+  limit?: number;
+};
+
 function env(name: string, fallback = ""): string {
   const v = (import.meta.env[name] as string) ?? fallback;
   return String(v).trim();
@@ -38,54 +58,76 @@ function env(name: string, fallback = ""): string {
 
 function normalizeBaseUrl(raw: string): string {
   const v = String(raw ?? "").trim();
-  if (!v) throw new Error("Missing VITE_OPENSANCTIONS_BASE_URL");
+  if (!v) throw new Error("Missing VITE_SCREENING_API_BASE_URL");
 
-  // If it's already absolute -> use it
   if (v.startsWith("http://") || v.startsWith("https://")) {
     return v.replace(/\/$/, "");
   }
 
-  // If it's relative (proxy path) -> make absolute using current origin
   if (v.startsWith("/")) {
     return new URL(v, window.location.origin).toString().replace(/\/$/, "");
   }
 
-  // If someone put "api.opensanctions.org" without scheme -> assume https
   return `https://${v}`.replace(/\/$/, "");
 }
 
-export async function matchBatch(queries: Record<string, EntityExample>): Promise<EntityMatchResponse> {
-  const baseUrl = normalizeBaseUrl(env("VITE_OPENSANCTIONS_BASE_URL"));
-  const dataset = env("VITE_OPENSANCTIONS_DATASET", "sanctions");
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
-  const threshold = env("VITE_OPENSANCTIONS_THRESHOLD", "0.7");
-  const limit = env("VITE_OPENSANCTIONS_LIMIT", "5");
-  const algorithm = env("VITE_OPENSANCTIONS_ALGORITHM", "logic-v2");
+async function parseApiError(resp: Response): Promise<string> {
+  const raw = await resp.text();
+  if (!raw) return `${resp.status} ${resp.statusText}`;
 
-  const url = new URL(`${baseUrl}/match/${encodeURIComponent(dataset)}`);
-  url.searchParams.set("threshold", threshold);
-  url.searchParams.set("limit", limit);
-  url.searchParams.set("algorithm", algorithm);
-
-  const apiKey = env("VITE_OPENSANCTIONS_API_KEY");
-  const headerName = env("VITE_OPENSANCTIONS_API_KEY_HEADER", "Authorization");
-  const prefix = env("VITE_OPENSANCTIONS_API_KEY_PREFIX", "ApiKey");
-
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (apiKey) headers[headerName] = prefix ? `${prefix} ${apiKey}` : apiKey;
-
-  const body: EntityMatchQuery = { queries };
-
-  const resp = await fetch(url.toString(), {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  if (!resp.ok) {
-    const txt = await resp.text();
-    throw new Error(`OpenSanctions /match error ${resp.status}: ${txt}`);
+  try {
+    const json = JSON.parse(raw) as { detail?: string };
+    if (json?.detail) return `${resp.status}: ${json.detail}`;
+  } catch {
+    // ignore json parse errors
   }
 
-  return (await resp.json()) as EntityMatchResponse;
+  return `${resp.status}: ${raw}`;
 }
+
+export async function matchBatch(queries: Record<string, EntityExample>): Promise<EntityMatchResponse> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const pollMs = Number(env("VITE_SCREENING_POLL_INTERVAL_MS", "750"));
+  const timeoutMs = Number(env("VITE_SCREENING_JOB_TIMEOUT_MS", "90000"));
+
+  const createResp = await fetch(`${baseUrl}/screenings/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ queries } satisfies EntityMatchQuery),
+  });
+
+  if (!createResp.ok) {
+    throw new Error(`Failed to submit screening job: ${await parseApiError(createResp)}`);
+  }
+
+  const accepted = (await createResp.json()) as JobAccepted;
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const statusResp = await fetch(`${baseUrl}/screenings/jobs/${encodeURIComponent(accepted.job_id)}`);
+    if (!statusResp.ok) {
+      throw new Error(`Failed to check screening job status: ${await parseApiError(statusResp)}`);
+    }
+
+    const progress = (await statusResp.json()) as JobProgress;
+    if (progress.status === "COMPLETED") {
+      return {
+        responses: progress.responses ?? {},
+        limit: typeof progress.limit === "number" ? progress.limit : 5,
+      };
+    }
+
+    if (progress.status === "FAILED") {
+      throw new Error(`Screening job ${progress.job_id} failed.`);
+    }
+
+    await sleep(Math.max(200, pollMs));
+  }
+
+  throw new Error(`Screening job ${accepted.job_id} timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
+}
+

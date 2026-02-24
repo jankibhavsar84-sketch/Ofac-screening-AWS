@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+
+
+def _to_bool(value: str, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _to_int(value: str, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _to_float(value: str, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+@dataclass(frozen=True)
+class Settings:
+    app_name: str
+    app_version: str
+    app_db_path: str
+    cors_allow_origins: str
+
+    aws_region: str
+    aws_sqs_queue_name: str
+    aws_endpoint_url: str
+    aws_access_key_id: str
+    aws_secret_access_key: str
+
+    actimize_base_url: str
+    actimize_api_key: str
+    actimize_timeout_s: float
+    actimize_mock: bool
+
+    screening_tps: int
+    screening_poll_interval_ms: int
+    screening_sync_timeout_s: int
+    screening_result_limit: int
+
+
+def load_settings() -> Settings:
+    return Settings(
+        app_name=os.getenv("APP_NAME", "OFAC Screening Enterprise API"),
+        app_version=os.getenv("APP_VERSION", "1.0.0"),
+        app_db_path=os.getenv("APP_DB_PATH", "/tmp/screening.db"),
+        cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*"),
+        aws_region=os.getenv("AWS_REGION", "us-east-1"),
+        aws_sqs_queue_name=os.getenv("AWS_SQS_QUEUE_NAME", "screening-requests"),
+        aws_endpoint_url=os.getenv("AWS_ENDPOINT_URL", "").strip(),
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "test"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "test"),
+        actimize_base_url=os.getenv("ACTIMIZE_BASE_URL", "").strip(),
+        actimize_api_key=os.getenv("ACTIMIZE_API_KEY", "").strip(),
+        actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 10.0),
+        actimize_mock=_to_bool(os.getenv("ACTIMIZE_MOCK"), True),
+        screening_tps=_to_int(os.getenv("SCREENING_TPS"), 32),
+        screening_poll_interval_ms=_to_int(os.getenv("SCREENING_POLL_INTERVAL_MS"), 750),
+        screening_sync_timeout_s=_to_int(os.getenv("SCREENING_SYNC_TIMEOUT_S"), 60),
+        screening_result_limit=_to_int(os.getenv("SCREENING_RESULT_LIMIT"), 5),
+    )
+
+
+settings = load_settings()
+

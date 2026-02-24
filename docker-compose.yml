@@ -1,0 +1,65 @@
+services:
+  localstack:
+    image: localstack/localstack:3
+    environment:
+      - SERVICES=sqs
+      - AWS_DEFAULT_REGION=us-east-1
+      - DEBUG=0
+    ports:
+      - "4566:4566"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      - APP_DB_PATH=/data/screening.db
+      - CORS_ALLOW_ORIGINS=*
+      - AWS_REGION=us-east-1
+      - AWS_SQS_QUEUE_NAME=screening-requests
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - ACTIMIZE_MOCK=true
+      - SCREENING_TPS=32
+      - SCREENING_POLL_INTERVAL_MS=500
+      - SCREENING_SYNC_TIMEOUT_S=90
+    volumes:
+      - screening-data:/data
+    depends_on:
+      - localstack
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.worker
+    environment:
+      - APP_DB_PATH=/data/screening.db
+      - AWS_REGION=us-east-1
+      - AWS_SQS_QUEUE_NAME=screening-requests
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - ACTIMIZE_MOCK=true
+      - SCREENING_TPS=32
+    volumes:
+      - screening-data:/data
+    depends_on:
+      - localstack
+      - backend
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  screening-data:
+

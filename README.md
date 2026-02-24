@@ -1,73 +1,65 @@
-# React + TypeScript + Vite
+# OFAC Screening Enterprise App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This repository has been upgraded to an enterprise-style architecture:
 
-Currently, two official plugins are available:
+- Frontend: React + Vite, containerized (Nginx runtime)
+- Backend API: FastAPI
+- Queue: AWS SQS (LocalStack in local Docker setup)
+- Screening engine: Actimize Watchlist adapter (single-request model)
+- Throughput control: Worker-side throttle at 32 TPS
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Architecture
 
-## React Compiler
+1. Frontend submits screening queries to FastAPI.
+2. FastAPI persists job + items in SQLite and enqueues one SQS message per entity.
+3. Worker consumes SQS, screens each entity with Actimize (or mock mode), and enforces `32 TPS`.
+4. Worker stores normalized results back in SQLite.
+5. Frontend polls job status and renders results when complete.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Key Paths
 
-## Expanding the ESLint configuration
+- Frontend API client: `src/api/openSanctions.ts`
+- FastAPI app: `backend/app/main.py`
+- SQS worker: `backend/app/worker.py`
+- Actimize adapter: `backend/app/actimize.py`
+- Persistence: `backend/app/repository.py`
+- Local stack orchestration: `docker-compose.yml`
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Local Run (Containerized)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+docker compose up --build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Endpoints:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- Frontend: `http://localhost:8080`
+- Backend health: `http://localhost:8000/health`
+- LocalStack (SQS): `http://localhost:4566`
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Environment Variables
+
+Frontend (`.env`, see `.env.example`):
+
+- `VITE_SCREENING_API_BASE_URL` default `/api/v1`
+- `VITE_SCREENING_POLL_INTERVAL_MS` default `750`
+- `VITE_SCREENING_JOB_TIMEOUT_MS` default `90000`
+
+Backend/Worker (`backend/.env.example`):
+
+- `SCREENING_TPS=32` for Actimize single-request throughput
+- `ACTIMIZE_MOCK=true` for local simulation
+- Set `ACTIMIZE_MOCK=false` + `ACTIMIZE_BASE_URL` + `ACTIMIZE_API_KEY` for real engine
+
+## API Endpoints
+
+- `POST /api/v1/screenings/jobs` create async job
+- `GET /api/v1/screenings/jobs/{job_id}` get progress/result
+- `POST /api/v1/screenings/match` submit and wait (sync wrapper over async pipeline)
+
+## Notes
+
+- The frontend keeps the same `matchBatch(...)` contract, so existing UI logic remains intact.
+- Failed item responses are normalized with `status=500` so UI can still render deterministic rows.
+- Current local persistence uses SQLite for simplicity; production can swap repository to RDS/DynamoDB.
+
