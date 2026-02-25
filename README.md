@@ -20,6 +20,82 @@ This repository has been upgraded to an enterprise-style architecture:
 8. Batch supports `daily_screening`: if selected, the worker re-runs that batch daily shortly after midnight Eastern (`America/New_York`, default `00:05`).
 9. Users can disable daily screening for a scheduled batch directly from Screening Results using the `Disable Daily` action.
 
+### Architecture Diagram
+
+```mermaid
+flowchart LR
+  U[User Browser] --> FE[Frontend App<br/>ECS/Fargate Container]
+  FE -->|REST /api/v1| BE[FastAPI API<br/>ECS/Fargate Container]
+
+  BE -->|POST job messages| Q[SQS Queue]
+  BE -->|read/write| DB[(RDS PostgreSQL<br/>jobs, items, schedules, audit)]
+  BE -->|single sync screen| ACT[Actimize Watchlist Engine]
+
+  W[Worker Service<br/>ECS/Fargate Container<br/>Rate limit: 32 TPS] -->|poll| Q
+  W -->|read/write| DB
+  W -->|screen requests| ACT
+
+  FE -->|poll job status| BE
+```
+
+### API Flow Pattern
+
+```mermaid
+sequenceDiagram
+  participant UI as Frontend
+  participant API as FastAPI
+  participant SQ as SQS
+  participant WK as Worker
+  participant AX as Actimize
+  participant DB as RDS
+
+  Note over UI,DB: Single Screening (Sync)
+  UI->>API: POST /api/v1/screenings/match
+  API->>DB: audit: SYNC_SCREENING_SUBMITTED
+  loop For each selected screening type
+    API->>AX: single-type screening call
+    AX-->>API: match result
+  end
+  API-->>UI: immediate response (results)
+
+  Note over UI,DB: Batch Screening (Async)
+  UI->>API: POST /api/v1/screenings/jobs
+  API->>DB: create job + items + audit
+  API->>SQ: enqueue each entity item
+  API-->>UI: 202 Accepted {job_id, status=QUEUED}
+  UI->>API: GET /api/v1/screenings/jobs/{job_id} (poll)
+  API-->>UI: QUEUED/PROCESSING => UI shows In Progress
+
+  WK->>SQ: receive message
+  WK->>DB: mark item PROCESSING
+  loop For each selected screening type
+    WK->>AX: single-type screening call (32 TPS global cap)
+    AX-->>WK: result
+  end
+  WK->>DB: mark item COMPLETED/FAILED
+  UI->>API: GET /api/v1/screenings/jobs/{job_id}
+  API-->>UI: COMPLETED + responses
+```
+
+### Daily Screening Pattern
+
+```mermaid
+sequenceDiagram
+  participant WK as Worker Scheduler Loop
+  participant DB as RDS
+  participant API as ScreeningService
+  participant SQ as SQS
+
+  WK->>DB: find due active daily schedules
+  WK->>DB: claim schedule run (atomic)
+  WK->>API: submit_job(payload from saved batch)
+  API->>DB: create new job + audit
+  API->>SQ: enqueue job items
+  WK->>DB: update last_run_at / next_run_at
+```
+
+PDF version of these diagrams: `docs/architecture-api-flow.pdf`
+
 ## Key Paths
 
 - Frontend API client: `src/api/openSanctions.ts`
