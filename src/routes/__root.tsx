@@ -1,4 +1,7 @@
+import { useEffect } from "react";
 import { Outlet, createRootRoute, Link, useRouterState } from "@tanstack/react-router";
+import { useRecoilState } from "recoil";
+import { activeUserIdState, usersState } from "../state/users";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -7,6 +10,18 @@ export const Route = createRootRoute({
 function RootLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isUserAdministrationPage = pathname.startsWith("/manage-users");
+  const [users] = useRecoilState(usersState);
+  const [activeUserId, setActiveUserId] = useRecoilState(activeUserIdState);
+
+  useEffect(() => {
+    if (users.length === 0) {
+      if (activeUserId) setActiveUserId(null);
+      return;
+    }
+
+    const exists = users.some((u) => u.id === activeUserId);
+    if (!exists) setActiveUserId(users[0].id);
+  }, [users, activeUserId, setActiveUserId]);
 
   return (
     <div className="appShell">
@@ -37,6 +52,22 @@ function RootLayout() {
               User Administration
             </Link>
           </nav>
+          <div className="activeUserPicker">
+            <label htmlFor="active-user-select">User</label>
+            <select
+              id="active-user-select"
+              value={activeUserId ?? ""}
+              onChange={(e) => setActiveUserId(e.target.value || null)}
+              disabled={users.length === 0}
+            >
+              {users.length === 0 ? <option value="">No users</option> : null}
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </header>
 

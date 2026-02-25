@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .models import JobStatus, now_iso
 
@@ -48,7 +50,72 @@ class JobRepository:
                 );
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS daily_schedules (
+                  schedule_id TEXT PRIMARY KEY,
+                  batch_name TEXT NOT NULL,
+                  user_id TEXT,
+                  user_name TEXT,
+                  queries_json TEXT NOT NULL,
+                  screening_types_json TEXT NOT NULL,
+                  mock_screening INTEGER NOT NULL DEFAULT 0,
+                  timezone TEXT NOT NULL,
+                  run_hour INTEGER NOT NULL,
+                  run_minute INTEGER NOT NULL,
+                  created_at TEXT NOT NULL,
+                  last_run_at TEXT,
+                  next_run_at TEXT NOT NULL,
+                  is_active INTEGER NOT NULL DEFAULT 1
+                );
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS audit_events (
+                  event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  created_at TEXT NOT NULL,
+                  user_id TEXT,
+                  user_name TEXT,
+                  action TEXT NOT NULL,
+                  entity_type TEXT,
+                  entity_id TEXT,
+                  details_json TEXT
+                );
+                """
+            )
+            self._ensure_column(conn, "daily_schedules", "user_id", "TEXT")
+            self._ensure_column(conn, "daily_schedules", "user_name", "TEXT")
             conn.commit()
+
+    @staticmethod
+    def _ensure_column(conn: sqlite3.Connection, table_name: str, column_name: str, column_def: str) -> None:
+        cols = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        exists = any(str(col["name"]) == column_name for col in cols)
+        if exists:
+            return
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}")
+
+    @staticmethod
+    def compute_next_run_at(
+        now_utc: datetime,
+        timezone_name: str,
+        run_hour: int,
+        run_minute: int,
+    ) -> str:
+        tz_name = timezone_name.strip() or "America/New_York"
+        safe_hour = min(max(int(run_hour), 0), 23)
+        safe_minute = min(max(int(run_minute), 0), 59)
+
+        try:
+            local_tz = ZoneInfo(tz_name)
+        except ZoneInfoNotFoundError:
+            local_tz = ZoneInfo("America/New_York")
+        local_now = now_utc.astimezone(local_tz)
+        local_target = local_now.replace(hour=safe_hour, minute=safe_minute, second=0, microsecond=0)
+        if local_now >= local_target:
+            local_target = local_target + timedelta(days=1)
+        return local_target.astimezone(timezone.utc).isoformat()
 
     def create_job(self, job_id: str, total_items: int) -> str:
         ts = now_iso()
@@ -193,3 +260,207 @@ class JobRepository:
             "items": parsed_items,
         }
 
+    def create_daily_schedule(
+        self,
+        schedule_id: str,
+        batch_name: str,
+        user_id: str | None,
+        user_name: str | None,
+        queries: dict[str, Any],
+        screening_types: list[str],
+        mock_screening: bool,
+        timezone_name: str,
+        run_hour: int,
+        run_minute: int,
+    ) -> str:
+        now = datetime.now(timezone.utc)
+        created_at = now.isoformat()
+        next_run_at = self.compute_next_run_at(now, timezone_name, run_hour, run_minute)
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO daily_schedules(
+                  schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
+                  timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 1)
+                """,
+                (
+                    schedule_id,
+                    batch_name,
+                    (user_id or "").strip() or None,
+                    (user_name or "").strip() or None,
+                    json.dumps(queries),
+                    json.dumps(screening_types),
+                    1 if mock_screening else 0,
+                    timezone_name,
+                    run_hour,
+                    run_minute,
+                    created_at,
+                    next_run_at,
+                ),
+            )
+            conn.commit()
+        return schedule_id
+
+    def list_due_daily_schedules(self, now_iso_utc: str) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                  schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
+                  timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active
+                FROM daily_schedules
+                WHERE is_active = 1
+                  AND next_run_at <= ?
+                ORDER BY next_run_at ASC
+                """,
+                (now_iso_utc,),
+            ).fetchall()
+
+        schedules: list[dict[str, Any]] = []
+        for row in rows:
+            schedules.append(self._parse_daily_schedule_row(row))
+        return schedules
+
+    @staticmethod
+    def _parse_daily_schedule_row(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "schedule_id": row["schedule_id"],
+            "batch_name": row["batch_name"],
+            "user_id": row["user_id"],
+            "user_name": row["user_name"],
+            "queries": json.loads(row["queries_json"]) if row["queries_json"] else {},
+            "screening_types": json.loads(row["screening_types_json"]) if row["screening_types_json"] else [],
+            "mock_screening": bool(row["mock_screening"]),
+            "timezone": row["timezone"],
+            "run_hour": int(row["run_hour"]),
+            "run_minute": int(row["run_minute"]),
+            "created_at": row["created_at"],
+            "last_run_at": row["last_run_at"],
+            "next_run_at": row["next_run_at"],
+            "is_active": bool(row["is_active"]),
+        }
+
+    def list_active_daily_schedules(self) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                  schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
+                  timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active
+                FROM daily_schedules
+                WHERE is_active = 1
+                ORDER BY created_at DESC
+                """
+            ).fetchall()
+
+        schedules: list[dict[str, Any]] = []
+        for row in rows:
+            schedules.append(self._parse_daily_schedule_row(row))
+        return schedules
+
+    def deactivate_daily_schedule(self, schedule_id: str) -> bool:
+        with self._connect() as conn:
+            cur = conn.execute(
+                """
+                UPDATE daily_schedules
+                SET is_active = 0
+                WHERE schedule_id = ?
+                  AND is_active = 1
+                """,
+                (schedule_id,),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+    def add_audit_event(
+        self,
+        action: str,
+        user_id: str | None = None,
+        user_name: str | None = None,
+        entity_type: str | None = None,
+        entity_id: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> int:
+        created_at = now_iso()
+        with self._connect() as conn:
+            cur = conn.execute(
+                """
+                INSERT INTO audit_events(
+                  created_at, user_id, user_name, action, entity_type, entity_id, details_json
+                ) VALUES(?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    created_at,
+                    (user_id or "").strip() or None,
+                    (user_name or "").strip() or None,
+                    action.strip() or "UNKNOWN",
+                    (entity_type or "").strip() or None,
+                    (entity_id or "").strip() or None,
+                    json.dumps(details or {}),
+                ),
+            )
+            conn.commit()
+            return int(cur.lastrowid)
+
+    def list_audit_events(self, limit: int = 200, user_id: str | None = None) -> list[dict[str, Any]]:
+        safe_limit = min(max(int(limit), 1), 1000)
+        with self._connect() as conn:
+            if user_id and user_id.strip():
+                rows = conn.execute(
+                    """
+                    SELECT event_id, created_at, user_id, user_name, action, entity_type, entity_id, details_json
+                    FROM audit_events
+                    WHERE user_id = ?
+                    ORDER BY event_id DESC
+                    LIMIT ?
+                    """,
+                    (user_id.strip(), safe_limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT event_id, created_at, user_id, user_name, action, entity_type, entity_id, details_json
+                    FROM audit_events
+                    ORDER BY event_id DESC
+                    LIMIT ?
+                    """,
+                    (safe_limit,),
+                ).fetchall()
+
+        events: list[dict[str, Any]] = []
+        for row in rows:
+            events.append(
+                {
+                    "event_id": int(row["event_id"]),
+                    "created_at": row["created_at"],
+                    "user_id": row["user_id"],
+                    "user_name": row["user_name"],
+                    "action": row["action"],
+                    "entity_type": row["entity_type"],
+                    "entity_id": row["entity_id"],
+                    "details": json.loads(row["details_json"]) if row["details_json"] else {},
+                }
+            )
+        return events
+
+    def claim_daily_schedule_run(
+        self,
+        schedule_id: str,
+        expected_next_run_at: str,
+        last_run_at: str,
+        next_run_at: str,
+    ) -> bool:
+        with self._connect() as conn:
+            cur = conn.execute(
+                """
+                UPDATE daily_schedules
+                SET last_run_at = ?, next_run_at = ?
+                WHERE schedule_id = ?
+                  AND is_active = 1
+                  AND next_run_at = ?
+                """,
+                (last_run_at, next_run_at, schedule_id, expected_next_run_at),
+            )
+            conn.commit()
+            return cur.rowcount > 0

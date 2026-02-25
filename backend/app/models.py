@@ -36,6 +36,12 @@ class EntityMatchResponse(BaseModel):
 
 class MatchJobRequest(BaseModel):
     queries: dict[str, EntityExample]
+    screening_types: list[str] = Field(default_factory=list)
+    mock_screening: bool = False
+    daily_screening: bool = False
+    batch_name: str | None = None
+    user_id: str | None = None
+    user_name: str | None = None
 
 
 class JobStatus(str, Enum):
@@ -50,6 +56,7 @@ class MatchJobAccepted(BaseModel):
     status: JobStatus
     submitted_at: str
     total_items: int
+    daily_schedule_id: str | None = None
 
 
 class MatchJobProgress(BaseModel):
@@ -65,13 +72,41 @@ class MatchJobProgress(BaseModel):
     limit: int | None = None
 
 
+class DailyScheduleInfo(BaseModel):
+    schedule_id: str
+    batch_name: str
+    user_id: str | None = None
+    user_name: str | None = None
+    screening_types: list[str] = Field(default_factory=list)
+    timezone: str
+    run_hour: int
+    run_minute: int
+    created_at: str
+    last_run_at: str | None = None
+    next_run_at: str
+    total_items: int
+    is_active: bool = True
+
+
 class ScreeningQueueMessage(BaseModel):
     job_id: str
     item_key: str
     query: EntityExample
     submitted_at: str
+    screening_types: list[str] = Field(default_factory=list)
+    mock_screening: bool = False
+
+
+class AuditEvent(BaseModel):
+    event_id: int
+    created_at: str
+    user_id: str | None = None
+    user_name: str | None = None
+    action: str
+    entity_type: str | None = None
+    entity_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
-

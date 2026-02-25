@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import asyncio
-import time
-
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from .actimize import ActimizeClient
 from .config import settings
-from .models import EntityMatchResponse, MatchJobAccepted, MatchJobProgress, MatchJobRequest
+from .models import AuditEvent, DailyScheduleInfo, EntityMatchResponse, MatchJobAccepted, MatchJobProgress, MatchJobRequest
 from .queue import SqsQueue
 from .repository import JobRepository
 from .screening_service import ScreeningService
@@ -15,6 +13,7 @@ from .screening_service import ScreeningService
 repository = JobRepository(settings.app_db_path)
 queue = SqsQueue()
 service = ScreeningService(repository=repository, queue=queue)
+actimize = ActimizeClient()
 
 app = FastAPI(title=settings.app_name, version=settings.app_version)
 
@@ -57,24 +56,80 @@ def get_screening_job(job_id: str, svc: ScreeningService = Depends(get_service))
     return progress
 
 
+@app.get("/api/v1/screenings/daily-schedules", response_model=list[DailyScheduleInfo])
+def list_daily_schedules(svc: ScreeningService = Depends(get_service)) -> list[DailyScheduleInfo]:
+    return svc.list_daily_schedules()
+
+
+@app.delete("/api/v1/screenings/daily-schedules/{schedule_id}")
+def remove_daily_schedule(
+    schedule_id: str,
+    user_id: str | None = Query(default=None),
+    user_name: str | None = Query(default=None),
+    svc: ScreeningService = Depends(get_service),
+) -> dict[str, str]:
+    removed = svc.remove_daily_schedule(schedule_id, user_id=user_id, user_name=user_name)
+    if not removed:
+        raise HTTPException(status_code=404, detail=f"Daily schedule {schedule_id} not found")
+    return {"status": "removed", "schedule_id": schedule_id}
+
+
+@app.get("/api/v1/audit-events", response_model=list[AuditEvent])
+def list_audit_events(
+    limit: int = Query(default=200, ge=1, le=1000),
+    user_id: str | None = Query(default=None),
+    svc: ScreeningService = Depends(get_service),
+) -> list[AuditEvent]:
+    return svc.list_audit_events(limit=limit, user_id=user_id)
+
+
 @app.post("/api/v1/screenings/match", response_model=EntityMatchResponse)
-async def match_and_wait(payload: MatchJobRequest, svc: ScreeningService = Depends(get_service)) -> EntityMatchResponse:
-    accepted = svc.submit_job(payload)
-    timeout_seconds = settings.screening_sync_timeout_s
-    poll_interval = max(settings.screening_poll_interval_ms / 1000.0, 0.1)
-    deadline = time.monotonic() + timeout_seconds
-
-    while time.monotonic() < deadline:
-        progress = svc.get_progress(accepted.job_id)
-        if progress and progress.responses is not None:
-            return svc.get_terminal_match_response(progress)
-        await asyncio.sleep(poll_interval)
-
-    raise HTTPException(
-        status_code=504,
-        detail=(
-            f"Job {accepted.job_id} exceeded {timeout_seconds}s while waiting for worker completion. "
-            "Use /api/v1/screenings/jobs/{job_id} for async polling."
-        ),
+def match_sync(payload: MatchJobRequest) -> EntityMatchResponse:
+    if not payload.queries:
+        raise HTTPException(status_code=400, detail="At least one query is required")
+    repository.add_audit_event(
+        action="SYNC_SCREENING_SUBMITTED",
+        user_id=payload.user_id,
+        user_name=payload.user_name,
+        entity_type="sync_screening",
+        entity_id=None,
+        details={
+            "total_items": len(payload.queries),
+            "screening_types": payload.screening_types,
+            "mock_screening": payload.mock_screening,
+        },
     )
 
+    responses: dict[str, dict] = {}
+    for item_key, query in payload.queries.items():
+        try:
+            screened = actimize.screen_many_types(
+                query,
+                payload.screening_types,
+                payload.mock_screening,
+            )
+            raw_results = screened.get("results", [])
+            results = raw_results if isinstance(raw_results, list) else []
+            trimmed_results = results[: settings.screening_result_limit]
+
+            responses[item_key] = {
+                "results": trimmed_results,
+                "total": {"value": len(trimmed_results), "relation": "eq"},
+                "query": query.model_dump(mode="json"),
+                "status": int(screened.get("status", 200) or 200),
+            }
+        except Exception as exc:  # noqa: BLE001
+            responses[item_key] = {
+                "results": [],
+                "total": {"value": 0, "relation": "eq"},
+                "query": query.model_dump(mode="json"),
+                "status": 500,
+                "error": str(exc),
+            }
+
+    return EntityMatchResponse.model_validate(
+        {
+            "responses": responses,
+            "limit": settings.screening_result_limit,
+        }
+    )

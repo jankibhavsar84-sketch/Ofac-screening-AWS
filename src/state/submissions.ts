@@ -7,9 +7,12 @@ export type SingleSubmission = {
   id: string;
   createdAt: string; // ISO string
   mode: "SINGLE";
+  createdByUserId?: string;
+  createdByUserName?: string;
   customerType: "Person" | "Entity";
   displayName: string;
   result: HitResult;
+  screeningTypes?: string[];
   message?: string;
   details?: unknown;
 };
@@ -26,8 +29,14 @@ export type BatchSubmission = {
   id: string;
   createdAt: string;
   mode: "BATCH";
+  createdByUserId?: string;
+  createdByUserName?: string;
   fileName: string;
   overallResult: HitResult;
+  screeningTypes?: string[];
+  dailyScreening?: boolean;
+  dailyScheduleId?: string;
+  dailyScheduleActive?: boolean;
   items: BatchItem[];
 };
 

@@ -11,6 +11,7 @@ export type SystemUser = {
 };
 
 const STORAGE_KEY = "tapan_ofac_users_v1";
+const ACTIVE_USER_KEY = "tapan_ofac_active_user_v1";
 
 function safeString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -84,6 +85,37 @@ export const usersState = atom<SystemUser[]>({
       onSet((newValue) => {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(newValue));
+        } catch {
+          // ignore storage errors
+        }
+      });
+    },
+  ],
+});
+
+function loadActiveUserId(): string | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_USER_KEY);
+    if (!raw) return null;
+    const id = String(raw).trim();
+    return id || null;
+  } catch {
+    return null;
+  }
+}
+
+export const activeUserIdState = atom<string | null>({
+  key: "activeUserIdState",
+  default: loadActiveUserId(),
+  effects: [
+    ({ onSet }) => {
+      onSet((newValue) => {
+        try {
+          if (!newValue) {
+            localStorage.removeItem(ACTIVE_USER_KEY);
+          } else {
+            localStorage.setItem(ACTIVE_USER_KEY, newValue);
+          }
         } catch {
           // ignore storage errors
         }

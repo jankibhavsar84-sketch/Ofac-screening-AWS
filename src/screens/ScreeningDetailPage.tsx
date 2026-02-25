@@ -1,15 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { z } from "zod";
 import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
-import { matchBatch, type EntityExample } from "../api/openSanctions";
+import { matchBatch, matchSync, removeDailySchedule, type EntityExample } from "../api/openSanctions";
+import { activeUserIdState, usersState } from "../state/users";
 import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutoSuggest";
 import { IsoDateInput } from "../components/IsoDateInput";
 
 type Mode = "SINGLE" | "BATCH";
 type UiType = "Individual" | "Organization" | "Vessel" | "Aircraft";
+type ScreeningType = "Sanction" | "PEP" | "AME" | "Fincen 314(a)" | "Global Sanction";
 
 type IdDoc = { idType: string; idNumber: string; idCountry: string };
 type NameItem =
@@ -30,7 +32,7 @@ type NameItem =
 
 type StatusFilter = "All Statuses" | "Clear" | "Potential Match" | "Pending" | "Match";
 type TypeFilter = "All Types" | UiType;
-type SelectOption<T extends string> = { value: T; label: string };
+type SelectOption<T extends string> = { value: T; label: string; icon?: React.ReactNode };
 
 function FormSelect<T extends string>({
   value,
@@ -65,8 +67,11 @@ function FormSelect<T extends string>({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span>{selected?.label ?? value}</span>
-        <span className="formSelectCaret">{open ? "▲" : "▼"}</span>
+        <span className="formSelectValue">
+          {selected?.icon ? <span className="formSelectLeadIcon" aria-hidden="true">{selected.icon}</span> : null}
+          <span>{selected?.label ?? value}</span>
+        </span>
+        <span className="formSelectCaret">{open ? "\u25B2" : "\u25BC"}</span>
       </button>
 
       {open ? (
@@ -82,7 +87,10 @@ function FormSelect<T extends string>({
                 setOpen(false);
               }}
             >
-              {opt.label}
+              <span className="formSelectValue">
+                {opt.icon ? <span className="formSelectLeadIcon" aria-hidden="true">{opt.icon}</span> : null}
+                <span>{opt.label}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -95,11 +103,26 @@ function safeTrim(v: string) {
   return (v ?? "").trim();
 }
 
+function uiTypeIcon(type: UiType): string {
+  if (type === "Individual") return "\u{1F464}";
+  if (type === "Organization") return "\u{1F3E2}";
+  if (type === "Vessel") return "\u{1F6F3}\uFE0F";
+  return "\u2708\uFE0F";
+}
+
 const ENTITY_TYPE_OPTIONS: SelectOption<UiType>[] = [
-  { value: "Individual", label: "Individual" },
-  { value: "Organization", label: "Organization" },
-  { value: "Vessel", label: "Vessel" },
-  { value: "Aircraft", label: "Aircraft" },
+  { value: "Individual", label: "Individual", icon: uiTypeIcon("Individual") },
+  { value: "Organization", label: "Organization", icon: uiTypeIcon("Organization") },
+  { value: "Vessel", label: "Vessel", icon: uiTypeIcon("Vessel") },
+  { value: "Aircraft", label: "Aircraft", icon: uiTypeIcon("Aircraft") },
+];
+
+const SCREENING_TYPE_OPTIONS: { value: ScreeningType; desc: string }[] = [
+  { value: "Sanction", desc: "Primary sanctions lists and watchlist controls" },
+  { value: "PEP", desc: "Politically Exposed Person checks" },
+  { value: "AME", desc: "Adverse media and negative news" },
+  { value: "Fincen 314(a)", desc: "US FinCEN 314(a) request screening" },
+  { value: "Global Sanction", desc: "Aggregated global sanctions coverage" },
 ];
 
 const ID_TYPE_OPTIONS = [
@@ -221,7 +244,7 @@ function badge(status: UiStatus) {
 }
 
 function formatMatchingScore(score: number | null) {
-  if (typeof score !== "number" || Number.isNaN(score)) return "—";
+  if (typeof score !== "number" || Number.isNaN(score)) return "\u2014";
   return `${(score * 100).toFixed(2)}%`;
 }
 
@@ -408,11 +431,63 @@ function downloadTemplate(kind: UiType | "Mixed", format: "csv" | "xlsx") {
   downloadBlob(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `ofac_${kind.toLowerCase()}_template.xlsx`);
 }
 
+function RefreshIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.5 9A9 9 0 0 1 19.3 5.7L23 10" />
+      <path d="M20.5 15A9 9 0 0 1 4.7 18.3L1 14" />
+    </svg>
+  );
+}
+
+function ScreeningTypeCards({
+  selected,
+  onToggle,
+}: {
+  selected: ScreeningType[];
+  onToggle: (type: ScreeningType) => void;
+}) {
+  return (
+    <div className="screeningTypeWrap">
+      <div className="sectionRow" style={{ marginBottom: 8 }}>
+        <div className="sectionTitle">Screening Types *</div>
+      </div>
+      <div className="screeningTypeGrid">
+        {SCREENING_TYPE_OPTIONS.map((option) => {
+          const active = selected.includes(option.value);
+          return (
+            <button
+              key={option.value}
+              type="button"
+              className={active ? "screeningTypeCard active" : "screeningTypeCard"}
+              onClick={() => onToggle(option.value)}
+              aria-pressed={active}
+            >
+              <div className="screeningTypeHead">
+                <span className="screeningTypeName">{option.value}</span>
+                <span className={active ? "screeningTypeTick active" : "screeningTypeTick"} aria-hidden="true">
+                  {active ? "\u2713" : "+"}
+                </span>
+              </div>
+              <div className="screeningTypeDesc">{option.desc}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ScreeningDetailPage() {
   const [mode, setMode] = useState<Mode>("SINGLE");
 
   const [submissions, setSubmissions] = useRecoilState(submissionsState);
   const [, setLatest] = useRecoilState(latestResultState);
+  const users = useRecoilValue(usersState);
+  const [activeUserId, setActiveUserId] = useRecoilState(activeUserIdState);
+  const currentUser = useMemo(() => users.find((u) => u.id === activeUserId) ?? null, [users, activeUserId]);
 
   // SINGLE (multi-add)
   const [names, setNames] = useState<NameItem[]>([
@@ -433,15 +508,21 @@ export function ScreeningDetailPage() {
   ]);
 
   const [notes, setNotes] = useState("");
+  const [singleScreeningTypes, setSingleScreeningTypes] = useState<ScreeningType[]>(["Sanction"]);
+  const [singleMockScreening, setSingleMockScreening] = useState(true);
 
   // BATCH
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [batchName, setBatchName] = useState("");
+  const [batchScreeningTypes, setBatchScreeningTypes] = useState<ScreeningType[]>(["Sanction"]);
+  const [batchDailyScreening, setBatchDailyScreening] = useState(false);
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [batchFileName, setBatchFileName] = useState("");
   const [batchError, setBatchError] = useState<string | null>(null);
   const [singleError, setSingleError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [dailyDisableError, setDailyDisableError] = useState<string | null>(null);
+  const [disablingScheduleId, setDisablingScheduleId] = useState<string | null>(null);
   const selectedEntityType: UiType = names[0]?.uiType ?? "Individual";
   const primaryName = names[0];
   const aliasNames = names.slice(1);
@@ -455,6 +536,30 @@ export function ScreeningDetailPage() {
   // dropzone
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  function toggleScreeningType(
+    value: ScreeningType,
+    setSelected: React.Dispatch<React.SetStateAction<ScreeningType[]>>
+  ) {
+    setSelected((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
+  }
+
+  function refreshResults() {
+    try {
+      const raw = localStorage.getItem("tapan_ofac_submissions_v1");
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) setSubmissions(parsed as Submission[]);
+    } catch {
+      // ignore malformed storage
+    }
+    setPage(1);
+  }
+
+  useEffect(() => {
+    if (users.length === 0) return;
+    const exists = users.some((u) => u.id === activeUserId);
+    if (!exists) setActiveUserId(users[0].id);
+  }, [users, activeUserId, setActiveUserId]);
 
   const singleSchema = useMemo(() => {
     // Validate each name item basic requirements + DOB rules for individual only
@@ -500,6 +605,7 @@ export function ScreeningDetailPage() {
   function clearAll() {
     setSingleError(null);
     setBatchError(null);
+    setDailyDisableError(null);
     setLatest(null);
 
     if (mode === "SINGLE") {
@@ -520,8 +626,12 @@ export function ScreeningDetailPage() {
         },
       ]);
       setNotes("");
+      setSingleScreeningTypes(["Sanction"]);
+      setSingleMockScreening(true);
     } else {
       setBatchName("");
+      setBatchScreeningTypes(["Sanction"]);
+      setBatchDailyScreening(false);
       setBatchFile(null);
       setBatchFileName("");
       setTemplatesOpen(false);
@@ -622,6 +732,17 @@ export function ScreeningDetailPage() {
     setSubmitting(true);
 
     try {
+      if (!currentUser) {
+        setSingleError("Select an active user from the header before running screening.");
+        setSubmitting(false);
+        return;
+      }
+      if (!singleScreeningTypes.length) {
+        setSingleError("Select at least one screening type.");
+        setSubmitting(false);
+        return;
+      }
+
       const parsed = singleSchema.safeParse(names);
       if (!parsed.success) {
         setSingleError(parsed.error.issues[0]?.message ?? "Fix validation errors.");
@@ -648,7 +769,10 @@ export function ScreeningDetailPage() {
         queries[key] = buildEntityExampleFromNameItem(n);
       });
 
-      const resp = await matchBatch(queries);
+      const resp = await matchSync(queries, singleScreeningTypes, singleMockScreening, {
+        id: currentUser.id,
+        name: currentUser.name,
+      });
 
       // Convert to a single "SINGLE" submission containing multiple items (still SINGLE mode for your history)
       // We store as SingleSubmission but keep details so results table can read it
@@ -656,11 +780,20 @@ export function ScreeningDetailPage() {
         id: uuid(),
         createdAt: new Date().toISOString(),
         mode: "SINGLE",
+        createdByUserId: currentUser.id,
+        createdByUserName: currentUser.name,
         customerType: "Person", // not used by new results table; keep for backward compatibility
         displayName: `Single Screening (${meta.length})`,
         result: "NO_HIT",
+        screeningTypes: singleScreeningTypes,
         message: notes ? `Notes: ${notes}` : undefined,
-        details: { meta, responses: resp.responses, notes },
+        details: {
+          meta,
+          responses: resp.responses,
+          notes,
+          screeningTypes: singleScreeningTypes,
+          mockScreening: singleMockScreening,
+        },
       };
 
       // derive top result for the main record (if any potential match -> HIT)
@@ -695,8 +828,16 @@ export function ScreeningDetailPage() {
     e.preventDefault();
     setBatchError(null);
 
+    if (!currentUser) {
+      setBatchError("Select an active user from the header before starting batch screening.");
+      return;
+    }
     if (!safeTrim(batchName)) {
       setBatchError("Batch Name is required.");
+      return;
+    }
+    if (!batchScreeningTypes.length) {
+      setBatchError("Select at least one screening type.");
       return;
     }
     if (!batchFile) {
@@ -763,7 +904,12 @@ export function ScreeningDetailPage() {
 
       if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
 
-      const resp = await matchBatch(queries);
+      const resp = await matchBatch(queries, batchScreeningTypes, {
+        dailyScreening: batchDailyScreening,
+        batchName,
+        userId: currentUser.id,
+        userName: currentUser.name,
+      });
 
       const items: BatchSubmission["items"] = rowMeta.map((m) => {
         const matches = resp.responses[m.key];
@@ -787,8 +933,14 @@ export function ScreeningDetailPage() {
         id: uuid(),
         createdAt: new Date().toISOString(),
         mode: "BATCH",
+        createdByUserId: currentUser.id,
+        createdByUserName: currentUser.name,
         fileName: batchFile.name,
         overallResult: overall,
+        screeningTypes: batchScreeningTypes,
+        dailyScreening: batchDailyScreening,
+        dailyScheduleId: resp.dailyScheduleId ?? undefined,
+        dailyScheduleActive: Boolean(batchDailyScreening && resp.dailyScheduleId),
         items,
       };
 
@@ -800,6 +952,8 @@ export function ScreeningDetailPage() {
       setBatchFile(null);
       setBatchFileName("");
       setBatchName("");
+      setBatchScreeningTypes(["Sanction"]);
+      setBatchDailyScreening(false);
       setTemplatesOpen(false);
       setPage(1);
     } catch (err: any) {
@@ -820,13 +974,18 @@ export function ScreeningDetailPage() {
     uiStatus: UiStatus;
     matchingScore: number | null;
     date: string;
+    batchSubmissionId: string | null;
+    dailyScheduleId: string | null;
+    dailyScheduleActive: boolean;
     raw: any;
   };
 
   const flattened: ResultRow[] = useMemo(() => {
+    if (!currentUser) return [];
     const rows: ResultRow[] = [];
 
     submissions.forEach((s: Submission) => {
+      if ((s as any).createdByUserId !== currentUser.id) return;
       const created = new Date((s as any).createdAt).toLocaleDateString();
 
       // SINGLE: our new single submission stores details.meta + responses
@@ -855,6 +1014,9 @@ export function ScreeningDetailPage() {
             uiStatus: ui,
             matchingScore,
             date: created,
+            batchSubmissionId: null,
+            dailyScheduleId: null,
+            dailyScheduleActive: false,
             raw: { submission: s, m, matches },
           });
         });
@@ -883,6 +1045,9 @@ export function ScreeningDetailPage() {
                 ? (s as any).details.score
                 : null,
           date: created,
+          batchSubmissionId: null,
+          dailyScheduleId: null,
+          dailyScheduleActive: false,
           raw: s,
         });
         return;
@@ -908,6 +1073,9 @@ export function ScreeningDetailPage() {
                 ? it.details.matches.results[0].score
                 : null,
             date: created,
+            batchSubmissionId: s.id,
+            dailyScheduleId: typeof (s as any).dailyScheduleId === "string" ? (s as any).dailyScheduleId : null,
+            dailyScheduleActive: Boolean((s as any).dailyScheduleActive === true),
             raw: { submission: s, item: it },
           });
         });
@@ -915,7 +1083,7 @@ export function ScreeningDetailPage() {
     });
 
     return rows;
-  }, [submissions]);
+  }, [submissions, currentUser]);
 
   // ---------- Filters ----------
   const filtered = useMemo(() => {
@@ -956,16 +1124,40 @@ export function ScreeningDetailPage() {
     });
   }
 
+  async function disableDailyScreeningForBatch(row: ResultRow) {
+    if (!row.batchSubmissionId || !row.dailyScheduleId || !row.dailyScheduleActive) return;
+
+    setDisablingScheduleId(row.dailyScheduleId);
+    setDailyDisableError(null);
+    try {
+      await removeDailySchedule(row.dailyScheduleId, { id: currentUser?.id, name: currentUser?.name });
+      setSubmissions((prev) =>
+        prev.map((s) => {
+          if (s.mode !== "BATCH" || s.id !== row.batchSubmissionId) return s;
+          return { ...s, dailyScreening: false, dailyScheduleActive: false } as BatchSubmission;
+        })
+      );
+    } catch (err: any) {
+      setDailyDisableError(err?.message ?? "Failed to disable daily screening.");
+    } finally {
+      setDisablingScheduleId(null);
+    }
+  }
+
   return (
     <div className="page">
       {/* Tabs row like screenshot */}
-      <SummaryCards />
+      <SummaryCards currentUserId={currentUser?.id ?? null} />
       <div className="tabsRow">
         <button className={mode === "SINGLE" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("SINGLE")} type="button">
-          <span className="tabIcon">🔍</span> Single Screening
+          <span className="tabIcon">&#x1F50D;</span>
+          <span>Single Screening</span>
+          <span className="executionModeBadge executionModeBadgeSync">Sync</span>
         </button>
         <button className={mode === "BATCH" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("BATCH")} type="button">
-          <span className="tabIcon">📄</span> Batch Screening
+          <span className="tabIcon">&#x1F4C4;</span>
+          <span>Batch Screening</span>
+          <span className="executionModeBadge executionModeBadgeAsync">Async</span>
         </button>
 
         <button className="btnGhost" type="button" onClick={clearAll} disabled={submitting} style={{ marginLeft: "auto" }}>
@@ -990,6 +1182,25 @@ export function ScreeningDetailPage() {
                     onChange={(uiType) => setEntityTypeForAll(uiType)}
                     options={ENTITY_TYPE_OPTIONS}
                   />
+                </div>
+              </div>
+
+              <ScreeningTypeCards
+                selected={singleScreeningTypes}
+                onToggle={(value) => toggleScreeningType(value, setSingleScreeningTypes)}
+              />
+
+              <div className="mockModeCard">
+                <label className="mockModeCheck">
+                  <input
+                    type="checkbox"
+                    checked={singleMockScreening}
+                    onChange={(e) => setSingleMockScreening(e.target.checked)}
+                  />
+                  <span>Mock screening only (check hits, do not generate Actimize alert)</span>
+                </label>
+                <div className="mockModeHint">
+                  Uncheck this to generate an alert in Actimize during single screening.
                 </div>
               </div>
 
@@ -1268,11 +1479,11 @@ export function ScreeningDetailPage() {
               onClick={() => setTemplatesOpen((v) => !v)}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span className="accordionIcon">⬇</span>
+                <span className="accordionIcon">{"\u2B07"}</span>
                 <span>Download Screening Templates</span>
                 <span className="badgeCount">5 templates</span>
               </div>
-              <span className="chev">{templatesOpen ? "▴" : "▾"}</span>
+              <span className="chev">{templatesOpen ? "\u25B4" : "\u25BE"}</span>
             </button>
 
             {/* Accordion content */}
@@ -1316,6 +1527,25 @@ export function ScreeningDetailPage() {
               <input value={batchName} onChange={(e) => setBatchName(e.target.value)} placeholder="e.g., Q1 2024 Vendor Screening" />
             </div>
 
+            <ScreeningTypeCards
+              selected={batchScreeningTypes}
+              onToggle={(value) => toggleScreeningType(value, setBatchScreeningTypes)}
+            />
+
+            <div className="mockModeCard">
+              <label className="mockModeCheck">
+                <input
+                  type="checkbox"
+                  checked={batchDailyScreening}
+                  onChange={(e) => setBatchDailyScreening(e.target.checked)}
+                />
+                <span>Daily Screening</span>
+              </label>
+              <div className="mockModeHint">
+                If enabled, this batch is automatically re-screened daily shortly after 12:00 AM Eastern Time.
+              </div>
+            </div>
+
             {/* Dropzone */}
             <div
               className={dragOver ? "dropzone dragOver" : "dropzone"}
@@ -1337,7 +1567,7 @@ export function ScreeningDetailPage() {
               role="button"
               tabIndex={0}
             >
-              <div className="dropIconCircle">⬆</div>
+              <div className="dropIconCircle">{"\u2B06"}</div>
               <div className="dropText">
                 {batchFileName ? (
                   <>
@@ -1379,11 +1609,25 @@ export function ScreeningDetailPage() {
       {/* Screening Results (under BOTH tabs) */}
       <div className="card" style={{ marginTop: 18 }}>
         <div className="resultsHeader">
-          <h2>Screening Results</h2>
+          <div className="resultsTitleRow">
+            <h2>Screening Results</h2>
+            <button
+              type="button"
+              className="iconBtn"
+              title="Refresh screening results"
+              aria-label="Refresh screening results"
+              onClick={refreshResults}
+            >
+              <RefreshIcon />
+            </button>
+          </div>
 
           <div className="resultsFilters">
+            <div className="resultsUserBadge">
+              {currentUser ? `User: ${currentUser.name}` : "User: Not selected"}
+            </div>
             <div className="searchBox">
-              <span className="searchIcon">🔍</span>
+              <span className="searchIcon">{"\u{1F50D}"}</span>
               <input
                 value={search}
                 onChange={(e) => {
@@ -1427,6 +1671,7 @@ export function ScreeningDetailPage() {
         </div>
 
         <div className="cardBody">
+          {dailyDisableError ? <div className="errorBox" style={{ marginBottom: 10 }}>{dailyDisableError}</div> : null}
           <div className="tableWrap">
             <table className="table">
               <thead>
@@ -1437,7 +1682,7 @@ export function ScreeningDetailPage() {
                   <th style={{ width: 140 }}>Status</th>
                   <th style={{ width: 140 }}>Matching Score</th>
                   <th style={{ width: 120 }}>Date</th>
-                  <th style={{ width: 110, textAlign: "right" }}>Hit Entity</th>
+                  <th style={{ width: 230, textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1452,25 +1697,39 @@ export function ScreeningDetailPage() {
                     <tr key={r.id}>
                       <td className="entityCell">
                         <span className="entityIcon" aria-hidden="true">
-                          {r.type === "Individual" ? "👤" : r.type === "Organization" ? "🏢" : r.type === "Vessel" ? "🛳️" : "✈️"}
+                          {uiTypeIcon(r.type)}
                         </span>
                         <span>{r.entity}</span>
                       </td>
                       <td className="muted">{r.type}</td>
-                      <td className="muted">{r.country || "—"}</td>
+                      <td className="muted">{r.country || "\u2014"}</td>
                       <td>{badge(r.uiStatus)}</td>
                       <td className="muted">{formatMatchingScore(r.matchingScore)}</td>
                       <td className="muted">{r.date}</td>
                       <td style={{ textAlign: "right" }}>
-                        <button
-                          type="button"
-                          className="iconBtn"
-                          title="View hit entity"
-                          aria-label={`View hit entity for ${r.entity}`}
-                          onClick={() => openHitEntity(r)}
-                        >
-                          <ViewIcon />
-                        </button>
+                        <div className="rowActions">
+                          {r.dailyScheduleActive && r.dailyScheduleId ? (
+                            <button
+                              type="button"
+                              className="btnGhostSmall"
+                              title={`Disable daily screening for ${(r.raw?.submission?.fileName as string) || "this batch file"}`}
+                              aria-label={`Disable daily screening for ${(r.raw?.submission?.fileName as string) || r.entity}`}
+                              disabled={disablingScheduleId === r.dailyScheduleId}
+                              onClick={() => void disableDailyScreeningForBatch(r)}
+                            >
+                              {disablingScheduleId === r.dailyScheduleId ? "Disabling..." : "Disable Daily"}
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="iconBtn"
+                            title="View hit entity"
+                            aria-label={`View hit entity for ${r.entity}`}
+                            onClick={() => openHitEntity(r)}
+                          >
+                            <ViewIcon />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1486,11 +1745,11 @@ export function ScreeningDetailPage() {
 
               <div className="pagerRight">
                 <button className="pagerBtn" disabled={pageSafe <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} type="button">
-                  ‹
+                  {"\u2039"}
                 </button>
                 <div className="pagerText">Page {pageSafe} of {totalPages}</div>
                 <button className="pagerBtn" disabled={pageSafe >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} type="button">
-                  ›
+                  {"\u203A"}
                 </button>
               </div>
             </div>
@@ -1504,7 +1763,7 @@ export function ScreeningDetailPage() {
             <div className="hitEntityHeader">
               <h3>Hit Entity Details</h3>
               <button type="button" className="iconBtn" onClick={() => setHitEntityDialog(null)} aria-label="Close hit entity details">
-                ×
+                {"\u00D7"}
               </button>
             </div>
             <div className="hitEntityBody">
@@ -1611,10 +1870,10 @@ function SummaryCardIcon({ tone }: { tone: SummaryTone }) {
   );
 }
 
-function SummaryCards() {
-  const [submissions] = useRecoilState(submissionsState);
+function SummaryCards({ currentUserId }: { currentUserId: string | null }) {
+  const submissions = useRecoilValue(submissionsState);
 
-  // Count “result rows” the same way your table does (SINGLE multi + BATCH items + legacy)
+  // Count "result rows" the same way your table does (SINGLE multi + BATCH items + legacy)
   const counts = useMemo(() => {
     let total = 0;
     let clear = 0;
@@ -1630,7 +1889,11 @@ function SummaryCards() {
       if (status === "Match") match += 1;
     };
 
+    if (!currentUserId) return { total, clear, potential, match, pending };
+
     submissions.forEach((s: any) => {
+      if (s?.createdByUserId !== currentUserId) return;
+
       // New SINGLE multi
       if (s.mode === "SINGLE" && s.details?.meta && s.details?.responses) {
         const meta = s.details.meta as { key: string }[];
@@ -1665,7 +1928,7 @@ function SummaryCards() {
     });
 
     return { total, clear, potential, match, pending };
-  }, [submissions]);
+  }, [submissions, currentUserId]);
 
   const items: { tone: SummaryTone; label: string; value: number }[] = [
     { tone: "total", label: "TOTAL SCREENINGS", value: counts.total },
@@ -1691,5 +1954,6 @@ function SummaryCards() {
     </div>
   );
 }
+
 
 
