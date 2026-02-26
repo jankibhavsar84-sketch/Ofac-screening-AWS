@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScreeningRouteImport } from './routes/screening'
 import { Route as ManageUsersRouteImport } from './routes/manage-users'
 import { Route as IntroRouteImport } from './routes/intro'
+import { Route as DailySchedulesRouteImport } from './routes/daily-schedules'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ScreeningRoute = ScreeningRouteImport.update({
@@ -29,6 +30,11 @@ const IntroRoute = IntroRouteImport.update({
   path: '/intro',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DailySchedulesRoute = DailySchedulesRouteImport.update({
+  id: '/daily-schedules',
+  path: '/daily-schedules',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/daily-schedules': typeof DailySchedulesRoute
   '/intro': typeof IntroRoute
   '/manage-users': typeof ManageUsersRoute
   '/screening': typeof ScreeningRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/daily-schedules': typeof DailySchedulesRoute
   '/intro': typeof IntroRoute
   '/manage-users': typeof ManageUsersRoute
   '/screening': typeof ScreeningRoute
@@ -50,20 +58,33 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/daily-schedules': typeof DailySchedulesRoute
   '/intro': typeof IntroRoute
   '/manage-users': typeof ManageUsersRoute
   '/screening': typeof ScreeningRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/intro' | '/manage-users' | '/screening'
+  fullPaths:
+    | '/'
+    | '/daily-schedules'
+    | '/intro'
+    | '/manage-users'
+    | '/screening'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/intro' | '/manage-users' | '/screening'
-  id: '__root__' | '/' | '/intro' | '/manage-users' | '/screening'
+  to: '/' | '/daily-schedules' | '/intro' | '/manage-users' | '/screening'
+  id:
+    | '__root__'
+    | '/'
+    | '/daily-schedules'
+    | '/intro'
+    | '/manage-users'
+    | '/screening'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DailySchedulesRoute: typeof DailySchedulesRoute
   IntroRoute: typeof IntroRoute
   ManageUsersRoute: typeof ManageUsersRoute
   ScreeningRoute: typeof ScreeningRoute
@@ -92,6 +113,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IntroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/daily-schedules': {
+      id: '/daily-schedules'
+      path: '/daily-schedules'
+      fullPath: '/daily-schedules'
+      preLoaderRoute: typeof DailySchedulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +132,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DailySchedulesRoute: DailySchedulesRoute,
   IntroRoute: IntroRoute,
   ManageUsersRoute: ManageUsersRoute,
   ScreeningRoute: ScreeningRoute,

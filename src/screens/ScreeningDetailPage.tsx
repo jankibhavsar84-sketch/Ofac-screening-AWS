@@ -1,10 +1,11 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { useRecoilState, useRecoilValue } from "recoil";
+import { useAuth } from "react-oidc-context";
 import { z } from "zod";
 import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
 import { matchBatch, matchSync, removeDailySchedule, type EntityExample } from "../api/openSanctions";
-import { activeUserIdState, usersState } from "../state/users";
+import { buildIdentity } from "../auth/claims";
 import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutoSuggest";
 import { IsoDateInput } from "../components/IsoDateInput";
@@ -481,13 +482,22 @@ function ScreeningTypeCards({
 }
 
 export function ScreeningDetailPage() {
+  const auth = useAuth();
+  const identity = useMemo(() => buildIdentity(auth.user), [auth.user]);
   const [mode, setMode] = useState<Mode>("SINGLE");
 
   const [submissions, setSubmissions] = useRecoilState(submissionsState);
   const [, setLatest] = useRecoilState(latestResultState);
-  const users = useRecoilValue(usersState);
-  const [activeUserId, setActiveUserId] = useRecoilState(activeUserIdState);
-  const currentUser = useMemo(() => users.find((u) => u.id === activeUserId) ?? null, [users, activeUserId]);
+  const currentUser = useMemo(
+    () =>
+      identity
+        ? {
+            id: identity.id,
+            name: identity.name,
+          }
+        : null,
+    [identity]
+  );
 
   // SINGLE (multi-add)
   const [names, setNames] = useState<NameItem[]>([
@@ -554,12 +564,6 @@ export function ScreeningDetailPage() {
     }
     setPage(1);
   }
-
-  useEffect(() => {
-    if (users.length === 0) return;
-    const exists = users.some((u) => u.id === activeUserId);
-    if (!exists) setActiveUserId(users[0].id);
-  }, [users, activeUserId, setActiveUserId]);
 
   const singleSchema = useMemo(() => {
     // Validate each name item basic requirements + DOB rules for individual only
@@ -733,7 +737,7 @@ export function ScreeningDetailPage() {
 
     try {
       if (!currentUser) {
-        setSingleError("Select an active user from the header before running screening.");
+        setSingleError("Authenticated user context is missing. Please sign in again.");
         setSubmitting(false);
         return;
       }
@@ -829,7 +833,7 @@ export function ScreeningDetailPage() {
     setBatchError(null);
 
     if (!currentUser) {
-      setBatchError("Select an active user from the header before starting batch screening.");
+      setBatchError("Authenticated user context is missing. Please sign in again.");
       return;
     }
     if (!safeTrim(batchName)) {
@@ -1455,7 +1459,6 @@ export function ScreeningDetailPage() {
               </div>
 
               {singleError ? <div className="errorBox">{singleError}</div> : null}
-
               <button className="btnRunWide" type="submit" disabled={submitting}>
                 {submitting ? "Running..." : "Run OFAC Screening"}
               </button>
@@ -1596,7 +1599,6 @@ export function ScreeningDetailPage() {
             </div>
 
             {batchError ? <div className="errorBox">{batchError}</div> : null}
-
             <form onSubmit={submitBatch}>
               <button className="btnBatchWide" type="submit" disabled={submitting}>
                 {submitting ? "Starting..." : "Start Batch Screening"}
@@ -1624,7 +1626,7 @@ export function ScreeningDetailPage() {
 
           <div className="resultsFilters">
             <div className="resultsUserBadge">
-              {currentUser ? `User: ${currentUser.name}` : "User: Not selected"}
+              {currentUser ? `User: ${currentUser.name}` : "User: Not authenticated"}
             </div>
             <div className="searchBox">
               <span className="searchIcon">{"\u{1F50D}"}</span>
@@ -1954,6 +1956,8 @@ function SummaryCards({ currentUserId }: { currentUserId: string | null }) {
     </div>
   );
 }
+
+
 
 
 

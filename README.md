@@ -124,6 +124,13 @@ Frontend (`.env`, see `.env.example`):
 - `VITE_SCREENING_API_BASE_URL` default `/api/v1`
 - `VITE_SCREENING_POLL_INTERVAL_MS` default `750`
 - `VITE_SCREENING_JOB_TIMEOUT_MS` default `90000`
+- `VITE_OIDC_AUTHORITY` ex: `http://localhost:8081/realms/screening-local`
+- `VITE_OIDC_CLIENT_ID` ex: `screening-frontend`
+- `VITE_OIDC_REDIRECT_URI` ex: `http://localhost:8080/`
+- `VITE_OIDC_POST_LOGOUT_REDIRECT_URI` ex: `http://localhost:8080/`
+- `VITE_OIDC_SCOPE` ex: `openid profile email roles`
+- `VITE_OIDC_IDLE_TIMEOUT_MS` ex: `900000` (15 minutes; set `0` to disable idle auto-logout)
+- `VITE_OIDC_CLEAR_SESSION_ON_CLOSE` ex: `true` (stores OIDC session in `sessionStorage`; clears on tab/browser close)
 
 Backend/Worker (`backend/.env.example`):
 
@@ -133,12 +140,59 @@ Backend/Worker (`backend/.env.example`):
 - `DAILY_SCREENING_TIMEZONE=America/New_York`
 - `DAILY_SCREENING_HOUR=0`
 - `DAILY_SCREENING_MINUTE=5`
+- `AUTH_ENABLED=true`
+- `AUTH_ISSUER=http://localhost:8081/realms/screening-local`
+- `AUTH_JWKS_URL=http://localhost:8081/realms/screening-local/protocol/openid-connect/certs`
+- `AUTH_AUDIENCE=` (optional; leave blank to skip audience validation in local simulation)
+- `AUTH_ALGORITHMS=RS256`
+
+## OIDC/OAuth2 Local Simulation (Keycloak)
+
+1. Start the stack (includes Keycloak):
+   ```bash
+   docker compose up --build
+   ```
+2. Keycloak realm is auto-imported from `docs/keycloak/realm-screening-local.json`.
+3. Keycloak admin console: `http://localhost:8081` (admin/admin).
+4. Preloaded test users:
+   - `screening.admin` / `Admin123!` (read + write + admin)
+   - `screening.analyst` / `Analyst123!` (read + write)
+   - `screening.viewer` / `Viewer123!` (read only)
+5. If you prefer manual setup, create realm/client with:
+   - Realm: `screening-local`
+   - Client: `screening-frontend` (Public, Standard Flow ON, PKCE S256 ON)
+   - Redirect URIs: `http://localhost:8080/*` and `http://localhost:5173/*`
+   - Web Origins: `http://localhost:8080`, `http://localhost:5173`
+6. Add realm roles (or equivalent scopes in your IdP mapping):
+   - `screening.read`
+   - `screening.write`
+   - `screening.admin`
+7. Start app with env from `.env.example` and `backend/.env.example`.
+
+Legacy manual Keycloak bootstrap:
+1. Start only Keycloak:
+   ```bash
+   docker run --name keycloak -p 8081:8080 \
+     -e KEYCLOAK_ADMIN=admin \
+     -e KEYCLOAK_ADMIN_PASSWORD=admin \
+     quay.io/keycloak/keycloak:latest start-dev
+   ```
+
+Authorization behavior:
+- Frontend requires OIDC sign-in before app access.
+- Backend requires JWT bearer token for screening APIs.
+- Endpoint authorization:
+  - `screening.read`: read flows (job status/list schedules)
+  - `screening.write`: submit sync/batch and modify schedules
+  - `screening.admin`: audit events endpoint and admin-level access
 
 ## API Endpoints
 
 - `POST /api/v1/screenings/jobs` create async job
 - `GET /api/v1/screenings/jobs/{job_id}` get progress/result
 - `POST /api/v1/screenings/match` synchronous screening (no queue, immediate response)
+- `GET /api/v1/screenings/daily-schedules` list active daily schedules
+- `DELETE /api/v1/screenings/daily-schedules/{schedule_id}` disable one daily schedule
 - `GET /api/v1/audit-events?limit=200&user_id=<id>` read audit trail
 
 ## Notes

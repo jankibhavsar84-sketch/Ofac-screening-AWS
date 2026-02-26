@@ -1,6 +1,8 @@
 import { type FormEvent, useMemo, useState } from "react";
 import { useRecoilState } from "recoil";
+import { useAuth } from "react-oidc-context";
 import { z } from "zod";
+import { buildIdentity, hasRole, hasScope } from "../auth/claims";
 import { usersState, type UserRole } from "../state/users";
 
 const ROLE_OPTIONS: UserRole[] = ["Admin", "Compliance Officer", "Analyst", "Viewer"];
@@ -113,12 +115,30 @@ function TrashIcon() {
 }
 
 export function ManageUsersPage() {
+  const auth = useAuth();
+  const identity = buildIdentity(auth.user);
+  const allowed = hasRole(identity, "admin", "screening.admin") || hasScope(identity, "screening.admin");
   const [users, setUsers] = useRecoilState(usersState);
   const [inviteFullName, setInviteFullName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<UserRole>("Analyst");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  if (!allowed) {
+    return (
+      <div className="page">
+        <div className="card">
+          <div className="cardHeader">
+            <h2>Access Denied</h2>
+          </div>
+          <div className="cardBody">
+            <p className="muted">Administrator access is required (`admin` or `screening.admin`).</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const sortedUsers = useMemo(
     () => [...users].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),

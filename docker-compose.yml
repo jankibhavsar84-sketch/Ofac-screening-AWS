@@ -1,4 +1,15 @@
 services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    command: start-dev --http-port=8080 --import-realm
+    volumes:
+      - ./docs/keycloak:/opt/keycloak/data/import
+    ports:
+      - "8081:8080"
+
   localstack:
     image: localstack/localstack:3
     environment:
@@ -24,10 +35,16 @@ services:
       - SCREENING_TPS=32
       - SCREENING_POLL_INTERVAL_MS=500
       - SCREENING_SYNC_TIMEOUT_S=90
+      - AUTH_ENABLED=true
+      - AUTH_ISSUER=http://keycloak:8080/realms/screening-local
+      - AUTH_JWKS_URL=http://keycloak:8080/realms/screening-local/protocol/openid-connect/certs
+      - AUTH_AUDIENCE=
+      - AUTH_ALGORITHMS=RS256
     volumes:
       - screening-data:/data
     depends_on:
       - localstack
+      - keycloak
     ports:
       - "8000:8000"
 
@@ -45,11 +62,17 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
       - ACTIMIZE_MOCK=true
       - SCREENING_TPS=32
+      - AUTH_ENABLED=true
+      - AUTH_ISSUER=http://keycloak:8080/realms/screening-local
+      - AUTH_JWKS_URL=http://keycloak:8080/realms/screening-local/protocol/openid-connect/certs
+      - AUTH_AUDIENCE=
+      - AUTH_ALGORITHMS=RS256
     volumes:
       - screening-data:/data
     depends_on:
       - localstack
       - backend
+      - keycloak
 
   frontend:
     build:
@@ -62,4 +85,3 @@ services:
 
 volumes:
   screening-data:
-

@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { Outlet, createRootRoute, Link, useRouterState } from "@tanstack/react-router";
-import { useRecoilState } from "recoil";
-import { activeUserIdState, usersState } from "../state/users";
+import { useAuth } from "react-oidc-context";
+import { buildIdentity, hasRole, hasScope } from "../auth/claims";
+import { setAccessToken } from "../auth/session";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -10,18 +11,14 @@ export const Route = createRootRoute({
 function RootLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isUserAdministrationPage = pathname.startsWith("/manage-users");
-  const [users] = useRecoilState(usersState);
-  const [activeUserId, setActiveUserId] = useRecoilState(activeUserIdState);
+  const isDailySchedulePage = pathname.startsWith("/daily-schedules");
+  const auth = useAuth();
+  const identity = buildIdentity(auth.user);
+  const canManageUsers = hasRole(identity, "admin", "screening.admin") || hasScope(identity, "screening.admin");
 
   useEffect(() => {
-    if (users.length === 0) {
-      if (activeUserId) setActiveUserId(null);
-      return;
-    }
-
-    const exists = users.some((u) => u.id === activeUserId);
-    if (!exists) setActiveUserId(users[0].id);
-  }, [users, activeUserId, setActiveUserId]);
+    setAccessToken(auth.user?.access_token ?? null);
+  }, [auth.user]);
 
   return (
     <div className="appShell">
@@ -31,12 +28,18 @@ function RootLayout() {
             <div className="brandIcon" aria-hidden="true">{"\u{1F6E1}\uFE0F"}</div>
             <div className="brandText">
               <div className="brandTitle">
-                {isUserAdministrationPage ? "User Administration" : "OFAC Screening"}
+                {isUserAdministrationPage
+                  ? "User Administration"
+                  : isDailySchedulePage
+                    ? "Daily Schedule Administration"
+                    : "OFAC Screening"}
               </div>
               <div className="brandSub">
                 {isUserAdministrationPage
                   ? "Manage team members and access levels"
-                  : "Sanctions compliance screening platform"}
+                  : isDailySchedulePage
+                    ? "Remove batch files from daily screening schedules"
+                    : "Sanctions compliance screening platform"}
               </div>
             </div>
           </div>
@@ -48,25 +51,30 @@ function RootLayout() {
             <Link to="/screening" className="navLink" activeProps={{ className: "navLink active" }}>
               Screening
             </Link>
-            <Link to="/manage-users" className="navLink" activeProps={{ className: "navLink active" }}>
-              User Administration
-            </Link>
+            {canManageUsers ? (
+              <Link to="/daily-schedules" className="navLink" activeProps={{ className: "navLink active" }}>
+                Daily Schedules
+              </Link>
+            ) : null}
+            {canManageUsers ? (
+              <Link to="/manage-users" className="navLink" activeProps={{ className: "navLink active" }}>
+                User Administration
+              </Link>
+            ) : null}
           </nav>
-          <div className="activeUserPicker">
-            <label htmlFor="active-user-select">User</label>
-            <select
-              id="active-user-select"
-              value={activeUserId ?? ""}
-              onChange={(e) => setActiveUserId(e.target.value || null)}
-              disabled={users.length === 0}
+          <div className="authUserPanel">
+            <div className="authUserMeta">
+              <div className="authUserName">{identity?.name ?? "Unknown User"}</div>
+              <div className="authUserEmail">{identity?.email || identity?.id || ""}</div>
+            </div>
+            <button
+              type="button"
+              className="btnGhost"
+              onClick={() => void auth.signoutRedirect()}
+              title="Sign out"
             >
-              {users.length === 0 ? <option value="">No users</option> : null}
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
+              Sign Out
+            </button>
           </div>
         </div>
       </header>

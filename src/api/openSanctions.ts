@@ -1,3 +1,5 @@
+import { getAccessToken } from "../auth/session";
+
 export type EntityExample = {
   schema: string;
   properties: Record<string, any>;
@@ -111,6 +113,15 @@ async function parseApiError(resp: Response): Promise<string> {
   return `${resp.status}: ${raw}`;
 }
 
+function withAuthHeaders(headers: Record<string, string> = {}): Record<string, string> {
+  const merged: Record<string, string> = { ...headers };
+  const token = getAccessToken();
+  if (token) {
+    merged.Authorization = `Bearer ${token}`;
+  }
+  return merged;
+}
+
 type BatchOptions = {
   dailyScreening?: boolean;
   batchName?: string;
@@ -141,7 +152,7 @@ export async function submitScreeningJob(
   const body = buildBatchBody(queries, screeningTypes, options);
   const createResp = await fetch(`${baseUrl}/screenings/jobs`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
 
@@ -153,7 +164,9 @@ export async function submitScreeningJob(
 
 export async function getScreeningJob(jobId: string): Promise<JobProgress> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
-  const statusResp = await fetch(`${baseUrl}/screenings/jobs/${encodeURIComponent(jobId)}`);
+  const statusResp = await fetch(`${baseUrl}/screenings/jobs/${encodeURIComponent(jobId)}`, {
+    headers: withAuthHeaders(),
+  });
   if (!statusResp.ok) {
     throw new Error(`Failed to check screening job status: ${await parseApiError(statusResp)}`);
   }
@@ -212,7 +225,7 @@ export async function matchSync(
 
   const resp = await fetch(`${baseUrl}/screenings/match`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
 
@@ -225,7 +238,9 @@ export async function matchSync(
 
 export async function listDailySchedules(): Promise<DailySchedule[]> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
-  const resp = await fetch(`${baseUrl}/screenings/daily-schedules`);
+  const resp = await fetch(`${baseUrl}/screenings/daily-schedules`, {
+    headers: withAuthHeaders(),
+  });
   if (!resp.ok) {
     throw new Error(`Failed to load daily schedules: ${await parseApiError(resp)}`);
   }
@@ -240,6 +255,7 @@ export async function removeDailySchedule(scheduleId: string, user?: { id?: stri
 
   const resp = await fetch(url.toString(), {
     method: "DELETE",
+    headers: withAuthHeaders(),
   });
   if (!resp.ok) {
     throw new Error(`Failed to remove daily schedule: ${await parseApiError(resp)}`);

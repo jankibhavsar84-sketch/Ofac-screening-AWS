@@ -4,6 +4,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .actimize import ActimizeClient
+from .auth import AuthPrincipal, require_any_scope
 from .config import settings
 from .models import AuditEvent, DailyScheduleInfo, EntityMatchResponse, MatchJobAccepted, MatchJobProgress, MatchJobRequest
 from .queue import SqsQueue
@@ -41,15 +42,24 @@ def health() -> dict[str, str]:
 
 
 @app.post("/api/v1/screenings/jobs", response_model=MatchJobAccepted)
-def create_screening_job(payload: MatchJobRequest, svc: ScreeningService = Depends(get_service)) -> MatchJobAccepted:
+def create_screening_job(
+    payload: MatchJobRequest,
+    principal: AuthPrincipal = Depends(require_any_scope("screening.write")),
+    svc: ScreeningService = Depends(get_service),
+) -> MatchJobAccepted:
     try:
+        payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": principal.user_name})
         return svc.submit_job(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/v1/screenings/jobs/{job_id}", response_model=MatchJobProgress)
-def get_screening_job(job_id: str, svc: ScreeningService = Depends(get_service)) -> MatchJobProgress:
+def get_screening_job(
+    job_id: str,
+    _: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> MatchJobProgress:
     progress = svc.get_progress(job_id)
     if not progress:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
@@ -57,7 +67,10 @@ def get_screening_job(job_id: str, svc: ScreeningService = Depends(get_service))
 
 
 @app.get("/api/v1/screenings/daily-schedules", response_model=list[DailyScheduleInfo])
-def list_daily_schedules(svc: ScreeningService = Depends(get_service)) -> list[DailyScheduleInfo]:
+def list_daily_schedules(
+    _: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[DailyScheduleInfo]:
     return svc.list_daily_schedules()
 
 
@@ -66,9 +79,12 @@ def remove_daily_schedule(
     schedule_id: str,
     user_id: str | None = Query(default=None),
     user_name: str | None = Query(default=None),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.write")),
     svc: ScreeningService = Depends(get_service),
 ) -> dict[str, str]:
-    removed = svc.remove_daily_schedule(schedule_id, user_id=user_id, user_name=user_name)
+    actor_user_id = principal.user_id if principal.user_id else user_id
+    actor_user_name = principal.user_name if principal.user_name else user_name
+    removed = svc.remove_daily_schedule(schedule_id, user_id=actor_user_id, user_name=actor_user_name)
     if not removed:
         raise HTTPException(status_code=404, detail=f"Daily schedule {schedule_id} not found")
     return {"status": "removed", "schedule_id": schedule_id}
@@ -78,15 +94,20 @@ def remove_daily_schedule(
 def list_audit_events(
     limit: int = Query(default=200, ge=1, le=1000),
     user_id: str | None = Query(default=None),
+    _: AuthPrincipal = Depends(require_any_scope("screening.admin")),
     svc: ScreeningService = Depends(get_service),
 ) -> list[AuditEvent]:
     return svc.list_audit_events(limit=limit, user_id=user_id)
 
 
 @app.post("/api/v1/screenings/match", response_model=EntityMatchResponse)
-def match_sync(payload: MatchJobRequest) -> EntityMatchResponse:
+def match_sync(
+    payload: MatchJobRequest,
+    principal: AuthPrincipal = Depends(require_any_scope("screening.write")),
+) -> EntityMatchResponse:
     if not payload.queries:
         raise HTTPException(status_code=400, detail="At least one query is required")
+    payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": principal.user_name})
     repository.add_audit_event(
         action="SYNC_SCREENING_SUBMITTED",
         user_id=payload.user_id,

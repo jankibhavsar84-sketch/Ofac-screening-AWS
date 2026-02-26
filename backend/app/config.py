@@ -50,6 +50,11 @@ class Settings:
     daily_screening_hour: int
     daily_screening_minute: int
     daily_screening_check_interval_s: int
+    auth_enabled: bool
+    auth_issuer: str
+    auth_jwks_url: str
+    auth_audience: str
+    auth_algorithms: str
 
 
 def load_settings() -> Settings:
@@ -75,6 +80,11 @@ def load_settings() -> Settings:
         daily_screening_hour=_to_int(os.getenv("DAILY_SCREENING_HOUR"), 0),
         daily_screening_minute=_to_int(os.getenv("DAILY_SCREENING_MINUTE"), 5),
         daily_screening_check_interval_s=_to_int(os.getenv("DAILY_SCREENING_CHECK_INTERVAL_S"), 30),
+        auth_enabled=_to_bool(os.getenv("AUTH_ENABLED"), False),
+        auth_issuer=os.getenv("AUTH_ISSUER", "").strip(),
+        auth_jwks_url=os.getenv("AUTH_JWKS_URL", "").strip(),
+        auth_audience=os.getenv("AUTH_AUDIENCE", "").strip(),
+        auth_algorithms=os.getenv("AUTH_ALGORITHMS", "RS256").strip() or "RS256",
     )
 
 

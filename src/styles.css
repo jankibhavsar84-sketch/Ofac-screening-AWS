@@ -78,35 +78,74 @@ a{color:inherit}
 .navLink.active{
   background:#f1f5ff;color:#1e293b;font-weight:700;
 }
-.activeUserPicker{
+.authUserPanel{
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:10px;
 }
-.activeUserPicker label{
+.authUserMeta{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  min-width:180px;
+}
+.authUserName{
   font-size:12px;
   font-weight:700;
-  color:#64748b;
+  color:#1e293b;
+  max-width:260px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
-.activeUserPicker select{
-  min-width:170px;
-  height:36px;
-  padding:6px 10px;
-  border-radius:10px;
+.authUserEmail{
+  font-size:11px;
+  color:#64748b;
+  max-width:260px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
 @media(max-width:850px){
   .topHeaderInner{
     flex-wrap:wrap;
   }
-  .activeUserPicker{
+  .authUserPanel{
     width:100%;
     justify-content:flex-end;
+  }
+  .authUserMeta{
+    align-items:flex-start;
   }
 }
 
 .pageMain{padding:22px}
 .page{max-width:980px;margin:0 auto}
+
+.authGate{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:22px;
+}
+.authGateCard{
+  width:100%;
+  max-width:560px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:24px;
+}
+.authGateCard h2{
+  margin:0 0 8px;
+}
+.authGateCard p{
+  margin:0 0 16px;
+  color:#64748b;
+}
 
 .card{
   background:var(--card);
@@ -121,6 +160,12 @@ a{color:inherit}
   margin:0;font-size:18px;
 }
 .cardBody{padding:18px}
+.adminScheduleHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
 
 .tabsRow{display:flex;gap:16px;align-items:center;margin-bottom:16px}
 .tabBtn{
