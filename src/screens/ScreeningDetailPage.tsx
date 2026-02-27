@@ -4,7 +4,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { useAuth } from "react-oidc-context";
 import { z } from "zod";
 import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
-import { matchSync, removeDailySchedule, submitScreeningJob, waitForScreeningJob, type EntityExample, type EntityMatches } from "../api/openSanctions";
+import { listDailySchedules, matchSync, removeDailySchedule, submitScreeningJob, waitForScreeningJob, type EntityExample, type EntityMatches } from "../api/openSanctions";
 import { buildIdentity } from "../auth/claims";
 import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutoSuggest";
@@ -651,15 +651,49 @@ export function ScreeningDetailPage() {
     setSelected((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
   }
 
-  function refreshResults() {
+  async function reconcileDailyScheduleFlags(items: Submission[]): Promise<Submission[]> {
     try {
-      const raw = localStorage.getItem("tapan_ofac_submissions_v1");
-      const parsed = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(parsed)) setSubmissions(parsed as Submission[]);
+      const schedules = await listDailySchedules();
+      const activeScheduleIds = new Set(
+        schedules
+          .map((s) => safeTrim(String(s.schedule_id || "")))
+          .filter(Boolean)
+      );
+
+      return items.map((s) => {
+        if (s.mode !== "BATCH") return s;
+        const scheduleId = safeTrim(String((s as any).dailyScheduleId || ""));
+        if (!scheduleId) return s;
+
+        const isActive = activeScheduleIds.has(scheduleId);
+        const currentlyActive = Boolean((s as any).dailyScheduleActive === true);
+        if (isActive === currentlyActive) return s;
+        return {
+          ...s,
+          dailyScheduleActive: isActive,
+          dailyScreening: isActive ? Boolean((s as any).dailyScreening ?? true) : false,
+        } as BatchSubmission;
+      });
     } catch {
-      // ignore malformed storage
+      return items;
     }
-    setPage(1);
+  }
+
+  function refreshResults() {
+    void (async () => {
+      try {
+        const raw = localStorage.getItem("tapan_ofac_submissions_v1");
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(parsed)) return;
+
+        const reconciled = await reconcileDailyScheduleFlags(parsed as Submission[]);
+        setSubmissions(reconciled);
+      } catch {
+        // ignore malformed storage
+      } finally {
+        setPage(1);
+      }
+    })();
   }
 
   const singleSchema = useMemo(() => {
