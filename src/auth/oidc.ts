@@ -1,9 +1,9 @@
 import type { AuthProviderProps } from "react-oidc-context";
 import { WebStorageStateStore } from "oidc-client-ts";
+import { appEnv } from "../config/env";
 
 function env(name: string, fallback = ""): string {
-  const value = (import.meta.env[name] as string) ?? fallback;
-  return String(value).trim();
+  return appEnv(name, fallback);
 }
 
 function envInt(name: string, fallback: number): number {
@@ -30,8 +30,9 @@ const clientId = env("VITE_OIDC_CLIENT_ID", "screening-frontend");
 
 const redirectUri = env("VITE_OIDC_REDIRECT_URI", `${window.location.origin}/`);
 const postLogoutRedirectUri = env("VITE_OIDC_POST_LOGOUT_REDIRECT_URI", `${window.location.origin}/`);
-// Keep requested scopes to standard OIDC scopes; app authorization uses roles from token claims.
-const scope = env("VITE_OIDC_SCOPE", "openid profile email roles");
+// Cognito does not support `roles` default scope. Use standard OIDC scopes by default.
+const defaultScope = authority.includes("amazoncognito.com") ? "openid profile email" : "openid profile email roles";
+const scope = env("VITE_OIDC_SCOPE", defaultScope);
 export const oidcIdleTimeoutMs = envInt("VITE_OIDC_IDLE_TIMEOUT_MS", 15 * 60 * 1000);
 export const oidcClearSessionOnClose = envBool("VITE_OIDC_CLEAR_SESSION_ON_CLOSE", true);
 
@@ -53,10 +54,10 @@ export const oidcConfig: AuthProviderProps = {
   }),
 };
 
-if (oidcAuthEnabled && !(import.meta.env.VITE_OIDC_AUTHORITY as string)?.trim()) {
+if (oidcAuthEnabled && !appEnv("VITE_OIDC_AUTHORITY", "").trim()) {
   console.warn("VITE_OIDC_AUTHORITY is not set. Using local default authority:", authority);
 }
-if (oidcAuthEnabled && !(import.meta.env.VITE_OIDC_CLIENT_ID as string)?.trim()) {
+if (oidcAuthEnabled && !appEnv("VITE_OIDC_CLIENT_ID", "").trim()) {
   console.warn("VITE_OIDC_CLIENT_ID is not set. Using local default client_id:", clientId);
 }
 

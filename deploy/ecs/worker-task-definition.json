@@ -11,7 +11,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "worker",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260227124223",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260227151745",
                                      "essential":  true,
                                      "command":  [
                                                      "python",
@@ -62,6 +62,10 @@
                                                          {
                                                              "name":  "ACTIMIZE_API_KEY",
                                                              "value":  "ddae133d0725fee8b8b2f6d3bcc28f23"
+                                                         },
+                                                         {
+                                                             "name":  "APP_DB_URL",
+                                                             "value":  "postgresql://screening_admin:wab%29Mg%5EP-n2L%2AV7h%5Ef2%5DWxdi@screening-postgres-dev.c1y8yq0u2xoz.us-east-2.rds.amazonaws.com:5432/screening?sslmode=require"
                                                          }
                                                      ],
                                      "logConfiguration":  {

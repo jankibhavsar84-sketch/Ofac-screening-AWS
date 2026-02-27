@@ -1,4 +1,5 @@
 import type { User } from "oidc-client-ts";
+import { appEnv } from "../config/env";
 
 export type AuthIdentity = {
   id: string;
@@ -8,11 +9,34 @@ export type AuthIdentity = {
   roles: Set<string>;
 };
 
+export type AppRole = "admin" | "compliance" | "analyst" | "viewer";
+
+const ROLE_PERMISSION_MAP: Record<AppRole, string[]> = {
+  viewer: ["screening.read", "screening.single.mock"],
+  analyst: ["screening.read", "screening.write"],
+  compliance: ["screening.read", "screening.write", "screening.daily"],
+  admin: ["screening.read", "screening.write", "screening.daily", "screening.admin", "screening.useradmin", "screening.single.mock"],
+};
+
 function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.map((v) => String(v).trim()).filter(Boolean);
   }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
   return [];
+}
+
+function normalizeRole(role: string): string {
+  const normalized = role.trim().toLowerCase().replace(/[\s_-]+/g, " ");
+  if (!normalized) return "";
+  if (["admin", "screening admin", "screening.admin", "screening-admin"].includes(normalized)) return "admin";
+  if (["compliance", "compliance officer"].includes(normalized)) return "compliance";
+  if (normalized === "analyst") return "analyst";
+  if (normalized === "viewer") return "viewer";
+  return role.trim().toLowerCase();
 }
 
 function parseScopes(profile: Record<string, unknown>): Set<string> {
@@ -37,7 +61,7 @@ function parseRoles(profile: Record<string, unknown>): Set<string> {
   const realmAccess = profile.realm_access;
   if (realmAccess && typeof realmAccess === "object" && !Array.isArray(realmAccess)) {
     const realmRoles = toStringArray((realmAccess as Record<string, unknown>).roles);
-    realmRoles.forEach((r) => roles.add(r));
+    realmRoles.forEach((r) => roles.add(normalizeRole(r)));
   }
 
   const resourceAccess = profile.resource_access;
@@ -45,10 +69,15 @@ function parseRoles(profile: Record<string, unknown>): Set<string> {
     Object.values(resourceAccess as Record<string, unknown>).forEach((clientAccess) => {
       if (clientAccess && typeof clientAccess === "object" && !Array.isArray(clientAccess)) {
         const clientRoles = toStringArray((clientAccess as Record<string, unknown>).roles);
-        clientRoles.forEach((r) => roles.add(r));
+        clientRoles.forEach((r) => roles.add(normalizeRole(r)));
       }
     });
   }
+
+  toStringArray(profile.roles).forEach((r) => roles.add(normalizeRole(r)));
+  toStringArray(profile.groups).forEach((r) => roles.add(normalizeRole(r)));
+  toStringArray(profile["cognito:groups"]).forEach((r) => roles.add(normalizeRole(r)));
+  toStringArray(profile["custom:roles"]).forEach((r) => roles.add(normalizeRole(r)));
 
   return roles;
 }
@@ -92,7 +121,7 @@ export function buildIdentity(user: User | null | undefined): AuthIdentity | nul
     accessTokenClaims?.preferred_username,
     accessTokenClaims?.email
   );
-  const authEnabledRaw = String(import.meta.env.VITE_AUTH_ENABLED ?? "true").trim().toLowerCase();
+  const authEnabledRaw = appEnv("VITE_AUTH_ENABLED", "true").toLowerCase();
   const authEnabled = !["0", "false", "no", "off"].includes(authEnabledRaw);
   if (!id && !authEnabled) {
     return {
@@ -131,11 +160,58 @@ export function buildIdentity(user: User | null | undefined): AuthIdentity | nul
   };
 }
 
+function permissionSet(identity: AuthIdentity | null): Set<string> {
+  if (!identity) return new Set<string>();
+
+  const perms = new Set<string>(Array.from(identity.scopes).map((s) => s.toLowerCase()));
+  const normalizedRoles = new Set<string>(Array.from(identity.roles).map((r) => normalizeRole(r)));
+
+  normalizedRoles.forEach((role) => {
+    if (role in ROLE_PERMISSION_MAP) {
+      ROLE_PERMISSION_MAP[role as AppRole].forEach((perm) => perms.add(perm));
+    }
+    if (role.startsWith("screening.")) {
+      perms.add(role);
+    }
+  });
+
+  if (perms.has("screening.admin")) {
+    ROLE_PERMISSION_MAP.admin.forEach((perm) => perms.add(perm));
+  } else if (perms.has("screening.write")) {
+    perms.add("screening.read");
+  }
+
+  return perms;
+}
+
+export function hasPermission(identity: AuthIdentity | null, ...permissionNames: string[]): boolean {
+  const required = permissionNames.map((p) => p.trim().toLowerCase()).filter(Boolean);
+  if (!required.length) return true;
+  const actual = permissionSet(identity);
+  return required.some((p) => actual.has(p));
+}
+
+export function getPrimaryRole(identity: AuthIdentity | null): AppRole | null {
+  if (!identity) return null;
+  const roles = new Set<string>(Array.from(identity.roles).map((r) => normalizeRole(r)));
+  if (roles.has("admin")) return "admin";
+  if (roles.has("compliance")) return "compliance";
+  if (roles.has("analyst")) return "analyst";
+  if (roles.has("viewer")) return "viewer";
+
+  const perms = permissionSet(identity);
+  if (perms.has("screening.admin")) return "admin";
+  if (perms.has("screening.daily")) return "compliance";
+  if (perms.has("screening.write")) return "analyst";
+  if (perms.has("screening.single.mock") || perms.has("screening.read")) return "viewer";
+  return null;
+}
+
 export function hasRole(identity: AuthIdentity | null, ...roleNames: string[]): boolean {
   if (!identity) return false;
-  const required = roleNames.map((r) => r.trim().toLowerCase()).filter(Boolean);
+  const required = roleNames.map((r) => normalizeRole(r)).filter(Boolean);
   if (!required.length) return true;
-  const actual = new Set<string>(Array.from(identity.roles).map((r) => r.toLowerCase()));
+  const actual = new Set<string>(Array.from(identity.roles).map((r) => normalizeRole(r)));
   return required.some((r) => actual.has(r));
 }
 
@@ -143,6 +219,6 @@ export function hasScope(identity: AuthIdentity | null, ...scopeNames: string[])
   if (!identity) return false;
   const required = scopeNames.map((s) => s.trim().toLowerCase()).filter(Boolean);
   if (!required.length) return true;
-  const actual = new Set<string>(Array.from(identity.scopes).map((s) => s.toLowerCase()));
+  const actual = permissionSet(identity);
   return required.some((s) => actual.has(s));
 }

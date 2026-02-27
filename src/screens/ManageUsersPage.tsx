@@ -1,17 +1,18 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRecoilState } from "recoil";
 import { useAuth } from "react-oidc-context";
 import { z } from "zod";
-import { buildIdentity, hasRole, hasScope } from "../auth/claims";
+import { buildIdentity, hasPermission } from "../auth/claims";
+import { listAuditEvents, type AuditEvent } from "../api/openSanctions";
 import { usersState, type UserRole } from "../state/users";
 
 const ROLE_OPTIONS: UserRole[] = ["Admin", "Compliance Officer", "Analyst", "Viewer"];
 
 const roleDescriptions: Record<UserRole, string> = {
-  Admin: "Full access - manage users, settings, all screenings",
-  "Compliance Officer": "Can run screenings, review results, manage batch jobs",
-  Analyst: "Can run single screenings and view results",
-  Viewer: "Read-only access to screening results",
+  Admin: "Single, batch, daily scheduling, and User Administration access",
+  "Compliance Officer": "Single and batch screening, including daily schedule enable/disable",
+  Analyst: "Single and batch screening (no daily scheduling)",
+  Viewer: "Single screening in mock mode only",
 };
 
 const inviteSchema = z.object({
@@ -114,16 +115,41 @@ function TrashIcon() {
   );
 }
 
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
+function readErrorFromDetails(details: Record<string, unknown> | undefined): string {
+  if (!details) return "";
+  const candidates = [
+    details.error,
+    details.error_text,
+    details.message,
+    details.detail,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  return "";
+}
+
 export function ManageUsersPage() {
   const auth = useAuth();
   const identity = buildIdentity(auth.user);
-  const allowed = hasRole(identity, "admin", "screening.admin") || hasScope(identity, "screening.admin");
+  const allowed = hasPermission(identity, "screening.admin", "screening.useradmin");
   const [users, setUsers] = useRecoilState(usersState);
   const [inviteFullName, setInviteFullName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<UserRole>("Analyst");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [auditUserFilter, setAuditUserFilter] = useState("all");
+  const [auditErrorsOnly, setAuditErrorsOnly] = useState(false);
 
   if (!allowed) {
     return (
@@ -144,6 +170,34 @@ export function ManageUsersPage() {
     () => [...users].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [users]
   );
+
+  async function loadAuditEvents(userId?: string) {
+    setAuditError(null);
+    setAuditLoading(true);
+    try {
+      const rows = await listAuditEvents(500, userId);
+      setAuditEvents(rows);
+    } catch (err: any) {
+      setAuditError(err?.message ?? "Failed to load audit events.");
+    } finally {
+      setAuditLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!allowed) return;
+    const userId = auditUserFilter === "all" ? undefined : auditUserFilter;
+    void loadAuditEvents(userId);
+  }, [allowed, auditUserFilter]);
+
+  const filteredAuditEvents = useMemo(() => {
+    if (!auditErrorsOnly) return auditEvents;
+    return auditEvents.filter((event) => {
+      const action = (event.action || "").toUpperCase();
+      const details = event.details as Record<string, unknown> | undefined;
+      return action.includes("FAILED") || Boolean(readErrorFromDetails(details));
+    });
+  }, [auditEvents, auditErrorsOnly]);
 
   function submitInvite(e: FormEvent) {
     e.preventDefault();
@@ -301,6 +355,102 @@ export function ManageUsersPage() {
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 18 }}>
+        <div className="cardHeader">
+          <h2 className="userAdminSectionTitle">
+            <span className="userAdminInlineIcon" aria-hidden="true">
+              <SectionIcon kind="shield" />
+            </span>
+            User Audit Logs
+          </h2>
+        </div>
+        <div className="cardBody">
+          <div className="adminScheduleHeader" style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div className="field" style={{ minWidth: 220 }}>
+                <label>User Filter</label>
+                <select value={auditUserFilter} onChange={(e) => setAuditUserFilter(e.target.value)}>
+                  <option value="all">All users</option>
+                  {sortedUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+                  {identity?.id ? (
+                    <option value={identity.id}>
+                      {identity.name || identity.id} (current token user)
+                    </option>
+                  ) : null}
+                </select>
+              </div>
+              <label className="mockModeCheck" style={{ marginTop: 18 }}>
+                <input
+                  type="checkbox"
+                  checked={auditErrorsOnly}
+                  onChange={(e) => setAuditErrorsOnly(e.target.checked)}
+                />
+                <span>Show errors only</span>
+              </label>
+            </div>
+            <button
+              type="button"
+              className="btnGhost"
+              onClick={() => void loadAuditEvents(auditUserFilter === "all" ? undefined : auditUserFilter)}
+              disabled={auditLoading}
+            >
+              {auditLoading ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
+
+          {auditError ? <div className="errorBox">{auditError}</div> : null}
+
+          <div className="tableWrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{ width: 180 }}>Time</th>
+                  <th style={{ width: 200 }}>User</th>
+                  <th style={{ width: 210 }}>Action</th>
+                  <th style={{ width: 180 }}>Entity</th>
+                  <th>Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAuditEvents.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="emptyRow">
+                      {auditLoading ? "Loading audit events..." : "No audit events found."}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAuditEvents.map((event) => {
+                    const details = event.details as Record<string, unknown> | undefined;
+                    const errorText = readErrorFromDetails(details);
+                    return (
+                      <tr key={event.event_id}>
+                        <td className="muted">{formatDateTime(event.created_at)}</td>
+                        <td>
+                          <div>{event.user_name || "-"}</div>
+                          <div className="muted">{event.user_id || "-"}</div>
+                        </td>
+                        <td>
+                          <span className="statusPill statusPending">{event.action}</span>
+                        </td>
+                        <td className="muted">
+                          {event.entity_type || "-"}
+                          {event.entity_id ? ` / ${event.entity_id}` : ""}
+                        </td>
+                        <td className="muted">{errorText || "-"}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

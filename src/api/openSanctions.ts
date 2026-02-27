@@ -1,4 +1,5 @@
 import { getAccessToken } from "../auth/session";
+import { appEnv } from "../config/env";
 
 export type EntityExample = {
   schema: string;
@@ -52,6 +53,17 @@ export type DailySchedule = {
   is_active: boolean;
 };
 
+export type AuditEvent = {
+  event_id: number;
+  created_at: string;
+  user_id?: string | null;
+  user_name?: string | null;
+  action: string;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  details?: Record<string, unknown>;
+};
+
 export type JobStatus = "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED";
 
 export type JobAccepted = {
@@ -76,8 +88,7 @@ export type JobProgress = {
 };
 
 function env(name: string, fallback = ""): string {
-  const v = (import.meta.env[name] as string) ?? fallback;
-  return String(v).trim();
+  return appEnv(name, fallback);
 }
 
 function normalizeBaseUrl(raw: string): string {
@@ -234,6 +245,22 @@ export async function matchSync(
   }
 
   return (await resp.json()) as EntityMatchResponse;
+}
+
+export async function listAuditEvents(limit = 200, userId?: string): Promise<AuditEvent[]> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/audit-events`, window.location.origin);
+  url.searchParams.set("limit", String(limit));
+  if (userId && userId.trim()) {
+    url.searchParams.set("user_id", userId.trim());
+  }
+  const resp = await fetch(url.toString(), {
+    headers: withAuthHeaders(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load audit events: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as AuditEvent[];
 }
 
 export async function listDailySchedules(): Promise<DailySchedule[]> {

@@ -4,14 +4,14 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .actimize import ActimizeClient
-from .auth import AuthPrincipal, require_any_scope
+from .auth import AuthPrincipal, principal_has_permission, require_any_scope
 from .config import settings
 from .models import AuditEvent, DailyScheduleInfo, EntityMatchResponse, MatchJobAccepted, MatchJobProgress, MatchJobRequest
 from .queue import SqsQueue
 from .repository import JobRepository
 from .screening_service import ScreeningService
 
-repository = JobRepository(settings.app_db_path)
+repository = JobRepository(settings.app_db_path, settings.app_db_url)
 queue = SqsQueue()
 service = ScreeningService(repository=repository, queue=queue)
 actimize = ActimizeClient()
@@ -44,9 +44,12 @@ def health() -> dict[str, str]:
 @app.post("/api/v1/screenings/jobs", response_model=MatchJobAccepted)
 def create_screening_job(
     payload: MatchJobRequest,
-    principal: AuthPrincipal = Depends(require_any_scope("screening.write")),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.write", "screening.daily", "screening.admin")),
     svc: ScreeningService = Depends(get_service),
 ) -> MatchJobAccepted:
+    if payload.daily_screening and not principal_has_permission(principal, "screening.daily", "screening.admin"):
+        raise HTTPException(status_code=403, detail="Only Compliance/Admin can enable daily screening")
+
     try:
         payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": principal.user_name})
         return svc.submit_job(payload)
@@ -79,7 +82,7 @@ def remove_daily_schedule(
     schedule_id: str,
     user_id: str | None = Query(default=None),
     user_name: str | None = Query(default=None),
-    principal: AuthPrincipal = Depends(require_any_scope("screening.write")),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.daily", "screening.admin")),
     svc: ScreeningService = Depends(get_service),
 ) -> dict[str, str]:
     actor_user_id = principal.user_id if principal.user_id else user_id
@@ -94,7 +97,7 @@ def remove_daily_schedule(
 def list_audit_events(
     limit: int = Query(default=200, ge=1, le=1000),
     user_id: str | None = Query(default=None),
-    _: AuthPrincipal = Depends(require_any_scope("screening.admin")),
+    _: AuthPrincipal = Depends(require_any_scope("screening.admin", "screening.useradmin")),
     svc: ScreeningService = Depends(get_service),
 ) -> list[AuditEvent]:
     return svc.list_audit_events(limit=limit, user_id=user_id)
@@ -103,10 +106,14 @@ def list_audit_events(
 @app.post("/api/v1/screenings/match", response_model=EntityMatchResponse)
 def match_sync(
     payload: MatchJobRequest,
-    principal: AuthPrincipal = Depends(require_any_scope("screening.write")),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.write", "screening.single.mock", "screening.admin")),
 ) -> EntityMatchResponse:
     if not payload.queries:
         raise HTTPException(status_code=400, detail="At least one query is required")
+
+    if not payload.mock_screening and not principal_has_permission(principal, "screening.write", "screening.admin"):
+        raise HTTPException(status_code=403, detail="Viewer can perform only mock single screening")
+
     payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": principal.user_name})
     repository.add_audit_event(
         action="SYNC_SCREENING_SUBMITTED",
@@ -140,6 +147,14 @@ def match_sync(
                 "status": int(screened.get("status", 200) or 200),
             }
         except Exception as exc:  # noqa: BLE001
+            repository.add_audit_event(
+                action="SYNC_SCREENING_ITEM_FAILED",
+                user_id=payload.user_id,
+                user_name=payload.user_name,
+                entity_type="sync_screening_item",
+                entity_id=item_key,
+                details={"item_key": item_key, "error": str(exc)},
+            )
             responses[item_key] = {
                 "results": [],
                 "total": {"value": 0, "relation": "eq"},

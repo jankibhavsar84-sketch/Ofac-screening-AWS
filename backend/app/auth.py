@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Callable
 
 import jwt
@@ -13,6 +14,33 @@ from .config import settings
 
 bearer = HTTPBearer(auto_error=False)
 _jwks_client: PyJWKClient | None = None
+
+ROLE_PERMISSION_MAP: dict[str, set[str]] = {
+    "viewer": {"screening.read", "screening.single.mock"},
+    "analyst": {"screening.read", "screening.write"},
+    "compliance": {"screening.read", "screening.write", "screening.daily"},
+    "admin": {
+        "screening.read",
+        "screening.write",
+        "screening.daily",
+        "screening.admin",
+        "screening.useradmin",
+        "screening.single.mock",
+    },
+}
+
+ROLE_ALIASES: dict[str, str] = {
+    "admin": "admin",
+    "screening admin": "admin",
+    "screening.admin": "admin",
+    "screening-admin": "admin",
+    "compliance": "compliance",
+    "compliance officer": "compliance",
+    "compliance_officer": "compliance",
+    "compliance-officer": "compliance",
+    "analyst": "analyst",
+    "viewer": "viewer",
+}
 
 
 @dataclass
@@ -33,25 +61,79 @@ def _split_scope(value: Any) -> set[str]:
     return set()
 
 
+def _to_string_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if str(v).strip()]
+    if isinstance(value, str):
+        candidate = value.strip()
+        return [candidate] if candidate else []
+    return []
+
+
+def _normalize_role(role: str) -> str:
+    lowered = role.strip().lower()
+    if not lowered:
+        return ""
+    collapsed = re.sub(r"[\s_-]+", " ", lowered).strip()
+    return ROLE_ALIASES.get(collapsed, lowered)
+
+
 def _extract_roles(payload: dict[str, Any]) -> set[str]:
-    roles: set[str] = set()
+    roles_raw: set[str] = set()
 
     realm_access = payload.get("realm_access")
     if isinstance(realm_access, dict):
-        realm_roles = realm_access.get("roles")
-        if isinstance(realm_roles, list):
-            roles.update(str(r).strip() for r in realm_roles if str(r).strip())
+        roles_raw.update(_to_string_list(realm_access.get("roles")))
 
     resource_access = payload.get("resource_access")
     if isinstance(resource_access, dict):
         for _, client_access in resource_access.items():
             if not isinstance(client_access, dict):
                 continue
-            client_roles = client_access.get("roles")
-            if isinstance(client_roles, list):
-                roles.update(str(r).strip() for r in client_roles if str(r).strip())
+            roles_raw.update(_to_string_list(client_access.get("roles")))
 
+    roles_raw.update(_to_string_list(payload.get("roles")))
+    roles_raw.update(_to_string_list(payload.get("groups")))
+    roles_raw.update(_to_string_list(payload.get("cognito:groups")))
+    roles_raw.update(_to_string_list(payload.get("custom:roles")))
+
+    roles: set[str] = set()
+    for role in roles_raw:
+        normalized = _normalize_role(role)
+        if normalized:
+            roles.add(normalized)
     return roles
+
+
+def _effective_permissions(scopes: set[str], roles: set[str]) -> set[str]:
+    permissions = {s.strip().lower() for s in scopes if s.strip()}
+
+    for role in roles:
+        role_lower = role.strip().lower()
+        if not role_lower:
+            continue
+        permissions.update(ROLE_PERMISSION_MAP.get(role_lower, set()))
+        if role_lower.startswith("screening."):
+            permissions.add(role_lower)
+
+    if "screening.admin" in permissions:
+        permissions.update(ROLE_PERMISSION_MAP["admin"])
+    elif "screening.write" in permissions:
+        permissions.update({"screening.read"})
+
+    return permissions
+
+
+def principal_permissions(principal: AuthPrincipal) -> set[str]:
+    return _effective_permissions(principal.scopes, principal.roles)
+
+
+def principal_has_permission(principal: AuthPrincipal, *required: str) -> bool:
+    normalized = {r.strip().lower() for r in required if r.strip()}
+    if not normalized:
+        return True
+    permissions = principal_permissions(principal)
+    return bool(permissions.intersection(normalized))
 
 
 def _get_jwks_client() -> PyJWKClient:
@@ -120,7 +202,14 @@ def get_current_principal(
             user_id="local-dev-user",
             user_name="Local Dev User",
             email="",
-            scopes={"screening.read", "screening.write", "screening.admin"},
+            scopes={
+                "screening.read",
+                "screening.write",
+                "screening.daily",
+                "screening.admin",
+                "screening.useradmin",
+                "screening.single.mock",
+            },
             roles={"admin"},
             claims={},
         )
@@ -160,14 +249,7 @@ def require_any_scope(*required_scopes: str) -> Callable[[AuthPrincipal], AuthPr
         if not normalized:
             return principal
 
-        principal_scopes = {s.lower() for s in principal.scopes}
-        principal_roles = {r.lower() for r in principal.roles}
-        if "admin" in principal_roles or "screening.admin" in principal_scopes or "screening.admin" in principal_roles:
-            return principal
-
-        if principal_scopes.intersection(normalized):
-            return principal
-        if principal_roles.intersection(normalized):
+        if principal_has_permission(principal, *normalized):
             return principal
 
         raise HTTPException(

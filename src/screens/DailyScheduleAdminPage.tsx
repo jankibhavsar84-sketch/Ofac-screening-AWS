@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "react-oidc-context";
-import { buildIdentity, hasRole, hasScope } from "../auth/claims";
+import { buildIdentity, hasPermission } from "../auth/claims";
 import { listDailySchedules, removeDailySchedule, type DailySchedule } from "../api/openSanctions";
 
 function formatDateTime(value: string | null | undefined): string {
@@ -13,7 +13,7 @@ function formatDateTime(value: string | null | undefined): string {
 export function DailyScheduleAdminPage() {
   const auth = useAuth();
   const identity = buildIdentity(auth.user);
-  const allowed = hasRole(identity, "admin", "screening.admin") || hasScope(identity, "screening.admin");
+  const allowed = hasPermission(identity, "screening.daily", "screening.admin");
 
   const [schedules, setSchedules] = useState<DailySchedule[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,7 +65,7 @@ export function DailyScheduleAdminPage() {
             <h2>Access Denied</h2>
           </div>
           <div className="cardBody">
-            <p className="muted">Administrator access is required (`admin` or `screening.admin`).</p>
+            <p className="muted">Compliance/Admin access is required (`screening.daily` or `screening.admin`).</p>
           </div>
         </div>
       </div>
@@ -85,7 +85,7 @@ export function DailyScheduleAdminPage() {
         </div>
         <div className="cardBody">
           <p className="muted" style={{ marginTop: 0 }}>
-            Admin users can remove batch files from daily screening here.
+            Compliance/Admin users can remove batch files from daily screening here.
           </p>
           {error ? <div className="errorBox">{error}</div> : null}
 
@@ -137,4 +137,3 @@ export function DailyScheduleAdminPage() {
     </div>
   );
 }
-

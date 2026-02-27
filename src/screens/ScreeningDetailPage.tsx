@@ -5,7 +5,7 @@ import { useAuth } from "react-oidc-context";
 import { z } from "zod";
 import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
 import { listDailySchedules, matchSync, removeDailySchedule, submitScreeningJob, waitForScreeningJob, type EntityExample, type EntityMatches } from "../api/openSanctions";
-import { buildIdentity } from "../auth/claims";
+import { buildIdentity, getPrimaryRole, hasPermission } from "../auth/claims";
 import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutoSuggest";
 import { IsoDateInput } from "../components/IsoDateInput";
@@ -587,6 +587,12 @@ function ScreeningTypeCards({
 export function ScreeningDetailPage() {
   const auth = useAuth();
   const identity = useMemo(() => buildIdentity(auth.user), [auth.user]);
+  const primaryRole = useMemo(() => getPrimaryRole(identity), [identity]);
+  const canSingleScreen = hasPermission(identity, "screening.write", "screening.single.mock", "screening.admin");
+  const canRunNonMockSingle = hasPermission(identity, "screening.write", "screening.admin");
+  const canBatchScreen = hasPermission(identity, "screening.write", "screening.admin");
+  const canDailyScreening = hasPermission(identity, "screening.daily", "screening.admin");
+  const viewerMockOnly = canSingleScreen && !canRunNonMockSingle;
   const [mode, setMode] = useState<Mode>("SINGLE");
 
   const [submissions, setSubmissions] = useRecoilState(submissionsState);
@@ -649,6 +655,18 @@ export function ScreeningDetailPage() {
   // dropzone
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!canBatchScreen && mode === "BATCH") {
+      setMode("SINGLE");
+    }
+  }, [canBatchScreen, mode]);
+
+  useEffect(() => {
+    if (!canDailyScreening && batchDailyScreening) {
+      setBatchDailyScreening(false);
+    }
+  }, [canDailyScreening, batchDailyScreening]);
 
   function toggleScreeningType(
     value: ScreeningType,
@@ -873,8 +891,18 @@ export function ScreeningDetailPage() {
     setSubmitting(true);
 
     try {
+      if (!canSingleScreen) {
+        setSingleError("You do not have permission to run single screening.");
+        setSubmitting(false);
+        return;
+      }
       if (!currentUser) {
         setSingleError("Authenticated user context is missing. Please sign in again.");
+        setSubmitting(false);
+        return;
+      }
+      if (viewerMockOnly && !singleMockScreening) {
+        setSingleError("Viewer role can run only mock single screening.");
         setSubmitting(false);
         return;
       }
@@ -969,6 +997,10 @@ export function ScreeningDetailPage() {
     e.preventDefault();
     setBatchError(null);
 
+    if (!canBatchScreen) {
+      setBatchError("You do not have permission to run batch screening.");
+      return;
+    }
     if (!currentUser) {
       setBatchError("Authenticated user context is missing. Please sign in again.");
       return;
@@ -979,6 +1011,10 @@ export function ScreeningDetailPage() {
     }
     if (!batchScreeningTypes.length) {
       setBatchError("Select at least one screening type.");
+      return;
+    }
+    if (batchDailyScreening && !canDailyScreening) {
+      setBatchError("Only Compliance/Admin can enable daily screening.");
       return;
     }
     if (!batchFile) {
@@ -1325,6 +1361,10 @@ export function ScreeningDetailPage() {
 
   async function disableDailyScreeningForBatch(row: ResultRow) {
     if (!row.batchSubmissionId || !row.dailyScheduleId || !row.dailyScheduleActive) return;
+    if (!canDailyScreening) {
+      setDailyDisableError("Only Compliance/Admin can disable daily screening.");
+      return;
+    }
 
     setDisablingScheduleId(row.dailyScheduleId);
     setDailyDisableError(null);
@@ -1354,11 +1394,21 @@ export function ScreeningDetailPage() {
             <span>Single Screening</span>
             <span className="executionModeBadge executionModeBadgeSync">Sync</span>
           </button>
-          <button className={mode === "BATCH" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("BATCH")} type="button">
+          <button
+            className={mode === "BATCH" ? "tabBtn active" : "tabBtn"}
+            onClick={() => setMode("BATCH")}
+            type="button"
+            disabled={!canBatchScreen}
+            title={canBatchScreen ? "Batch screening" : "Batch screening is not allowed for your role"}
+          >
             <span className="tabIcon">&#x1F4C4;</span>
             <span>Batch Screening</span>
             <span className="executionModeBadge executionModeBadgeAsync">Async</span>
           </button>
+        </div>
+        <div className="muted" style={{ fontSize: 12 }}>
+          Role: {primaryRole ? primaryRole[0].toUpperCase() + primaryRole.slice(1) : "Unknown"}
+          {viewerMockOnly ? " (mock-only single screening)" : ""}
         </div>
 
         <button className="btnGhost" type="button" onClick={clearAll} disabled={submitting} style={{ marginLeft: "auto" }}>
@@ -1397,11 +1447,14 @@ export function ScreeningDetailPage() {
                     type="checkbox"
                     checked={singleMockScreening}
                     onChange={(e) => setSingleMockScreening(e.target.checked)}
+                    disabled={viewerMockOnly}
                   />
                   <span>Mock screening only (check hits, do not generate Actimize alert)</span>
                 </label>
                 <div className="mockModeHint">
-                  Uncheck this to generate an alert in Actimize during single screening.
+                  {viewerMockOnly
+                    ? "Viewer role is restricted to mock screening only."
+                    : "Uncheck this to generate an alert in Actimize during single screening."}
                 </div>
               </div>
 
@@ -1738,11 +1791,14 @@ export function ScreeningDetailPage() {
                   type="checkbox"
                   checked={batchDailyScreening}
                   onChange={(e) => setBatchDailyScreening(e.target.checked)}
+                  disabled={!canDailyScreening}
                 />
                 <span>Daily Screening</span>
               </label>
               <div className="mockModeHint">
-                If enabled, this batch is automatically re-screened daily shortly after 12:00 AM Eastern Time.
+                {canDailyScreening
+                  ? "If enabled, this batch is automatically re-screened daily shortly after 12:00 AM Eastern Time."
+                  : "Daily scheduling is available for Compliance/Admin roles only."}
               </div>
             </div>
 
@@ -1914,7 +1970,7 @@ export function ScreeningDetailPage() {
                                   className="btnGhostSmall"
                                   title={`Disable daily screening for ${(r.raw?.submission?.fileName as string) || "this batch file"}`}
                                   aria-label={`Disable daily screening for ${(r.raw?.submission?.fileName as string) || r.entity}`}
-                                  disabled={disablingScheduleId === r.dailyScheduleId}
+                                  disabled={!canDailyScreening || disablingScheduleId === r.dailyScheduleId}
                                   onClick={() => void disableDailyScreeningForBatch(r)}
                                 >
                                   {disablingScheduleId === r.dailyScheduleId ? "Disabling..." : "Disable Daily"}

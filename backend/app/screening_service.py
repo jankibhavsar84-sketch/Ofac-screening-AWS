@@ -74,6 +74,8 @@ class ScreeningService:
                     submitted_at=submitted_at,
                     screening_types=payload.screening_types,
                     mock_screening=payload.mock_screening,
+                    user_id=payload.user_id,
+                    user_name=payload.user_name,
                 )
             )
 

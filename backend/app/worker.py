@@ -34,7 +34,7 @@ class FixedRateLimiter:
 def run() -> None:
     queue = SqsQueue()
     queue.ensure_queue()
-    repository = JobRepository(settings.app_db_path)
+    repository = JobRepository(settings.app_db_path, settings.app_db_url)
     service = ScreeningService(repository=repository, queue=queue)
     actimize = ActimizeClient()
     limiter = FixedRateLimiter(settings.screening_tps)
@@ -75,6 +75,18 @@ def run() -> None:
                     exc,
                 )
                 repository.mark_item_failed(message.job_id, message.item_key, str(exc))
+                repository.add_audit_event(
+                    action="ASYNC_SCREENING_ITEM_FAILED",
+                    user_id=message.user_id,
+                    user_name=message.user_name,
+                    entity_type="screening_item",
+                    entity_id=f"{message.job_id}:{message.item_key}",
+                    details={
+                        "job_id": message.job_id,
+                        "item_key": message.item_key,
+                        "error": str(exc),
+                    },
+                )
             finally:
                 queue.delete(receipt_handle)
 

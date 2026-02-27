@@ -95,6 +95,8 @@ class ScreeningQueueMessage(BaseModel):
     submitted_at: str
     screening_types: list[str] = Field(default_factory=list)
     mock_screening: bool = False
+    user_id: str | None = None
+    user_name: str | None = None
 
 
 class AuditEvent(BaseModel):

@@ -29,6 +29,7 @@ class Settings:
     app_name: str
     app_version: str
     app_db_path: str
+    app_db_url: str
     cors_allow_origins: str
 
     aws_region: str
@@ -62,6 +63,7 @@ def load_settings() -> Settings:
         app_name=os.getenv("APP_NAME", "OFAC Screening Enterprise API"),
         app_version=os.getenv("APP_VERSION", "1.0.0"),
         app_db_path=os.getenv("APP_DB_PATH", "/tmp/screening.db"),
+        app_db_url=os.getenv("APP_DB_URL", "").strip(),
         cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*"),
         aws_region=os.getenv("AWS_REGION", "us-east-1"),
         aws_sqs_queue_name=os.getenv("AWS_SQS_QUEUE_NAME", "screening-requests"),

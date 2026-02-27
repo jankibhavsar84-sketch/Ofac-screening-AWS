@@ -125,16 +125,22 @@ Frontend (`.env`, see `.env.example`):
 - `VITE_SCREENING_POLL_INTERVAL_MS` default `750`
 - `VITE_SCREENING_JOB_TIMEOUT_MS` default `90000`
 - `VITE_AUTH_ENABLED` default `true` (`false` disables OIDC and uses local admin mode)
-- `VITE_OIDC_AUTHORITY` ex: `http://localhost:8081/realms/screening-local`
-- `VITE_OIDC_CLIENT_ID` ex: `screening-frontend`
+- `VITE_OIDC_AUTHORITY` ex Keycloak: `http://localhost:8081/realms/screening-local`
+- `VITE_OIDC_AUTHORITY` ex Cognito: `https://cognito-idp.<region>.amazonaws.com/<user_pool_id>`
+- `VITE_OIDC_CLIENT_ID` ex: `screening-frontend` (Keycloak) or `<cognito_app_client_id>`
 - `VITE_OIDC_REDIRECT_URI` ex: `http://localhost:8080/`
 - `VITE_OIDC_POST_LOGOUT_REDIRECT_URI` ex: `http://localhost:8080/`
-- `VITE_OIDC_SCOPE` ex: `openid profile email roles`
+- `VITE_OIDC_SCOPE` ex: `openid profile email` (Cognito)
 - `VITE_OIDC_IDLE_TIMEOUT_MS` ex: `900000` (15 minutes; set `0` to disable idle auto-logout)
 - `VITE_OIDC_CLEAR_SESSION_ON_CLOSE` ex: `true` (stores OIDC session in `sessionStorage`; clears on tab/browser close)
 
+Frontend runtime config in container:
+- In ECS, frontend reads `VITE_*` values at container startup from environment variables (no image rebuild needed).
+- Runtime values are written to `/app-config.js` by `frontend/entrypoint.sh`.
+
 Backend/Worker (`backend/.env.example`):
 
+- `APP_DB_URL` optional. If set to a `postgresql://...` URL, backend/worker use PostgreSQL instead of SQLite (`APP_DB_PATH`).
 - `SCREENING_TPS=32` for Actimize single-request throughput
 - `ACTIMIZE_MOCK=true` for local simulation
 - Set `ACTIMIZE_MOCK=false` + `ACTIMIZE_BASE_URL` + `ACTIMIZE_API_KEY` for real engine
@@ -146,6 +152,10 @@ Backend/Worker (`backend/.env.example`):
 - `AUTH_JWKS_URL=http://localhost:8081/realms/screening-local/protocol/openid-connect/certs`
 - `AUTH_AUDIENCE=` (optional; leave blank to skip audience validation in local simulation)
 - `AUTH_ALGORITHMS=RS256`
+- Cognito backend example:
+  - `AUTH_ISSUER=https://cognito-idp.<region>.amazonaws.com/<user_pool_id>`
+  - `AUTH_JWKS_URL=https://cognito-idp.<region>.amazonaws.com/<user_pool_id>/.well-known/jwks.json`
+  - `AUTH_AUDIENCE=<cognito_app_client_id>`
 
 ## OIDC/OAuth2 Local Simulation (Keycloak)
 
@@ -182,10 +192,12 @@ Legacy manual Keycloak bootstrap:
 Authorization behavior:
 - Frontend requires OIDC sign-in before app access.
 - Backend requires JWT bearer token for screening APIs.
-- Endpoint authorization:
-  - `screening.read`: read flows (job status/list schedules)
-  - `screening.write`: submit sync/batch and modify schedules
-  - `screening.admin`: audit events endpoint and admin-level access
+- Role/capability model:
+  - `Viewer`: single screening in mock mode only
+  - `Analyst`: single + batch screening
+  - `Compliance`: single + batch + daily schedule management
+  - `Admin`: compliance permissions + user administration + audit log access
+- Cognito groups supported in token claims (`cognito:groups`) and mapped to app roles.
 
 ## API Endpoints
 

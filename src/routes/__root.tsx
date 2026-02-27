@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Outlet, createRootRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "react-oidc-context";
-import { buildIdentity, hasRole, hasScope } from "../auth/claims";
+import { buildIdentity, hasPermission } from "../auth/claims";
 import { oidcAuthEnabled } from "../auth/oidc";
 import { setAccessToken } from "../auth/session";
 
@@ -15,7 +15,8 @@ function RootLayout() {
   const isDailySchedulePage = pathname.startsWith("/daily-schedules");
   const auth = useAuth();
   const identity = buildIdentity(auth.user);
-  const canManageUsers = hasRole(identity, "admin", "screening.admin") || hasScope(identity, "screening.admin");
+  const canManageUsers = hasPermission(identity, "screening.admin", "screening.useradmin");
+  const canManageDailySchedules = hasPermission(identity, "screening.daily", "screening.admin");
 
   useEffect(() => {
     setAccessToken(oidcAuthEnabled ? auth.user?.access_token ?? null : null);
@@ -52,7 +53,7 @@ function RootLayout() {
             <Link to="/screening" className="navLink" activeProps={{ className: "navLink active" }}>
               Screening
             </Link>
-            {canManageUsers ? (
+            {canManageDailySchedules ? (
               <Link to="/daily-schedules" className="navLink" activeProps={{ className: "navLink active" }}>
                 Daily Schedules
               </Link>

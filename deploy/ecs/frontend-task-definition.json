@@ -11,13 +11,61 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "frontend",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260227080637",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260227161140",
                                      "essential":  true,
                                      "command":  [
-                                                     "sh",
-                                                     "-c",
-                                                     "printf \u0027server {\\n  listen 80;\\n  server_name _;\\n  root /usr/share/nginx/html;\\n  index index.html;\\n  location /api/ {\\n    resolver 169.254.169.253 ipv6=off valid=10s;\\n    set $backend_upstream http://backend.screening.internal:8000;\\n    proxy_pass $backend_upstream;\\n    proxy_http_version 1.1;\\n    proxy_set_header Host $host;\\n    proxy_set_header X-Real-IP $remote_addr;\\n    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\\n    proxy_set_header X-Forwarded-Proto $scheme;\\n  }\\n  location / {\\n    try_files $uri /index.html;\\n  }\\n}\\n\u0027 \u003e /etc/nginx/conf.d/default.conf \u0026\u0026 nginx -g \u0027daemon off;\u0027"
+                                                     "/entrypoint.sh"
                                                  ],
+                                     "environment":  [
+                                                         {
+                                                             "name":  "BACKEND_UPSTREAM",
+                                                             "value":  "http://backend.screening.internal:8000"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_SCREENING_API_BASE_URL",
+                                                             "value":  "/api/v1"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_SCREENING_POLL_INTERVAL_MS",
+                                                             "value":  "750"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_SCREENING_JOB_TIMEOUT_MS",
+                                                             "value":  "90000"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_AUTH_ENABLED",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_AUTHORITY",
+                                                             "value":  "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_ptvmAe35M"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_CLIENT_ID",
+                                                             "value":  "2ul9mdnt44kl60hgiihbc7o5sk"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_REDIRECT_URI",
+                                                             "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_POST_LOGOUT_REDIRECT_URI",
+                                                             "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_SCOPE",
+                                                             "value":  "openid profile email"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_IDLE_TIMEOUT_MS",
+                                                             "value":  "900000"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_CLEAR_SESSION_ON_CLOSE",
+                                                             "value":  "true"
+                                                         }
+                                                     ],
                                      "portMappings":  [
                                                           {
                                                               "containerPort":  80,
@@ -36,3 +84,4 @@
                                  }
                              ]
 }
+
