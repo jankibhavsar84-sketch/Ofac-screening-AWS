@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Outlet, createRootRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "react-oidc-context";
 import { buildIdentity, hasRole, hasScope } from "../auth/claims";
+import { oidcAuthEnabled } from "../auth/oidc";
 import { setAccessToken } from "../auth/session";
 
 export const Route = createRootRoute({
@@ -17,7 +18,7 @@ function RootLayout() {
   const canManageUsers = hasRole(identity, "admin", "screening.admin") || hasScope(identity, "screening.admin");
 
   useEffect(() => {
-    setAccessToken(auth.user?.access_token ?? null);
+    setAccessToken(oidcAuthEnabled ? auth.user?.access_token ?? null : null);
   }, [auth.user]);
 
   return (
@@ -67,14 +68,18 @@ function RootLayout() {
               <div className="authUserName">{identity?.name ?? "Unknown User"}</div>
               <div className="authUserEmail">{identity?.email || identity?.id || ""}</div>
             </div>
-            <button
-              type="button"
-              className="btnGhost"
-              onClick={() => void auth.signoutRedirect()}
-              title="Sign out"
-            >
-              Sign Out
-            </button>
+            {oidcAuthEnabled ? (
+              <button
+                type="button"
+                className="btnGhost"
+                onClick={() => void auth.signoutRedirect()}
+                title="Sign out"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <span className="chip chipWarning">Auth Disabled</span>
+            )}
           </div>
         </div>
       </header>

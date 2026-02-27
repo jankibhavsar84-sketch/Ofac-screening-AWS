@@ -1,0 +1,69 @@
+{
+  "family": "ofac-screening-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::279930135954:role/ofac-screening-task-execution-role",
+  "taskRoleArn": "arn:aws:iam::279930135954:role/ofac-screening-task-role",
+  "containerDefinitions": [
+    {
+      "name": "worker",
+      "image": "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260226201358",
+      "essential": true,
+      "command": [
+        "python",
+        "-m",
+        "app.worker"
+      ],
+      "environment": [
+        {
+          "name": "APP_DB_PATH",
+          "value": "/tmp/screening.db"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "us-east-2"
+        },
+        {
+          "name": "AWS_SQS_QUEUE_NAME",
+          "value": "screening-requests"
+        },
+        {
+          "name": "ACTIMIZE_MOCK",
+          "value": "true"
+        },
+        {
+          "name": "SCREENING_TPS",
+          "value": "32"
+        },
+        {
+          "name": "DAILY_SCREENING_TIMEZONE",
+          "value": "America/New_York"
+        },
+        {
+          "name": "DAILY_SCREENING_HOUR",
+          "value": "0"
+        },
+        {
+          "name": "DAILY_SCREENING_MINUTE",
+          "value": "5"
+        },
+        {
+          "name": "DAILY_SCREENING_CHECK_INTERVAL_S",
+          "value": "30"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/ofac-screening-worker",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { useAuth } from "react-oidc-context";
 import { z } from "zod";
 import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
-import { matchBatch, matchSync, removeDailySchedule, type EntityExample } from "../api/openSanctions";
+import { matchSync, removeDailySchedule, submitScreeningJob, waitForScreeningJob, type EntityExample, type EntityMatches } from "../api/openSanctions";
 import { buildIdentity } from "../auth/claims";
 import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutoSuggest";
@@ -223,7 +223,7 @@ function buildEntityExampleFromNameItem(item: NameItem): EntityExample {
   return { schema, properties: props };
 }
 
-type EngineStatus = "NO_HIT" | "HIT" | "ERROR";
+type EngineStatus = "NO_HIT" | "HIT" | "PROCESSING" | "ERROR";
 type UiStatus = "Clear" | "Potential Match" | "Pending" | "Match";
 
 function engineToUiStatus(s: EngineStatus, manualMatch?: boolean): UiStatus {
@@ -249,17 +249,114 @@ function formatMatchingScore(score: number | null) {
   return `${(score * 100).toFixed(2)}%`;
 }
 
-function getHitMatchesFromRaw(raw: any): { name: string; matchingScore: number | null }[] {
+type HitMatch = {
+  name: string;
+  matchingScore: number | null;
+  keywordOrCategory: string;
+};
+
+function asStringList(input: unknown): string[] {
+  if (Array.isArray(input)) {
+    return input.map((v) => safeTrim(String(v))).filter(Boolean);
+  }
+  if (typeof input === "string") {
+    const v = safeTrim(input);
+    return v ? [v] : [];
+  }
+  return [];
+}
+
+function toCountryDisplay(values: string[]): string {
+  const normalized = values
+    .map((v) => {
+      const t = safeTrim(v);
+      if (!t) return "";
+      return t.length === 2 ? t.toUpperCase() : t;
+    })
+    .filter(Boolean);
+  return Array.from(new Set(normalized)).join(", ");
+}
+
+function extractCountryFromQuery(query: any): string {
+  const props = query?.properties;
+  if (!props || typeof props !== "object") return "";
+
+  const candidates: string[][] = [
+    asStringList((props as any).country),
+    asStringList((props as any).nationality),
+    asStringList((props as any).countries),
+    asStringList((props as any).jurisdiction),
+  ];
+
+  for (const list of candidates) {
+    const rendered = toCountryDisplay(list);
+    if (rendered) return rendered;
+  }
+  return "";
+}
+
+function extractCountryFromRaw(raw: any): string {
+  const fromQuery =
+    extractCountryFromQuery(raw?.matches?.query) ||
+    extractCountryFromQuery(raw?.item?.details?.matches?.query) ||
+    extractCountryFromQuery(raw?.details?.query) ||
+    extractCountryFromQuery(raw?.item?.details?.query);
+
+  if (fromQuery) return fromQuery;
+
+  const fallback = raw?.country ?? raw?.item?.country ?? raw?.submission?.country;
+  if (typeof fallback === "string") return safeTrim(fallback);
+  return "";
+}
+
+function extractHitTag(result: any): string {
+  const props = result?.properties;
+  const keywords = asStringList(props?.keyword).concat(asStringList(props?.keywords));
+  if (keywords.length) return `Keyword: ${Array.from(new Set(keywords)).join(", ")}`;
+
+  const categories = asStringList(props?.category).concat(asStringList(props?.categories));
+  if (categories.length) return `Category: ${Array.from(new Set(categories)).join(", ")}`;
+
+  const screeningTypes = asStringList(props?.screeningType).concat(asStringList(props?.screeningTypes));
+  if (screeningTypes.length) return `Category: ${Array.from(new Set(screeningTypes)).join(", ")}`;
+
+  const datasets = asStringList(result?.datasets);
+  if (datasets.length) return `Category: ${Array.from(new Set(datasets)).join(", ")}`;
+
+  return "\u2014";
+}
+
+function getResultCandidatesFromRaw(raw: any): any[] {
   const direct = raw?.matches?.results;
   const batch = raw?.item?.details?.matches?.results;
   const legacy = raw?.details?.results ?? raw?.details?.matches?.results;
-  const results: any[] = Array.isArray(direct) ? direct : Array.isArray(batch) ? batch : Array.isArray(legacy) ? legacy : [];
+  return Array.isArray(direct) ? direct : Array.isArray(batch) ? batch : Array.isArray(legacy) ? legacy : [];
+}
 
+function topMatchingScore(results: any[] | undefined): number | null {
+  if (!Array.isArray(results) || results.length === 0) return null;
+  const best = results
+    .filter((r) => r && typeof r === "object" && typeof r.score === "number")
+    .map((r) => Number(r.score))
+    .sort((a, b) => b - a)[0];
+  return typeof best === "number" && Number.isFinite(best) ? best : null;
+}
+
+function getHitMatchesFromRaw(raw: any): HitMatch[] {
+  const results = getResultCandidatesFromRaw(raw);
   const matched = results.filter((r) => r && typeof r === "object" && r.match === true);
-  return matched.map((r) => ({
+
+  return matched
+    .map((r) => ({
     name: safeTrim(String(r.caption ?? r.name ?? r.id ?? "")) || "Unknown entity",
     matchingScore: typeof r.score === "number" ? r.score : null,
-  }));
+    keywordOrCategory: extractHitTag(r),
+    }))
+    .sort((a, b) => {
+      const aScore = typeof a.matchingScore === "number" ? a.matchingScore : -1;
+      const bScore = typeof b.matchingScore === "number" ? b.matchingScore : -1;
+      return bScore - aScore;
+    });
 }
 
 function ViewIcon() {
@@ -908,30 +1005,28 @@ export function ScreeningDetailPage() {
 
       if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
 
-      const resp = await matchBatch(queries, batchScreeningTypes, {
+      const accepted = await submitScreeningJob(queries, batchScreeningTypes, {
         dailyScreening: batchDailyScreening,
         batchName,
         userId: currentUser.id,
         userName: currentUser.name,
       });
 
-      const items: BatchSubmission["items"] = rowMeta.map((m) => {
-        const matches = resp.responses[m.key];
-        if (!matches) {
-          return { customerType: m.uiType === "Individual" ? "Person" : "Entity", displayName: m.displayName, result: "ERROR", message: "Invalid row" };
-        }
-        const engine = classifyEngine(matches.results ?? []);
+      const placeholderItems: BatchSubmission["items"] = rowMeta.map((m) => {
+        const fallbackMatches: EntityMatches = {
+          results: [],
+          total: { value: 0, relation: "eq" },
+          query: queries[m.key],
+          status: 202,
+        };
         return {
           customerType: m.uiType === "Individual" ? "Person" : "Entity",
           displayName: m.displayName,
-          result: engine === "HIT" ? "HIT" : engine === "NO_HIT" ? "NO_HIT" : "ERROR",
-          message: matches?.results?.[0]?.caption ? `Top match: ${matches.results[0].caption}` : undefined,
-          details: { uiType: m.uiType, matches },
+          result: "PROCESSING",
+          message: "Screening in progress",
+          details: { uiType: m.uiType, matches: fallbackMatches },
         };
       });
-
-      const overall =
-        items.some((i) => i.result === "HIT") ? "HIT" : items.some((i) => i.result === "ERROR") ? "ERROR" : "NO_HIT";
 
       const entry: BatchSubmission = {
         id: uuid(),
@@ -939,18 +1034,85 @@ export function ScreeningDetailPage() {
         mode: "BATCH",
         createdByUserId: currentUser.id,
         createdByUserName: currentUser.name,
+        jobId: accepted.job_id,
         fileName: batchFile.name,
-        overallResult: overall,
+        overallResult: "PROCESSING",
         screeningTypes: batchScreeningTypes,
         dailyScreening: batchDailyScreening,
-        dailyScheduleId: resp.dailyScheduleId ?? undefined,
-        dailyScheduleActive: Boolean(batchDailyScreening && resp.dailyScheduleId),
-        items,
+        dailyScheduleId: accepted.daily_schedule_id ?? undefined,
+        dailyScheduleActive: Boolean(batchDailyScreening && accepted.daily_schedule_id),
+        items: placeholderItems,
       };
 
-      const next = [entry, ...submissions].slice(0, 500);
-      setSubmissions(next);
+      setSubmissions((prev) => [entry, ...prev].slice(0, 500));
       setLatest(entry);
+      setPage(1);
+
+      // Non-blocking async completion: keep UI responsive and update results when worker finishes.
+      void (async () => {
+        try {
+          const progress = await waitForScreeningJob(accepted.job_id, { timeoutMs: 1000 * 60 * 60 });
+          const responses = progress.responses ?? {};
+
+          const resolvedItems: BatchSubmission["items"] = rowMeta.map((m) => {
+            const matches = responses[m.key];
+            if (!matches) {
+              const fallbackMatches: EntityMatches = {
+                results: [],
+                total: { value: 0, relation: "eq" },
+                query: queries[m.key],
+                status: 500,
+              };
+              return {
+                customerType: m.uiType === "Individual" ? "Person" : "Entity",
+                displayName: m.displayName,
+                result: "ERROR",
+                message: "Screening failed for this row",
+                details: { uiType: m.uiType, matches: fallbackMatches },
+              };
+            }
+
+            const engine = classifyEngine(matches.results ?? []);
+            return {
+              customerType: m.uiType === "Individual" ? "Person" : "Entity",
+              displayName: m.displayName,
+              result: engine === "HIT" ? "HIT" : engine === "NO_HIT" ? "NO_HIT" : "ERROR",
+              message: matches?.results?.[0]?.caption ? `Top match: ${matches.results[0].caption}` : undefined,
+              details: { uiType: m.uiType, matches },
+            };
+          });
+
+          const overall =
+            progress.status === "FAILED"
+              ? "ERROR"
+              : resolvedItems.some((i) => i.result === "HIT")
+                ? "HIT"
+                : resolvedItems.some((i) => i.result === "ERROR")
+                  ? "ERROR"
+                  : "NO_HIT";
+
+          setSubmissions((prev) =>
+            prev.map((s) =>
+              s.mode === "BATCH" && s.id === entry.id
+                ? ({ ...s, overallResult: overall, items: resolvedItems } as BatchSubmission)
+                : s
+            )
+          );
+        } catch (err: any) {
+          const failureText = safeTrim(String(err?.message ?? "Batch screening failed."));
+          setSubmissions((prev) =>
+            prev.map((s) => {
+              if (s.mode !== "BATCH" || s.id !== entry.id) return s;
+              const failedItems = s.items.map((it) =>
+                it.result === "PROCESSING"
+                  ? { ...it, result: "ERROR", message: failureText || "Batch screening failed." }
+                  : it
+              );
+              return { ...s, overallResult: "ERROR", items: failedItems } as BatchSubmission;
+            })
+          );
+        }
+      })();
 
       // reset batch inputs after success
       setBatchFile(null);
@@ -959,7 +1121,6 @@ export function ScreeningDetailPage() {
       setBatchScreeningTypes(["Sanction"]);
       setBatchDailyScreening(false);
       setTemplatesOpen(false);
-      setPage(1);
     } catch (err: any) {
       setBatchError(err?.message ?? "Batch screening failed.");
     } finally {
@@ -1004,15 +1165,13 @@ export function ScreeningDetailPage() {
 
           const manualMatch = Boolean((matches as any)?.manualMatch === true); // not present initially
           const ui = engineToUiStatus(engine, manualMatch);
-          const matchingScore =
-            typeof matches?.results?.[0]?.score === "number" ? matches.results[0].score : null;
+          const matchingScore = topMatchingScore(matches?.results);
 
-          // country best effort (from stored request isn't kept here; optional)
           rows.push({
             id: `${s.id}_${m.key}`,
             entity: m.displayName,
             type: m.uiType,
-            country: "",
+            country: extractCountryFromQuery(matches?.query),
             engineStatus: engine,
             manualMatch,
             uiStatus: ui,
@@ -1038,16 +1197,11 @@ export function ScreeningDetailPage() {
           id: s.id,
           entity: (s as any).displayName,
           type: uiType,
-          country: "",
+          country: extractCountryFromRaw(s),
           engineStatus: engine,
           manualMatch,
           uiStatus: ui,
-          matchingScore:
-            typeof (s as any)?.details?.results?.[0]?.score === "number"
-              ? (s as any).details.results[0].score
-              : typeof (s as any)?.details?.score === "number"
-                ? (s as any).details.score
-                : null,
+          matchingScore: topMatchingScore((s as any)?.details?.results),
           date: created,
           batchSubmissionId: null,
           dailyScheduleId: null,
@@ -1068,14 +1222,11 @@ export function ScreeningDetailPage() {
             id: `${s.id}_${idx}`,
             entity: it.displayName,
             type: uiType,
-            country: "",
+            country: extractCountryFromQuery(it?.details?.matches?.query),
             engineStatus: engine,
             manualMatch,
             uiStatus: ui,
-            matchingScore:
-              typeof it?.details?.matches?.results?.[0]?.score === "number"
-                ? it.details.matches.results[0].score
-                : null,
+            matchingScore: topMatchingScore(it?.details?.matches?.results),
             date: created,
             batchSubmissionId: s.id,
             dailyScheduleId: typeof (s as any).dailyScheduleId === "string" ? (s as any).dailyScheduleId : null,
@@ -1117,7 +1268,7 @@ export function ScreeningDetailPage() {
   const pageRows = filtered.slice(startIdx, startIdx + pageSize);
   const [hitEntityDialog, setHitEntityDialog] = useState<{
     sourceEntity: string;
-    hits: { name: string; matchingScore: number | null }[];
+    hits: HitMatch[];
   } | null>(null);
 
   function openHitEntity(row: ResultRow) {
@@ -1625,9 +1776,6 @@ export function ScreeningDetailPage() {
           </div>
 
           <div className="resultsFilters">
-            <div className="resultsUserBadge">
-              {currentUser ? `User: ${currentUser.name}` : "User: Not authenticated"}
-            </div>
             <div className="searchBox">
               <span className="searchIcon">{"\u{1F50D}"}</span>
               <input
@@ -1684,7 +1832,7 @@ export function ScreeningDetailPage() {
                   <th style={{ width: 140 }}>Status</th>
                   <th style={{ width: 140 }}>Matching Score</th>
                   <th style={{ width: 120 }}>Date</th>
-                  <th style={{ width: 230, textAlign: "right" }}>Actions</th>
+                  <th style={{ width: 420 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1695,46 +1843,65 @@ export function ScreeningDetailPage() {
                     </td>
                   </tr>
                 ) : (
-                  pageRows.map((r) => (
-                    <tr key={r.id}>
-                      <td className="entityCell">
-                        <span className="entityIcon" aria-hidden="true">
-                          {uiTypeIcon(r.type)}
-                        </span>
-                        <span>{r.entity}</span>
-                      </td>
-                      <td className="muted">{r.type}</td>
-                      <td className="muted">{r.country || "\u2014"}</td>
-                      <td>{badge(r.uiStatus)}</td>
-                      <td className="muted">{formatMatchingScore(r.matchingScore)}</td>
-                      <td className="muted">{r.date}</td>
-                      <td style={{ textAlign: "right" }}>
-                        <div className="rowActions">
-                          {r.dailyScheduleActive && r.dailyScheduleId ? (
-                            <button
-                              type="button"
-                              className="btnGhostSmall"
-                              title={`Disable daily screening for ${(r.raw?.submission?.fileName as string) || "this batch file"}`}
-                              aria-label={`Disable daily screening for ${(r.raw?.submission?.fileName as string) || r.entity}`}
-                              disabled={disablingScheduleId === r.dailyScheduleId}
-                              onClick={() => void disableDailyScreeningForBatch(r)}
-                            >
-                              {disablingScheduleId === r.dailyScheduleId ? "Disabling..." : "Disable Daily"}
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="iconBtn"
-                            title="View hit entity"
-                            aria-label={`View hit entity for ${r.entity}`}
-                            onClick={() => openHitEntity(r)}
-                          >
-                            <ViewIcon />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  pageRows.map((r) => {
+                    const actionHits = getHitMatchesFromRaw(r.raw);
+                    return (
+                      <tr key={r.id}>
+                        <td className="entityCell">
+                          <span className="entityIcon" aria-hidden="true">
+                            {uiTypeIcon(r.type)}
+                          </span>
+                          <span>{r.entity}</span>
+                        </td>
+                        <td className="muted">{r.type}</td>
+                        <td className="muted">{r.country || "\u2014"}</td>
+                        <td>{badge(r.uiStatus)}</td>
+                        <td className="muted">{formatMatchingScore(r.matchingScore)}</td>
+                        <td className="muted">{r.date}</td>
+                        <td>
+                          <div className="rowActions">
+                            {actionHits.length > 0 ? (
+                              <div className="actionHitList">
+                                {actionHits.map((hit, idx) => (
+                                  <div className="actionHitItem" key={`${hit.name}_${idx}`}>
+                                    <span className="actionHitIndex">{idx + 1}.</span>
+                                    <span className="actionHitName">{hit.name}</span>
+                                    <span className="muted">{formatMatchingScore(hit.matchingScore)}</span>
+                                    <span className="muted">{hit.keywordOrCategory}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="muted">No hits</span>
+                            )}
+                            <div className="actionControls">
+                              {r.dailyScheduleActive && r.dailyScheduleId ? (
+                                <button
+                                  type="button"
+                                  className="btnGhostSmall"
+                                  title={`Disable daily screening for ${(r.raw?.submission?.fileName as string) || "this batch file"}`}
+                                  aria-label={`Disable daily screening for ${(r.raw?.submission?.fileName as string) || r.entity}`}
+                                  disabled={disablingScheduleId === r.dailyScheduleId}
+                                  onClick={() => void disableDailyScreeningForBatch(r)}
+                                >
+                                  {disablingScheduleId === r.dailyScheduleId ? "Disabling..." : "Disable Daily"}
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="iconBtn"
+                                title="View hit entity"
+                                aria-label={`View hit entity for ${r.entity}`}
+                                onClick={() => openHitEntity(r)}
+                              >
+                                <ViewIcon />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -1781,8 +1948,9 @@ export function ScreeningDetailPage() {
                   <div className="hitEntityList">
                     {hitEntityDialog.hits.map((hit, idx) => (
                       <div className="hitEntityItem" key={`${hit.name}_${idx}`}>
-                        <span>{hit.name}</span>
+                        <span className="hitEntityName">{hit.name}</span>
                         <span className="muted">{formatMatchingScore(hit.matchingScore)}</span>
+                        <span className="muted">{hit.keywordOrCategory}</span>
                       </div>
                     ))}
                   </div>

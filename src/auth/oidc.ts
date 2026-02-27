@@ -20,7 +20,12 @@ function envBool(name: string, fallback: boolean): boolean {
   return fallback;
 }
 
-const authority = env("VITE_OIDC_AUTHORITY", "http://localhost:8081/realms/screening-local");
+export const oidcAuthEnabled = envBool("VITE_AUTH_ENABLED", true);
+
+const authority = env(
+  "VITE_OIDC_AUTHORITY",
+  oidcAuthEnabled ? "http://localhost:8081/realms/screening-local" : "http://127.0.0.1/oidc-disabled"
+);
 const clientId = env("VITE_OIDC_CLIENT_ID", "screening-frontend");
 
 const redirectUri = env("VITE_OIDC_REDIRECT_URI", `${window.location.origin}/`);
@@ -37,9 +42,9 @@ export const oidcConfig: AuthProviderProps = {
   post_logout_redirect_uri: postLogoutRedirectUri,
   response_type: "code",
   scope,
-  automaticSilentRenew: true,
-  loadUserInfo: true,
-  monitorSession: true,
+  automaticSilentRenew: oidcAuthEnabled,
+  loadUserInfo: oidcAuthEnabled,
+  monitorSession: oidcAuthEnabled,
   userStore: new WebStorageStateStore({
     store: oidcClearSessionOnClose ? window.sessionStorage : window.localStorage,
   }),
@@ -48,10 +53,10 @@ export const oidcConfig: AuthProviderProps = {
   }),
 };
 
-if (!(import.meta.env.VITE_OIDC_AUTHORITY as string)?.trim()) {
+if (oidcAuthEnabled && !(import.meta.env.VITE_OIDC_AUTHORITY as string)?.trim()) {
   console.warn("VITE_OIDC_AUTHORITY is not set. Using local default authority:", authority);
 }
-if (!(import.meta.env.VITE_OIDC_CLIENT_ID as string)?.trim()) {
+if (oidcAuthEnabled && !(import.meta.env.VITE_OIDC_CLIENT_ID as string)?.trim()) {
   console.warn("VITE_OIDC_CLIENT_ID is not set. Using local default client_id:", clientId);
 }
 

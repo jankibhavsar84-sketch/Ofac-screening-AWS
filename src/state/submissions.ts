@@ -1,7 +1,7 @@
 import { atom } from "recoil";
 
 export type ScreeningMode = "SINGLE" | "BATCH";
-export type HitResult = "HIT" | "NO_HIT" | "ERROR";
+export type HitResult = "HIT" | "NO_HIT" | "PROCESSING" | "ERROR";
 
 export type SingleSubmission = {
   id: string;
@@ -31,6 +31,7 @@ export type BatchSubmission = {
   mode: "BATCH";
   createdByUserId?: string;
   createdByUserName?: string;
+  jobId?: string;
   fileName: string;
   overallResult: HitResult;
   screeningTypes?: string[];

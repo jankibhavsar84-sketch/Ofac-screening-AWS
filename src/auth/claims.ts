@@ -92,6 +92,17 @@ export function buildIdentity(user: User | null | undefined): AuthIdentity | nul
     accessTokenClaims?.preferred_username,
     accessTokenClaims?.email
   );
+  const authEnabledRaw = String(import.meta.env.VITE_AUTH_ENABLED ?? "true").trim().toLowerCase();
+  const authEnabled = !["0", "false", "no", "off"].includes(authEnabledRaw);
+  if (!id && !authEnabled) {
+    return {
+      id: "local-admin",
+      name: "Local Admin",
+      email: "local-admin@screening.internal",
+      scopes: new Set<string>(["screening.read", "screening.write", "screening.admin"]),
+      roles: new Set<string>(["admin", "screening.admin"]),
+    };
+  }
   if (!id) return null;
 
   const email = firstNonEmpty(profile.email, accessTokenClaims?.email);

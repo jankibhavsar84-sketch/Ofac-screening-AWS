@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { useAuth } from "react-oidc-context";
-import { oidcIdleTimeoutMs } from "../auth/oidc";
+import { oidcAuthEnabled, oidcIdleTimeoutMs } from "../auth/oidc";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const auth = useAuth();
+  if (!oidcAuthEnabled) return <>{children}</>;
   const idleTimeoutMs = useMemo(() => oidcIdleTimeoutMs, []);
   const idleTimerRef = useRef<number | null>(null);
   const loggingOutRef = useRef(false);

@@ -124,6 +124,7 @@ Frontend (`.env`, see `.env.example`):
 - `VITE_SCREENING_API_BASE_URL` default `/api/v1`
 - `VITE_SCREENING_POLL_INTERVAL_MS` default `750`
 - `VITE_SCREENING_JOB_TIMEOUT_MS` default `90000`
+- `VITE_AUTH_ENABLED` default `true` (`false` disables OIDC and uses local admin mode)
 - `VITE_OIDC_AUTHORITY` ex: `http://localhost:8081/realms/screening-local`
 - `VITE_OIDC_CLIENT_ID` ex: `screening-frontend`
 - `VITE_OIDC_REDIRECT_URI` ex: `http://localhost:8080/`

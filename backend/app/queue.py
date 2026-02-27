@@ -14,9 +14,11 @@ class SqsQueue:
         client_kwargs: dict[str, Any] = {
             "service_name": "sqs",
             "region_name": settings.aws_region,
-            "aws_access_key_id": settings.aws_access_key_id,
-            "aws_secret_access_key": settings.aws_secret_access_key,
         }
+        # Prefer ECS task-role credentials unless explicit keys are provided.
+        if settings.aws_access_key_id and settings.aws_secret_access_key:
+            client_kwargs["aws_access_key_id"] = settings.aws_access_key_id
+            client_kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
         if settings.aws_endpoint_url:
             client_kwargs["endpoint_url"] = settings.aws_endpoint_url
         self.client = boto3.client(**client_kwargs)
@@ -54,4 +56,3 @@ class SqsQueue:
     def delete(self, receipt_handle: str) -> None:
         queue_url = self.ensure_queue()
         self.client.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
-

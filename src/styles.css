@@ -106,6 +106,19 @@ a{color:inherit}
   text-overflow:ellipsis;
   white-space:nowrap;
 }
+.chip{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:11px;
+  font-weight:700;
+}
+.chipWarning{
+  background:#fff3da;
+  color:#a05a00;
+  border:1px solid #ffd892;
+}
 
 @media(max-width:850px){
   .topHeaderInner{
@@ -987,7 +1000,36 @@ textarea{min-height:90px;resize:vertical}
   cursor:pointer;
 }
 .rowActions{
-  display:inline-flex;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:8px;
+}
+.actionHitList{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.actionHitItem{
+  display:grid;
+  grid-template-columns:auto minmax(120px,1fr) auto minmax(120px,1fr);
+  gap:8px;
+  align-items:center;
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:6px 8px;
+  background:#f8fafc;
+}
+.actionHitIndex{
+  color:var(--muted);
+  font-weight:700;
+}
+.actionHitName{
+  font-weight:700;
+  overflow-wrap:anywhere;
+}
+.actionControls{
+  display:flex;
   align-items:center;
   justify-content:flex-end;
   gap:8px;
@@ -1005,15 +1047,6 @@ textarea{min-height:90px;resize:vertical}
   gap:8px;
 }
 .resultsFilters{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.resultsUserBadge{
-  border:1px solid #d8e1ee;
-  background:#f8fafc;
-  color:#475569;
-  border-radius:999px;
-  padding:6px 10px;
-  font-size:12px;
-  font-weight:700;
-}
 .searchBox{
   border:1px solid var(--border);
   background:#fff;border-radius:10px;
@@ -1133,14 +1166,18 @@ textarea{min-height:90px;resize:vertical}
   gap:8px;
 }
 .hitEntityItem{
-  display:flex;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(120px,1fr);
   align-items:center;
-  justify-content:space-between;
   gap:10px;
   border:1px solid var(--border);
   border-radius:10px;
   padding:8px 10px;
   background:#f8fafc;
+}
+.hitEntityName{
+  font-weight:700;
+  overflow-wrap:anywhere;
 }
 
 .pagerRow{

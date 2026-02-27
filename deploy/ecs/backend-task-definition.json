@@ -1,0 +1,66 @@
+{
+  "family": "ofac-screening-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::279930135954:role/ofac-screening-task-execution-role",
+  "taskRoleArn": "arn:aws:iam::279930135954:role/ofac-screening-task-role",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260226201358",
+      "essential": true,
+      "command": [
+        "sh",
+        "-c",
+        "python -m app.worker & uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      ],
+      "portMappings": [
+        {
+          "name": "api",
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp",
+          "appProtocol": "http"
+        }
+      ],
+      "environment": [
+        {
+          "name": "APP_DB_PATH",
+          "value": "/tmp/screening.db"
+        },
+        {
+          "name": "CORS_ALLOW_ORIGINS",
+          "value": "*"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "us-east-2"
+        },
+        {
+          "name": "AWS_SQS_QUEUE_NAME",
+          "value": "screening-requests"
+        },
+        {
+          "name": "ACTIMIZE_MOCK",
+          "value": "true"
+        },
+        {
+          "name": "AUTH_ENABLED",
+          "value": "false"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/ofac-screening-backend",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
