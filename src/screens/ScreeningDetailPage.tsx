@@ -225,6 +225,7 @@ function buildEntityExampleFromNameItem(item: NameItem): EntityExample {
 
 type EngineStatus = "NO_HIT" | "HIT" | "PROCESSING" | "ERROR";
 type UiStatus = "Clear" | "Potential Match" | "Pending" | "Match";
+type ResultMode = "SINGLE" | "BATCH";
 
 function engineToUiStatus(s: EngineStatus, manualMatch?: boolean): UiStatus {
   if (manualMatch) return "Match";
@@ -242,6 +243,11 @@ function badge(status: UiStatus) {
   if (status === "Potential Match") return <span className="statusPill statusPotential">Potential Match</span>;
   if (status === "Pending") return <span className="statusPill statusPending">Pending</span>;
   return <span className="statusPill statusMatch">Match</span>;
+}
+
+function modeBadge(mode: ResultMode) {
+  if (mode === "SINGLE") return <span className="modePill modePillSingle">Single</span>;
+  return <span className="modePill modePillBatch">Batch</span>;
 }
 
 function formatMatchingScore(score: number | null) {
@@ -1166,6 +1172,7 @@ export function ScreeningDetailPage() {
   type ResultRow = {
     id: string;
     entity: string;
+    mode: ResultMode;
     type: UiType;
     country: string;
     engineStatus: EngineStatus;
@@ -1204,6 +1211,7 @@ export function ScreeningDetailPage() {
           rows.push({
             id: `${s.id}_${m.key}`,
             entity: m.displayName,
+            mode: "SINGLE",
             type: m.uiType,
             country: extractCountryFromQuery(matches?.query),
             engineStatus: engine,
@@ -1230,6 +1238,7 @@ export function ScreeningDetailPage() {
         rows.push({
           id: s.id,
           entity: (s as any).displayName,
+          mode: "SINGLE",
           type: uiType,
           country: extractCountryFromRaw(s),
           engineStatus: engine,
@@ -1255,6 +1264,7 @@ export function ScreeningDetailPage() {
           rows.push({
             id: `${s.id}_${idx}`,
             entity: it.displayName,
+            mode: "BATCH",
             type: uiType,
             country: extractCountryFromQuery(it?.details?.matches?.query),
             engineStatus: engine,
@@ -1289,7 +1299,7 @@ export function ScreeningDetailPage() {
       if (!q) return true;
 
       const blob = JSON.stringify(r.raw ?? {});
-      const hay = `${r.entity} ${r.type} ${r.country} ${r.uiStatus} ${r.date} ${blob}`.toLowerCase();
+      const hay = `${r.entity} ${r.mode} ${r.type} ${r.country} ${r.uiStatus} ${r.date} ${blob}`.toLowerCase();
       return hay.includes(q);
     });
   }, [flattened, search, statusFilter, typeFilter]);
@@ -1338,16 +1348,18 @@ export function ScreeningDetailPage() {
       {/* Tabs row like screenshot */}
       <SummaryCards currentUserId={currentUser?.id ?? null} />
       <div className="tabsRow">
-        <button className={mode === "SINGLE" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("SINGLE")} type="button">
-          <span className="tabIcon">&#x1F50D;</span>
-          <span>Single Screening</span>
-          <span className="executionModeBadge executionModeBadgeSync">Sync</span>
-        </button>
-        <button className={mode === "BATCH" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("BATCH")} type="button">
-          <span className="tabIcon">&#x1F4C4;</span>
-          <span>Batch Screening</span>
-          <span className="executionModeBadge executionModeBadgeAsync">Async</span>
-        </button>
+        <div className="tabSwitch" role="tablist" aria-label="Screening mode">
+          <button className={mode === "SINGLE" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("SINGLE")} type="button">
+            <span className="tabIcon">&#x1F50D;</span>
+            <span>Single Screening</span>
+            <span className="executionModeBadge executionModeBadgeSync">Sync</span>
+          </button>
+          <button className={mode === "BATCH" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("BATCH")} type="button">
+            <span className="tabIcon">&#x1F4C4;</span>
+            <span>Batch Screening</span>
+            <span className="executionModeBadge executionModeBadgeAsync">Async</span>
+          </button>
+        </div>
 
         <button className="btnGhost" type="button" onClick={clearAll} disabled={submitting} style={{ marginLeft: "auto" }}>
           Clear
@@ -1861,24 +1873,24 @@ export function ScreeningDetailPage() {
               <thead>
                 <tr>
                   <th style={{ width: 220 }}>Entity</th>
+                  <th style={{ width: 120 }}>Mode</th>
                   <th style={{ width: 120 }}>Type</th>
                   <th style={{ width: 120 }}>Country</th>
                   <th style={{ width: 140 }}>Status</th>
                   <th style={{ width: 140 }}>Matching Score</th>
                   <th style={{ width: 120 }}>Date</th>
-                  <th style={{ width: 420 }}>Actions</th>
+                  <th style={{ width: 230 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="emptyRow">
+                    <td colSpan={8} className="emptyRow">
                       No results found.
                     </td>
                   </tr>
                 ) : (
                   pageRows.map((r) => {
-                    const actionHits = getHitMatchesFromRaw(r.raw);
                     return (
                       <tr key={r.id}>
                         <td className="entityCell">
@@ -1887,6 +1899,7 @@ export function ScreeningDetailPage() {
                           </span>
                           <span>{r.entity}</span>
                         </td>
+                        <td>{modeBadge(r.mode)}</td>
                         <td className="muted">{r.type}</td>
                         <td className="muted">{r.country || "\u2014"}</td>
                         <td>{badge(r.uiStatus)}</td>
@@ -1894,20 +1907,6 @@ export function ScreeningDetailPage() {
                         <td className="muted">{r.date}</td>
                         <td>
                           <div className="rowActions">
-                            {actionHits.length > 0 ? (
-                              <div className="actionHitList">
-                                {actionHits.map((hit, idx) => (
-                                  <div className="actionHitItem" key={`${hit.name}_${idx}`}>
-                                    <span className="actionHitIndex">{idx + 1}.</span>
-                                    <span className="actionHitName">{hit.name}</span>
-                                    <span className="muted">{formatMatchingScore(hit.matchingScore)}</span>
-                                    <span className="muted">{hit.keywordOrCategory}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="muted">No hits</span>
-                            )}
                             <div className="actionControls">
                               {r.dailyScheduleActive && r.dailyScheduleId ? (
                                 <button

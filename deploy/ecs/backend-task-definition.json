@@ -11,7 +11,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "backend",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260227080637",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260227124223",
                                      "essential":  true,
                                      "command":  [
                                                      "sh",
@@ -46,11 +46,19 @@
                                                          },
                                                          {
                                                              "name":  "ACTIMIZE_MOCK",
-                                                             "value":  "true"
+                                                             "value":  "false"
                                                          },
                                                          {
                                                              "name":  "AUTH_ENABLED",
                                                              "value":  "false"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_BASE_URL",
+                                                             "value":  "https://api.opensanctions.org"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_API_KEY",
+                                                             "value":  "ddae133d0725fee8b8b2f6d3bcc28f23"
                                                          }
                                                      ],
                                      "logConfiguration":  {

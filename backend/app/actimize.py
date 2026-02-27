@@ -18,6 +18,19 @@ def _extract_name(query: EntityExample) -> str:
     return "Unknown"
 
 
+def _map_screening_type_to_dataset(screening_type: str | None) -> str:
+    normalized = str(screening_type or "").strip().lower()
+    if normalized == "pep":
+        return "peps"
+    if normalized == "ame":
+        return "default"
+    if normalized == "fincen 314(a)":
+        return "sanctions"
+    if normalized == "global sanction":
+        return "sanctions"
+    return "sanctions"
+
+
 class ActimizeClient:
     def __init__(self) -> None:
         self.base_url = settings.actimize_base_url.rstrip("/")
@@ -33,23 +46,17 @@ class ActimizeClient:
     ) -> dict[str, Any]:
         if self.mock:
             return self._mock_response(query, screening_type)
-        if not self.base_url:
-            raise RuntimeError("ACTIMIZE_BASE_URL is required when ACTIMIZE_MOCK=false")
-
-        endpoint = f"{self.base_url}/screen"
+        base_url = self.base_url or "https://api.opensanctions.org"
+        dataset = _map_screening_type_to_dataset(screening_type)
+        endpoint = f"{base_url}/match/{dataset}"
         headers = {"Content-Type": "application/json"}
         if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+            headers["Authorization"] = f"ApiKey {self.api_key}"
 
-        payload: dict[str, Any] = {
-            "entity": query.model_dump(mode="json"),
-            "mockScreening": bool(mock_screening),
-            "generateAlert": not bool(mock_screening),
-        }
-        if screening_type:
-            payload["screeningType"] = screening_type
+        payload: dict[str, Any] = {"queries": {"item_1": query.model_dump(mode="json")}}
+        params = {"limit": settings.screening_result_limit}
 
-        response = requests.post(endpoint, headers=headers, json=payload, timeout=self.timeout_s)
+        response = requests.post(endpoint, headers=headers, params=params, json=payload, timeout=self.timeout_s)
         response.raise_for_status()
         body = response.json()
         return self._normalize(body, query)
@@ -114,9 +121,28 @@ class ActimizeClient:
         }
 
     def _normalize(self, body: dict[str, Any], query: EntityExample) -> dict[str, Any]:
-        raw_results = body.get("results")
-        if not isinstance(raw_results, list):
-            raw_results = body.get("hits", [])
+        raw_results: list[Any] = []
+        response_query = query.model_dump(mode="json")
+        response_status = int(body.get("status", 200) or 200)
+
+        responses = body.get("responses")
+        if isinstance(responses, dict) and responses:
+            first = next(iter(responses.values()))
+            if isinstance(first, dict):
+                first_results = first.get("results")
+                if isinstance(first_results, list):
+                    raw_results = first_results
+                first_query = first.get("query")
+                if isinstance(first_query, dict):
+                    response_query = first_query
+                response_status = int(first.get("status", response_status) or response_status)
+        else:
+            maybe_results = body.get("results")
+            if isinstance(maybe_results, list):
+                raw_results = maybe_results
+            else:
+                maybe_hits = body.get("hits", [])
+                raw_results = maybe_hits if isinstance(maybe_hits, list) else []
 
         normalized_results = []
         for idx, candidate in enumerate(raw_results):
@@ -138,8 +164,8 @@ class ActimizeClient:
         return {
             "results": normalized_results,
             "total": {"value": len(normalized_results), "relation": "eq"},
-            "query": query.model_dump(mode="json"),
-            "status": 200,
+            "query": response_query,
+            "status": response_status,
         }
 
     def _mock_response(self, query: EntityExample, screening_type: str | None = None) -> dict[str, Any]:
