@@ -1,0 +1,60 @@
+{
+  "CallerReference": "ofac-screening-https-20260227-2",
+  "Comment": "OFAC screening HTTPS frontend via CloudFront",
+  "Enabled": true,
+  "PriceClass": "PriceClass_100",
+  "DefaultRootObject": "index.html",
+  "Origins": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Id": "ofac-screening-alb-origin",
+        "DomainName": "ofac-screening-alb-1811962426.us-east-2.elb.amazonaws.com",
+        "CustomOriginConfig": {
+          "HTTPPort": 80,
+          "HTTPSPort": 443,
+          "OriginProtocolPolicy": "http-only",
+          "OriginSslProtocols": {
+            "Quantity": 1,
+            "Items": ["TLSv1.2"]
+          }
+        }
+      }
+    ]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "ofac-screening-alb-origin",
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "AllowedMethods": {
+      "Quantity": 7,
+      "Items": ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"],
+      "CachedMethods": {
+        "Quantity": 2,
+        "Items": ["GET", "HEAD"]
+      }
+    },
+    "Compress": true,
+    "ForwardedValues": {
+      "QueryString": true,
+      "Cookies": {
+        "Forward": "all"
+      },
+      "Headers": {
+        "Quantity": 1,
+        "Items": ["*"]
+      }
+    },
+    "MinTTL": 0,
+    "DefaultTTL": 0,
+    "MaxTTL": 0
+  },
+  "ViewerCertificate": {
+    "CloudFrontDefaultCertificate": true
+  },
+  "Restrictions": {
+    "GeoRestriction": {
+      "RestrictionType": "none",
+      "Quantity": 0
+    }
+  }
+}

@@ -151,14 +151,13 @@ def _decode_token(raw_token: str) -> dict[str, Any]:
     if not algorithms:
         algorithms = ["RS256"]
 
-    verify_aud = bool(settings.auth_audience.strip())
     kwargs: dict[str, Any] = {
         "algorithms": algorithms,
         "issuer": settings.auth_issuer,
-        "options": {"verify_aud": verify_aud},
+        # Validate audience-like claims manually so Cognito access tokens
+        # without "aud" can still be checked against app client id.
+        "options": {"verify_aud": False},
     }
-    if verify_aud:
-        kwargs["audience"] = settings.auth_audience
 
     payload = jwt.decode(
         raw_token,
@@ -167,6 +166,28 @@ def _decode_token(raw_token: str) -> dict[str, Any]:
     )
     if not isinstance(payload, dict):
         raise InvalidTokenError("JWT payload must be an object")
+
+    expected_audience = settings.auth_audience.strip()
+    if expected_audience:
+        audience_claim = payload.get("aud")
+        client_id_claim = payload.get("client_id")
+        authorized_party_claim = payload.get("azp")
+
+        audience_values: set[str] = set()
+        if isinstance(audience_claim, str) and audience_claim.strip():
+            audience_values.add(audience_claim.strip())
+        elif isinstance(audience_claim, list):
+            audience_values.update(str(v).strip() for v in audience_claim if str(v).strip())
+
+        for value in (client_id_claim, authorized_party_claim):
+            if isinstance(value, str) and value.strip():
+                audience_values.add(value.strip())
+
+        if expected_audience not in audience_values:
+            raise InvalidTokenError(
+                'Token audience mismatch: expected AUTH_AUDIENCE in "aud", "client_id", or "azp" claim'
+            )
+
     return payload
 
 
