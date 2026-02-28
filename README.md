@@ -96,6 +96,11 @@ sequenceDiagram
 
 PDF version of these diagrams: `docs/architecture-api-flow.pdf`
 
+## Technical Design Document
+
+- TDD (Markdown, includes Mermaid diagrams): `docs/technical-design-document.md`
+- TDD (Word-openable document): `docs/technical-design-document.doc`
+
 ## Key Paths
 
 - Frontend API client: `src/api/openSanctions.ts`

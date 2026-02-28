@@ -1,0 +1,188 @@
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Technical Design Document (TDD) - OFAC / Watchlist Screening Platform</title>
+  <style>
+    body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.35; }
+    h1 { font-size: 20pt; }
+    h2 { font-size: 16pt; margin-top: 18pt; }
+    h3 { font-size: 13pt; margin-top: 14pt; }
+    code, pre { font-family: Consolas, "Courier New", monospace; font-size: 10pt; }
+    pre { background: #f5f5f5; padding: 10px; border: 1px solid #ddd; }
+    .meta { color: #444; }
+    .diagram { background: #fff; border-left: 4px solid #1f4e79; padding: 8px 10px; }
+    ul { margin-top: 6px; }
+  </style>
+  <!--
+    This is HTML saved with a .doc extension so Microsoft Word opens it as a document.
+    Diagrams are included as readable ASCII/sequence text; the Markdown version includes Mermaid blocks.
+  -->
+</head>
+<body>
+  <h1>Technical Design Document (TDD): OFAC / Watchlist Screening Platform</h1>
+  <p class="meta"><b>Version:</b> 1.0<br/>
+  <b>Date:</b> 2026-02-28<br/>
+  <b>Repo:</b> ofac-screening-aws</p>
+
+  <h2>1. System Overview</h2>
+  <ul>
+    <li><b>Single Screening (Sync):</b> immediate response for interactive use.</li>
+    <li><b>Batch Screening (Async):</b> file-based screening returns immediately with a job id; worker processes in background.</li>
+    <li><b>Daily Screening:</b> selected batches re-screened daily shortly after midnight Eastern time.</li>
+    <li><b>AuthN/AuthZ:</b> OIDC login and role-based authorization.</li>
+    <li><b>Audit Trail:</b> key user/system actions recorded with timestamps.</li>
+  </ul>
+
+  <h2>2. AWS Architecture (Deployed View)</h2>
+  <h3>2.1 Logical Diagram (Text)</h3>
+  <div class="diagram">
+  <pre>
+User Browser
+  |
+  | HTTPS
+  v
+CloudFront (HTTPS)
+  |
+  | HTTP (origin)
+  v
+ALB
+  |
+  v
+ECS/Fargate Frontend Service (Nginx + SPA)
+  |\
+  | \__ /api/* reverse proxy (internal)
+  |     v
+  |   ECS/Fargate Backend Service (FastAPI)  --read/write-->  RDS PostgreSQL
+  |            |
+  |            +--enqueue--> SQS queue (screening-requests)
+  |
+  +--(OIDC in browser)--> Cognito User Pool (or enterprise IdP federation)
+
+ECS/Fargate Worker Service
+  |
+  +--poll--> SQS queue
+  +--read/write--> RDS PostgreSQL
+  +--screen calls--> Screening Engine Adapter (single-type per request, 32 TPS throttled)
+  </pre>
+  </div>
+
+  <h3>2.2 Key AWS Components</h3>
+  <ul>
+    <li><b>CloudFront:</b> provides HTTPS required for OIDC PKCE and a single public entrypoint.</li>
+    <li><b>ALB:</b> forwards to frontend target group; backend is reached internally via reverse proxy.</li>
+    <li><b>ECS/Fargate:</b> frontend, backend, worker services.</li>
+    <li><b>Cloud Map:</b> backend resolves as backend.screening.internal from frontend tasks.</li>
+    <li><b>SQS:</b> buffers batch work and decouples submission from processing.</li>
+    <li><b>RDS PostgreSQL:</b> jobs, items, schedules, audit events.</li>
+    <li><b>Cognito:</b> login and token issuance (or federation).</li>
+    <li><b>CloudWatch Logs:</b> central logs per service.</li>
+  </ul>
+
+  <h2>3. Security Design</h2>
+  <h3>3.1 Authentication</h3>
+  <ul>
+    <li>Browser uses OIDC Authorization Code + PKCE.</li>
+    <li>Frontend sends Authorization: Bearer &lt;access_token&gt; to backend APIs.</li>
+  </ul>
+
+  <h3>3.2 Authorization</h3>
+  <p>Roles are derived from token claims (e.g., Cognito groups or mapped enterprise groups).</p>
+  <ul>
+    <li><b>viewer:</b> screening only in mock mode.</li>
+    <li><b>analyst:</b> single + batch screening.</li>
+    <li><b>compliance:</b> analyst + daily screening management.</li>
+    <li><b>admin:</b> compliance + user admin + audit visibility.</li>
+  </ul>
+
+  <h3>3.3 Token Validation</h3>
+  <ul>
+    <li>Validate JWT signature with JWKS.</li>
+    <li>Validate issuer and allowed algorithms.</li>
+    <li>Audience compatibility for Cognito access tokens: accept app client id in aud or client_id or azp.</li>
+  </ul>
+
+  <h2>4. Component Responsibilities</h2>
+  <h3>4.1 Frontend</h3>
+  <ul>
+    <li>UI for Single/Batch/Daily and results.</li>
+    <li>OIDC login/logout and session handling.</li>
+    <li>Calls backend under /api/v1 via /api reverse proxy.</li>
+    <li>Polls batch jobs and renders progress.</li>
+  </ul>
+
+  <h3>4.2 Backend API</h3>
+  <ul>
+    <li>Accepts requests and performs synchronous screening.</li>
+    <li>Creates batch jobs and enqueues work.</li>
+    <li>Provides polling endpoints and daily schedule endpoints.</li>
+    <li>Writes audit events for traceability.</li>
+  </ul>
+
+  <h3>4.3 Worker</h3>
+  <ul>
+    <li>Consumes SQS messages and processes screening items.</li>
+    <li>Calls screening engine one type at a time and merges results.</li>
+    <li>Enforces 32 TPS throughput limit.</li>
+    <li>Triggers due daily schedules to create new batch jobs.</li>
+  </ul>
+
+  <h2>5. API Design</h2>
+  <p><b>Base path:</b> /api/v1</p>
+  <ul>
+    <li>GET /health</li>
+    <li>POST /screenings/match (sync)</li>
+    <li>POST /screenings/jobs (async batch)</li>
+    <li>GET /screenings/jobs/{job_id} (poll progress/results)</li>
+    <li>GET /screenings/daily-schedules</li>
+    <li>DELETE /screenings/daily-schedules/{schedule_id}</li>
+    <li>GET /audit-events</li>
+  </ul>
+
+  <h2>6. Process Flows (Text)</h2>
+  <h3>6.1 Single Screening (Sync)</h3>
+  <pre>
+UI -> API: POST /screenings/match
+API -> DB: write audit SYNC_SCREENING_SUBMITTED
+API -> Engine: call one request per screening type (Sanction/PEP/AME/etc.)
+API -> DB: persist result
+API -> UI: return merged response ordered by score
+  </pre>
+
+  <h3>6.2 Batch Screening (Async)</h3>
+  <pre>
+UI -> API: POST /screenings/jobs
+API -> DB: create job + items + audit
+API -> SQS: enqueue one message per item (includes screening_types list)
+API -> UI: 202 Accepted with job_id
+
+Worker -> SQS: receive message
+Worker -> DB: mark item processing
+Worker -> Engine: call one request per screening type (rate limited to 32 TPS)
+Worker -> DB: mark item completed/failed
+Worker -> SQS: delete message
+
+UI -> API: GET /screenings/jobs/{job_id} (poll)
+API -> UI: queued/processing/completed/failed + results when terminal
+  </pre>
+
+  <h3>6.3 Daily Screening</h3>
+  <pre>
+Worker (scheduler loop) -> DB: list due daily schedules
+Worker -> DB: claim schedule run (atomic compare-and-set)
+Worker -> API: submit job using saved batch payload
+API -> DB: create job + audit
+API -> SQS: enqueue items
+Worker -> DB: update next_run_at
+  </pre>
+
+  <h2>7. Operational Design</h2>
+  <ul>
+    <li><b>Throughput:</b> worker throttles outbound engine calls to 32 TPS.</li>
+    <li><b>Observability:</b> logs in CloudWatch; audit events in DB.</li>
+    <li><b>Cost controls (dev):</b> worker desired count can be 0 when not testing batch/daily.</li>
+  </ul>
+
+  <p class="meta">Markdown version with Mermaid diagrams: docs/technical-design-document.md</p>
+</body>
+</html>
+
