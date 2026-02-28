@@ -374,6 +374,16 @@ function ViewIcon() {
   );
 }
 
+function DownloadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M3 21h18" />
+    </svg>
+  );
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -389,6 +399,17 @@ function csvEscape(v: any) {
   const s = String(v ?? "");
   if (/[,"\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
+}
+
+function exportTimestamp() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mi = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+  return `${yyyy}${mm}${dd}_${hh}${mi}${ss}`;
 }
 
 function downloadTemplate(kind: UiType | "Mixed", format: "csv" | "xlsx") {
@@ -1340,6 +1361,67 @@ export function ScreeningDetailPage() {
     });
   }, [flattened, search, statusFilter, typeFilter]);
 
+  function exportFilteredResultsCsv() {
+    if (!filtered.length) return;
+
+    const headers = [
+      "Entity",
+      "Mode",
+      "Type",
+      "Country",
+      "Status",
+      "Matching Score",
+      "Date",
+      "Screening Types",
+      "Daily Screening",
+      "Batch Name",
+      "Top Hit Name",
+      "Top Hit Score",
+      "Top Hit Keyword/Category",
+      "Total Hits",
+    ];
+
+    const rows = filtered.map((row) => {
+      const submission = row.raw?.submission;
+      const screeningTypesRaw =
+        submission?.screeningTypes ??
+        submission?.details?.screeningTypes ??
+        [];
+      const screeningTypes = Array.isArray(screeningTypesRaw)
+        ? screeningTypesRaw.map((value: unknown) => safeTrim(String(value))).filter(Boolean).join(", ")
+        : "";
+
+      const batchName = safeTrim(String(submission?.fileName ?? ""));
+      const hitRows = getHitMatchesFromRaw(row.raw);
+      const topHit = hitRows[0];
+
+      return [
+        row.entity,
+        row.mode === "SINGLE" ? "Single" : "Batch",
+        row.type,
+        row.country || "",
+        row.uiStatus,
+        formatMatchingScore(row.matchingScore),
+        row.date,
+        screeningTypes,
+        row.dailyScheduleActive ? "Yes" : "No",
+        batchName,
+        topHit?.name ?? "",
+        topHit?.matchingScore != null ? formatMatchingScore(topHit.matchingScore) : "",
+        topHit?.keywordOrCategory ?? "",
+        String(hitRows.length),
+      ];
+    });
+
+    const csv = [
+      headers.map(csvEscape).join(","),
+      ...rows.map((line) => line.map(csvEscape).join(",")),
+    ].join("\n");
+
+    const filename = `screening_results_${exportTimestamp()}.csv`;
+    downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), filename);
+  }
+
   // ---------- Pagination (10) ----------
   const pageSize = 10;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -1874,6 +1956,19 @@ export function ScreeningDetailPage() {
               onClick={refreshResults}
             >
               <RefreshIcon />
+            </button>
+            <button
+              type="button"
+              className="btnGhostSmall"
+              title="Export filtered screening results to CSV"
+              aria-label="Export filtered screening results to CSV"
+              onClick={exportFilteredResultsCsv}
+              disabled={filtered.length === 0}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <DownloadIcon />
+                <span>Export CSV</span>
+              </span>
             </button>
           </div>
 
