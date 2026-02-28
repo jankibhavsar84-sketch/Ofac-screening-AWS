@@ -1,10 +1,8 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { useRecoilState } from "recoil";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "react-oidc-context";
-import { z } from "zod";
 import { buildIdentity, hasPermission } from "../auth/claims";
 import { listAuditEvents, type AuditEvent } from "../api/openSanctions";
-import { usersState, type UserRole } from "../state/users";
+import type { UserRole } from "../state/users";
 
 const ROLE_OPTIONS: UserRole[] = ["Admin", "Compliance Officer", "Analyst", "Viewer"];
 
@@ -15,57 +13,126 @@ const roleDescriptions: Record<UserRole, string> = {
   Viewer: "Single screening in mock mode only",
 };
 
-const inviteSchema = z.object({
-  fullName: z.string().trim().min(1, "Full name is required."),
-  email: z.string().trim().email("Enter a valid email address."),
-  role: z.enum(["Admin", "Compliance Officer", "Analyst", "Viewer"]),
-});
+type AuditUserOption = {
+  userId: string;
+  displayName: string;
+};
 
-function uuid() {
-  return crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+function readString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
-function toTitleCase(input: string): string {
-  return input
-    .split(" ")
-    .map((p) => (p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : ""))
-    .join(" ")
-    .trim();
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item || "").trim()).filter(Boolean);
 }
 
-function userInitial(name: string): string {
-  return (name.trim().charAt(0) || "U").toUpperCase();
+function toTitleCaseWords(input: string): string {
+  const normalized = input.replace(/[_-]+/g, " ").trim();
+  if (!normalized) return "";
+  return normalized
+    .split(/\s+/g)
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1).toLowerCase() : ""))
+    .join(" ");
 }
 
-function SectionIcon({ kind }: { kind: "shield" | "users" | "invite" | "back" }) {
-  if (kind === "shield") {
-    return (
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" />
-      </svg>
-    );
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
+function readErrorFromDetails(details: Record<string, unknown> | undefined): string {
+  if (!details) return "";
+  const candidates = [details.error, details.error_text, details.message, details.detail];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
   }
-  if (kind === "invite") {
-    return (
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M22 6 12 13 2 6" />
-        <rect x="2" y="5" width="20" height="14" rx="2" />
-      </svg>
-    );
+  return "";
+}
+
+function resolveAuditUserName(event: AuditEvent): string {
+  const details = (event.details as Record<string, unknown> | undefined) || undefined;
+  const candidates = [
+    readString(event.user_name),
+    readString(details?.user_name),
+    readString(details?.disabled_by),
+    readString(details?.actor_name),
+  ];
+  for (const candidate of candidates) {
+    if (candidate) return candidate;
   }
-  if (kind === "users") {
-    return (
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="9" cy="8" r="3" />
-        <circle cx="17" cy="10" r="2.5" />
-        <path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-      </svg>
-    );
+  return readString(event.user_id) || "-";
+}
+
+function formatActionLabel(action: string): string {
+  const normalized = readString(action);
+  return normalized ? toTitleCaseWords(normalized) : "-";
+}
+
+function shortId(value: string): string {
+  const trimmed = readString(value);
+  if (!trimmed) return "";
+  if (trimmed.length <= 12) return trimmed;
+  return `${trimmed.slice(0, 8)}...`;
+}
+
+function resolveEntityLabel(event: AuditEvent): string {
+  const details = (event.details as Record<string, unknown> | undefined) || undefined;
+  const entityType = readString(event.entity_type).toLowerCase();
+  const entityId = readString(event.entity_id);
+  const action = readString(event.action).toUpperCase();
+
+  if (entityType === "screening_job" || action.includes("SCREENING_JOB")) {
+    const batchName = readString(details?.batch_name);
+    const totalItemsRaw = Number(details?.total_items);
+    const screeningTypes = toStringArray(details?.screening_types);
+    const base = batchName ? `Batch "${batchName}"` : "Batch screening job";
+    const parts: string[] = [];
+    if (Number.isFinite(totalItemsRaw) && totalItemsRaw > 0) parts.push(`${totalItemsRaw} items`);
+    if (screeningTypes.length) parts.push(screeningTypes.join(", "));
+    if (entityId) parts.push(`job ${shortId(entityId)}`);
+    return parts.length ? `${base} (${parts.join(" | ")})` : base;
   }
+
+  if (entityType === "sync_screening") {
+    const totalItemsRaw = Number(details?.total_items);
+    const screeningTypes = toStringArray(details?.screening_types);
+    const parts: string[] = [];
+    if (Number.isFinite(totalItemsRaw) && totalItemsRaw > 0) parts.push(`${totalItemsRaw} item${totalItemsRaw > 1 ? "s" : ""}`);
+    if (screeningTypes.length) parts.push(screeningTypes.join(", "));
+    return parts.length ? `Single screening (${parts.join(" | ")})` : "Single screening";
+  }
+
+  if (entityType === "screening_item") {
+    const itemKey = readString(details?.item_key) || (entityId.includes(":") ? entityId.split(":")[1] : "");
+    const jobId = readString(details?.job_id) || (entityId.includes(":") ? entityId.split(":")[0] : "");
+    const base = itemKey ? `Batch item ${itemKey}` : "Batch item";
+    return jobId ? `${base} (job ${shortId(jobId)})` : base;
+  }
+
+  if (entityType === "sync_screening_item") {
+    const itemKey = readString(details?.item_key) || entityId;
+    return itemKey ? `Single screening item ${itemKey}` : "Single screening item";
+  }
+
+  if (entityType === "daily_schedule") {
+    const batchName = readString(details?.batch_name);
+    const base = batchName ? `Daily schedule "${batchName}"` : "Daily schedule";
+    return entityId ? `${base} (${shortId(entityId)})` : base;
+  }
+
+  const fallbackType = entityType ? toTitleCaseWords(entityType) : toTitleCaseWords(action);
+  if (fallbackType && entityId) return `${fallbackType} (${entityId})`;
+  if (fallbackType) return fallbackType;
+  if (entityId) return entityId;
+  return "-";
+}
+
+function SectionIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" />
     </svg>
   );
 }
@@ -103,72 +170,20 @@ function RoleIcon({ role }: { role: UserRole }) {
   );
 }
 
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-      <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" />
-      <line x1="10" y1="11" x2="10" y2="17" />
-      <line x1="14" y1="11" x2="14" y2="17" />
-    </svg>
-  );
-}
-
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-}
-
-function readErrorFromDetails(details: Record<string, unknown> | undefined): string {
-  if (!details) return "";
-  const candidates = [
-    details.error,
-    details.error_text,
-    details.message,
-    details.detail,
-  ];
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
-  }
-  return "";
-}
-
 export function ManageUsersPage() {
   const auth = useAuth();
   const identity = buildIdentity(auth.user);
   const allowed = hasPermission(identity, "screening.admin", "screening.useradmin");
-  const [users, setUsers] = useRecoilState(usersState);
-  const [inviteFullName, setInviteFullName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<UserRole>("Analyst");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [auditUserFilter, setAuditUserFilter] = useState("all");
   const [auditErrorsOnly, setAuditErrorsOnly] = useState(false);
+  const [auditUserOptions, setAuditUserOptions] = useState<AuditUserOption[]>([]);
 
-  if (!allowed) {
-    return (
-      <div className="page">
-        <div className="card">
-          <div className="cardHeader">
-            <h2>Access Denied</h2>
-          </div>
-          <div className="cardBody">
-            <p className="muted">Administrator access is required (`admin` or `screening.admin`).</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const sortedUsers = useMemo(
-    () => [...users].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [users]
+  const sortedAuditUserOptions = useMemo(
+    () => [...auditUserOptions].sort((a, b) => a.displayName.localeCompare(b.displayName)),
+    [auditUserOptions]
   );
 
   async function loadAuditEvents(userId?: string) {
@@ -177,6 +192,28 @@ export function ManageUsersPage() {
     try {
       const rows = await listAuditEvents(500, userId);
       setAuditEvents(rows);
+      setAuditUserOptions((prev) => {
+        const merged = new Map<string, string>(prev.map((item) => [item.userId, item.displayName]));
+        for (const row of rows) {
+          const rowUserId = readString(row.user_id);
+          if (!rowUserId) continue;
+          const resolvedName = resolveAuditUserName(row);
+          const existing = merged.get(rowUserId);
+          if (!existing || existing === rowUserId) {
+            merged.set(rowUserId, resolvedName || rowUserId);
+          }
+        }
+        if (identity?.id) {
+          const id = identity.id.trim();
+          if (id && !merged.has(id)) {
+            merged.set(id, (identity.name || identity.email || identity.id).trim());
+          }
+        }
+        return Array.from(merged.entries()).map(([userIdValue, displayName]) => ({
+          userId: userIdValue,
+          displayName: displayName || userIdValue,
+        }));
+      });
     } catch (err: any) {
       setAuditError(err?.message ?? "Failed to load audit events.");
     } finally {
@@ -199,43 +236,19 @@ export function ManageUsersPage() {
     });
   }, [auditEvents, auditErrorsOnly]);
 
-  function submitInvite(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    const parsed = inviteSchema.safeParse({ fullName: inviteFullName, email: inviteEmail, role: inviteRole });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Please fix validation errors.");
-      return;
-    }
-
-    const email = parsed.data.email.toLowerCase();
-    const exists = users.some((u) => u.email.toLowerCase() === email);
-    if (exists) {
-      setError("A user with this email already exists.");
-      return;
-    }
-
-    setUsers((prev) => [
-      {
-        id: uuid(),
-        name: toTitleCase(parsed.data.fullName),
-        email,
-        role: parsed.data.role,
-        createdAt: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
-
-    setInviteFullName("");
-    setInviteEmail("");
-    setInviteRole("Analyst");
-    setSuccess("User added successfully.");
-  }
-
-  function removeUser(userId: string) {
-    setUsers((prev) => prev.filter((u) => u.id !== userId));
+  if (!allowed) {
+    return (
+      <div className="page">
+        <div className="card">
+          <div className="cardHeader">
+            <h2>Access Denied</h2>
+          </div>
+          <div className="cardBody">
+            <p className="muted">Administrator access is required (`admin` or `screening.admin`).</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -263,106 +276,7 @@ export function ManageUsersPage() {
         <div className="cardHeader">
           <h2 className="userAdminSectionTitle">
             <span className="userAdminInlineIcon" aria-hidden="true">
-              <SectionIcon kind="invite" />
-            </span>
-            Add New User
-          </h2>
-        </div>
-        <div className="cardBody">
-          <form onSubmit={submitInvite} className="inviteGrid">
-            <div className="field inviteNameField">
-              <label>Full Name</label>
-              <input
-                type="text"
-                placeholder="e.g. John Smith"
-                value={inviteFullName}
-                onChange={(e) => setInviteFullName(e.target.value)}
-              />
-            </div>
-            <div className="field inviteEmailField">
-              <label>Email Address</label>
-              <input
-                type="email"
-                placeholder="colleague@company.com"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-              />
-            </div>
-            <div className="field inviteRoleField">
-              <label>Role</label>
-              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as UserRole)}>
-                {ROLE_OPTIONS.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="inviteActionField">
-              <button type="submit" className="btnInvite">
-                <span className="btnInviteIcon" aria-hidden="true">
-                  <SectionIcon kind="invite" />
-                </span>
-                Add User
-              </button>
-            </div>
-          </form>
-          {error ? <div className="errorBox">{error}</div> : null}
-          {success ? <div className="successBox">{success}</div> : null}
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 18 }}>
-        <div className="cardHeader">
-          <h2 className="userAdminSectionTitle">
-            <span className="userAdminInlineIcon" aria-hidden="true">
-              <SectionIcon kind="users" />
-            </span>
-            Team Members
-            <span className="userCount">({sortedUsers.length})</span>
-          </h2>
-        </div>
-        <div className="cardBody">
-          {sortedUsers.length === 0 ? (
-            <div className="emptyTeam">No team members yet. Invite a user to get started.</div>
-          ) : (
-            <div className="teamMemberList">
-              {sortedUsers.map((user) => (
-                <div key={user.id} className="teamMemberRow">
-                  <div className="teamMemberLeft">
-                    <div className="teamAvatar">{userInitial(user.name)}</div>
-                    <div>
-                      <div className="teamName">{user.name}</div>
-                      <div className="teamEmail">{user.email}</div>
-                    </div>
-                  </div>
-                  <div className="teamMemberRight">
-                    <span className={`teamRoleBadge teamRoleBadge--${user.role.replace(/\s+/g, "").toLowerCase()}`}>
-                      <RoleIcon role={user.role} />
-                      {user.role}
-                    </span>
-                    <button
-                      type="button"
-                      className="teamRemoveBtn"
-                      onClick={() => removeUser(user.id)}
-                      aria-label={`Remove ${user.name}`}
-                      title="Remove user"
-                    >
-                      <TrashIcon />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 18 }}>
-        <div className="cardHeader">
-          <h2 className="userAdminSectionTitle">
-            <span className="userAdminInlineIcon" aria-hidden="true">
-              <SectionIcon kind="shield" />
+              <SectionIcon />
             </span>
             User Audit Logs
           </h2>
@@ -374,16 +288,11 @@ export function ManageUsersPage() {
                 <label>User Filter</label>
                 <select value={auditUserFilter} onChange={(e) => setAuditUserFilter(e.target.value)}>
                   <option value="all">All users</option>
-                  {sortedUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({user.email})
+                  {sortedAuditUserOptions.map((option) => (
+                    <option key={option.userId} value={option.userId}>
+                      {option.displayName}
                     </option>
                   ))}
-                  {identity?.id ? (
-                    <option value={identity.id}>
-                      {identity.name || identity.id} (current token user)
-                    </option>
-                  ) : null}
                 </select>
               </div>
               <label className="mockModeCheck" style={{ marginTop: 18 }}>
@@ -412,9 +321,9 @@ export function ManageUsersPage() {
               <thead>
                 <tr>
                   <th style={{ width: 180 }}>Time</th>
-                  <th style={{ width: 200 }}>User</th>
-                  <th style={{ width: 210 }}>Action</th>
-                  <th style={{ width: 180 }}>Entity</th>
+                  <th style={{ width: 220 }}>User</th>
+                  <th style={{ width: 220 }}>Action</th>
+                  <th style={{ width: 360 }}>Entity</th>
                   <th>Error</th>
                 </tr>
               </thead>
@@ -429,20 +338,19 @@ export function ManageUsersPage() {
                   filteredAuditEvents.map((event) => {
                     const details = event.details as Record<string, unknown> | undefined;
                     const errorText = readErrorFromDetails(details);
+                    const resolvedUserName = resolveAuditUserName(event);
+                    const resolvedUserId = readString(event.user_id) || "-";
                     return (
                       <tr key={event.event_id}>
                         <td className="muted">{formatDateTime(event.created_at)}</td>
                         <td>
-                          <div>{event.user_name || "-"}</div>
-                          <div className="muted">{event.user_id || "-"}</div>
+                          <div>{resolvedUserName}</div>
+                          <div className="muted">{resolvedUserId}</div>
                         </td>
                         <td>
-                          <span className="statusPill statusPending">{event.action}</span>
+                          <span className="statusPill statusPending">{formatActionLabel(event.action)}</span>
                         </td>
-                        <td className="muted">
-                          {event.entity_type || "-"}
-                          {event.entity_id ? ` / ${event.entity_id}` : ""}
-                        </td>
+                        <td className="muted">{resolveEntityLabel(event)}</td>
                         <td className="muted">{errorText || "-"}</td>
                       </tr>
                     );
@@ -456,3 +364,4 @@ export function ManageUsersPage() {
     </div>
   );
 }
+

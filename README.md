@@ -19,6 +19,7 @@ This repository has been upgraded to an enterprise-style architecture:
 7. Single screening supports `mock_screening` mode: hit-check only (no Actimize alert) or alert generation.
 8. Batch supports `daily_screening`: if selected, the worker re-runs that batch daily shortly after midnight Eastern (`America/New_York`, default `00:05`).
 9. Users can disable daily screening for a scheduled batch directly from Screening Results using the `Disable Daily` action.
+10. Capacity assumption for this deployment: up to `80` total users with around `15` concurrent active sessions.
 
 ### Architecture Diagram
 

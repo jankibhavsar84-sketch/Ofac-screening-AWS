@@ -508,14 +508,48 @@ class JobRepository:
                     (safe_limit,),
                 ).fetchall()
 
+            missing_name_user_ids = sorted(
+                {
+                    str(row["user_id"]).strip()
+                    for row in rows
+                    if row["user_id"] and not str(row["user_name"] or "").strip()
+                }
+            )
+            user_name_fallback: dict[str, str] = {}
+            if missing_name_user_ids:
+                placeholders = ", ".join("?" for _ in missing_name_user_ids)
+                lookup_rows = self._execute(
+                    conn,
+                    f"""
+                    SELECT user_id, user_name, event_id
+                    FROM audit_events
+                    WHERE user_id IN ({placeholders})
+                      AND user_name IS NOT NULL
+                      AND TRIM(user_name) <> ''
+                    ORDER BY event_id DESC
+                    """,
+                    tuple(missing_name_user_ids),
+                ).fetchall()
+                for lookup in lookup_rows:
+                    fallback_user_id = str(lookup["user_id"] or "").strip()
+                    fallback_user_name = str(lookup["user_name"] or "").strip()
+                    if not fallback_user_id or not fallback_user_name:
+                        continue
+                    if fallback_user_id not in user_name_fallback:
+                        user_name_fallback[fallback_user_id] = fallback_user_name
+
         events: list[dict[str, Any]] = []
         for row in rows:
+            resolved_user_id = row["user_id"]
+            resolved_user_name = row["user_name"]
+            if resolved_user_id and not str(resolved_user_name or "").strip():
+                resolved_user_name = user_name_fallback.get(str(resolved_user_id).strip()) or None
             events.append(
                 {
                     "event_id": int(row["event_id"]),
                     "created_at": row["created_at"],
-                    "user_id": row["user_id"],
-                    "user_name": row["user_name"],
+                    "user_id": resolved_user_id,
+                    "user_name": resolved_user_name,
                     "action": row["action"],
                     "entity_type": row["entity_type"],
                     "entity_id": row["entity_id"],
