@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignedOutRouteImport } from './routes/signed-out'
 import { Route as ScreeningRouteImport } from './routes/screening'
 import { Route as ManageUsersRouteImport } from './routes/manage-users'
 import { Route as IntroRouteImport } from './routes/intro'
 import { Route as DailySchedulesRouteImport } from './routes/daily-schedules'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SignedOutRoute = SignedOutRouteImport.update({
+  id: '/signed-out',
+  path: '/signed-out',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScreeningRoute = ScreeningRouteImport.update({
   id: '/screening',
   path: '/screening',
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/intro': typeof IntroRoute
   '/manage-users': typeof ManageUsersRoute
   '/screening': typeof ScreeningRoute
+  '/signed-out': typeof SignedOutRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/intro': typeof IntroRoute
   '/manage-users': typeof ManageUsersRoute
   '/screening': typeof ScreeningRoute
+  '/signed-out': typeof SignedOutRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,6 +70,7 @@ export interface FileRoutesById {
   '/intro': typeof IntroRoute
   '/manage-users': typeof ManageUsersRoute
   '/screening': typeof ScreeningRoute
+  '/signed-out': typeof SignedOutRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -71,8 +80,15 @@ export interface FileRouteTypes {
     | '/intro'
     | '/manage-users'
     | '/screening'
+    | '/signed-out'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/daily-schedules' | '/intro' | '/manage-users' | '/screening'
+  to:
+    | '/'
+    | '/daily-schedules'
+    | '/intro'
+    | '/manage-users'
+    | '/screening'
+    | '/signed-out'
   id:
     | '__root__'
     | '/'
@@ -80,6 +96,7 @@ export interface FileRouteTypes {
     | '/intro'
     | '/manage-users'
     | '/screening'
+    | '/signed-out'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,10 +105,18 @@ export interface RootRouteChildren {
   IntroRoute: typeof IntroRoute
   ManageUsersRoute: typeof ManageUsersRoute
   ScreeningRoute: typeof ScreeningRoute
+  SignedOutRoute: typeof SignedOutRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signed-out': {
+      id: '/signed-out'
+      path: '/signed-out'
+      fullPath: '/signed-out'
+      preLoaderRoute: typeof SignedOutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/screening': {
       id: '/screening'
       path: '/screening'
@@ -136,6 +161,7 @@ const rootRouteChildren: RootRouteChildren = {
   IntroRoute: IntroRoute,
   ManageUsersRoute: ManageUsersRoute,
   ScreeningRoute: ScreeningRoute,
+  SignedOutRoute: SignedOutRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -134,7 +134,7 @@ Frontend (`.env`, see `.env.example`):
 - `VITE_OIDC_AUTHORITY` ex Cognito: `https://cognito-idp.<region>.amazonaws.com/<user_pool_id>`
 - `VITE_OIDC_CLIENT_ID` ex: `screening-frontend` (Keycloak) or `<cognito_app_client_id>`
 - `VITE_OIDC_REDIRECT_URI` ex: `http://localhost:8080/`
-- `VITE_OIDC_POST_LOGOUT_REDIRECT_URI` ex: `http://localhost:8080/`
+- `VITE_OIDC_POST_LOGOUT_REDIRECT_URI` ex: `http://localhost:8080/signed-out`
 - `VITE_OIDC_SCOPE` ex: `openid profile email` (Cognito)
 - `VITE_OIDC_IDLE_TIMEOUT_MS` ex: `900000` (15 minutes; set `0` to disable idle auto-logout)
 - `VITE_OIDC_CLEAR_SESSION_ON_CLOSE` ex: `true` (stores OIDC session in `sessionStorage`; clears on tab/browser close)

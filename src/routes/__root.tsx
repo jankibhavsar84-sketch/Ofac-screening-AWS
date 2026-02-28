@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, createRootRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "react-oidc-context";
 import { buildIdentity, hasPermission } from "../auth/claims";
-import { oidcAuthEnabled } from "../auth/oidc";
+import { oidcAuthEnabled, oidcUseRpInitiatedLogout, redirectToSignedOutPage } from "../auth/oidc";
 import { setAccessToken } from "../auth/session";
 
 export const Route = createRootRoute({
@@ -10,6 +10,7 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isUserAdministrationPage = pathname.startsWith("/manage-users");
   const isDailySchedulePage = pathname.startsWith("/daily-schedules");
@@ -21,6 +22,27 @@ function RootLayout() {
   useEffect(() => {
     setAccessToken(oidcAuthEnabled ? auth.user?.access_token ?? null : null);
   }, [auth.user]);
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      await auth.removeUser();
+      if (!oidcUseRpInitiatedLogout) {
+        redirectToSignedOutPage();
+      } else {
+        try {
+          await auth.signoutRedirect();
+        } catch {
+          redirectToSignedOutPage();
+        }
+      }
+    } catch {
+      redirectToSignedOutPage();
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   return (
     <div className="appShell">
@@ -72,11 +94,17 @@ function RootLayout() {
             {oidcAuthEnabled ? (
               <button
                 type="button"
-                className="btnGhost"
-                onClick={() => void auth.signoutRedirect()}
+                className="btnGhost btnSignOut"
+                onClick={() => void handleSignOut()}
                 title="Sign out"
+                disabled={isSigningOut}
               >
-                Sign Out
+                <span className="btnSignOutIcon" aria-hidden="true">
+                  <svg viewBox="0 0 20 20" width="14" height="14" focusable="false">
+                    <path d="M3 10h8M8 6l4 4-4 4M12 3h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <span>{isSigningOut ? "Signing Out..." : "Sign Out"}</span>
               </button>
             ) : (
               <span className="chip chipWarning">Auth Disabled</span>

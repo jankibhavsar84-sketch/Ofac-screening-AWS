@@ -21,6 +21,7 @@ function envBool(name: string, fallback: boolean): boolean {
 }
 
 export const oidcAuthEnabled = envBool("VITE_AUTH_ENABLED", true);
+export const signedOutPath = "/signed-out";
 
 const authority = env(
   "VITE_OIDC_AUTHORITY",
@@ -29,7 +30,9 @@ const authority = env(
 const clientId = env("VITE_OIDC_CLIENT_ID", "screening-frontend");
 
 const redirectUri = env("VITE_OIDC_REDIRECT_URI", `${window.location.origin}/`);
-const postLogoutRedirectUri = env("VITE_OIDC_POST_LOGOUT_REDIRECT_URI", `${window.location.origin}/`);
+const explicitPostLogoutRedirectUri = appEnv("VITE_OIDC_POST_LOGOUT_REDIRECT_URI", "").trim();
+const postLogoutRedirectUri = explicitPostLogoutRedirectUri || `${window.location.origin}${signedOutPath}`;
+export const oidcUseRpInitiatedLogout = explicitPostLogoutRedirectUri.length > 0;
 // Cognito does not support `roles` default scope. Use standard OIDC scopes by default.
 const defaultScope = authority.includes("amazoncognito.com") ? "openid profile email" : "openid profile email roles";
 const scope = env("VITE_OIDC_SCOPE", defaultScope);
@@ -72,4 +75,8 @@ export function clearSigninQueryParams(): void {
   url.searchParams.delete("state");
   url.searchParams.delete("session_state");
   window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+}
+
+export function redirectToSignedOutPage(): void {
+  window.location.assign(signedOutPath);
 }

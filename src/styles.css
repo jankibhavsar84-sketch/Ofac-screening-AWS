@@ -159,6 +159,10 @@ a{color:inherit}
   margin:0 0 16px;
   color:#64748b;
 }
+.signedOutCard{
+  border-color:#dbe6f8;
+  background:#f8fbff;
+}
 
 .card{
   background:var(--card);
@@ -242,6 +246,31 @@ a{color:inherit}
   padding:10px 14px;
   border-radius:12px;
   cursor:pointer;
+}
+.btnSignOut{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-weight:700;
+  color:#8a2532;
+  border-color:#f1d5da;
+  background:#fff7f8;
+  transition:background .15s ease, border-color .15s ease, color .15s ease;
+}
+.btnSignOut:hover:enabled{
+  background:#ffeff2;
+  border-color:#e7b5bf;
+  color:#7a1f2c;
+}
+.btnSignOut:disabled{
+  cursor:not-allowed;
+  opacity:.72;
+}
+.btnSignOutIcon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1;
 }
 
 .btnGhostSmall{

@@ -1,10 +1,17 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { useAuth } from "react-oidc-context";
-import { oidcAuthEnabled, oidcIdleTimeoutMs } from "../auth/oidc";
+import {
+  oidcAuthEnabled,
+  oidcIdleTimeoutMs,
+  oidcUseRpInitiatedLogout,
+  redirectToSignedOutPage,
+  signedOutPath,
+} from "../auth/oidc";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const auth = useAuth();
+  const isSignedOutPage = typeof window !== "undefined" && window.location.pathname === signedOutPath;
   if (!oidcAuthEnabled) return <>{children}</>;
   const idleTimeoutMs = useMemo(() => oidcIdleTimeoutMs, []);
   const idleTimerRef = useRef<number | null>(null);
@@ -31,11 +38,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
       loggingOutRef.current = true;
       try {
         await auth.removeUser();
-        try {
-          await auth.signoutRedirect();
-        } catch {
-          // Some IdPs may not support RP initiated logout for local setup.
+        if (!oidcUseRpInitiatedLogout) {
+          redirectToSignedOutPage();
+        } else {
+          try {
+            await auth.signoutRedirect();
+          } catch {
+            // Some IdPs may not support RP initiated logout; always land on signed-out page.
+            redirectToSignedOutPage();
+          }
         }
+      } catch {
+        redirectToSignedOutPage();
       } finally {
         loggingOutRef.current = false;
       }
@@ -87,6 +101,20 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (!auth.isAuthenticated) {
+    if (isSignedOutPage) {
+      return (
+        <div className="authGate">
+          <div className="authGateCard signedOutCard">
+            <h2>You are signed out</h2>
+            <p>Your session has ended successfully. Sign in again to continue screening.</p>
+            <button type="button" className="btnPrimary" onClick={() => void auth.signinRedirect()}>
+              Sign In Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="authGate">
         <div className="authGateCard">
