@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Outlet, createRootRoute, Link, useRouterState } from "@tanstack/react-router";
+import { Outlet, createRootRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "react-oidc-context";
 import { buildIdentity, hasPermission } from "../auth/claims";
 import { oidcAuthEnabled, oidcUseRpInitiatedLogout, redirectToSignedOutPage } from "../auth/oidc";
@@ -11,9 +11,6 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isUserAdministrationPage = pathname.startsWith("/manage-users");
-  const isDailySchedulePage = pathname.startsWith("/daily-schedules");
   const auth = useAuth();
   const identity = buildIdentity(auth.user);
   const canManageUsers = hasPermission(identity, "screening.admin", "screening.useradmin");
@@ -51,20 +48,8 @@ function RootLayout() {
           <div className="brandRow">
             <div className="brandIcon" aria-hidden="true">{"\u{1F6E1}\uFE0F"}</div>
             <div className="brandText">
-              <div className="brandTitle">
-                {isUserAdministrationPage
-                  ? "User Administration"
-                  : isDailySchedulePage
-                    ? "Daily Schedule Administration"
-                    : "OFAC Screening"}
-              </div>
-              <div className="brandSub">
-                {isUserAdministrationPage
-                  ? "Manage team members and access levels"
-                  : isDailySchedulePage
-                    ? "Remove batch files from daily screening schedules"
-                    : "Sanctions compliance screening platform"}
-              </div>
+              <div className="brandTitle">Watchlist Screening</div>
+              <div className="brandSub">AML Screening Platform</div>
             </div>
           </div>
 
