@@ -1331,3 +1331,203 @@ textarea{min-height:90px;resize:vertical}
 .summaryCard--pending .summaryIconBubble{
   color:#4b607f;
 }
+
+.introPage{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.introHero{
+  overflow:hidden;
+  background:linear-gradient(135deg, #f6f9ff 0%, #ffffff 62%, #f9fbff 100%);
+}
+.introHeroBody{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+}
+.introHeroLeft{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  min-width:0;
+}
+.introHeroIcon{
+  width:40px;
+  height:40px;
+  border-radius:12px;
+  background:#0f1f3a;
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 10px 20px rgba(15,23,42,.12);
+  flex-shrink:0;
+}
+.introTitle{
+  margin:0;
+  font-size:20px;
+  line-height:1.2;
+}
+.introSubtitle{
+  margin:6px 0 0;
+  color:#5d6f89;
+  max-width:680px;
+}
+.introHeroStats{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(110px, 1fr));
+  gap:10px;
+  width:100%;
+  max-width:420px;
+}
+.introStat{
+  border:1px solid #dbe5f3;
+  border-radius:12px;
+  background:#fff;
+  padding:10px 12px;
+}
+.introStatLabel{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.04em;
+  color:#5d7292;
+  text-transform:uppercase;
+}
+.introStatValue{
+  margin-top:4px;
+  font-size:24px;
+  line-height:1;
+  font-weight:900;
+  color:#172338;
+}
+.introFlowGrid{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+}
+.introFlowCard{
+  border:1px solid #dce6f4;
+  border-radius:12px;
+  background:#fff;
+  padding:12px;
+}
+.introFlowStep{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  padding:3px 8px;
+  font-size:11px;
+  font-weight:800;
+  color:#38507a;
+  background:#eff4fb;
+  border:1px solid #d8e4f6;
+}
+.introFlowHead{
+  margin-top:8px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:#16263f;
+}
+.introFlowCard p{
+  margin:8px 0 0;
+  font-size:13px;
+  color:#5f7491;
+  line-height:1.4;
+}
+.introModeCard{
+  border:1px solid #dfe8f5;
+  border-radius:12px;
+  padding:12px;
+}
+.introModeCard + .introModeCard{
+  margin-top:10px;
+}
+.introModeCardSync{
+  background:#f2f9f4;
+  border-color:#c7e8d0;
+}
+.introModeCardAsync{
+  background:#f2f5ff;
+  border-color:#cbd7ff;
+}
+.introModeHead{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:#1b2a44;
+}
+.introModeCard p{
+  margin:6px 0 0;
+  color:#546b89;
+  font-size:13px;
+}
+.introStatusList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.introStatusRow{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  align-items:flex-start;
+  gap:10px;
+}
+.introStatusRow p{
+  margin:3px 0 0;
+  font-size:12px;
+  color:#60758f;
+}
+.introStatusIcon{
+  width:28px;
+  height:28px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.introStatusIconClear{
+  background:#eaf9f0;
+  color:#177245;
+}
+.introStatusIconHit{
+  background:#fff4dd;
+  color:#a16300;
+}
+.introStatusIconPending{
+  background:#eff3fb;
+  color:#3e5679;
+}
+.introStatusIconMatch{
+  background:#ffeef2;
+  color:#b4234c;
+}
+.introCtaRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+@media(max-width:1020px){
+  .introHeroBody{
+    flex-direction:column;
+  }
+  .introHeroStats{
+    max-width:none;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+  }
+  .introFlowGrid{
+    grid-template-columns:1fr;
+  }
+}
+@media(max-width:700px){
+  .introHeroStats{
+    grid-template-columns:1fr;
+  }
+  .introCtaRow{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+}
