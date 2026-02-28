@@ -80,14 +80,16 @@ a{color:inherit}
 }
 .authUserPanel{
   display:flex;
-  align-items:center;
-  gap:10px;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:6px;
+  min-width:220px;
 }
 .authUserMeta{
   display:flex;
   flex-direction:column;
   align-items:flex-end;
-  min-width:180px;
+  min-width:220px;
 }
 .authUserName{
   font-size:12px;
@@ -126,10 +128,11 @@ a{color:inherit}
   }
   .authUserPanel{
     width:100%;
-    justify-content:flex-end;
+    align-items:flex-start;
   }
   .authUserMeta{
     align-items:flex-start;
+    min-width:0;
   }
 }
 
