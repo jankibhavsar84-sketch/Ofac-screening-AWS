@@ -11,12 +11,15 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "backend",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260227211217",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260302085022",
                                      "essential":  true,
                                      "command":  [
-                                                     "sh",
-                                                     "-c",
-                                                     "python -m app.worker \u0026 uvicorn app.main:app --host 0.0.0.0 --port 8000"
+                                                     "uvicorn",
+                                                     "app.main:app",
+                                                     "--host",
+                                                     "0.0.0.0",
+                                                     "--port",
+                                                     "8000"
                                                  ],
                                      "portMappings":  [
                                                           {
@@ -79,6 +82,14 @@
                                                          {
                                                              "name":  "APP_DB_URL",
                                                              "value":  "postgresql://screening_admin:wab%29Mg%5EP-n2L%2AV7h%5Ef2%5DWxdi@screening-postgres-dev.c1y8yq0u2xoz.us-east-2.rds.amazonaws.com:5432/screening?sslmode=require"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_S3_UPLOAD_BUCKET",
+                                                             "value":  "amzn-s3-quickscreen-batch"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_S3_UPLOAD_PREFIX",
+                                                             "value":  "screening-input"
                                                          }
                                                      ],
                                      "logConfiguration":  {

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
@@ -53,6 +54,39 @@ def get_service() -> ScreeningService:
     return service
 
 
+_MACHINE_USER_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.IGNORECASE)
+
+
+def _looks_machine_user(value: str | None) -> bool:
+    raw = (value or "").strip()
+    if not raw:
+        return True
+    if raw.isdigit():
+        return True
+    if _MACHINE_USER_RE.match(raw):
+        return True
+    return False
+
+
+def _preferred_actor_name(principal: AuthPrincipal, hinted_user_name: str | None = None) -> str:
+    hinted = (hinted_user_name or "").strip()
+    if hinted and not _looks_machine_user(hinted):
+        return hinted
+
+    if principal.email and principal.email.strip():
+        return principal.email.strip()
+
+    principal_name = (principal.user_name or "").strip()
+    if principal_name and not _looks_machine_user(principal_name):
+        return principal_name
+
+    if hinted:
+        return hinted
+    if principal_name:
+        return principal_name
+    return principal.user_id
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -68,7 +102,8 @@ def create_screening_job(
         raise HTTPException(status_code=403, detail="Only Compliance/Admin can enable daily screening")
 
     try:
-        payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": principal.user_name})
+        actor_user_name = _preferred_actor_name(principal, payload.user_name)
+        payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": actor_user_name})
         return svc.submit_job(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -86,6 +121,7 @@ async def create_batch_job_with_upload(
     mock_screening: bool = Form(default=False),
     subscribe_results: bool = Form(default=False),
     subscribe_email: str | None = Form(default=None),
+    user_name: str | None = Form(default=None),
     principal: AuthPrincipal = Depends(require_any_scope("screening.write", "screening.daily", "screening.admin")),
     svc: ScreeningService = Depends(get_service),
 ) -> BatchUploadAccepted:
@@ -129,11 +165,13 @@ async def create_batch_job_with_upload(
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=500, detail=f"Failed to upload file to S3: {exc}") from exc
 
+    actor_user_name = _preferred_actor_name(principal, user_name)
+
     repository.register_batch_file_upload(
         upload_id=upload_id,
         file_name=file.filename,
         user_id=principal.user_id,
-        user_name=principal.user_name,
+        user_name=actor_user_name,
         record_count=len(parsed_queries),
         file_hash=file_hash,
         s3_bucket=s3_info.get("bucket"),
@@ -156,7 +194,7 @@ async def create_batch_job_with_upload(
         source_upload_id=upload_id,
         batch_name=(batch_name or "").strip() or None,
         user_id=principal.user_id,
-        user_name=principal.user_name,
+        user_name=actor_user_name,
     )
 
     try:
@@ -179,14 +217,14 @@ async def create_batch_job_with_upload(
             svc.subscribe_to_schedule(
                 schedule_id=accepted.daily_schedule_id,
                 user_id=principal.user_id,
-                user_name=principal.user_name,
+                user_name=actor_user_name,
                 email=email,
             )
 
     repository.add_audit_event(
         action="BATCH_FILE_UPLOADED",
         user_id=principal.user_id,
-        user_name=principal.user_name,
+        user_name=actor_user_name,
         entity_type="batch_file_upload",
         entity_id=upload_id,
         details={
@@ -256,7 +294,7 @@ def subscribe_daily_schedule(
     return svc.subscribe_to_schedule(
         schedule_id=schedule_id,
         user_id=principal.user_id,
-        user_name=principal.user_name,
+        user_name=_preferred_actor_name(principal),
         email=safe_email,
     )
 
@@ -275,7 +313,7 @@ def unsubscribe_daily_schedule(
         schedule_id=schedule_id,
         email=safe_email,
         user_id=principal.user_id,
-        user_name=principal.user_name,
+        user_name=_preferred_actor_name(principal),
     )
     if not removed:
         raise HTTPException(status_code=404, detail="Subscription not found")
@@ -291,7 +329,7 @@ def remove_daily_schedule(
     svc: ScreeningService = Depends(get_service),
 ) -> dict[str, str]:
     actor_user_id = principal.user_id if principal.user_id else user_id
-    actor_user_name = principal.user_name if principal.user_name else user_name
+    actor_user_name = _preferred_actor_name(principal, user_name)
     removed = svc.remove_daily_schedule(schedule_id, user_id=actor_user_id, user_name=actor_user_name)
     if not removed:
         raise HTTPException(status_code=404, detail=f"Daily schedule {schedule_id} not found")
@@ -328,7 +366,8 @@ def match_sync(
     if not payload.mock_screening and not principal_has_permission(principal, "screening.write", "screening.admin"):
         raise HTTPException(status_code=403, detail="Viewer can perform only mock single screening")
 
-    payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": principal.user_name})
+    actor_user_name = _preferred_actor_name(principal, payload.user_name)
+    payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": actor_user_name})
     repository.add_audit_event(
         action="SYNC_SCREENING_SUBMITTED",
         user_id=payload.user_id,

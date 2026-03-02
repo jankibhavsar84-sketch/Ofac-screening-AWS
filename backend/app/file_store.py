@@ -64,8 +64,13 @@ class S3FileStore:
         region = (settings.aws_region or "").strip()
         if region and region != "us-east-1":
             create_kwargs["CreateBucketConfiguration"] = {"LocationConstraint": region}
-        self.client.create_bucket(**create_kwargs)
-        self._bucket_checked = True
+        try:
+            self.client.create_bucket(**create_kwargs)
+            self._bucket_checked = True
+        except Exception:
+            # Do not fail here; put_object may still work if bucket already exists
+            # but caller lacks create/head permissions.
+            self._bucket_checked = False
 
     def upload_source_file(
         self,

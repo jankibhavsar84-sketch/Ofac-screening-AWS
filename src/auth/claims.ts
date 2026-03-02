@@ -109,6 +109,14 @@ function firstNonEmpty(...values: unknown[]): string {
   return "";
 }
 
+function isTechnicalIdentifier(value: string): boolean {
+  const raw = value.trim();
+  if (!raw) return true;
+  if (/^\d+$/.test(raw)) return true;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw)) return true;
+  return false;
+}
+
 export function buildIdentity(user: User | null | undefined): AuthIdentity | null {
   const profile = (user?.profile ?? {}) as Record<string, unknown>;
   const accessTokenClaims = decodeJwtPayload(user?.access_token);
@@ -116,9 +124,13 @@ export function buildIdentity(user: User | null | undefined): AuthIdentity | nul
   const id = firstNonEmpty(
     profile.sub,
     profile.preferred_username,
+    profile["cognito:username"],
+    profile.username,
     profile.email,
     accessTokenClaims?.sub,
     accessTokenClaims?.preferred_username,
+    accessTokenClaims?.["cognito:username"],
+    accessTokenClaims?.username,
     accessTokenClaims?.email
   );
   const authEnabledRaw = appEnv("VITE_AUTH_ENABLED", "true").toLowerCase();
@@ -135,14 +147,19 @@ export function buildIdentity(user: User | null | undefined): AuthIdentity | nul
   if (!id) return null;
 
   const email = firstNonEmpty(profile.email, accessTokenClaims?.email);
-  const name = firstNonEmpty(
+  const preferredName = firstNonEmpty(
     profile.name,
     profile.preferred_username,
+    profile["cognito:username"],
+    profile.username,
     accessTokenClaims?.name,
     accessTokenClaims?.preferred_username,
+    accessTokenClaims?.["cognito:username"],
+    accessTokenClaims?.username,
     email,
-    id
+    id,
   );
+  const name = isTechnicalIdentifier(preferredName) ? firstNonEmpty(email, profile["cognito:username"], profile.username, preferredName) : preferredName;
 
   const scopes = parseScopes(profile);
   const roles = parseRoles(profile);

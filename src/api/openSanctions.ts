@@ -217,6 +217,7 @@ type BatchUploadRequest = {
   mockScreening?: boolean;
   subscribeResults?: boolean;
   subscribeEmail?: string;
+  userName?: string;
 };
 
 export async function uploadBatchAndSubmitJob(payload: BatchUploadRequest): Promise<BatchUploadAccepted> {
@@ -232,6 +233,7 @@ export async function uploadBatchAndSubmitJob(payload: BatchUploadRequest): Prom
   form.set("mock_screening", payload.mockScreening ? "true" : "false");
   form.set("subscribe_results", payload.subscribeResults ? "true" : "false");
   if (payload.subscribeEmail && payload.subscribeEmail.trim()) form.set("subscribe_email", payload.subscribeEmail.trim());
+  if (payload.userName && payload.userName.trim()) form.set("user_name", payload.userName.trim());
 
   const resp = await fetch(`${baseUrl}/screenings/batch-upload`, {
     method: "POST",

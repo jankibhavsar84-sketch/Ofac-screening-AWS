@@ -51,14 +51,27 @@ function readErrorFromDetails(details: Record<string, unknown> | undefined): str
   return "";
 }
 
+function isTechnicalIdentifier(value: string): boolean {
+  const raw = value.trim();
+  if (!raw) return true;
+  if (/^\d+$/.test(raw)) return true;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw)) return true;
+  return false;
+}
+
 function resolveAuditUserName(event: AuditEvent): string {
   const details = (event.details as Record<string, unknown> | undefined) || undefined;
   const candidates = [
     readString(event.user_name),
+    readString(event.user_id).includes("@") ? readString(event.user_id) : "",
+    readString(details?.user_email),
     readString(details?.user_name),
     readString(details?.disabled_by),
     readString(details?.actor_name),
   ];
+  for (const candidate of candidates) {
+    if (candidate && !isTechnicalIdentifier(candidate)) return candidate;
+  }
   for (const candidate of candidates) {
     if (candidate) return candidate;
   }
@@ -339,14 +352,10 @@ export function ManageUsersPage() {
                     const details = event.details as Record<string, unknown> | undefined;
                     const errorText = readErrorFromDetails(details);
                     const resolvedUserName = resolveAuditUserName(event);
-                    const resolvedUserId = readString(event.user_id) || "-";
                     return (
                       <tr key={event.event_id}>
                         <td className="muted">{formatDateTime(event.created_at)}</td>
-                        <td>
-                          <div>{resolvedUserName}</div>
-                          <div className="muted">{resolvedUserId}</div>
-                        </td>
+                        <td>{resolvedUserName}</td>
                         <td>
                           <span className="statusPill statusPending">{formatActionLabel(event.action)}</span>
                         </td>
@@ -364,4 +373,3 @@ export function ManageUsersPage() {
     </div>
   );
 }
-

@@ -42,6 +42,8 @@ ROLE_ALIASES: dict[str, str] = {
     "viewer": "viewer",
 }
 
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.IGNORECASE)
+
 
 @dataclass
 class AuthPrincipal:
@@ -68,6 +70,26 @@ def _to_string_list(value: Any) -> list[str]:
         candidate = value.strip()
         return [candidate] if candidate else []
     return []
+
+
+def _first_non_empty(*values: Any) -> str:
+    for value in values:
+        if isinstance(value, str):
+            candidate = value.strip()
+            if candidate:
+                return candidate
+    return ""
+
+
+def _is_technical_identifier(value: str) -> bool:
+    raw = (value or "").strip()
+    if not raw:
+        return True
+    if raw.isdigit():
+        return True
+    if _UUID_RE.match(raw):
+        return True
+    return False
 
 
 def _normalize_role(role: str) -> str:
@@ -192,9 +214,27 @@ def _decode_token(raw_token: str) -> dict[str, Any]:
 
 
 def _claims_to_principal(payload: dict[str, Any]) -> AuthPrincipal:
-    user_id = str(payload.get("sub") or payload.get("preferred_username") or payload.get("email") or "").strip()
-    user_name = str(payload.get("name") or payload.get("preferred_username") or payload.get("email") or user_id).strip()
-    email = str(payload.get("email") or "").strip()
+    user_id = _first_non_empty(
+        payload.get("sub"),
+        payload.get("preferred_username"),
+        payload.get("cognito:username"),
+        payload.get("username"),
+        payload.get("email"),
+    )
+    email = _first_non_empty(payload.get("email"))
+
+    user_name_candidate = _first_non_empty(
+        payload.get("name"),
+        payload.get("preferred_username"),
+        payload.get("cognito:username"),
+        payload.get("username"),
+        email,
+        user_id,
+    )
+    if _is_technical_identifier(user_name_candidate):
+        user_name = _first_non_empty(email, payload.get("cognito:username"), payload.get("username"), user_name_candidate)
+    else:
+        user_name = user_name_candidate
 
     if not user_id:
         raise HTTPException(

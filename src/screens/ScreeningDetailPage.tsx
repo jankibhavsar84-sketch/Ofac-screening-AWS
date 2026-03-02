@@ -1189,6 +1189,7 @@ export function ScreeningDetailPage() {
         mockScreening: false,
         subscribeResults: useScheduledFlow ? subscribeResults : false,
         subscribeEmail: useScheduledFlow ? safeTrim(subscribeEmail) : undefined,
+        userName: currentUser.name,
       });
 
       const screenedKeySet = new Set(
