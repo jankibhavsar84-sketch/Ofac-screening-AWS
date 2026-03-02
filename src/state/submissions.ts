@@ -36,8 +36,11 @@ export type BatchSubmission = {
   overallResult: HitResult;
   screeningTypes?: string[];
   dailyScreening?: boolean;
+  scheduleFrequency?: "DAILY" | "WEEKLY" | "MONTHLY";
   dailyScheduleId?: string;
   dailyScheduleActive?: boolean;
+  sourceUploadId?: string;
+  sourceS3Uri?: string;
   items: BatchItem[];
 };
 

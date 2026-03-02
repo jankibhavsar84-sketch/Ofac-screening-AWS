@@ -389,6 +389,28 @@ a{color:inherit}
   font-size:12px;
   color:#5f7491;
 }
+.hintText{
+  margin-top:4px;
+  font-size:12px;
+  color:#5f7491;
+}
+.notificationList{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+}
+.notificationItem{
+  border:1px solid #dce6f5;
+  border-radius:10px;
+  background:#f8fbff;
+  padding:10px 12px;
+}
+.notificationTitle{
+  font-size:13px;
+  font-weight:700;
+  color:#172338;
+  margin-bottom:4px;
+}
 @media(max-width:1100px){
   .screeningTypeGrid{
     grid-template-columns:repeat(3, minmax(0, 1fr));

@@ -17,9 +17,12 @@ This repository has been upgraded to an enterprise-style architecture:
 5. Frontend polls batch job status and renders results when complete.
 6. Users can select one or many screening types (`Sanction`, `PEP`, `AME`, `Fincen 314(a)`, `Global Sanction`) in both single and batch modes.
 7. Single screening supports `mock_screening` mode: hit-check only (no Actimize alert) or alert generation.
-8. Batch supports `daily_screening`: if selected, the worker re-runs that batch daily shortly after midnight Eastern (`America/New_York`, default `00:05`).
+8. Batch supports scheduled screening with selectable frequency (`DAILY`, `WEEKLY`, `MONTHLY`).
 9. Users can disable daily screening for a scheduled batch directly from Screening Results using the `Disable Daily` action.
-10. Capacity assumption for this deployment: up to `80` total users with around `15` concurrent active sessions.
+10. Batch source files are uploaded to S3 with traceable metadata persisted in DB (file name, hash, and S3 path).
+11. Scheduled batches support re-upload; future runs screen only net-new records not seen in prior runs.
+12. Users can subscribe to scheduled run completion notifications and review notifications in-app.
+13. Capacity assumption for this deployment: up to `80` total users with around `15` concurrent active sessions.
 
 ### Architecture Diagram
 
@@ -158,6 +161,8 @@ Backend/Worker (`backend/.env.example`):
 - `AUTH_JWKS_URL=http://localhost:8081/realms/screening-local/protocol/openid-connect/certs`
 - `AUTH_AUDIENCE=` (optional; leave blank to skip audience validation in local simulation)
 - `AUTH_ALGORITHMS=RS256`
+- `AWS_S3_UPLOAD_BUCKET=<bucket_name>` to store uploaded batch source files
+- `AWS_S3_UPLOAD_PREFIX=screening-input` to control S3 key prefix for uploaded files
 - Cognito backend example:
   - `AUTH_ISSUER=https://cognito-idp.<region>.amazonaws.com/<user_pool_id>`
   - `AUTH_JWKS_URL=https://cognito-idp.<region>.amazonaws.com/<user_pool_id>/.well-known/jwks.json`
@@ -208,10 +213,15 @@ Authorization behavior:
 ## API Endpoints
 
 - `POST /api/v1/screenings/jobs` create async job
+- `POST /api/v1/screenings/batch-upload` upload batch file + submit job + optional schedule/subscription
 - `GET /api/v1/screenings/jobs/{job_id}` get progress/result
 - `POST /api/v1/screenings/match` synchronous screening (no queue, immediate response)
 - `GET /api/v1/screenings/daily-schedules` list active daily schedules
 - `DELETE /api/v1/screenings/daily-schedules/{schedule_id}` disable one daily schedule
+- `GET /api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` list caller subscriptions for a schedule
+- `POST /api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` add/update subscription
+- `DELETE /api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` remove subscription
+- `GET /api/v1/notifications` list user notifications
 - `GET /api/v1/audit-events?limit=200&user_id=<id>` read audit trail
 
 ## Notes

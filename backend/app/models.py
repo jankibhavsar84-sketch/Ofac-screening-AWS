@@ -39,6 +39,9 @@ class MatchJobRequest(BaseModel):
     screening_types: list[str] = Field(default_factory=list)
     mock_screening: bool = False
     daily_screening: bool = False
+    schedule_frequency: str = "DAILY"
+    schedule_id: str | None = None
+    source_upload_id: str | None = None
     batch_name: str | None = None
     user_id: str | None = None
     user_name: str | None = None
@@ -57,6 +60,7 @@ class MatchJobAccepted(BaseModel):
     submitted_at: str
     total_items: int
     daily_schedule_id: str | None = None
+    screened_item_keys: list[str] = Field(default_factory=list)
 
 
 class MatchJobProgress(BaseModel):
@@ -78,6 +82,7 @@ class DailyScheduleInfo(BaseModel):
     user_id: str | None = None
     user_name: str | None = None
     screening_types: list[str] = Field(default_factory=list)
+    schedule_frequency: str = "DAILY"
     timezone: str
     run_hour: int
     run_minute: int
@@ -86,6 +91,9 @@ class DailyScheduleInfo(BaseModel):
     next_run_at: str
     total_items: int
     is_active: bool = True
+    source_file_name: str | None = None
+    source_s3_uri: str | None = None
+    source_upload_id: str | None = None
 
 
 class ScreeningQueueMessage(BaseModel):
@@ -97,6 +105,44 @@ class ScreeningQueueMessage(BaseModel):
     mock_screening: bool = False
     user_id: str | None = None
     user_name: str | None = None
+    source_schedule_id: str | None = None
+    source_record_hash: str | None = None
+
+
+class BatchUploadAccepted(BaseModel):
+    job_id: str
+    status: JobStatus
+    submitted_at: str
+    total_items: int
+    daily_schedule_id: str | None = None
+    screened_item_keys: list[str] = Field(default_factory=list)
+    source_upload_id: str | None = None
+    file_name: str
+    s3_uri: str | None = None
+    schedule_frequency: str | None = None
+
+
+class ScheduleSubscription(BaseModel):
+    subscription_id: str
+    schedule_id: str
+    user_id: str | None = None
+    user_name: str | None = None
+    email: str
+    is_active: bool = True
+    created_at: str
+
+
+class UserNotification(BaseModel):
+    notification_id: int
+    created_at: str
+    user_id: str | None = None
+    user_name: str | None = None
+    email: str | None = None
+    schedule_id: str | None = None
+    job_id: str | None = None
+    title: str
+    message: str
+    summary: dict[str, Any] = Field(default_factory=dict)
 
 
 class AuditEvent(BaseModel):

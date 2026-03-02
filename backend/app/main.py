@@ -1,12 +1,28 @@
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+import hashlib
+import json
+from uuid import uuid4
+
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .actimize import ActimizeClient
 from .auth import AuthPrincipal, principal_has_permission, require_any_scope
 from .config import settings
-from .models import AuditEvent, DailyScheduleInfo, EntityMatchResponse, MatchJobAccepted, MatchJobProgress, MatchJobRequest
+from .file_store import S3FileStore
+from .models import (
+    AuditEvent,
+    BatchUploadAccepted,
+    DailyScheduleInfo,
+    EntityExample,
+    EntityMatchResponse,
+    MatchJobAccepted,
+    MatchJobProgress,
+    MatchJobRequest,
+    ScheduleSubscription,
+    UserNotification,
+)
 from .queue import SqsQueue
 from .repository import JobRepository
 from .screening_service import ScreeningService
@@ -15,6 +31,7 @@ repository = JobRepository(settings.app_db_path, settings.app_db_url)
 queue = SqsQueue()
 service = ScreeningService(repository=repository, queue=queue)
 actimize = ActimizeClient()
+file_store = S3FileStore()
 
 app = FastAPI(title=settings.app_name, version=settings.app_version)
 
@@ -57,6 +74,146 @@ def create_screening_job(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.post("/api/v1/screenings/batch-upload", response_model=BatchUploadAccepted)
+async def create_batch_job_with_upload(
+    file: UploadFile = File(...),
+    queries_json: str = Form(...),
+    screening_types_json: str = Form(default="[]"),
+    batch_name: str = Form(default=""),
+    daily_screening: bool = Form(default=False),
+    schedule_frequency: str = Form(default="DAILY"),
+    schedule_id: str | None = Form(default=None),
+    mock_screening: bool = Form(default=False),
+    subscribe_results: bool = Form(default=False),
+    subscribe_email: str | None = Form(default=None),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.write", "screening.daily", "screening.admin")),
+    svc: ScreeningService = Depends(get_service),
+) -> BatchUploadAccepted:
+    if (daily_screening or (schedule_id or "").strip()) and not principal_has_permission(principal, "screening.daily", "screening.admin"):
+        raise HTTPException(status_code=403, detail="Only Compliance/Admin can enable scheduled screening")
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="file is required")
+
+    try:
+        parsed_queries = json.loads(queries_json)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"Invalid queries_json: {exc}") from exc
+    if not isinstance(parsed_queries, dict) or not parsed_queries:
+        raise HTTPException(status_code=400, detail="queries_json must be a non-empty object")
+
+    try:
+        parsed_types = json.loads(screening_types_json)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"Invalid screening_types_json: {exc}") from exc
+    if not isinstance(parsed_types, list):
+        raise HTTPException(status_code=400, detail="screening_types_json must be a JSON array")
+    screening_types = [str(v).strip() for v in parsed_types if str(v).strip()]
+
+    body = await file.read()
+    if not body:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    upload_id = str(uuid4())
+    file_hash = hashlib.sha256(body).hexdigest()
+    s3_info: dict[str, str] = {}
+    if file_store.is_enabled():
+        try:
+            s3_info = file_store.upload_source_file(
+                job_id=upload_id,
+                user_id=principal.user_id,
+                original_filename=file.filename,
+                body=body,
+                content_type=file.content_type,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=500, detail=f"Failed to upload file to S3: {exc}") from exc
+
+    repository.register_batch_file_upload(
+        upload_id=upload_id,
+        file_name=file.filename,
+        user_id=principal.user_id,
+        user_name=principal.user_name,
+        record_count=len(parsed_queries),
+        file_hash=file_hash,
+        s3_bucket=s3_info.get("bucket"),
+        s3_key=s3_info.get("key"),
+        s3_uri=s3_info.get("s3_uri"),
+        schedule_id=(schedule_id or "").strip() or None,
+    )
+
+    queries: dict[str, EntityExample] = {}
+    for item_key, value in parsed_queries.items():
+        queries[str(item_key)] = EntityExample.model_validate(value)
+
+    payload = MatchJobRequest(
+        queries=queries,
+        screening_types=screening_types,
+        mock_screening=bool(mock_screening),
+        daily_screening=bool(daily_screening),
+        schedule_frequency=schedule_frequency,
+        schedule_id=(schedule_id or "").strip() or None,
+        source_upload_id=upload_id,
+        batch_name=(batch_name or "").strip() or None,
+        user_id=principal.user_id,
+        user_name=principal.user_name,
+    )
+
+    try:
+        accepted = svc.submit_job(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    repository.attach_upload_to_job(upload_id=upload_id, job_id=accepted.job_id)
+    if accepted.daily_schedule_id:
+        repository.attach_upload_to_schedule(
+            schedule_id=accepted.daily_schedule_id,
+            upload_id=upload_id,
+            file_name=file.filename,
+            s3_uri=s3_info.get("s3_uri"),
+        )
+
+    if subscribe_results and accepted.daily_schedule_id:
+        email = (subscribe_email or principal.email or "").strip().lower()
+        if email:
+            svc.subscribe_to_schedule(
+                schedule_id=accepted.daily_schedule_id,
+                user_id=principal.user_id,
+                user_name=principal.user_name,
+                email=email,
+            )
+
+    repository.add_audit_event(
+        action="BATCH_FILE_UPLOADED",
+        user_id=principal.user_id,
+        user_name=principal.user_name,
+        entity_type="batch_file_upload",
+        entity_id=upload_id,
+        details={
+            "file_name": file.filename,
+            "record_count": len(parsed_queries),
+            "s3_uri": s3_info.get("s3_uri"),
+            "job_id": accepted.job_id,
+            "daily_schedule_id": accepted.daily_schedule_id,
+            "schedule_frequency": payload.schedule_frequency,
+            "schedule_id": payload.schedule_id,
+        },
+    )
+
+    return BatchUploadAccepted(
+        job_id=accepted.job_id,
+        status=accepted.status,
+        submitted_at=accepted.submitted_at,
+        total_items=accepted.total_items,
+        daily_schedule_id=accepted.daily_schedule_id,
+        screened_item_keys=accepted.screened_item_keys,
+        source_upload_id=upload_id,
+        file_name=file.filename,
+        s3_uri=s3_info.get("s3_uri"),
+        schedule_frequency=payload.schedule_frequency if payload.daily_screening else None,
+    )
+
+
 @app.get("/api/v1/screenings/jobs/{job_id}", response_model=MatchJobProgress)
 def get_screening_job(
     job_id: str,
@@ -75,6 +232,54 @@ def list_daily_schedules(
     svc: ScreeningService = Depends(get_service),
 ) -> list[DailyScheduleInfo]:
     return svc.list_daily_schedules()
+
+
+@app.get("/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions", response_model=list[ScheduleSubscription])
+def list_daily_schedule_subscriptions(
+    schedule_id: str,
+    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[ScheduleSubscription]:
+    return svc.list_schedule_subscriptions(schedule_id=schedule_id, user_id=principal.user_id)
+
+
+@app.post("/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions", response_model=ScheduleSubscription)
+def subscribe_daily_schedule(
+    schedule_id: str,
+    email: str = Query(default=""),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> ScheduleSubscription:
+    safe_email = email.strip().lower() or principal.email.strip().lower()
+    if not safe_email:
+        raise HTTPException(status_code=400, detail="email is required")
+    return svc.subscribe_to_schedule(
+        schedule_id=schedule_id,
+        user_id=principal.user_id,
+        user_name=principal.user_name,
+        email=safe_email,
+    )
+
+
+@app.delete("/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions")
+def unsubscribe_daily_schedule(
+    schedule_id: str,
+    email: str = Query(default=""),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> dict[str, str]:
+    safe_email = email.strip().lower() or principal.email.strip().lower()
+    if not safe_email:
+        raise HTTPException(status_code=400, detail="email is required")
+    removed = svc.unsubscribe_from_schedule(
+        schedule_id=schedule_id,
+        email=safe_email,
+        user_id=principal.user_id,
+        user_name=principal.user_name,
+    )
+    if not removed:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    return {"status": "removed", "schedule_id": schedule_id, "email": safe_email}
 
 
 @app.delete("/api/v1/screenings/daily-schedules/{schedule_id}")
@@ -101,6 +306,15 @@ def list_audit_events(
     svc: ScreeningService = Depends(get_service),
 ) -> list[AuditEvent]:
     return svc.list_audit_events(limit=limit, user_id=user_id)
+
+
+@app.get("/api/v1/notifications", response_model=list[UserNotification])
+def list_user_notifications(
+    limit: int = Query(default=100, ge=1, le=1000),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[UserNotification]:
+    return svc.list_user_notifications(limit=limit, user_id=principal.user_id, email=principal.email)
 
 
 @app.post("/api/v1/screenings/match", response_model=EntityMatchResponse)

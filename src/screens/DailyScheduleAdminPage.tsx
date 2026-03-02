@@ -94,7 +94,9 @@ export function DailyScheduleAdminPage() {
               <thead>
                 <tr>
                   <th style={{ width: 220 }}>Batch Name</th>
+                  <th style={{ width: 120 }}>Frequency</th>
                   <th style={{ width: 220 }}>Screening Types</th>
+                  <th style={{ width: 220 }}>Source File</th>
                   <th style={{ width: 150 }}>Items</th>
                   <th style={{ width: 180 }}>Next Run</th>
                   <th style={{ width: 180 }}>Created</th>
@@ -104,7 +106,7 @@ export function DailyScheduleAdminPage() {
               <tbody>
                 {sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="emptyRow">
+                    <td colSpan={8} className="emptyRow">
                       {loading ? "Loading schedules..." : "No active daily schedules found."}
                     </td>
                   </tr>
@@ -112,7 +114,9 @@ export function DailyScheduleAdminPage() {
                   sorted.map((row) => (
                     <tr key={row.schedule_id}>
                       <td>{row.batch_name}</td>
+                      <td className="muted">{row.schedule_frequency || "DAILY"}</td>
                       <td className="muted">{row.screening_types.join(", ") || "-"}</td>
+                      <td className="muted">{row.source_file_name || "-"}</td>
                       <td className="muted">{row.total_items}</td>
                       <td className="muted">{formatDateTime(row.next_run_at)}</td>
                       <td className="muted">{formatDateTime(row.created_at)}</td>

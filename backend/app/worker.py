@@ -67,6 +67,23 @@ def run() -> None:
                     message.mock_screening,
                 )
                 repository.mark_item_completed(message.job_id, message.item_key, result)
+                if message.source_schedule_id and message.source_record_hash:
+                    repository.mark_schedule_record_screened(
+                        schedule_id=message.source_schedule_id,
+                        record_hash=message.source_record_hash,
+                        job_id=message.job_id,
+                    )
+                    created_notifications = repository.maybe_publish_schedule_job_notification(
+                        job_id=message.job_id,
+                        schedule_id=message.source_schedule_id,
+                    )
+                    if created_notifications > 0:
+                        logger.info(
+                            "published %s schedule notifications for job=%s schedule=%s",
+                            created_notifications,
+                            message.job_id,
+                            message.source_schedule_id,
+                        )
             except Exception as exc:  # noqa: BLE001
                 logger.exception(
                     "screening failed for job=%s key=%s: %s",
@@ -87,6 +104,18 @@ def run() -> None:
                         "error": str(exc),
                     },
                 )
+                if message.source_schedule_id:
+                    created_notifications = repository.maybe_publish_schedule_job_notification(
+                        job_id=message.job_id,
+                        schedule_id=message.source_schedule_id,
+                    )
+                    if created_notifications > 0:
+                        logger.info(
+                            "published %s schedule notifications for failed job=%s schedule=%s",
+                            created_notifications,
+                            message.job_id,
+                            message.source_schedule_id,
+                        )
             finally:
                 queue.delete(receipt_handle)
 
@@ -105,6 +134,7 @@ def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningSer
             timezone_name=schedule["timezone"],
             run_hour=schedule["run_hour"],
             run_minute=schedule["run_minute"],
+            schedule_frequency=schedule.get("schedule_frequency", "DAILY"),
         )
 
         claimed = repository.claim_daily_schedule_run(
@@ -122,6 +152,8 @@ def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningSer
                 screening_types=schedule["screening_types"],
                 mock_screening=bool(schedule["mock_screening"]),
                 daily_screening=False,
+                schedule_id=schedule["schedule_id"],
+                source_upload_id=schedule.get("source_upload_id"),
                 batch_name=schedule["batch_name"],
                 user_id=schedule.get("user_id"),
                 user_name=schedule.get("user_name"),
@@ -134,6 +166,18 @@ def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningSer
                 accepted.job_id,
                 next_run_at,
             )
+            if accepted.total_items == 0:
+                notifications = repository.maybe_publish_schedule_job_notification(
+                    job_id=accepted.job_id,
+                    schedule_id=schedule["schedule_id"],
+                )
+                if notifications > 0:
+                    logger.info(
+                        "published %s schedule notifications for no-new-records job=%s schedule=%s",
+                        notifications,
+                        accepted.job_id,
+                        schedule["schedule_id"],
+                    )
             repository.add_audit_event(
                 action="DAILY_SCHEDULE_TRIGGERED",
                 user_id=schedule.get("user_id"),

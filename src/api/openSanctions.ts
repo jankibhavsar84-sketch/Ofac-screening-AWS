@@ -11,6 +11,9 @@ export type EntityMatchQuery = {
   screening_types?: string[];
   mock_screening?: boolean;
   daily_screening?: boolean;
+  schedule_frequency?: string;
+  schedule_id?: string;
+  source_upload_id?: string;
   batch_name?: string;
   user_id?: string;
   user_name?: string;
@@ -42,7 +45,10 @@ export type EntityMatchResponse = {
 export type DailySchedule = {
   schedule_id: string;
   batch_name: string;
+  user_id?: string | null;
+  user_name?: string | null;
   screening_types: string[];
+  schedule_frequency?: string;
   timezone: string;
   run_hour: number;
   run_minute: number;
@@ -51,6 +57,32 @@ export type DailySchedule = {
   next_run_at: string;
   total_items: number;
   is_active: boolean;
+  source_file_name?: string | null;
+  source_s3_uri?: string | null;
+  source_upload_id?: string | null;
+};
+
+export type ScheduleSubscription = {
+  subscription_id: string;
+  schedule_id: string;
+  user_id?: string | null;
+  user_name?: string | null;
+  email: string;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type UserNotification = {
+  notification_id: number;
+  created_at: string;
+  user_id?: string | null;
+  user_name?: string | null;
+  email?: string | null;
+  schedule_id?: string | null;
+  job_id?: string | null;
+  title: string;
+  message: string;
+  summary?: Record<string, unknown>;
 };
 
 export type AuditEvent = {
@@ -72,6 +104,20 @@ export type JobAccepted = {
   submitted_at: string;
   total_items: number;
   daily_schedule_id?: string;
+  screened_item_keys?: string[];
+};
+
+export type BatchUploadAccepted = {
+  job_id: string;
+  status: JobStatus;
+  submitted_at: string;
+  total_items: number;
+  daily_schedule_id?: string;
+  screened_item_keys?: string[];
+  source_upload_id?: string;
+  file_name: string;
+  s3_uri?: string | null;
+  schedule_frequency?: string | null;
 };
 
 export type JobProgress = {
@@ -135,6 +181,9 @@ function withAuthHeaders(headers: Record<string, string> = {}): Record<string, s
 
 type BatchOptions = {
   dailyScreening?: boolean;
+  scheduleFrequency?: string;
+  scheduleId?: string;
+  sourceUploadId?: string;
   batchName?: string;
   userId?: string;
   userName?: string;
@@ -148,10 +197,51 @@ function buildBatchBody(
   const body: EntityMatchQuery = { queries };
   if (screeningTypes.length) body.screening_types = screeningTypes;
   if (options.dailyScreening) body.daily_screening = true;
+  if (options.scheduleFrequency && options.scheduleFrequency.trim()) body.schedule_frequency = options.scheduleFrequency.trim();
+  if (options.scheduleId && options.scheduleId.trim()) body.schedule_id = options.scheduleId.trim();
+  if (options.sourceUploadId && options.sourceUploadId.trim()) body.source_upload_id = options.sourceUploadId.trim();
   if (options.batchName && options.batchName.trim()) body.batch_name = options.batchName.trim();
   if (options.userId && options.userId.trim()) body.user_id = options.userId.trim();
   if (options.userName && options.userName.trim()) body.user_name = options.userName.trim();
   return body;
+}
+
+type BatchUploadRequest = {
+  file: File;
+  queries: Record<string, EntityExample>;
+  screeningTypes?: string[];
+  batchName: string;
+  dailyScreening?: boolean;
+  scheduleFrequency?: "DAILY" | "WEEKLY" | "MONTHLY";
+  scheduleId?: string;
+  mockScreening?: boolean;
+  subscribeResults?: boolean;
+  subscribeEmail?: string;
+};
+
+export async function uploadBatchAndSubmitJob(payload: BatchUploadRequest): Promise<BatchUploadAccepted> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const form = new FormData();
+  form.set("file", payload.file);
+  form.set("queries_json", JSON.stringify(payload.queries));
+  form.set("screening_types_json", JSON.stringify(payload.screeningTypes ?? []));
+  form.set("batch_name", payload.batchName);
+  form.set("daily_screening", payload.dailyScreening ? "true" : "false");
+  if (payload.scheduleFrequency) form.set("schedule_frequency", payload.scheduleFrequency);
+  if (payload.scheduleId && payload.scheduleId.trim()) form.set("schedule_id", payload.scheduleId.trim());
+  form.set("mock_screening", payload.mockScreening ? "true" : "false");
+  form.set("subscribe_results", payload.subscribeResults ? "true" : "false");
+  if (payload.subscribeEmail && payload.subscribeEmail.trim()) form.set("subscribe_email", payload.subscribeEmail.trim());
+
+  const resp = await fetch(`${baseUrl}/screenings/batch-upload`, {
+    method: "POST",
+    headers: withAuthHeaders(),
+    body: form,
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to submit batch upload: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as BatchUploadAccepted;
 }
 
 export async function submitScreeningJob(
@@ -287,4 +377,31 @@ export async function removeDailySchedule(scheduleId: string, user?: { id?: stri
   if (!resp.ok) {
     throw new Error(`Failed to remove daily schedule: ${await parseApiError(resp)}`);
   }
+}
+
+export async function subscribeToDailySchedule(scheduleId: string, email?: string): Promise<ScheduleSubscription> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/screenings/daily-schedules/${encodeURIComponent(scheduleId)}/subscriptions`, window.location.origin);
+  if (email && email.trim()) {
+    url.searchParams.set("email", email.trim());
+  }
+  const resp = await fetch(url.toString(), {
+    method: "POST",
+    headers: withAuthHeaders(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to subscribe to schedule: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as ScheduleSubscription;
+}
+
+export async function listUserNotifications(limit = 50): Promise<UserNotification[]> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/notifications`, window.location.origin);
+  url.searchParams.set("limit", String(limit));
+  const resp = await fetch(url.toString(), { headers: withAuthHeaders() });
+  if (!resp.ok) {
+    throw new Error(`Failed to load notifications: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as UserNotification[];
 }

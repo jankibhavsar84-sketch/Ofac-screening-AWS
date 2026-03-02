@@ -37,6 +37,8 @@ class Settings:
     aws_endpoint_url: str
     aws_access_key_id: str
     aws_secret_access_key: str
+    aws_s3_upload_bucket: str
+    aws_s3_upload_prefix: str
 
     actimize_base_url: str
     actimize_api_key: str
@@ -70,6 +72,8 @@ def load_settings() -> Settings:
         aws_endpoint_url=os.getenv("AWS_ENDPOINT_URL", "").strip(),
         aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "").strip(),
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "").strip(),
+        aws_s3_upload_bucket=os.getenv("AWS_S3_UPLOAD_BUCKET", "").strip(),
+        aws_s3_upload_prefix=os.getenv("AWS_S3_UPLOAD_PREFIX", "screening-input").strip() or "screening-input",
         actimize_base_url=os.getenv("ACTIMIZE_BASE_URL", "").strip(),
         actimize_api_key=os.getenv("ACTIMIZE_API_KEY", "").strip(),
         actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 10.0),

@@ -4,7 +4,18 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { useAuth } from "react-oidc-context";
 import { z } from "zod";
 import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
-import { listDailySchedules, matchSync, removeDailySchedule, submitScreeningJob, waitForScreeningJob, type EntityExample, type EntityMatches } from "../api/openSanctions";
+import {
+  listDailySchedules,
+  listUserNotifications,
+  matchSync,
+  removeDailySchedule,
+  uploadBatchAndSubmitJob,
+  waitForScreeningJob,
+  type DailySchedule,
+  type EntityExample,
+  type EntityMatches,
+  type UserNotification,
+} from "../api/openSanctions";
 import { buildIdentity, getPrimaryRole, hasPermission } from "../auth/claims";
 import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutoSuggest";
@@ -13,6 +24,7 @@ import { IsoDateInput } from "../components/IsoDateInput";
 type Mode = "SINGLE" | "BATCH";
 type UiType = "Individual" | "Organization" | "Vessel" | "Aircraft";
 type ScreeningType = "Sanction" | "PEP" | "AME" | "Fincen 314(a)" | "Global Sanction";
+type ScheduleFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
 
 type IdDoc = { idType: string; idNumber: string; idCountry: string };
 type NameItem =
@@ -124,6 +136,12 @@ const SCREENING_TYPE_OPTIONS: { value: ScreeningType; desc: string }[] = [
   { value: "AME", desc: "Adverse media and negative news" },
   { value: "Fincen 314(a)", desc: "US FinCEN 314(a) request screening" },
   { value: "Global Sanction", desc: "Aggregated global sanctions coverage" },
+];
+
+const SCHEDULE_FREQUENCY_OPTIONS: { value: ScheduleFrequency; label: string; hint: string }[] = [
+  { value: "DAILY", label: "Daily", hint: "Runs every day at configured schedule time." },
+  { value: "WEEKLY", label: "Weekly", hint: "Runs once every 7 days at configured schedule time." },
+  { value: "MONTHLY", label: "Monthly", hint: "Runs once each month at configured schedule time." },
 ];
 
 const ID_TYPE_OPTIONS = [
@@ -656,6 +674,12 @@ export function ScreeningDetailPage() {
   const [batchName, setBatchName] = useState("");
   const [batchScreeningTypes, setBatchScreeningTypes] = useState<ScreeningType[]>(["Sanction"]);
   const [batchDailyScreening, setBatchDailyScreening] = useState(false);
+  const [batchScheduleFrequency, setBatchScheduleFrequency] = useState<ScheduleFrequency>("DAILY");
+  const [batchTargetScheduleId, setBatchTargetScheduleId] = useState("");
+  const [dailySchedules, setDailySchedules] = useState<DailySchedule[]>([]);
+  const [subscribeResults, setSubscribeResults] = useState(false);
+  const [subscribeEmail, setSubscribeEmail] = useState("");
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [batchFileName, setBatchFileName] = useState("");
   const [batchError, setBatchError] = useState<string | null>(null);
@@ -689,6 +713,36 @@ export function ScreeningDetailPage() {
     }
   }, [canDailyScreening, batchDailyScreening]);
 
+  useEffect(() => {
+    if (!subscribeEmail && identity?.email) {
+      setSubscribeEmail(identity.email);
+    }
+  }, [identity?.email, subscribeEmail]);
+
+  useEffect(() => {
+    if (!currentUser || !canDailyScreening) return;
+    void (async () => {
+      try {
+        const rows = await listDailySchedules();
+        setDailySchedules(rows);
+      } catch {
+        // ignore fetch errors in background
+      }
+    })();
+  }, [currentUser, canDailyScreening]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    void (async () => {
+      try {
+        const rows = await listUserNotifications(20);
+        setNotifications(rows);
+      } catch {
+        // ignore notification load errors in background
+      }
+    })();
+  }, [currentUser]);
+
   function toggleScreeningType(
     value: ScreeningType,
     setSelected: React.Dispatch<React.SetStateAction<ScreeningType[]>>
@@ -696,9 +750,20 @@ export function ScreeningDetailPage() {
     setSelected((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
   }
 
+  const userSchedules = useMemo(() => {
+    if (!currentUser) return [];
+    return dailySchedules
+      .filter((row) => {
+        const ownerId = safeTrim(String(row.user_id ?? ""));
+        return !ownerId || ownerId === currentUser.id;
+      })
+      .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+  }, [dailySchedules, currentUser]);
+
   async function reconcileDailyScheduleFlags(items: Submission[]): Promise<Submission[]> {
     try {
       const schedules = await listDailySchedules();
+      setDailySchedules(schedules);
       const activeScheduleIds = new Set(
         schedules
           .map((s) => safeTrim(String(s.schedule_id || "")))
@@ -733,6 +798,8 @@ export function ScreeningDetailPage() {
 
         const reconciled = await reconcileDailyScheduleFlags(parsed as Submission[]);
         setSubmissions(reconciled);
+        const notes = await listUserNotifications(20);
+        setNotifications(notes);
       } catch {
         // ignore malformed storage
       } finally {
@@ -1102,25 +1169,48 @@ export function ScreeningDetailPage() {
 
       if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
 
-      const accepted = await submitScreeningJob(queries, batchScreeningTypes, {
-        dailyScreening: batchDailyScreening,
+      const effectiveScheduleId = safeTrim(batchTargetScheduleId);
+      const useScheduledFlow = batchDailyScreening || Boolean(effectiveScheduleId);
+      if (useScheduledFlow && !canDailyScreening) {
+        throw new Error("Only Compliance/Admin can configure scheduled screening.");
+      }
+      if (useScheduledFlow && subscribeResults && !safeTrim(subscribeEmail)) {
+        throw new Error("Subscription email is required when result subscription is enabled.");
+      }
+
+      const accepted = await uploadBatchAndSubmitJob({
+        file: batchFile,
+        queries,
+        screeningTypes: batchScreeningTypes,
         batchName,
-        userId: currentUser.id,
-        userName: currentUser.name,
+        dailyScreening: useScheduledFlow,
+        scheduleFrequency: batchScheduleFrequency,
+        scheduleId: effectiveScheduleId || undefined,
+        mockScreening: false,
+        subscribeResults: useScheduledFlow ? subscribeResults : false,
+        subscribeEmail: useScheduledFlow ? safeTrim(subscribeEmail) : undefined,
       });
 
+      const screenedKeySet = new Set(
+        (accepted.screened_item_keys ?? [])
+          .map((key) => safeTrim(String(key)))
+          .filter(Boolean)
+      );
+      const hasScreenedSubset = screenedKeySet.size > 0;
+
       const placeholderItems: BatchSubmission["items"] = rowMeta.map((m) => {
+        const isScheduledSkip = hasScreenedSubset && !screenedKeySet.has(m.key);
         const fallbackMatches: EntityMatches = {
           results: [],
           total: { value: 0, relation: "eq" },
           query: queries[m.key],
-          status: 202,
+          status: isScheduledSkip ? 204 : 202,
         };
         return {
           customerType: m.uiType === "Individual" ? "Person" : "Entity",
           displayName: m.displayName,
-          result: "PROCESSING",
-          message: "Screening in progress",
+          result: isScheduledSkip ? "NO_HIT" : "PROCESSING",
+          message: isScheduledSkip ? "Skipped (already screened in previous schedule runs)." : "Screening in progress",
           details: { uiType: m.uiType, matches: fallbackMatches },
         };
       });
@@ -1133,11 +1223,14 @@ export function ScreeningDetailPage() {
         createdByUserName: currentUser.name,
         jobId: accepted.job_id,
         fileName: batchFile.name,
-        overallResult: "PROCESSING",
+        overallResult: accepted.total_items === 0 ? "NO_HIT" : "PROCESSING",
         screeningTypes: batchScreeningTypes,
-        dailyScreening: batchDailyScreening,
+        dailyScreening: useScheduledFlow,
+        scheduleFrequency: useScheduledFlow ? batchScheduleFrequency : undefined,
         dailyScheduleId: accepted.daily_schedule_id ?? undefined,
-        dailyScheduleActive: Boolean(batchDailyScreening && accepted.daily_schedule_id),
+        dailyScheduleActive: Boolean(useScheduledFlow && accepted.daily_schedule_id),
+        sourceUploadId: accepted.source_upload_id,
+        sourceS3Uri: accepted.s3_uri ?? undefined,
         items: placeholderItems,
       };
 
@@ -1145,71 +1238,90 @@ export function ScreeningDetailPage() {
       setLatest(entry);
       setPage(1);
 
-      // Non-blocking async completion: keep UI responsive and update results when worker finishes.
-      void (async () => {
-        try {
-          const progress = await waitForScreeningJob(accepted.job_id, { timeoutMs: 1000 * 60 * 60 });
-          const responses = progress.responses ?? {};
+      if (accepted.total_items > 0) {
+        // Non-blocking async completion: keep UI responsive and update results when worker finishes.
+        void (async () => {
+          try {
+            const progress = await waitForScreeningJob(accepted.job_id, { timeoutMs: 1000 * 60 * 60 });
+            const responses = progress.responses ?? {};
 
-          const resolvedItems: BatchSubmission["items"] = rowMeta.map((m) => {
-            const matches = responses[m.key];
-            if (!matches) {
-              const fallbackMatches: EntityMatches = {
-                results: [],
-                total: { value: 0, relation: "eq" },
-                query: queries[m.key],
-                status: 500,
-              };
+            const resolvedItems: BatchSubmission["items"] = rowMeta.map((m) => {
+              const isScheduledSkip = hasScreenedSubset && !screenedKeySet.has(m.key);
+              if (isScheduledSkip) {
+                const fallbackMatches: EntityMatches = {
+                  results: [],
+                  total: { value: 0, relation: "eq" },
+                  query: queries[m.key],
+                  status: 204,
+                };
+                return {
+                  customerType: m.uiType === "Individual" ? "Person" : "Entity",
+                  displayName: m.displayName,
+                  result: "NO_HIT",
+                  message: "Skipped (already screened in previous schedule runs).",
+                  details: { uiType: m.uiType, matches: fallbackMatches },
+                };
+              }
+
+              const matches = responses[m.key];
+              if (!matches) {
+                const fallbackMatches: EntityMatches = {
+                  results: [],
+                  total: { value: 0, relation: "eq" },
+                  query: queries[m.key],
+                  status: 500,
+                };
+                return {
+                  customerType: m.uiType === "Individual" ? "Person" : "Entity",
+                  displayName: m.displayName,
+                  result: "ERROR",
+                  message: "Screening failed for this row",
+                  details: { uiType: m.uiType, matches: fallbackMatches },
+                };
+              }
+
+              const engine = classifyEngine(matches.results ?? []);
               return {
                 customerType: m.uiType === "Individual" ? "Person" : "Entity",
                 displayName: m.displayName,
-                result: "ERROR",
-                message: "Screening failed for this row",
-                details: { uiType: m.uiType, matches: fallbackMatches },
+                result: engine === "HIT" ? "HIT" : engine === "NO_HIT" ? "NO_HIT" : "ERROR",
+                message: matches?.results?.[0]?.caption ? `Top match: ${matches.results[0].caption}` : undefined,
+                details: { uiType: m.uiType, matches },
               };
-            }
+            });
 
-            const engine = classifyEngine(matches.results ?? []);
-            return {
-              customerType: m.uiType === "Individual" ? "Person" : "Entity",
-              displayName: m.displayName,
-              result: engine === "HIT" ? "HIT" : engine === "NO_HIT" ? "NO_HIT" : "ERROR",
-              message: matches?.results?.[0]?.caption ? `Top match: ${matches.results[0].caption}` : undefined,
-              details: { uiType: m.uiType, matches },
-            };
-          });
+            const overall =
+              progress.status === "FAILED"
+                ? "ERROR"
+                : resolvedItems.some((i) => i.result === "HIT")
+                  ? "HIT"
+                  : resolvedItems.some((i) => i.result === "ERROR")
+                    ? "ERROR"
+                    : "NO_HIT";
 
-          const overall =
-            progress.status === "FAILED"
-              ? "ERROR"
-              : resolvedItems.some((i) => i.result === "HIT")
-                ? "HIT"
-                : resolvedItems.some((i) => i.result === "ERROR")
-                  ? "ERROR"
-                  : "NO_HIT";
-
-          setSubmissions((prev) =>
-            prev.map((s) =>
-              s.mode === "BATCH" && s.id === entry.id
-                ? ({ ...s, overallResult: overall, items: resolvedItems } as BatchSubmission)
-                : s
-            )
-          );
-        } catch (err: any) {
-          const failureText = safeTrim(String(err?.message ?? "Batch screening failed."));
-          setSubmissions((prev) =>
-            prev.map((s) => {
-              if (s.mode !== "BATCH" || s.id !== entry.id) return s;
-              const failedItems = s.items.map((it) =>
-                it.result === "PROCESSING"
-                  ? { ...it, result: "ERROR", message: failureText || "Batch screening failed." }
-                  : it
-              );
-              return { ...s, overallResult: "ERROR", items: failedItems } as BatchSubmission;
-            })
-          );
-        }
-      })();
+            setSubmissions((prev) =>
+              prev.map((s) =>
+                s.mode === "BATCH" && s.id === entry.id
+                  ? ({ ...s, overallResult: overall, items: resolvedItems } as BatchSubmission)
+                  : s
+              )
+            );
+          } catch (err: any) {
+            const failureText = safeTrim(String(err?.message ?? "Batch screening failed."));
+            setSubmissions((prev) =>
+              prev.map((s) => {
+                if (s.mode !== "BATCH" || s.id !== entry.id) return s;
+                const failedItems = s.items.map((it) =>
+                  it.result === "PROCESSING"
+                    ? { ...it, result: "ERROR", message: failureText || "Batch screening failed." }
+                    : it
+                );
+                return { ...s, overallResult: "ERROR", items: failedItems } as BatchSubmission;
+              })
+            );
+          }
+        })();
+      }
 
       // reset batch inputs after success
       setBatchFile(null);
@@ -1217,7 +1329,19 @@ export function ScreeningDetailPage() {
       setBatchName("");
       setBatchScreeningTypes(["Sanction"]);
       setBatchDailyScreening(false);
+      setBatchScheduleFrequency("DAILY");
+      setBatchTargetScheduleId("");
+      setSubscribeResults(false);
       setTemplatesOpen(false);
+
+      if (useScheduledFlow) {
+        try {
+          const refreshedSchedules = await listDailySchedules();
+          setDailySchedules(refreshedSchedules);
+        } catch {
+          // ignore refresh failures
+        }
+      }
     } catch (err: any) {
       setBatchError(err?.message ?? "Batch screening failed.");
     } finally {
@@ -1875,14 +1999,90 @@ export function ScreeningDetailPage() {
                   onChange={(e) => setBatchDailyScreening(e.target.checked)}
                   disabled={!canDailyScreening}
                 />
-                <span>Daily Screening</span>
+                <span>Scheduled Screening</span>
               </label>
               <div className="mockModeHint">
                 {canDailyScreening
-                  ? "If enabled, this batch is automatically re-screened daily shortly after 12:00 AM Eastern Time."
-                  : "Daily scheduling is available for Compliance/Admin roles only."}
+                  ? "Enable scheduling to run this batch automatically at selected frequency."
+                  : "Scheduled screening is available for Compliance/Admin roles only."}
               </div>
             </div>
+
+            {canDailyScreening ? (
+              <div className="field" style={{ marginTop: 10 }}>
+                <label>Update Existing Schedule (optional)</label>
+                <select
+                  value={batchTargetScheduleId}
+                  onChange={(e) => {
+                    const selected = e.target.value;
+                    setBatchTargetScheduleId(selected);
+                    if (selected) {
+                      setBatchDailyScreening(true);
+                      const found = userSchedules.find((row) => row.schedule_id === selected);
+                      if (found?.schedule_frequency) {
+                        setBatchScheduleFrequency(found.schedule_frequency as ScheduleFrequency);
+                      }
+                      if (!safeTrim(batchName) && safeTrim(found?.batch_name || "")) {
+                        setBatchName(found?.batch_name ?? "");
+                      }
+                    }
+                  }}
+                >
+                  <option value="">Create New Schedule</option>
+                  {userSchedules.map((schedule) => (
+                    <option key={schedule.schedule_id} value={schedule.schedule_id}>
+                      {schedule.batch_name} ({schedule.schedule_frequency || "DAILY"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+
+            {(batchDailyScreening || Boolean(batchTargetScheduleId)) && canDailyScreening ? (
+              <>
+                <div className="field" style={{ marginTop: 10 }}>
+                  <label>Schedule Frequency</label>
+                  <select
+                    value={batchScheduleFrequency}
+                    onChange={(e) => setBatchScheduleFrequency(e.target.value as ScheduleFrequency)}
+                  >
+                    {SCHEDULE_FREQUENCY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="hintText">
+                    {SCHEDULE_FREQUENCY_OPTIONS.find((opt) => opt.value === batchScheduleFrequency)?.hint ??
+                      "Runs at configured platform schedule time."}
+                  </div>
+                </div>
+
+                <div className="mockModeCard" style={{ marginTop: 10 }}>
+                  <label className="mockModeCheck">
+                    <input
+                      type="checkbox"
+                      checked={subscribeResults}
+                      onChange={(e) => setSubscribeResults(e.target.checked)}
+                    />
+                    <span>Subscribe to Daily Result Notifications</span>
+                  </label>
+                  <div className="mockModeHint">
+                    When enabled, a notification entry is generated after each scheduled run completes.
+                  </div>
+                  {subscribeResults ? (
+                    <div className="field" style={{ marginTop: 10, marginBottom: 0 }}>
+                      <label>Subscription Email</label>
+                      <input
+                        value={subscribeEmail}
+                        onChange={(e) => setSubscribeEmail(e.target.value)}
+                        placeholder="you@company.com"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
 
             {/* Dropzone */}
             <div
@@ -1942,6 +2142,25 @@ export function ScreeningDetailPage() {
           </div>
         </div>
       )}
+
+      {notifications.length > 0 ? (
+        <div className="card" style={{ marginTop: 18 }}>
+          <div className="cardHeader">
+            <h2>Recent Notifications</h2>
+          </div>
+          <div className="cardBody">
+            <div className="notificationList">
+              {notifications.slice(0, 5).map((note) => (
+                <div className="notificationItem" key={note.notification_id}>
+                  <div className="notificationTitle">{note.title}</div>
+                  <div className="muted">{note.message}</div>
+                  <div className="muted">{new Date(note.created_at).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Screening Results (under BOTH tabs) */}
       <div className="card" style={{ marginTop: 18 }}>
