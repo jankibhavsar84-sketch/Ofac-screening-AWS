@@ -339,17 +339,17 @@ export function ManageUsersPage() {
             </button>
           </div>
 
-          {auditError ? <div className="errorBox">{auditError}</div> : null}
+          {auditError ? <div className="errorBox" role="alert" aria-live="assertive">{auditError}</div> : null}
 
           <div className="tableWrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th style={{ width: 180 }}>Time</th>
-                  <th style={{ width: 220 }}>User</th>
-                  <th style={{ width: 220 }}>Action</th>
-                  <th style={{ width: 360 }}>Entity</th>
-                  <th>Error</th>
+                  <th scope="col" style={{ width: 180 }}>Time</th>
+                  <th scope="col" style={{ width: 220 }}>User</th>
+                  <th scope="col" style={{ width: 220 }}>Action</th>
+                  <th scope="col" style={{ width: 360 }}>Entity</th>
+                  <th scope="col">Error</th>
                 </tr>
               </thead>
               <tbody>

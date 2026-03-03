@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { getData } from "country-list";
 
 type Props = {
@@ -16,6 +16,8 @@ function normalize(s: string) {
 export function CountryAutosuggest({ label, value, onChange, placeholder, hint }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
+  const inputId = useId();
+  const listboxId = `${inputId}-listbox`;
 
   // [{ code: 'US', name: 'United States' }, ...]
   const countries = useMemo(() => getData(), []);
@@ -80,28 +82,38 @@ export function CountryAutosuggest({ label, value, onChange, placeholder, hint }
     <div ref={rootRef} className="field countryAutosuggest">
       {hint ? (
         <div className="labelRow">
-          <label>{label}</label>
+          <label htmlFor={inputId}>{label}</label>
           <span className="hint">{hint}</span>
         </div>
       ) : (
-        <label>{label}</label>
+        <label htmlFor={inputId}>{label}</label>
       )}
 
       <input
+        id={inputId}
         value={displayValue}
         onChange={(e) => handleInput(e.target.value)}
         onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setOpen(false);
+        }}
         placeholder={placeholder ?? "Type country name or ISO2 (US, IN)"}
         autoComplete="off"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        aria-controls={listboxId}
       />
 
       {open && suggestions.length > 0 ? (
-        <div className="countrySuggestions" role="listbox" aria-label="Country suggestions">
+        <div id={listboxId} className="countrySuggestions" role="listbox" aria-label="Country suggestions">
           {suggestions.map((c) => (
             <button
               key={c.code}
               type="button"
               className="countryOption"
+              role="option"
+              aria-selected={c.code.toUpperCase() === normalize(value).toUpperCase()}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 onChange(c.code.toUpperCase());

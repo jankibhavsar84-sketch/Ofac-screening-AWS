@@ -87,20 +87,20 @@ export function DailyScheduleAdminPage() {
           <p className="muted" style={{ marginTop: 0 }}>
             Compliance/Admin users can remove batch files from daily screening here.
           </p>
-          {error ? <div className="errorBox">{error}</div> : null}
+          {error ? <div className="errorBox" role="alert" aria-live="assertive">{error}</div> : null}
 
           <div className="tableWrap" style={{ marginTop: 10 }}>
             <table className="table">
               <thead>
                 <tr>
-                  <th style={{ width: 220 }}>Batch Name</th>
-                  <th style={{ width: 120 }}>Frequency</th>
-                  <th style={{ width: 220 }}>Screening Types</th>
-                  <th style={{ width: 220 }}>Source File</th>
-                  <th style={{ width: 150 }}>Items</th>
-                  <th style={{ width: 180 }}>Next Run</th>
-                  <th style={{ width: 180 }}>Created</th>
-                  <th style={{ width: 140, textAlign: "right" }}>Actions</th>
+                  <th scope="col" style={{ width: 220 }}>Batch Name</th>
+                  <th scope="col" style={{ width: 120 }}>Frequency</th>
+                  <th scope="col" style={{ width: 220 }}>Screening Types</th>
+                  <th scope="col" style={{ width: 220 }}>Source File</th>
+                  <th scope="col" style={{ width: 150 }}>Items</th>
+                  <th scope="col" style={{ width: 180 }}>Next Run</th>
+                  <th scope="col" style={{ width: 180 }}>Created</th>
+                  <th scope="col" style={{ width: 140, textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>

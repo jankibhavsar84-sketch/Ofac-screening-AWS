@@ -63,6 +63,7 @@ function RootLayout() {
 
   return (
     <div className="appShell">
+      <a href="#main-content" className="skipLink">Skip to main content</a>
       <header className="topHeader">
         <div className="topHeaderInner page">
           <div className="brandRow">
@@ -75,7 +76,7 @@ function RootLayout() {
             </div>
           </div>
 
-          <nav className="topNav">
+          <nav className="topNav" aria-label="Primary">
             <Link to="/intro" className="navLink" activeProps={{ className: "navLink active" }}>
               Introduction
             </Link>
@@ -133,7 +134,7 @@ function RootLayout() {
         </div>
       </header>
 
-      <main className="pageMain">
+      <main id="main-content" className="pageMain" tabIndex={-1}>
         <Outlet />
       </main>
     </div>

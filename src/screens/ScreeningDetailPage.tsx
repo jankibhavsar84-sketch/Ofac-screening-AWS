@@ -49,14 +49,17 @@ function FormSelect<T extends string>({
   value,
   onChange,
   options,
+  ariaLabel,
 }: {
   value: T;
   onChange: (value: T) => void;
   options: SelectOption<T>[];
+  ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const selected = options.find((o) => o.value === value) ?? options[0];
+  const listboxId = React.useId();
 
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
@@ -76,7 +79,12 @@ function FormSelect<T extends string>({
         className="formSelectBtn"
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={listboxId}
+        aria-label={ariaLabel}
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setOpen(false);
+        }}
       >
         <span className="formSelectValue">
           {selected?.icon ? <span className="formSelectLeadIcon" aria-hidden="true">{selected.icon}</span> : null}
@@ -86,12 +94,14 @@ function FormSelect<T extends string>({
       </button>
 
       {open ? (
-        <div className="formSelectMenu" role="listbox">
+        <div id={listboxId} className="formSelectMenu" role="listbox" aria-label={ariaLabel}>
           {options.map((opt) => (
             <button
               key={opt.value}
               type="button"
               className={`formSelectOption ${opt.value === value ? "active" : ""}`}
+              role="option"
+              aria-selected={opt.value === value}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 onChange(opt.value);
@@ -762,6 +772,7 @@ export function ScreeningDetailPage() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const scheduleRunAtInputRef = useRef<HTMLInputElement | null>(null);
+  const hitDialogCloseBtnRef = useRef<HTMLButtonElement | null>(null);
 
   function openScheduleRunAtPicker() {
     const picker = scheduleRunAtInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
@@ -772,6 +783,17 @@ export function ScreeningDetailPage() {
     }
     picker.focus();
     picker.click();
+  }
+
+  function openFilePicker() {
+    fileInputRef.current?.click();
+  }
+
+  function handleDropzoneKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openFilePicker();
+    }
   }
 
   useEffect(() => {
@@ -1878,6 +1900,22 @@ export function ScreeningDetailPage() {
     });
   }
 
+  useEffect(() => {
+    if (!hitEntityDialog) return;
+    hitDialogCloseBtnRef.current?.focus();
+  }, [hitEntityDialog]);
+
+  useEffect(() => {
+    if (!hitEntityDialog) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setHitEntityDialog(null);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [hitEntityDialog]);
+
   async function disableDailyScreeningForBatch(row: ResultRow) {
     if (!row.batchSubmissionId || !row.dailyScheduleId || !row.dailyScheduleActive) return;
     if (!canDailyScreening) {
@@ -1902,20 +1940,61 @@ export function ScreeningDetailPage() {
     }
   }
 
+  function handleModeTabKeyDown(e: React.KeyboardEvent<HTMLButtonElement>, current: Mode) {
+    const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+
+    const available: Mode[] = [
+      "SINGLE",
+      ...(canBatchScreen ? ["BATCH"] : []),
+      ...(canDailyScreening ? ["SCHEDULE"] : []),
+    ] as Mode[];
+
+    const idx = available.indexOf(current);
+    if (idx < 0) return;
+
+    if (e.key === "Home") {
+      setMode(available[0]);
+      return;
+    }
+    if (e.key === "End") {
+      setMode(available[available.length - 1]);
+      return;
+    }
+    const delta = e.key === "ArrowRight" ? 1 : -1;
+    const next = (idx + delta + available.length) % available.length;
+    setMode(available[next]);
+  }
+
   return (
     <div className="page">
       {/* Tabs row like screenshot */}
       <SummaryCards currentUserId={currentUser?.id ?? null} currentUserName={currentUser?.name ?? null} />
       <div className="tabsRow">
-        <div className="tabSwitch" role="tablist" aria-label="Screening mode">
-          <button className={mode === "SINGLE" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("SINGLE")} type="button">
+        <div className="tabSwitch" role="tablist" aria-label="Screening mode" aria-orientation="horizontal">
+          <button
+            id="tab-single"
+            role="tab"
+            aria-selected={mode === "SINGLE"}
+            aria-controls="panel-single"
+            className={mode === "SINGLE" ? "tabBtn active" : "tabBtn"}
+            onClick={() => setMode("SINGLE")}
+            onKeyDown={(e) => handleModeTabKeyDown(e, "SINGLE")}
+            type="button"
+          >
             <span className="tabIcon">&#x1F50D;</span>
             <span>Single Screening</span>
             <span className="executionModeBadge executionModeBadgeSync">Real-time</span>
           </button>
           <button
+            id="tab-batch"
+            role="tab"
+            aria-selected={mode === "BATCH"}
+            aria-controls="panel-batch"
             className={mode === "BATCH" ? "tabBtn active" : "tabBtn"}
             onClick={() => setMode("BATCH")}
+            onKeyDown={(e) => handleModeTabKeyDown(e, "BATCH")}
             type="button"
             disabled={!canBatchScreen}
             title={canBatchScreen ? "Batch screening" : "Batch screening is not allowed for your role"}
@@ -1925,8 +2004,13 @@ export function ScreeningDetailPage() {
             <span className="executionModeBadge executionModeBadgeAsync">Queued</span>
           </button>
           <button
+            id="tab-schedule"
+            role="tab"
+            aria-selected={mode === "SCHEDULE"}
+            aria-controls="panel-schedule"
             className={mode === "SCHEDULE" ? "tabBtn active" : "tabBtn"}
             onClick={() => setMode("SCHEDULE")}
+            onKeyDown={(e) => handleModeTabKeyDown(e, "SCHEDULE")}
             type="button"
             disabled={!canDailyScreening}
             title={canDailyScreening ? "Schedule recurring screening" : "Scheduled screening is allowed for Compliance/Admin only"}
@@ -1948,7 +2032,7 @@ export function ScreeningDetailPage() {
 
       {/* SINGLE */}
       {mode === "SINGLE" && (
-        <div className="card">
+        <div id="panel-single" role="tabpanel" aria-labelledby="tab-single" className="card">
           <div className="cardHeader">
             <h2>Single Entity Screening</h2>
           </div>
@@ -1962,6 +2046,7 @@ export function ScreeningDetailPage() {
                     value={selectedEntityType}
                     onChange={(uiType) => setEntityTypeForAll(uiType)}
                     options={ENTITY_TYPE_OPTIONS}
+                    ariaLabel="Entity type"
                   />
                 </div>
               </div>
@@ -2273,7 +2358,7 @@ export function ScreeningDetailPage() {
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Additional notes or context..." />
               </div>
 
-              {singleError ? <div className="errorBox">{singleError}</div> : null}
+              {singleError ? <div className="errorBox" role="alert" aria-live="assertive">{singleError}</div> : null}
               <button className="btnRunWide" type="submit" disabled={submitting}>
                 {submitting ? "Running..." : "Run OFAC Screening"}
               </button>
@@ -2284,7 +2369,7 @@ export function ScreeningDetailPage() {
 
       {/* BATCH */}
       {mode === "BATCH" && (
-        <div className="card">
+        <div id="panel-batch" role="tabpanel" aria-labelledby="tab-batch" className="card">
           <div className="cardHeader">
             <h2>Batch Screening</h2>
           </div>
@@ -2342,7 +2427,7 @@ export function ScreeningDetailPage() {
 
             <div className="field" style={{ marginTop: 14 }}>
               <label>Batch Name <span className="requiredMark">*</span></label>
-              <input value={batchName} onChange={(e) => setBatchName(e.target.value)} placeholder="e.g., Q1 2024 Vendor Screening" />
+              <input required value={batchName} onChange={(e) => setBatchName(e.target.value)} placeholder="e.g., Q1 2024 Vendor Screening" />
             </div>
 
             <ScreeningTypeCards
@@ -2367,8 +2452,10 @@ export function ScreeningDetailPage() {
                 setBatchFileName(f.name);
                 setBatchError(null);
               }}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={openFilePicker}
+              onKeyDown={handleDropzoneKeyDown}
               role="button"
+              aria-label="Upload batch file"
               tabIndex={0}
             >
               <div className="dropIconCircle">{"\u2B06"}</div>
@@ -2399,7 +2486,7 @@ export function ScreeningDetailPage() {
               />
             </div>
 
-            {batchError ? <div className="errorBox">{batchError}</div> : null}
+            {batchError ? <div className="errorBox" role="alert" aria-live="assertive">{batchError}</div> : null}
             <form onSubmit={submitBatch}>
               <button className="btnBatchWide" type="submit" disabled={submitting}>
                 {submitting ? "Starting..." : "Start Batch Screening"}
@@ -2411,7 +2498,7 @@ export function ScreeningDetailPage() {
 
       {/* SCHEDULE */}
       {mode === "SCHEDULE" && (
-        <div className="card">
+        <div id="panel-schedule" role="tabpanel" aria-labelledby="tab-schedule" className="card">
           <div className="cardHeader">
             <h2>Schedule Screening</h2>
           </div>
@@ -2468,7 +2555,7 @@ export function ScreeningDetailPage() {
             <form onSubmit={submitSchedule}>
               <div className="field" style={{ marginTop: 14 }}>
                 <label>Schedule Name <span className="requiredMark">*</span></label>
-                <input value={scheduleName} onChange={(e) => setScheduleName(e.target.value)} placeholder="e.g., Daily Vendor Watchlist Run" />
+                <input required value={scheduleName} onChange={(e) => setScheduleName(e.target.value)} placeholder="e.g., Daily Vendor Watchlist Run" />
               </div>
 
               <ScreeningTypeCards
@@ -2480,6 +2567,7 @@ export function ScreeningDetailPage() {
                 <div className="field">
                   <label>Frequency <span className="requiredMark">*</span></label>
                   <select
+                    required
                     value={scheduleFrequency}
                     onChange={(e) => setScheduleFrequency(e.target.value as ScheduleFrequency)}
                   >
@@ -2501,6 +2589,7 @@ export function ScreeningDetailPage() {
                       ref={scheduleRunAtInputRef}
                       className="isoDateText noNativePickerIcon"
                       type="datetime-local"
+                      required
                       value={scheduleRunAt}
                       onChange={(e) => setScheduleRunAt(e.target.value)}
                     />
@@ -2561,8 +2650,10 @@ export function ScreeningDetailPage() {
                   setScheduleFileName(f.name);
                   setScheduleError(null);
                 }}
-                onClick={() => fileInputRef.current?.click()}
+                onClick={openFilePicker}
+                onKeyDown={handleDropzoneKeyDown}
                 role="button"
+                aria-label="Upload scheduled screening file"
                 tabIndex={0}
               >
                 <div className="dropIconCircle">{"\u2B06"}</div>
@@ -2593,7 +2684,7 @@ export function ScreeningDetailPage() {
                 />
               </div>
 
-              {scheduleError ? <div className="errorBox">{scheduleError}</div> : null}
+              {scheduleError ? <div className="errorBox" role="alert" aria-live="assertive">{scheduleError}</div> : null}
               <button className="btnBatchWide" type="submit" disabled={submitting}>
                 {submitting ? "Starting..." : "Create Scheduled Screening"}
               </button>
@@ -2635,6 +2726,7 @@ export function ScreeningDetailPage() {
             <div className="searchBox">
               <span className="searchIcon">{"\u{1F50D}"}</span>
               <input
+                aria-label="Search screening results"
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -2645,6 +2737,7 @@ export function ScreeningDetailPage() {
             </div>
 
             <select
+              aria-label="Filter results by status"
               className="filterSelect"
               value={statusFilter}
               onChange={(e) => {
@@ -2660,6 +2753,7 @@ export function ScreeningDetailPage() {
             </select>
 
             <select
+              aria-label="Filter results by entity type"
               className="filterSelect"
               value={typeFilter}
               onChange={(e) => {
@@ -2677,19 +2771,19 @@ export function ScreeningDetailPage() {
         </div>
 
         <div className="cardBody">
-          {dailyDisableError ? <div className="errorBox" style={{ marginBottom: 10 }}>{dailyDisableError}</div> : null}
+          {dailyDisableError ? <div className="errorBox" role="alert" aria-live="assertive" style={{ marginBottom: 10 }}>{dailyDisableError}</div> : null}
           <div className="tableWrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th style={{ width: 220 }}>Entity</th>
-                  <th style={{ width: 120 }}>Mode</th>
-                  <th style={{ width: 120 }}>Type</th>
-                  <th style={{ width: 120 }}>Country</th>
-                  <th style={{ width: 140 }}>Status</th>
-                  <th style={{ width: 140 }}>Matching Score</th>
-                  <th style={{ width: 120 }}>Date</th>
-                  <th style={{ width: 230 }}>Actions</th>
+                  <th scope="col" style={{ width: 220 }}>Entity</th>
+                  <th scope="col" style={{ width: 120 }}>Mode</th>
+                  <th scope="col" style={{ width: 120 }}>Type</th>
+                  <th scope="col" style={{ width: 120 }}>Country</th>
+                  <th scope="col" style={{ width: 140 }}>Status</th>
+                  <th scope="col" style={{ width: 140 }}>Matching Score</th>
+                  <th scope="col" style={{ width: 120 }}>Date</th>
+                  <th scope="col" style={{ width: 230 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -2770,11 +2864,11 @@ export function ScreeningDetailPage() {
       </div>
 
       {hitEntityDialog ? (
-        <div className="hitEntityOverlay" onClick={() => setHitEntityDialog(null)} role="dialog" aria-modal="true" aria-label="Hit entity details">
-          <div className="hitEntityModal" onClick={(e) => e.stopPropagation()}>
+        <div className="hitEntityOverlay" onClick={() => setHitEntityDialog(null)}>
+          <div className="hitEntityModal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="hit-entity-title">
             <div className="hitEntityHeader">
-              <h3>Hit Entity Details</h3>
-              <button type="button" className="iconBtn" onClick={() => setHitEntityDialog(null)} aria-label="Close hit entity details">
+              <h3 id="hit-entity-title">Hit Entity Details</h3>
+              <button ref={hitDialogCloseBtnRef} type="button" className="iconBtn" onClick={() => setHitEntityDialog(null)} aria-label="Close hit entity details">
                 {"\u00D7"}
               </button>
             </div>

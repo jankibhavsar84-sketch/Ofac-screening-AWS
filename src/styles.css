@@ -86,6 +86,32 @@ html,body{
 body{font-size:14px; line-height:1.45; letter-spacing:-0.01em;}
 
 a{color:inherit}
+.skipLink{
+  position:absolute;
+  top:-40px;
+  left:12px;
+  z-index:10000;
+  background:var(--tab-active-bg);
+  color:var(--tab-active-fg);
+  padding:8px 12px;
+  border-radius:8px;
+  text-decoration:none;
+  font-weight:700;
+}
+.skipLink:focus{
+  top:10px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible{
+  outline:3px solid #2563eb;
+  outline-offset:2px;
+}
 
 .appShell{min-height:100vh;background:var(--bg)}
 .topHeader{
