@@ -329,6 +329,8 @@ class ScreeningService:
         schema = str((query or {}).get("schema") or "").strip().lower()
         if schema in {"person", "individual"}:
             return "Individual"
+        if schema == "unknown":
+            return "Unknown"
         if schema == "vessel":
             return "Vessel"
         if schema == "aircraft":

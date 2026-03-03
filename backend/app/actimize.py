@@ -102,9 +102,17 @@ def _to_party_type(schema_name: str | None) -> str:
     normalized = str(schema_name or "").strip().lower()
     if normalized in {"person", "individual"}:
         return "I"
-    if normalized in {"company", "organization", "legalentity", "vessel", "aircraft"}:
+    if normalized in {"company", "organization", "legalentity", "unknown", "vessel", "aircraft"}:
         return "E"
     return "U"
+
+
+def _query_for_provider(query: EntityExample) -> EntityExample:
+    normalized_schema = str(query.schema or "").strip().lower()
+    if normalized_schema != "unknown":
+        return query
+    props = query.properties if isinstance(query.properties, dict) else {}
+    return EntityExample(schema="Company", properties=dict(props))
 
 
 def _to_iso3(country: str) -> str:
@@ -181,7 +189,8 @@ class ActimizeClient:
         if auth:
             headers["Authorization"] = auth
 
-        payload: dict[str, Any] = {"queries": {"item_1": query.model_dump(mode="json")}}
+        screen_query = _query_for_provider(query)
+        payload: dict[str, Any] = {"queries": {"item_1": screen_query.model_dump(mode="json")}}
         params = {"limit": settings.screening_result_limit}
 
         response = requests.post(

@@ -20,7 +20,7 @@ import { CountryAutosuggest } from "../components/CountryAutoSuggest";
 import { IsoDateInput } from "../components/IsoDateInput";
 
 type Mode = "SINGLE" | "BATCH" | "SCHEDULE";
-type UiType = "Individual" | "Organization" | "Vessel" | "Aircraft";
+type UiType = "Individual" | "Organization" | "Unknown" | "Vessel" | "Aircraft";
 type ScreeningType = "Sanction" | "PEP" | "AME" | "Fincen 314(a)" | "Global Sanction";
 type ScheduleFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
 
@@ -185,6 +185,7 @@ function parseSubscriptionEmails(value: string): string[] {
 function uiTypeIcon(type: UiType): string {
   if (type === "Individual") return "\u{1F464}";
   if (type === "Organization") return "\u{1F3E2}";
+  if (type === "Unknown") return "\u{1F3E2}";
   if (type === "Vessel") return "\u{1F6F3}\uFE0F";
   return "\u2708\uFE0F";
 }
@@ -192,6 +193,7 @@ function uiTypeIcon(type: UiType): string {
 const ENTITY_TYPE_OPTIONS: SelectOption<UiType>[] = [
   { value: "Individual", label: "Individual", icon: uiTypeIcon("Individual") },
   { value: "Organization", label: "Organization", icon: uiTypeIcon("Organization") },
+  { value: "Unknown", label: "Unknown", icon: uiTypeIcon("Unknown") },
   { value: "Vessel", label: "Vessel", icon: uiTypeIcon("Vessel") },
   { value: "Aircraft", label: "Aircraft", icon: uiTypeIcon("Aircraft") },
 ];
@@ -257,6 +259,7 @@ function toCountryCode(input: string) {
 function uiTypeToSchema(ui: UiType): EntityExample["schema"] {
   if (ui === "Individual") return "Person";
   if (ui === "Organization") return "Company";
+  if (ui === "Unknown") return "Unknown";
   // These are supported in OpenSanctions entity models; if your API rejects, we can switch to "Company"
   if (ui === "Vessel") return "Vessel";
   return "Aircraft";
@@ -535,7 +538,7 @@ function downloadTemplate(kind: UiType | "Mixed", format: "csv" | "xlsx") {
       imoNumber: "",
       tailNumber: "",
     });
-  } else if (kind === "Organization") {
+  } else if (kind === "Organization" || kind === "Unknown") {
     sampleRows.push({
       customerType: "Entity",
       firstName: "",
@@ -874,7 +877,7 @@ export function ScreeningDetailPage() {
     // Validate each name item basic requirements + DOB rules for individual only
     return z.array(
       z.object({
-        uiType: z.enum(["Individual", "Organization", "Vessel", "Aircraft"]),
+        uiType: z.enum(["Individual", "Organization", "Unknown", "Vessel", "Aircraft"]),
         nameMode: z.enum(["split", "full"]),
         firstName: z.string(),
         lastName: z.string(),
@@ -971,7 +974,7 @@ export function ScreeningDetailPage() {
         lastName: uiType === "Individual" ? n.lastName : "",
         middleName: uiType === "Individual" ? n.middleName : "",
       }));
-      const supportsAlias = uiType === "Individual" || uiType === "Organization";
+      const supportsAlias = uiType === "Individual" || uiType === "Organization" || uiType === "Unknown";
       return supportsAlias ? normalized : normalized.slice(0, 1);
     });
   }
@@ -979,7 +982,7 @@ export function ScreeningDetailPage() {
   function addName() {
     setNames((prev) => {
       const primaryType = prev[0]?.uiType ?? "Individual";
-      if (primaryType !== "Individual" && primaryType !== "Organization") return prev;
+      if (primaryType !== "Individual" && primaryType !== "Organization" && primaryType !== "Unknown") return prev;
       const isIndividual = primaryType === "Individual";
       return [
         ...prev,
@@ -1081,7 +1084,7 @@ export function ScreeningDetailPage() {
         return;
       }
 
-      // Build one API call containing one query. For Individual/Organization, merge AKA/Alias into the same name list.
+      // Build one API call containing one query. For Individual/Organization/Unknown, merge AKA/Alias into the same name list.
       const queries: Record<string, EntityExample> = {};
       const meta: { key: string; uiType: UiType; displayName: string }[] = [];
       const [primaryName, ...akaNames] = names;
@@ -1095,7 +1098,7 @@ export function ScreeningDetailPage() {
 
       const query = buildEntityExampleFromNameItem(primaryName);
 
-      if ((primaryName.uiType === "Individual" || primaryName.uiType === "Organization") && akaNames.length) {
+      if ((primaryName.uiType === "Individual" || primaryName.uiType === "Organization" || primaryName.uiType === "Unknown") && akaNames.length) {
         const aliasNameValues = akaNames.flatMap((alias) => {
           const values: string[] = [];
           if (primaryName.uiType === "Individual") {
@@ -2085,7 +2088,7 @@ export function ScreeningDetailPage() {
                       Primary Name <span className="requiredMark">*</span>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      {primaryName.uiType === "Individual" || primaryName.uiType === "Organization" ? (
+                      {primaryName.uiType === "Individual" || primaryName.uiType === "Organization" || primaryName.uiType === "Unknown" ? (
                         <button type="button" className="btnAdd" onClick={addName}>
                           + Add AKA/Alias
                         </button>
@@ -2169,7 +2172,7 @@ export function ScreeningDetailPage() {
                         />
                       </div>
                     </>
-                  ) : primaryName.uiType === "Organization" ? (
+                  ) : primaryName.uiType === "Organization" || primaryName.uiType === "Unknown" ? (
                     <>
                       <div className="grid2">
                         <div className="field" style={{ gridColumn: "1 / -1" }}>
@@ -2764,6 +2767,7 @@ export function ScreeningDetailPage() {
               <option>All Types</option>
               <option>Individual</option>
               <option>Organization</option>
+              <option>Unknown</option>
               <option>Vessel</option>
               <option>Aircraft</option>
             </select>
