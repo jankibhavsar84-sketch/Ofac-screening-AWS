@@ -136,7 +136,7 @@ function Intro() {
                 <IntroIcon type="single" />
                 <strong>Submit Request</strong>
               </div>
-              <p>Run a single entity check immediately or submit a batch file for asynchronous processing.</p>
+              <p>Run a single entity check immediately or submit a batch file for queued processing.</p>
             </div>
             <div className="introFlowCard">
               <div className="introFlowStep">Step 2</div>
@@ -167,14 +167,14 @@ function Intro() {
             <div className="introModeCard introModeCardSync">
               <div className="introModeHead">
                 <IntroIcon type="single" />
-                <strong>Single Screening (Sync)</strong>
+                <strong>Single Screening (Real-time)</strong>
               </div>
               <p>Use for immediate, interactive decisions with direct response in the same session.</p>
             </div>
             <div className="introModeCard introModeCardAsync">
               <div className="introModeHead">
                 <IntroIcon type="batch" />
-                <strong>Batch Screening (Async)</strong>
+                <strong>Batch Screening (Queued)</strong>
               </div>
               <p>Use for volume processing. Submission returns fast with in-progress tracking until completion.</p>
             </div>

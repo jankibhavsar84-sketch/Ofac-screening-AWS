@@ -1899,7 +1899,7 @@ export function ScreeningDetailPage() {
           <button className={mode === "SINGLE" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("SINGLE")} type="button">
             <span className="tabIcon">&#x1F50D;</span>
             <span>Single Screening</span>
-            <span className="executionModeBadge executionModeBadgeSync">Sync</span>
+            <span className="executionModeBadge executionModeBadgeSync">Real-time</span>
           </button>
           <button
             className={mode === "BATCH" ? "tabBtn active" : "tabBtn"}
@@ -1910,7 +1910,7 @@ export function ScreeningDetailPage() {
           >
             <span className="tabIcon">&#x1F4C4;</span>
             <span>Batch Screening</span>
-            <span className="executionModeBadge executionModeBadgeAsync">Async</span>
+            <span className="executionModeBadge executionModeBadgeAsync">Queued</span>
           </button>
           <button
             className={mode === "SCHEDULE" ? "tabBtn active" : "tabBtn"}
@@ -1921,7 +1921,7 @@ export function ScreeningDetailPage() {
           >
             <span className="tabIcon">&#x1F4C5;</span>
             <span>Schedule Screening</span>
-            <span className="executionModeBadge executionModeBadgeAsync">Async</span>
+            <span className="executionModeBadge executionModeBadgeAsync">Queued</span>
           </button>
         </div>
         <div className="muted" style={{ fontSize: 12 }}>
