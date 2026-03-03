@@ -3,6 +3,7 @@ from __future__ import annotations
 import calendar
 import hashlib
 import json
+import re
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -28,6 +29,20 @@ def _as_bool(value: Any) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {"1", "true", "t", "yes", "y", "on"}
     return bool(value)
+
+
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.IGNORECASE)
+
+
+def _is_technical_identifier(value: str | None) -> bool:
+    raw = str(value or "").strip()
+    if not raw:
+        return True
+    if raw.isdigit():
+        return True
+    if _UUID_RE.match(raw):
+        return True
+    return False
 
 
 class JobRepository:
@@ -604,6 +619,7 @@ class JobRepository:
         run_hour: int,
         run_minute: int,
         schedule_frequency: str = "DAILY",
+        schedule_run_at: str | None = None,
         source_upload_id: str | None = None,
         source_file_name: str | None = None,
         source_s3_uri: str | None = None,
@@ -618,13 +634,37 @@ class JobRepository:
         safe_timezone = timezone_name.strip() or "America/New_York"
         safe_hour = min(max(int(run_hour), 0), 23)
         safe_minute = min(max(int(run_minute), 0), 59)
-        next_run_at = self.compute_next_run_at(
-            now_utc=now,
-            timezone_name=safe_timezone,
-            run_hour=safe_hour,
-            run_minute=safe_minute,
-            schedule_frequency=safe_frequency,
-        )
+
+        schedule_run_at_dt: datetime | None = None
+        raw_schedule_run_at = (schedule_run_at or "").strip()
+        if raw_schedule_run_at:
+            iso_value = raw_schedule_run_at.replace("Z", "+00:00")
+            try:
+                parsed = datetime.fromisoformat(iso_value)
+            except ValueError as exc:
+                raise ValueError("schedule_run_at must be a valid ISO-8601 datetime") from exc
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            schedule_run_at_dt = parsed.astimezone(timezone.utc)
+
+            try:
+                local_tz = ZoneInfo(safe_timezone)
+            except ZoneInfoNotFoundError:
+                local_tz = ZoneInfo("America/New_York")
+            local_run = schedule_run_at_dt.astimezone(local_tz)
+            safe_hour = min(max(int(local_run.hour), 0), 23)
+            safe_minute = min(max(int(local_run.minute), 0), 59)
+
+        if schedule_run_at_dt and schedule_run_at_dt > now:
+            next_run_at = schedule_run_at_dt.isoformat()
+        else:
+            next_run_at = self.compute_next_run_at(
+                now_utc=now,
+                timezone_name=safe_timezone,
+                run_hour=safe_hour,
+                run_minute=safe_minute,
+                schedule_frequency=safe_frequency,
+            )
 
         with self._connect() as conn:
             cur = self._execute(
@@ -1348,7 +1388,7 @@ class JobRepository:
                 {
                     str(row["user_id"]).strip()
                     for row in rows
-                    if row["user_id"] and not str(row["user_name"] or "").strip()
+                    if row["user_id"] and _is_technical_identifier(row["user_name"])
                 }
             )
             user_name_fallback: dict[str, str] = {}
@@ -1369,7 +1409,7 @@ class JobRepository:
                 for lookup in lookup_rows:
                     fallback_user_id = str(lookup["user_id"] or "").strip()
                     fallback_user_name = str(lookup["user_name"] or "").strip()
-                    if not fallback_user_id or not fallback_user_name:
+                    if not fallback_user_id or _is_technical_identifier(fallback_user_name):
                         continue
                     if fallback_user_id not in user_name_fallback:
                         user_name_fallback[fallback_user_id] = fallback_user_name
@@ -1378,7 +1418,7 @@ class JobRepository:
         for row in rows:
             resolved_user_id = row["user_id"]
             resolved_user_name = row["user_name"]
-            if resolved_user_id and not str(resolved_user_name or "").strip():
+            if resolved_user_id and _is_technical_identifier(resolved_user_name):
                 resolved_user_name = user_name_fallback.get(str(resolved_user_id).strip()) or None
             events.append(
                 {

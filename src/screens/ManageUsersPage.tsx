@@ -198,6 +198,18 @@ export function ManageUsersPage() {
     () => [...auditUserOptions].sort((a, b) => a.displayName.localeCompare(b.displayName)),
     [auditUserOptions]
   );
+  const auditUserNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const option of auditUserOptions) {
+      const id = option.userId.trim();
+      const name = option.displayName.trim();
+      if (!id || !name) continue;
+      if (!map.has(id) || isTechnicalIdentifier(map.get(id) || "")) {
+        map.set(id, name);
+      }
+    }
+    return map;
+  }, [auditUserOptions]);
 
   async function loadAuditEvents(userId?: string) {
     setAuditError(null);
@@ -351,7 +363,8 @@ export function ManageUsersPage() {
                   filteredAuditEvents.map((event) => {
                     const details = event.details as Record<string, unknown> | undefined;
                     const errorText = readErrorFromDetails(details);
-                    const resolvedUserName = resolveAuditUserName(event);
+                    const rowUserId = readString(event.user_id);
+                    const resolvedUserName = (rowUserId ? auditUserNameById.get(rowUserId) : "") || resolveAuditUserName(event);
                     return (
                       <tr key={event.event_id}>
                         <td className="muted">{formatDateTime(event.created_at)}</td>

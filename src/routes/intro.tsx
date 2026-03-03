@@ -73,39 +73,58 @@ function IntroIcon({
 }
 
 function Intro() {
+  const screeningTypes = [
+    {
+      key: "sanction",
+      icon: "match" as const,
+      name: "Sanction",
+      meaning: "US sanctions list only.",
+    },
+    {
+      key: "pep",
+      icon: "single" as const,
+      name: "PEP",
+      meaning: "Politically Exposed Persons outside the US.",
+    },
+    {
+      key: "ame",
+      icon: "hit" as const,
+      name: "AME",
+      meaning: "Adverse Media and negative news coverage.",
+    },
+    {
+      key: "global-sanction",
+      icon: "batch" as const,
+      name: "Global Sanction",
+      meaning: "Sanctions lists published worldwide.",
+    },
+  ];
+
   return (
     <div className="page introPage">
-      <div className="introHero card">
-        <div className="cardBody introHeroBody">
-          <div className="introHeroLeft">
-            <div className="introHeroIcon" aria-hidden="true">
-              <IntroIcon type="flow" />
-            </div>
-            <div>
-              <h1 className="introTitle">Watchlist Screening Overview</h1>
-              <p className="introSubtitle">
-                AML Screening Platform for single, batch, and daily watchlist checks with full audit visibility.
-              </p>
-            </div>
+      <div className="card">
+        <div className="cardHeader">
+          <h2>Screening Types</h2>
+        </div>
+        <div className="cardBody">
+          <div className="introFlowGrid">
+            {screeningTypes.map((item) => (
+              <div key={item.key} className="introFlowCard">
+                <div className="introFlowHead">
+                  <IntroIcon type={item.icon} />
+                  <strong>{item.name}</strong>
+                </div>
+                <p>{item.meaning}</p>
+              </div>
+            ))}
           </div>
-          <div className="introHeroStats">
-            <div className="introStat">
-              <div className="introStatLabel">Design Throughput</div>
-              <div className="introStatValue">32 TPS</div>
-            </div>
-            <div className="introStat">
-              <div className="introStatLabel">Target Users</div>
-              <div className="introStatValue">80</div>
-            </div>
-            <div className="introStat">
-              <div className="introStatLabel">Parallel Sessions</div>
-              <div className="introStatValue">15</div>
-            </div>
+          <div className="muted" style={{ marginTop: 10 }}>
+            Select one or more screening types at request time based on your compliance objective.
           </div>
         </div>
       </div>
 
-      <div className="card">
+      <div className="card" style={{ marginTop: 18 }}>
         <div className="cardHeader">
           <h2>How It Works</h2>
         </div>

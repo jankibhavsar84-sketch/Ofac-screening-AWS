@@ -51,6 +51,7 @@ class ScreeningService:
                 run_hour=settings.daily_screening_hour,
                 run_minute=settings.daily_screening_minute,
                 schedule_frequency=schedule_frequency,
+                schedule_run_at=payload.schedule_run_at,
                 source_upload_id=source_upload_id,
             )
             source_schedule_id = daily_schedule_id
@@ -68,6 +69,7 @@ class ScreeningService:
                     "timezone": settings.daily_screening_timezone,
                     "run_hour": settings.daily_screening_hour,
                     "run_minute": settings.daily_screening_minute,
+                    "schedule_run_at": payload.schedule_run_at,
                 },
             )
 

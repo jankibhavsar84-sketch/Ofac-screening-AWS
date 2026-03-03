@@ -87,6 +87,21 @@ def _preferred_actor_name(principal: AuthPrincipal, hinted_user_name: str | None
     return principal.user_id
 
 
+def _parse_subscription_emails(raw_values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    emails: list[str] = []
+    for raw in raw_values:
+        for token in re.split(r"[,\n;]+", str(raw or "")):
+            candidate = token.strip().lower()
+            if not candidate or "@" not in candidate:
+                continue
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            emails.append(candidate)
+    return emails
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -117,10 +132,12 @@ async def create_batch_job_with_upload(
     batch_name: str = Form(default=""),
     daily_screening: bool = Form(default=False),
     schedule_frequency: str = Form(default="DAILY"),
+    schedule_run_at: str | None = Form(default=None),
     schedule_id: str | None = Form(default=None),
     mock_screening: bool = Form(default=False),
     subscribe_results: bool = Form(default=False),
     subscribe_email: str | None = Form(default=None),
+    subscribe_emails: str | None = Form(default=None),
     user_name: str | None = Form(default=None),
     principal: AuthPrincipal = Depends(require_any_scope("screening.write", "screening.daily", "screening.admin")),
     svc: ScreeningService = Depends(get_service),
@@ -190,6 +207,7 @@ async def create_batch_job_with_upload(
         mock_screening=bool(mock_screening),
         daily_screening=bool(daily_screening),
         schedule_frequency=schedule_frequency,
+        schedule_run_at=(schedule_run_at or "").strip() or None,
         schedule_id=(schedule_id or "").strip() or None,
         source_upload_id=upload_id,
         batch_name=(batch_name or "").strip() or None,
@@ -212,8 +230,14 @@ async def create_batch_job_with_upload(
         )
 
     if subscribe_results and accepted.daily_schedule_id:
-        email = (subscribe_email or principal.email or "").strip().lower()
-        if email:
+        subscription_emails = _parse_subscription_emails(
+            [
+                subscribe_emails or "",
+                subscribe_email or "",
+                principal.email or "",
+            ]
+        )
+        for email in subscription_emails:
             svc.subscribe_to_schedule(
                 schedule_id=accepted.daily_schedule_id,
                 user_id=principal.user_id,
@@ -234,6 +258,7 @@ async def create_batch_job_with_upload(
             "job_id": accepted.job_id,
             "daily_schedule_id": accepted.daily_schedule_id,
             "schedule_frequency": payload.schedule_frequency,
+            "schedule_run_at": payload.schedule_run_at,
             "schedule_id": payload.schedule_id,
         },
     )

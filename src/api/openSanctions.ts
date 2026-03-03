@@ -213,10 +213,12 @@ type BatchUploadRequest = {
   batchName: string;
   dailyScreening?: boolean;
   scheduleFrequency?: "DAILY" | "WEEKLY" | "MONTHLY";
+  scheduleRunAt?: string;
   scheduleId?: string;
   mockScreening?: boolean;
   subscribeResults?: boolean;
   subscribeEmail?: string;
+  subscribeEmails?: string[];
   userName?: string;
 };
 
@@ -229,10 +231,12 @@ export async function uploadBatchAndSubmitJob(payload: BatchUploadRequest): Prom
   form.set("batch_name", payload.batchName);
   form.set("daily_screening", payload.dailyScreening ? "true" : "false");
   if (payload.scheduleFrequency) form.set("schedule_frequency", payload.scheduleFrequency);
+  if (payload.scheduleRunAt && payload.scheduleRunAt.trim()) form.set("schedule_run_at", payload.scheduleRunAt.trim());
   if (payload.scheduleId && payload.scheduleId.trim()) form.set("schedule_id", payload.scheduleId.trim());
   form.set("mock_screening", payload.mockScreening ? "true" : "false");
   form.set("subscribe_results", payload.subscribeResults ? "true" : "false");
   if (payload.subscribeEmail && payload.subscribeEmail.trim()) form.set("subscribe_email", payload.subscribeEmail.trim());
+  if (payload.subscribeEmails?.length) form.set("subscribe_emails", payload.subscribeEmails.join(","));
   if (payload.userName && payload.userName.trim()) form.set("user_name", payload.userName.trim());
 
   const resp = await fetch(`${baseUrl}/screenings/batch-upload`, {

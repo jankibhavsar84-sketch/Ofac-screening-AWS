@@ -11,7 +11,6 @@ import {
   removeDailySchedule,
   uploadBatchAndSubmitJob,
   waitForScreeningJob,
-  type DailySchedule,
   type EntityExample,
   type EntityMatches,
   type UserNotification,
@@ -21,7 +20,7 @@ import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutoSuggest";
 import { IsoDateInput } from "../components/IsoDateInput";
 
-type Mode = "SINGLE" | "BATCH";
+type Mode = "SINGLE" | "BATCH" | "SCHEDULE";
 type UiType = "Individual" | "Organization" | "Vessel" | "Aircraft";
 type ScreeningType = "Sanction" | "PEP" | "AME" | "Fincen 314(a)" | "Global Sanction";
 type ScheduleFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
@@ -114,6 +113,44 @@ function FormSelect<T extends string>({
 
 function safeTrim(v: string) {
   return (v ?? "").trim();
+}
+
+function toLocalDateTimeInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function defaultScheduleRunAtValue(): string {
+  const now = new Date();
+  now.setMinutes(0, 0, 0);
+  now.setHours(now.getHours() + 1);
+  return toLocalDateTimeInputValue(now);
+}
+
+function localDateTimeToUtcIso(value: string): string {
+  const raw = safeTrim(value);
+  if (!raw) return "";
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString();
+}
+
+function parseSubscriptionEmails(value: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  value
+    .split(/[\n,;]+/g)
+    .map((v) => safeTrim(v).toLowerCase())
+    .forEach((email) => {
+      if (!email || !email.includes("@") || seen.has(email)) return;
+      seen.add(email);
+      out.push(email);
+    });
+  return out;
 }
 
 function uiTypeIcon(type: UiType): string {
@@ -673,16 +710,23 @@ export function ScreeningDetailPage() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [batchName, setBatchName] = useState("");
   const [batchScreeningTypes, setBatchScreeningTypes] = useState<ScreeningType[]>(["Sanction"]);
-  const [batchDailyScreening, setBatchDailyScreening] = useState(false);
-  const [batchScheduleFrequency, setBatchScheduleFrequency] = useState<ScheduleFrequency>("DAILY");
-  const [batchTargetScheduleId, setBatchTargetScheduleId] = useState("");
-  const [dailySchedules, setDailySchedules] = useState<DailySchedule[]>([]);
-  const [subscribeResults, setSubscribeResults] = useState(false);
-  const [subscribeEmail, setSubscribeEmail] = useState("");
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [batchFileName, setBatchFileName] = useState("");
   const [batchError, setBatchError] = useState<string | null>(null);
+
+  // SCHEDULE
+  const [scheduleTemplatesOpen, setScheduleTemplatesOpen] = useState(false);
+  const [scheduleName, setScheduleName] = useState("");
+  const [scheduleScreeningTypes, setScheduleScreeningTypes] = useState<ScreeningType[]>(["Sanction"]);
+  const [scheduleFrequency, setScheduleFrequency] = useState<ScheduleFrequency>("DAILY");
+  const [scheduleRunAt, setScheduleRunAt] = useState(defaultScheduleRunAtValue);
+  const [scheduleSubscriptionEmails, setScheduleSubscriptionEmails] = useState("");
+  const [scheduleMockScreening, setScheduleMockScreening] = useState(false);
+  const [scheduleFile, setScheduleFile] = useState<File | null>(null);
+  const [scheduleFileName, setScheduleFileName] = useState("");
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [singleError, setSingleError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [dailyDisableError, setDailyDisableError] = useState<string | null>(null);
@@ -708,28 +752,10 @@ export function ScreeningDetailPage() {
   }, [canBatchScreen, mode]);
 
   useEffect(() => {
-    if (!canDailyScreening && batchDailyScreening) {
-      setBatchDailyScreening(false);
+    if (!canDailyScreening && mode === "SCHEDULE") {
+      setMode("SINGLE");
     }
-  }, [canDailyScreening, batchDailyScreening]);
-
-  useEffect(() => {
-    if (!subscribeEmail && identity?.email) {
-      setSubscribeEmail(identity.email);
-    }
-  }, [identity?.email, subscribeEmail]);
-
-  useEffect(() => {
-    if (!currentUser || !canDailyScreening) return;
-    void (async () => {
-      try {
-        const rows = await listDailySchedules();
-        setDailySchedules(rows);
-      } catch {
-        // ignore fetch errors in background
-      }
-    })();
-  }, [currentUser, canDailyScreening]);
+  }, [canDailyScreening, mode]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -750,20 +776,9 @@ export function ScreeningDetailPage() {
     setSelected((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
   }
 
-  const userSchedules = useMemo(() => {
-    if (!currentUser) return [];
-    return dailySchedules
-      .filter((row) => {
-        const ownerId = safeTrim(String(row.user_id ?? ""));
-        return !ownerId || ownerId === currentUser.id;
-      })
-      .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
-  }, [dailySchedules, currentUser]);
-
   async function reconcileDailyScheduleFlags(items: Submission[]): Promise<Submission[]> {
     try {
       const schedules = await listDailySchedules();
-      setDailySchedules(schedules);
       const activeScheduleIds = new Set(
         schedules
           .map((s) => safeTrim(String(s.schedule_id || "")))
@@ -852,6 +867,7 @@ export function ScreeningDetailPage() {
   function clearAll() {
     setSingleError(null);
     setBatchError(null);
+    setScheduleError(null);
     setDailyDisableError(null);
     setLatest(null);
 
@@ -875,13 +891,22 @@ export function ScreeningDetailPage() {
       setNotes("");
       setSingleScreeningTypes(["Sanction"]);
       setSingleMockScreening(true);
-    } else {
+    } else if (mode === "BATCH") {
       setBatchName("");
       setBatchScreeningTypes(["Sanction"]);
-      setBatchDailyScreening(false);
       setBatchFile(null);
       setBatchFileName("");
       setTemplatesOpen(false);
+    } else {
+      setScheduleName("");
+      setScheduleScreeningTypes(["Sanction"]);
+      setScheduleFrequency("DAILY");
+      setScheduleRunAt(defaultScheduleRunAtValue());
+      setScheduleSubscriptionEmails("");
+      setScheduleMockScreening(false);
+      setScheduleFile(null);
+      setScheduleFileName("");
+      setScheduleTemplatesOpen(false);
     }
   }
 
@@ -1101,10 +1126,6 @@ export function ScreeningDetailPage() {
       setBatchError("Select at least one screening type.");
       return;
     }
-    if (batchDailyScreening && !canDailyScreening) {
-      setBatchError("Only Compliance/Admin can enable daily screening.");
-      return;
-    }
     if (!batchFile) {
       setBatchError("Please drop or select a CSV/XLSX file.");
       return;
@@ -1169,26 +1190,14 @@ export function ScreeningDetailPage() {
 
       if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
 
-      const effectiveScheduleId = safeTrim(batchTargetScheduleId);
-      const useScheduledFlow = batchDailyScreening || Boolean(effectiveScheduleId);
-      if (useScheduledFlow && !canDailyScreening) {
-        throw new Error("Only Compliance/Admin can configure scheduled screening.");
-      }
-      if (useScheduledFlow && subscribeResults && !safeTrim(subscribeEmail)) {
-        throw new Error("Subscription email is required when result subscription is enabled.");
-      }
-
       const accepted = await uploadBatchAndSubmitJob({
         file: batchFile,
         queries,
         screeningTypes: batchScreeningTypes,
         batchName,
-        dailyScreening: useScheduledFlow,
-        scheduleFrequency: batchScheduleFrequency,
-        scheduleId: effectiveScheduleId || undefined,
+        dailyScreening: false,
         mockScreening: false,
-        subscribeResults: useScheduledFlow ? subscribeResults : false,
-        subscribeEmail: useScheduledFlow ? safeTrim(subscribeEmail) : undefined,
+        subscribeResults: false,
         userName: currentUser.name,
       });
 
@@ -1226,10 +1235,9 @@ export function ScreeningDetailPage() {
         fileName: batchFile.name,
         overallResult: accepted.total_items === 0 ? "NO_HIT" : "PROCESSING",
         screeningTypes: batchScreeningTypes,
-        dailyScreening: useScheduledFlow,
-        scheduleFrequency: useScheduledFlow ? batchScheduleFrequency : undefined,
+        dailyScreening: false,
         dailyScheduleId: accepted.daily_schedule_id ?? undefined,
-        dailyScheduleActive: Boolean(useScheduledFlow && accepted.daily_schedule_id),
+        dailyScheduleActive: false,
         sourceUploadId: accepted.source_upload_id,
         sourceS3Uri: accepted.s3_uri ?? undefined,
         items: placeholderItems,
@@ -1329,22 +1337,256 @@ export function ScreeningDetailPage() {
       setBatchFileName("");
       setBatchName("");
       setBatchScreeningTypes(["Sanction"]);
-      setBatchDailyScreening(false);
-      setBatchScheduleFrequency("DAILY");
-      setBatchTargetScheduleId("");
-      setSubscribeResults(false);
       setTemplatesOpen(false);
-
-      if (useScheduledFlow) {
-        try {
-          const refreshedSchedules = await listDailySchedules();
-          setDailySchedules(refreshedSchedules);
-        } catch {
-          // ignore refresh failures
-        }
-      }
     } catch (err: any) {
       setBatchError(err?.message ?? "Batch screening failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // ---------- Scheduled batch submit ----------
+  async function submitSchedule(e: React.FormEvent) {
+    e.preventDefault();
+    setScheduleError(null);
+
+    if (!canDailyScreening) {
+      setScheduleError("Only Compliance/Admin can configure scheduled screening.");
+      return;
+    }
+    if (!currentUser) {
+      setScheduleError("Authenticated user context is missing. Please sign in again.");
+      return;
+    }
+    if (!safeTrim(scheduleName)) {
+      setScheduleError("Schedule Name is required.");
+      return;
+    }
+    if (!scheduleScreeningTypes.length) {
+      setScheduleError("Select at least one screening type.");
+      return;
+    }
+    if (!safeTrim(scheduleRunAt)) {
+      setScheduleError("Run date/time is required.");
+      return;
+    }
+    if (!scheduleFile) {
+      setScheduleError("Please drop or select a CSV/XLSX file.");
+      return;
+    }
+
+    const scheduleRunAtUtc = localDateTimeToUtcIso(scheduleRunAt);
+    if (!scheduleRunAtUtc) {
+      setScheduleError("Run date/time is invalid.");
+      return;
+    }
+
+    const subscriptionEmails = parseSubscriptionEmails(scheduleSubscriptionEmails);
+    setSubmitting(true);
+    try {
+      const name = scheduleFile.name.toLowerCase();
+      let rows: any[] = [];
+
+      if (name.endsWith(".csv")) rows = await parseCsv(scheduleFile);
+      else if (name.endsWith(".xlsx") || name.endsWith(".xls")) rows = await parseExcel(scheduleFile);
+      else throw new Error("Only CSV or Excel files are allowed.");
+
+      if (!rows.length) throw new Error("No rows found in the file.");
+
+      const queries: Record<string, EntityExample> = {};
+      const rowMeta: { key: string; displayName: string; uiType: UiType }[] = [];
+
+      rows.forEach((r, idx) => {
+        const customerType = r.customerType === "Entity" ? "Entity" : "Person";
+        const uiType: UiType = customerType === "Person" ? "Individual" : "Organization";
+
+        const display =
+          uiType === "Individual"
+            ? [safeTrim(r.firstName || ""), safeTrim(r.lastName || "")].filter(Boolean).join(" ")
+            : safeTrim(r.fullName || "");
+
+        const key = `row_${idx + 1}`;
+        rowMeta.push({ key, displayName: display || `(Row ${idx + 1})`, uiType });
+
+        if (uiType === "Individual" && (!safeTrim(r.firstName || "") || !safeTrim(r.lastName || ""))) return;
+        if (uiType !== "Individual" && !safeTrim(r.fullName || "")) return;
+
+        const item: NameItem = {
+          id: key,
+          uiType,
+          nameMode: uiType === "Individual" ? "split" : "full",
+          firstName: safeTrim(r.firstName || ""),
+          lastName: safeTrim(r.lastName || ""),
+          middleName: safeTrim(r.middleName || ""),
+          fullName: safeTrim(r.fullName || ""),
+          aliasName: safeTrim(r.aliasName || ""),
+          dateOfBirth: safeTrim(r.dateOfBirth || ""),
+          countries: safeTrim(r.countries || "")
+            ? String(r.countries).split(",").map((x) => safeTrim(x))
+            : [safeTrim(r.country || "")].filter(Boolean),
+          addresses: safeTrim(r.addresses || "") ? String(r.addresses).split(",").map((x) => safeTrim(x)) : [],
+          ids: [
+            {
+              idType: safeTrim(r.idType || r.idCode || ""),
+              idNumber: safeTrim(r.idNumber || ""),
+              idCountry: safeTrim(r.idCountry || r.idIssueCountry || ""),
+            },
+          ],
+        };
+
+        queries[key] = buildEntityExampleFromNameItem(item);
+      });
+
+      if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
+
+      const accepted = await uploadBatchAndSubmitJob({
+        file: scheduleFile,
+        queries,
+        screeningTypes: scheduleScreeningTypes,
+        batchName: scheduleName,
+        dailyScreening: true,
+        scheduleFrequency,
+        scheduleRunAt: scheduleRunAtUtc,
+        mockScreening: scheduleMockScreening,
+        subscribeResults: subscriptionEmails.length > 0,
+        subscribeEmails: subscriptionEmails,
+        userName: currentUser.name,
+      });
+
+      const screenedKeySet = new Set((accepted.screened_item_keys ?? []).map((key) => safeTrim(String(key))).filter(Boolean));
+      const hasScreenedSubset = screenedKeySet.size > 0;
+
+      const placeholderItems: BatchSubmission["items"] = rowMeta.map((m) => {
+        const isScheduledSkip = hasScreenedSubset && !screenedKeySet.has(m.key);
+        const fallbackMatches: EntityMatches = {
+          results: [],
+          total: { value: 0, relation: "eq" },
+          query: queries[m.key],
+          status: isScheduledSkip ? 204 : 202,
+        };
+        return {
+          customerType: m.uiType === "Individual" ? "Person" : "Entity",
+          displayName: m.displayName,
+          result: isScheduledSkip ? "NO_HIT" : "PROCESSING",
+          message: isScheduledSkip ? "Skipped (already screened in previous schedule runs)." : "Screening in progress",
+          details: { uiType: m.uiType, matches: fallbackMatches },
+        };
+      });
+
+      const entry: BatchSubmission = {
+        id: uuid(),
+        createdAt: new Date().toISOString(),
+        mode: "BATCH",
+        createdByUserId: currentUser.id,
+        createdByUserName: currentUser.name,
+        jobId: accepted.job_id,
+        fileName: scheduleFile.name,
+        overallResult: accepted.total_items === 0 ? "NO_HIT" : "PROCESSING",
+        screeningTypes: scheduleScreeningTypes,
+        dailyScreening: true,
+        scheduleFrequency,
+        dailyScheduleId: accepted.daily_schedule_id ?? undefined,
+        dailyScheduleActive: Boolean(accepted.daily_schedule_id),
+        sourceUploadId: accepted.source_upload_id,
+        sourceS3Uri: accepted.s3_uri ?? undefined,
+        items: placeholderItems,
+      };
+
+      setSubmissions((prev) => [entry, ...prev].slice(0, 500));
+      setLatest(entry);
+      setPage(1);
+
+      if (accepted.total_items > 0) {
+        void (async () => {
+          try {
+            const progress = await waitForScreeningJob(accepted.job_id, { timeoutMs: 1000 * 60 * 60 });
+            const responses = progress.responses ?? {};
+
+            const resolvedItems: BatchSubmission["items"] = rowMeta.map((m) => {
+              const isScheduledSkip = hasScreenedSubset && !screenedKeySet.has(m.key);
+              if (isScheduledSkip) {
+                const fallbackMatches: EntityMatches = {
+                  results: [],
+                  total: { value: 0, relation: "eq" },
+                  query: queries[m.key],
+                  status: 204,
+                };
+                return {
+                  customerType: m.uiType === "Individual" ? "Person" : "Entity",
+                  displayName: m.displayName,
+                  result: "NO_HIT",
+                  message: "Skipped (already screened in previous schedule runs).",
+                  details: { uiType: m.uiType, matches: fallbackMatches },
+                };
+              }
+
+              const matches = responses[m.key];
+              if (!matches) {
+                const fallbackMatches: EntityMatches = {
+                  results: [],
+                  total: { value: 0, relation: "eq" },
+                  query: queries[m.key],
+                  status: 500,
+                };
+                return {
+                  customerType: m.uiType === "Individual" ? "Person" : "Entity",
+                  displayName: m.displayName,
+                  result: "ERROR",
+                  message: "Screening failed for this row",
+                  details: { uiType: m.uiType, matches: fallbackMatches },
+                };
+              }
+
+              const engine = classifyEngine(matches.results ?? []);
+              return {
+                customerType: m.uiType === "Individual" ? "Person" : "Entity",
+                displayName: m.displayName,
+                result: engine === "HIT" ? "HIT" : engine === "NO_HIT" ? "NO_HIT" : "ERROR",
+                message: matches?.results?.[0]?.caption ? `Top match: ${matches.results[0].caption}` : undefined,
+                details: { uiType: m.uiType, matches },
+              };
+            });
+
+            const overall =
+              progress.status === "FAILED"
+                ? "ERROR"
+                : resolvedItems.some((i) => i.result === "HIT")
+                  ? "HIT"
+                  : resolvedItems.some((i) => i.result === "ERROR")
+                    ? "ERROR"
+                    : "NO_HIT";
+
+            setSubmissions((prev) =>
+              prev.map((s) =>
+                s.mode === "BATCH" && s.id === entry.id ? ({ ...s, overallResult: overall, items: resolvedItems } as BatchSubmission) : s
+              )
+            );
+          } catch (err: any) {
+            const failureText = safeTrim(String(err?.message ?? "Scheduled screening failed."));
+            setSubmissions((prev) =>
+              prev.map((s) => {
+                if (s.mode !== "BATCH" || s.id !== entry.id) return s;
+                const failedItems = s.items.map((it) =>
+                  it.result === "PROCESSING" ? { ...it, result: "ERROR", message: failureText || "Scheduled screening failed." } : it
+                );
+                return { ...s, overallResult: "ERROR", items: failedItems } as BatchSubmission;
+              })
+            );
+          }
+        })();
+      }
+
+      setScheduleName("");
+      setScheduleScreeningTypes(["Sanction"]);
+      setScheduleFrequency("DAILY");
+      setScheduleRunAt(defaultScheduleRunAtValue());
+      setScheduleSubscriptionEmails("");
+      setScheduleMockScreening(false);
+      setScheduleFile(null);
+      setScheduleFileName("");
+      setScheduleTemplatesOpen(false);
+    } catch (err: any) {
+      setScheduleError(err?.message ?? "Scheduled screening failed.");
     } finally {
       setSubmitting(false);
     }
@@ -1610,6 +1852,17 @@ export function ScreeningDetailPage() {
           >
             <span className="tabIcon">&#x1F4C4;</span>
             <span>Batch Screening</span>
+            <span className="executionModeBadge executionModeBadgeAsync">Async</span>
+          </button>
+          <button
+            className={mode === "SCHEDULE" ? "tabBtn active" : "tabBtn"}
+            onClick={() => setMode("SCHEDULE")}
+            type="button"
+            disabled={!canDailyScreening}
+            title={canDailyScreening ? "Schedule recurring screening" : "Scheduled screening is allowed for Compliance/Admin only"}
+          >
+            <span className="tabIcon">&#x1F4C5;</span>
+            <span>Schedule Screening</span>
             <span className="executionModeBadge executionModeBadgeAsync">Async</span>
           </button>
         </div>
@@ -1992,99 +2245,6 @@ export function ScreeningDetailPage() {
               onToggle={(value) => toggleScreeningType(value, setBatchScreeningTypes)}
             />
 
-            <div className="mockModeCard">
-              <label className="mockModeCheck">
-                <input
-                  type="checkbox"
-                  checked={batchDailyScreening}
-                  onChange={(e) => setBatchDailyScreening(e.target.checked)}
-                  disabled={!canDailyScreening}
-                />
-                <span>Scheduled Screening</span>
-              </label>
-              <div className="mockModeHint">
-                {canDailyScreening
-                  ? "Enable scheduling to run this batch automatically at selected frequency."
-                  : "Scheduled screening is available for Compliance/Admin roles only."}
-              </div>
-            </div>
-
-            {canDailyScreening ? (
-              <div className="field" style={{ marginTop: 10 }}>
-                <label>Update Existing Schedule (optional)</label>
-                <select
-                  value={batchTargetScheduleId}
-                  onChange={(e) => {
-                    const selected = e.target.value;
-                    setBatchTargetScheduleId(selected);
-                    if (selected) {
-                      setBatchDailyScreening(true);
-                      const found = userSchedules.find((row) => row.schedule_id === selected);
-                      if (found?.schedule_frequency) {
-                        setBatchScheduleFrequency(found.schedule_frequency as ScheduleFrequency);
-                      }
-                      if (!safeTrim(batchName) && safeTrim(found?.batch_name || "")) {
-                        setBatchName(found?.batch_name ?? "");
-                      }
-                    }
-                  }}
-                >
-                  <option value="">Create New Schedule</option>
-                  {userSchedules.map((schedule) => (
-                    <option key={schedule.schedule_id} value={schedule.schedule_id}>
-                      {schedule.batch_name} ({schedule.schedule_frequency || "DAILY"})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-
-            {(batchDailyScreening || Boolean(batchTargetScheduleId)) && canDailyScreening ? (
-              <>
-                <div className="field" style={{ marginTop: 10 }}>
-                  <label>Schedule Frequency</label>
-                  <select
-                    value={batchScheduleFrequency}
-                    onChange={(e) => setBatchScheduleFrequency(e.target.value as ScheduleFrequency)}
-                  >
-                    {SCHEDULE_FREQUENCY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="hintText">
-                    {SCHEDULE_FREQUENCY_OPTIONS.find((opt) => opt.value === batchScheduleFrequency)?.hint ??
-                      "Runs at configured platform schedule time."}
-                  </div>
-                </div>
-
-                <div className="mockModeCard" style={{ marginTop: 10 }}>
-                  <label className="mockModeCheck">
-                    <input
-                      type="checkbox"
-                      checked={subscribeResults}
-                      onChange={(e) => setSubscribeResults(e.target.checked)}
-                    />
-                    <span>Subscribe to Daily Result Notifications</span>
-                  </label>
-                  <div className="mockModeHint">
-                    When enabled, a notification entry is generated after each scheduled run completes.
-                  </div>
-                  {subscribeResults ? (
-                    <div className="field" style={{ marginTop: 10, marginBottom: 0 }}>
-                      <label>Subscription Email</label>
-                      <input
-                        value={subscribeEmail}
-                        onChange={(e) => setSubscribeEmail(e.target.value)}
-                        placeholder="you@company.com"
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              </>
-            ) : null}
-
             {/* Dropzone */}
             <div
               className={dragOver ? "dropzone dragOver" : "dropzone"}
@@ -2138,6 +2298,182 @@ export function ScreeningDetailPage() {
             <form onSubmit={submitBatch}>
               <button className="btnBatchWide" type="submit" disabled={submitting}>
                 {submitting ? "Starting..." : "Start Batch Screening"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SCHEDULE */}
+      {mode === "SCHEDULE" && (
+        <div className="card">
+          <div className="cardHeader">
+            <h2>Schedule Screening</h2>
+          </div>
+
+          <div className="cardBody">
+            <button
+              type="button"
+              className="accordionHeader"
+              onClick={() => setScheduleTemplatesOpen((v) => !v)}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span className="accordionIcon">{"\u2B07"}</span>
+                <span>Download Screening Templates</span>
+                <span className="badgeCount">5 templates</span>
+              </div>
+              <span className="chev">{scheduleTemplatesOpen ? "\u25B4" : "\u25BE"}</span>
+            </button>
+
+            {scheduleTemplatesOpen && (
+              <div className="templateGrid5">
+                <TemplateCard
+                  title="Individual Screening"
+                  desc="Persons, employees, customers, beneficial owners"
+                  chips={["entity name", "entity type", "date of birth", "+5 more"]}
+                  onCsv={() => downloadTemplate("Individual", "csv")}
+                />
+                <TemplateCard
+                  title="Organization Screening"
+                  desc="Companies, vendors, partners, subsidiaries"
+                  chips={["entity name", "entity type", "dba name", "+5 more"]}
+                  onCsv={() => downloadTemplate("Organization", "csv")}
+                />
+                <TemplateCard
+                  title="Vessel Screening"
+                  desc="Ships, tankers, cargo vessels, maritime assets"
+                  chips={["entity name", "entity type", "imo number", "+5 more"]}
+                  onCsv={() => downloadTemplate("Vessel", "csv")}
+                />
+                <TemplateCard
+                  title="Aircraft Screening"
+                  desc="Aircraft, jets, aviation assets"
+                  chips={["entity name", "entity type", "tail number", "+5 more"]}
+                  onCsv={() => downloadTemplate("Aircraft", "csv")}
+                />
+                <TemplateCard
+                  title="Mixed / Combined"
+                  desc="Combined list of individuals and organizations"
+                  chips={["entity name", "entity type", "dba name", "+8 more"]}
+                  onCsv={() => downloadTemplate("Mixed", "csv")}
+                />
+              </div>
+            )}
+
+            <form onSubmit={submitSchedule}>
+              <div className="field" style={{ marginTop: 14 }}>
+                <label>Schedule Name *</label>
+                <input value={scheduleName} onChange={(e) => setScheduleName(e.target.value)} placeholder="e.g., Daily Vendor Watchlist Run" />
+              </div>
+
+              <ScreeningTypeCards
+                selected={scheduleScreeningTypes}
+                onToggle={(value) => toggleScreeningType(value, setScheduleScreeningTypes)}
+              />
+
+              <div className="grid2" style={{ marginTop: 10 }}>
+                <div className="field">
+                  <label>Frequency *</label>
+                  <select
+                    value={scheduleFrequency}
+                    onChange={(e) => setScheduleFrequency(e.target.value as ScheduleFrequency)}
+                  >
+                    {SCHEDULE_FREQUENCY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="hintText">
+                    {SCHEDULE_FREQUENCY_OPTIONS.find((opt) => opt.value === scheduleFrequency)?.hint ?? "Runs at selected schedule time."}
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label>First Run Date/Time *</label>
+                  <input
+                    type="datetime-local"
+                    value={scheduleRunAt}
+                    onChange={(e) => setScheduleRunAt(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="field" style={{ marginTop: 10 }}>
+                <label>Subscription Emails (optional)</label>
+                <textarea
+                  value={scheduleSubscriptionEmails}
+                  onChange={(e) => setScheduleSubscriptionEmails(e.target.value)}
+                  placeholder="compliance@company.com, analyst@company.com"
+                />
+                <div className="hintText">Use comma, semicolon, or new line to enter multiple email addresses.</div>
+              </div>
+
+              <div className="mockModeCard" style={{ marginTop: 10 }}>
+                <label className="mockModeCheck">
+                  <input
+                    type="checkbox"
+                    checked={scheduleMockScreening}
+                    onChange={(e) => setScheduleMockScreening(e.target.checked)}
+                  />
+                  <span>Mock screening only (no alert generation)</span>
+                </label>
+                <div className="mockModeHint">
+                  Use mock mode for dry-run validation before enabling production alert generation.
+                </div>
+              </div>
+
+              <div
+                className={dragOver ? "dropzone dragOver" : "dropzone"}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  const f = e.dataTransfer.files?.[0] ?? null;
+                  if (!f) return;
+                  setScheduleFile(f);
+                  setScheduleFileName(f.name);
+                  setScheduleError(null);
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="dropIconCircle">{"\u2B06"}</div>
+                <div className="dropText">
+                  {scheduleFileName ? (
+                    <>
+                      Selected: <b>{scheduleFileName}</b>
+                    </>
+                  ) : (
+                    <>Drop your file here or click to browse</>
+                  )}
+                </div>
+                <div className="dropSub">Supports CSV and Excel files</div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    if (!f) return;
+                    setScheduleFile(f);
+                    setScheduleFileName(f.name);
+                    setScheduleError(null);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </div>
+
+              {scheduleError ? <div className="errorBox">{scheduleError}</div> : null}
+              <button className="btnBatchWide" type="submit" disabled={submitting}>
+                {submitting ? "Starting..." : "Create Scheduled Screening"}
               </button>
             </form>
           </div>

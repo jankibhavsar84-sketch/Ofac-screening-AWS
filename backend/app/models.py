@@ -40,6 +40,7 @@ class MatchJobRequest(BaseModel):
     mock_screening: bool = False
     daily_screening: bool = False
     schedule_frequency: str = "DAILY"
+    schedule_run_at: str | None = None
     schedule_id: str | None = None
     source_upload_id: str | None = None
     batch_name: str | None = None
