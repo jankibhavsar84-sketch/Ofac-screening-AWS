@@ -7,14 +7,12 @@ import { submissionsState, latestResultState, type Submission, type BatchSubmiss
 import {
   listDailySchedules,
   listScreeningSubmissions,
-  listUserNotifications,
   matchSync,
   removeDailySchedule,
   uploadBatchAndSubmitJob,
   waitForScreeningJob,
   type EntityExample,
   type EntityMatches,
-  type UserNotification,
 } from "../api/openSanctions";
 import { buildIdentity, getPrimaryRole, hasPermission } from "../auth/claims";
 import { parseCsv, parseExcel } from "../utils/batchParse";
@@ -746,7 +744,6 @@ export function ScreeningDetailPage() {
   const [scheduleFileName, setScheduleFileName] = useState("");
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [singleError, setSingleError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [dailyDisableError, setDailyDisableError] = useState<string | null>(null);
@@ -781,17 +778,9 @@ export function ScreeningDetailPage() {
     if (!currentUser) return;
     void (async () => {
       try {
-        const [historyResult, notificationResult] = await Promise.allSettled([
-          listScreeningSubmissions(500),
-          listUserNotifications(20),
-        ]);
-        if (historyResult.status === "fulfilled") {
-          const reconciled = await reconcileDailyScheduleFlags(historyResult.value as Submission[]);
-          setSubmissions(reconciled);
-        }
-        if (notificationResult.status === "fulfilled") {
-          setNotifications(notificationResult.value);
-        }
+        const historyRows = await listScreeningSubmissions(500);
+        const reconciled = await reconcileDailyScheduleFlags(historyRows as Submission[]);
+        setSubmissions(reconciled);
       } catch {
         // ignore background load errors
       }
@@ -839,8 +828,6 @@ export function ScreeningDetailPage() {
         const historyRows = await listScreeningSubmissions(500);
         const reconciled = await reconcileDailyScheduleFlags(historyRows as Submission[]);
         setSubmissions(reconciled);
-        const notes = await listUserNotifications(20);
-        setNotifications(notes);
       } catch {
         // ignore refresh errors
       } finally {
@@ -1987,7 +1974,9 @@ export function ScreeningDetailPage() {
               {primaryName ? (
                 <div key={primaryName.id} className="nameCard">
                   <div className="nameCardTop">
-                    <div className="nameCardLabel">Primary Name</div>
+                    <div className="nameCardLabel">
+                      Primary Name <span className="requiredMark">*</span>
+                    </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       {primaryName.uiType === "Individual" ? (
                         <button type="button" className="btnAdd" onClick={addName}>
@@ -2461,13 +2450,15 @@ export function ScreeningDetailPage() {
               </div>
 
               <div className="field" style={{ marginTop: 10 }}>
-                <label>Subscription Emails (optional)</label>
+                <label>Subscription Emails (optional - email delivery)</label>
                 <textarea
                   value={scheduleSubscriptionEmails}
                   onChange={(e) => setScheduleSubscriptionEmails(e.target.value)}
                   placeholder="compliance@company.com, analyst@company.com"
                 />
-                <div className="hintText">Use comma, semicolon, or new line to enter multiple email addresses.</div>
+                <div className="hintText">
+                  Use comma, semicolon, or new line to enter multiple email addresses. Subscription actions are recorded in Audit Log.
+                </div>
               </div>
 
               <div
@@ -2526,25 +2517,6 @@ export function ScreeningDetailPage() {
           </div>
         </div>
       )}
-
-      {notifications.length > 0 ? (
-        <div className="card" style={{ marginTop: 18 }}>
-          <div className="cardHeader">
-            <h2>Recent Notifications</h2>
-          </div>
-          <div className="cardBody">
-            <div className="notificationList">
-              {notifications.slice(0, 5).map((note) => (
-                <div className="notificationItem" key={note.notification_id}>
-                  <div className="notificationTitle">{note.title}</div>
-                  <div className="muted">{note.message}</div>
-                  <div className="muted">{new Date(note.created_at).toLocaleString()}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {/* Screening Results (under BOTH tabs) */}
       <div className="card" style={{ marginTop: 18 }}>
