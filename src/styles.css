@@ -63,9 +63,15 @@ a{color:inherit}
 }
 .brandRow{display:flex;align-items:center;gap:16px}
 .brandIcon{
-  width:38px;height:38px;border-radius:12px;background:#0f172a;color:#fff;
+  width:38px;height:38px;border-radius:12px;overflow:hidden;background:#fff;
   display:flex;align-items:center;justify-content:center;
   box-shadow:0 10px 20px rgba(15,23,42,.12);
+}
+.brandIconImg{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
 }
 .brandTitle{font-weight:800;font-size:16px}
 .brandSub{font-size:12px;color:var(--muted);margin-top:2px}

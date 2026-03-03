@@ -96,6 +96,8 @@ export type AuditEvent = {
   details?: Record<string, unknown>;
 };
 
+export type SubmissionHistoryEntry = Record<string, unknown>;
+
 export type JobStatus = "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED";
 
 export type JobAccepted = {
@@ -410,4 +412,18 @@ export async function listUserNotifications(limit = 50): Promise<UserNotificatio
     throw new Error(`Failed to load notifications: ${await parseApiError(resp)}`);
   }
   return (await resp.json()) as UserNotification[];
+}
+
+export async function listScreeningSubmissions(limit = 200): Promise<SubmissionHistoryEntry[]> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/screenings/submissions`, window.location.origin);
+  url.searchParams.set("limit", String(limit));
+  const resp = await fetch(url.toString(), {
+    headers: withAuthHeaders(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load screening submissions: ${await parseApiError(resp)}`);
+  }
+  const parsed = (await resp.json()) as unknown;
+  return Array.isArray(parsed) ? (parsed as SubmissionHistoryEntry[]) : [];
 }

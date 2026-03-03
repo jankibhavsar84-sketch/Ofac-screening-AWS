@@ -6,6 +6,7 @@ import { z } from "zod";
 import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
 import {
   listDailySchedules,
+  listScreeningSubmissions,
   listUserNotifications,
   matchSync,
   removeDailySchedule,
@@ -113,6 +114,26 @@ function FormSelect<T extends string>({
 
 function safeTrim(v: string) {
   return (v ?? "").trim();
+}
+
+function isSubmissionOwnedByCurrentUser(
+  submission: { createdByUserId?: unknown; createdByUserName?: unknown } | null | undefined,
+  currentUser: { id: string; name: string } | null
+): boolean {
+  if (!currentUser) return false;
+
+  const ownerId = safeTrim(String(submission?.createdByUserId ?? ""));
+  if (ownerId) {
+    return ownerId === currentUser.id;
+  }
+
+  const ownerName = safeTrim(String(submission?.createdByUserName ?? ""));
+  if (ownerName) {
+    return ownerName.toLowerCase() === safeTrim(currentUser.name).toLowerCase();
+  }
+
+  // Legacy local rows without ownership metadata: keep visible in this browser.
+  return true;
 }
 
 function toLocalDateTimeInputValue(date: Date): string {
@@ -760,10 +781,19 @@ export function ScreeningDetailPage() {
     if (!currentUser) return;
     void (async () => {
       try {
-        const rows = await listUserNotifications(20);
-        setNotifications(rows);
+        const [historyResult, notificationResult] = await Promise.allSettled([
+          listScreeningSubmissions(500),
+          listUserNotifications(20),
+        ]);
+        if (historyResult.status === "fulfilled") {
+          const reconciled = await reconcileDailyScheduleFlags(historyResult.value as Submission[]);
+          setSubmissions(reconciled);
+        }
+        if (notificationResult.status === "fulfilled") {
+          setNotifications(notificationResult.value);
+        }
       } catch {
-        // ignore notification load errors in background
+        // ignore background load errors
       }
     })();
   }, [currentUser]);
@@ -806,16 +836,13 @@ export function ScreeningDetailPage() {
   function refreshResults() {
     void (async () => {
       try {
-        const raw = localStorage.getItem("tapan_ofac_submissions_v1");
-        const parsed = raw ? JSON.parse(raw) : [];
-        if (!Array.isArray(parsed)) return;
-
-        const reconciled = await reconcileDailyScheduleFlags(parsed as Submission[]);
+        const historyRows = await listScreeningSubmissions(500);
+        const reconciled = await reconcileDailyScheduleFlags(historyRows as Submission[]);
         setSubmissions(reconciled);
         const notes = await listUserNotifications(20);
         setNotifications(notes);
       } catch {
-        // ignore malformed storage
+        // ignore refresh errors
       } finally {
         setPage(1);
       }
@@ -1649,7 +1676,7 @@ export function ScreeningDetailPage() {
     const rows: ResultRow[] = [];
 
     submissions.forEach((s: Submission) => {
-      if ((s as any).createdByUserId !== currentUser.id) return;
+      if (!isSubmissionOwnedByCurrentUser(s as any, currentUser)) return;
       const created = new Date((s as any).createdAt).toLocaleDateString();
 
       // SINGLE: our new single submission stores details.meta + responses
@@ -1869,7 +1896,7 @@ export function ScreeningDetailPage() {
   return (
     <div className="page">
       {/* Tabs row like screenshot */}
-      <SummaryCards currentUserId={currentUser?.id ?? null} />
+      <SummaryCards currentUserId={currentUser?.id ?? null} currentUserName={currentUser?.name ?? null} />
       <div className="tabsRow">
         <div className="tabSwitch" role="tablist" aria-label="Screening mode">
           <button className={mode === "SINGLE" ? "tabBtn active" : "tabBtn"} onClick={() => setMode("SINGLE")} type="button">
@@ -2800,7 +2827,7 @@ function SummaryCardIcon({ tone }: { tone: SummaryTone }) {
   );
 }
 
-function SummaryCards({ currentUserId }: { currentUserId: string | null }) {
+function SummaryCards({ currentUserId, currentUserName }: { currentUserId: string | null; currentUserName: string | null }) {
   const submissions = useRecoilValue(submissionsState);
 
   // Count "result rows" the same way your table does (SINGLE multi + BATCH items + legacy)
@@ -2819,10 +2846,10 @@ function SummaryCards({ currentUserId }: { currentUserId: string | null }) {
       if (status === "Match") match += 1;
     };
 
-    if (!currentUserId) return { total, clear, potential, match, pending };
+    if (!currentUserId || !currentUserName) return { total, clear, potential, match, pending };
 
     submissions.forEach((s: any) => {
-      if (s?.createdByUserId !== currentUserId) return;
+      if (!isSubmissionOwnedByCurrentUser(s, { id: currentUserId, name: currentUserName })) return;
 
       // New SINGLE multi
       if (s.mode === "SINGLE" && s.details?.meta && s.details?.responses) {

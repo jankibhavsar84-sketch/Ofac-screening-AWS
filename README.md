@@ -223,6 +223,7 @@ Authorization behavior:
 - `POST /api/v1/screenings/batch-upload` upload batch file + submit job + optional schedule/subscription
 - `GET /api/v1/screenings/jobs/{job_id}` get progress/result
 - `POST /api/v1/screenings/match` synchronous screening (no queue, immediate response)
+- `GET /api/v1/screenings/submissions?limit=200` list server-side screening history for current user
 - `GET /api/v1/screenings/daily-schedules` list active daily schedules
 - `DELETE /api/v1/screenings/daily-schedules/{schedule_id}` disable one daily schedule
 - `GET /api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` list caller subscriptions for a schedule
@@ -234,6 +235,7 @@ Authorization behavior:
 ## Notes
 
 - Frontend uses `matchSync(...)` for single screening and `matchBatch(...)` for async batch screening.
+- Screening history shown in the UI is loaded from backend (`jobs`, `job_items`, and metadata), not browser-only storage.
 - Failed item responses are normalized with `status=500` so UI can still render deterministic rows.
 - Current local persistence uses SQLite for simplicity; production can swap repository to RDS/DynamoDB.
 - Audit trail is persisted in `audit_events` table with timestamp, user, action, entity and request details.

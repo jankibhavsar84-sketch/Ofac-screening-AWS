@@ -113,6 +113,24 @@ class JobRepository:
             self._execute(
                 conn,
                 """
+                CREATE TABLE IF NOT EXISTS job_metadata (
+                  job_id TEXT PRIMARY KEY,
+                  mode TEXT NOT NULL DEFAULT 'BATCH',
+                  screening_types_json TEXT NOT NULL DEFAULT '[]',
+                  mock_screening BOOLEAN NOT NULL DEFAULT FALSE,
+                  batch_name TEXT,
+                  file_name TEXT,
+                  daily_screening BOOLEAN NOT NULL DEFAULT FALSE,
+                  schedule_frequency TEXT,
+                  daily_schedule_id TEXT,
+                  query_count INTEGER NOT NULL DEFAULT 0,
+                  deferred_until TEXT
+                );
+                """,
+            )
+            self._execute(
+                conn,
+                """
                 CREATE TABLE IF NOT EXISTS daily_schedules (
                   schedule_id TEXT PRIMARY KEY,
                   batch_name TEXT NOT NULL,
@@ -295,6 +313,17 @@ class JobRepository:
             self._ensure_column(conn, "jobs", "user_id", "TEXT")
             self._ensure_column(conn, "jobs", "user_name", "TEXT")
 
+            self._ensure_column(conn, "job_metadata", "mode", "TEXT NOT NULL DEFAULT 'BATCH'")
+            self._ensure_column(conn, "job_metadata", "screening_types_json", "TEXT NOT NULL DEFAULT '[]'")
+            self._ensure_column(conn, "job_metadata", "mock_screening", "BOOLEAN NOT NULL DEFAULT FALSE")
+            self._ensure_column(conn, "job_metadata", "batch_name", "TEXT")
+            self._ensure_column(conn, "job_metadata", "file_name", "TEXT")
+            self._ensure_column(conn, "job_metadata", "daily_screening", "BOOLEAN NOT NULL DEFAULT FALSE")
+            self._ensure_column(conn, "job_metadata", "schedule_frequency", "TEXT")
+            self._ensure_column(conn, "job_metadata", "daily_schedule_id", "TEXT")
+            self._ensure_column(conn, "job_metadata", "query_count", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(conn, "job_metadata", "deferred_until", "TEXT")
+
             self._ensure_column(conn, "daily_schedules", "user_id", "TEXT")
             self._ensure_column(conn, "daily_schedules", "user_name", "TEXT")
             self._ensure_column(conn, "daily_schedules", "schedule_frequency", "TEXT NOT NULL DEFAULT 'DAILY'")
@@ -394,6 +423,216 @@ class JobRepository:
                 ),
             )
         return ts
+
+    def get_job_metadata(self, job_id: str) -> dict[str, Any] | None:
+        safe_job_id = (job_id or "").strip()
+        if not safe_job_id:
+            return None
+
+        with self._connect() as conn:
+            row = self._execute(
+                conn,
+                """
+                SELECT
+                  job_id, mode, screening_types_json, mock_screening, batch_name, file_name,
+                  daily_screening, schedule_frequency, daily_schedule_id, query_count, deferred_until
+                FROM job_metadata
+                WHERE job_id = ?
+                """,
+                (safe_job_id,),
+            ).fetchone()
+
+        if not row:
+            return None
+
+        parsed_types: list[str] = []
+        try:
+            decoded = json.loads(row["screening_types_json"]) if row["screening_types_json"] else []
+            if isinstance(decoded, list):
+                parsed_types = [str(v).strip() for v in decoded if str(v).strip()]
+        except Exception:  # noqa: BLE001
+            parsed_types = []
+
+        return {
+            "job_id": row["job_id"],
+            "mode": str(row["mode"] or "BATCH").strip().upper() or "BATCH",
+            "screening_types": parsed_types,
+            "mock_screening": _as_bool(row["mock_screening"]),
+            "batch_name": row["batch_name"],
+            "file_name": row["file_name"],
+            "daily_screening": _as_bool(row["daily_screening"]),
+            "schedule_frequency": row["schedule_frequency"],
+            "daily_schedule_id": row["daily_schedule_id"],
+            "query_count": int(row["query_count"] or 0),
+            "deferred_until": row["deferred_until"],
+        }
+
+    def upsert_job_metadata(
+        self,
+        job_id: str,
+        mode: str | None = None,
+        screening_types: list[str] | None = None,
+        mock_screening: bool | None = None,
+        batch_name: str | None = None,
+        file_name: str | None = None,
+        daily_screening: bool | None = None,
+        schedule_frequency: str | None = None,
+        daily_schedule_id: str | None = None,
+        query_count: int | None = None,
+        deferred_until: str | None = None,
+    ) -> None:
+        safe_job_id = (job_id or "").strip()
+        if not safe_job_id:
+            return
+
+        existing = self.get_job_metadata(safe_job_id) or {}
+
+        mode_value = str(mode or existing.get("mode") or "BATCH").strip().upper() or "BATCH"
+        types_value = screening_types if screening_types is not None else existing.get("screening_types", [])
+        if not isinstance(types_value, list):
+            types_value = []
+        types_value = [str(v).strip() for v in types_value if str(v).strip()]
+
+        mock_value = bool(mock_screening) if mock_screening is not None else bool(existing.get("mock_screening", False))
+        batch_name_value = batch_name if batch_name is not None else existing.get("batch_name")
+        file_name_value = file_name if file_name is not None else existing.get("file_name")
+        daily_value = bool(daily_screening) if daily_screening is not None else bool(existing.get("daily_screening", False))
+        freq_value = schedule_frequency if schedule_frequency is not None else existing.get("schedule_frequency")
+        schedule_id_value = daily_schedule_id if daily_schedule_id is not None else existing.get("daily_schedule_id")
+        query_count_value = int(query_count) if query_count is not None else int(existing.get("query_count") or 0)
+        deferred_value = deferred_until if deferred_until is not None else existing.get("deferred_until")
+
+        with self._connect() as conn:
+            self._execute(
+                conn,
+                """
+                INSERT INTO job_metadata(
+                  job_id, mode, screening_types_json, mock_screening, batch_name, file_name,
+                  daily_screening, schedule_frequency, daily_schedule_id, query_count, deferred_until
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(job_id) DO UPDATE SET
+                  mode = excluded.mode,
+                  screening_types_json = excluded.screening_types_json,
+                  mock_screening = excluded.mock_screening,
+                  batch_name = excluded.batch_name,
+                  file_name = excluded.file_name,
+                  daily_screening = excluded.daily_screening,
+                  schedule_frequency = excluded.schedule_frequency,
+                  daily_schedule_id = excluded.daily_schedule_id,
+                  query_count = excluded.query_count,
+                  deferred_until = excluded.deferred_until
+                """,
+                (
+                    safe_job_id,
+                    mode_value,
+                    json.dumps(types_value),
+                    mock_value,
+                    (batch_name_value or "").strip() or None,
+                    (file_name_value or "").strip() or None,
+                    daily_value,
+                    (freq_value or "").strip() or None,
+                    (schedule_id_value or "").strip() or None,
+                    max(query_count_value, 0),
+                    (deferred_value or "").strip() or None,
+                ),
+            )
+
+    def list_jobs_for_history(
+        self,
+        user_id: str | None,
+        user_name: str | None,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        safe_limit = max(min(int(limit), 1000), 1)
+        safe_user_id = (user_id or "").strip()
+        safe_user_name = (user_name or "").strip()
+
+        with self._connect() as conn:
+            if safe_user_id:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT
+                      j.job_id, j.status, j.created_at, j.updated_at, j.total_items,
+                      j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
+                      jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
+                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until,
+                      bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
+                    FROM jobs j
+                    LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                    LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                    WHERE j.user_id = ?
+                    ORDER BY j.created_at DESC
+                    LIMIT ?
+                    """,
+                    (safe_user_id, safe_limit),
+                ).fetchall()
+            elif safe_user_name:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT
+                      j.job_id, j.status, j.created_at, j.updated_at, j.total_items,
+                      j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
+                      jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
+                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until,
+                      bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
+                    FROM jobs j
+                    LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                    LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                    WHERE LOWER(COALESCE(j.user_name, '')) = LOWER(?)
+                    ORDER BY j.created_at DESC
+                    LIMIT ?
+                    """,
+                    (safe_user_name, safe_limit),
+                ).fetchall()
+            else:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT
+                      j.job_id, j.status, j.created_at, j.updated_at, j.total_items,
+                      j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
+                      jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
+                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until,
+                      bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
+                    FROM jobs j
+                    LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                    LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                    ORDER BY j.created_at DESC
+                    LIMIT ?
+                    """,
+                    (safe_limit,),
+                ).fetchall()
+
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            out.append(
+                {
+                    "job_id": row["job_id"],
+                    "status": row["status"],
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"],
+                    "total_items": int(row["total_items"] or 0),
+                    "source_schedule_id": row["source_schedule_id"],
+                    "source_upload_id": row["source_upload_id"],
+                    "user_id": row["user_id"],
+                    "user_name": row["user_name"],
+                    "mode": row["mode"],
+                    "screening_types_json": row["screening_types_json"],
+                    "mock_screening": row["mock_screening"],
+                    "batch_name": row["batch_name"],
+                    "file_name": row["file_name"],
+                    "daily_screening": row["daily_screening"],
+                    "schedule_frequency": row["schedule_frequency"],
+                    "daily_schedule_id": row["daily_schedule_id"],
+                    "query_count": int(row["query_count"] or 0) if row["query_count"] is not None else 0,
+                    "deferred_until": row["deferred_until"],
+                    "upload_file_name": row["upload_file_name"],
+                    "upload_s3_uri": row["upload_s3_uri"],
+                }
+            )
+        return out
 
     def add_job_item(self, job_id: str, item_key: str, request_payload: dict[str, Any]) -> None:
         ts = now_iso()

@@ -46,7 +46,9 @@ function RootLayout() {
       <header className="topHeader">
         <div className="topHeaderInner page">
           <div className="brandRow">
-            <div className="brandIcon" aria-hidden="true">{"\u{1F6E1}\uFE0F"}</div>
+            <div className="brandIcon" aria-hidden="true">
+              <img src="/Circle_Pru_Rrock.avif" className="brandIconImg" alt="" />
+            </div>
             <div className="brandText">
               <div className="brandTitle">Watchlist Screening</div>
               <div className="brandSub">AML Screening Platform</div>

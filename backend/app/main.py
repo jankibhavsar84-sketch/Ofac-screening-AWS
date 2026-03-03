@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from typing import Any
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
@@ -18,6 +19,7 @@ from .models import (
     DailyScheduleInfo,
     EntityExample,
     EntityMatchResponse,
+    JobStatus,
     MatchJobAccepted,
     MatchJobProgress,
     MatchJobRequest,
@@ -220,6 +222,24 @@ async def create_batch_job_with_upload(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    deferred_until: str | None = None
+    if accepted.daily_schedule_id:
+        schedule_snapshot = repository.get_daily_schedule(accepted.daily_schedule_id)
+        deferred_until = (schedule_snapshot or {}).get("next_run_at")
+    repository.upsert_job_metadata(
+        job_id=accepted.job_id,
+        mode="BATCH",
+        screening_types=screening_types,
+        mock_screening=bool(mock_screening),
+        batch_name=(batch_name or "").strip() or None,
+        file_name=file.filename,
+        daily_screening=bool(daily_screening),
+        schedule_frequency=schedule_frequency if daily_screening else None,
+        daily_schedule_id=accepted.daily_schedule_id,
+        query_count=len(queries),
+        deferred_until=deferred_until if (accepted.total_items == 0 and daily_screening and accepted.daily_schedule_id) else None,
+    )
+
     repository.attach_upload_to_job(upload_id=upload_id, job_id=accepted.job_id)
     if accepted.daily_schedule_id:
         repository.attach_upload_to_schedule(
@@ -295,6 +315,19 @@ def list_daily_schedules(
     svc: ScreeningService = Depends(get_service),
 ) -> list[DailyScheduleInfo]:
     return svc.list_daily_schedules()
+
+
+@app.get("/api/v1/screenings/submissions", response_model=list[dict[str, Any]])
+def list_screening_submissions(
+    limit: int = Query(default=200, ge=1, le=1000),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[dict[str, Any]]:
+    return svc.list_user_submissions(
+        user_id=principal.user_id,
+        user_name=_preferred_actor_name(principal),
+        limit=limit,
+    )
 
 
 @app.get("/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions", response_model=list[ScheduleSubscription])
@@ -393,13 +426,29 @@ def match_sync(
 
     actor_user_name = _preferred_actor_name(principal, payload.user_name)
     payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": actor_user_name})
+    job_id = str(uuid4())
+    repository.create_job(
+        job_id=job_id,
+        total_items=len(payload.queries),
+        status=JobStatus.processing,
+        user_id=payload.user_id,
+        user_name=payload.user_name,
+    )
+    repository.upsert_job_metadata(
+        job_id=job_id,
+        mode="SINGLE",
+        screening_types=payload.screening_types,
+        mock_screening=payload.mock_screening,
+        query_count=len(payload.queries),
+    )
     repository.add_audit_event(
         action="SYNC_SCREENING_SUBMITTED",
         user_id=payload.user_id,
         user_name=payload.user_name,
         entity_type="sync_screening",
-        entity_id=None,
+        entity_id=job_id,
         details={
+            "job_id": job_id,
             "total_items": len(payload.queries),
             "screening_types": payload.screening_types,
             "mock_screening": payload.mock_screening,
@@ -408,6 +457,8 @@ def match_sync(
 
     responses: dict[str, dict] = {}
     for item_key, query in payload.queries.items():
+        request_payload = query.model_dump(mode="json")
+        repository.add_job_item(job_id=job_id, item_key=item_key, request_payload=request_payload)
         try:
             screened = actimize.screen_many_types(
                 query,
@@ -422,9 +473,10 @@ def match_sync(
             responses[item_key] = {
                 "results": trimmed_results,
                 "total": {"value": len(trimmed_results), "relation": "eq"},
-                "query": query.model_dump(mode="json"),
+                "query": request_payload,
                 "status": int(screened.get("status", 200) or 200),
             }
+            repository.mark_item_completed(job_id=job_id, item_key=item_key, response_payload=responses[item_key])
         except Exception as exc:  # noqa: BLE001
             repository.add_audit_event(
                 action="SYNC_SCREENING_ITEM_FAILED",
@@ -432,12 +484,13 @@ def match_sync(
                 user_name=payload.user_name,
                 entity_type="sync_screening_item",
                 entity_id=item_key,
-                details={"item_key": item_key, "error": str(exc)},
+                details={"job_id": job_id, "item_key": item_key, "error": str(exc)},
             )
+            repository.mark_item_failed(job_id=job_id, item_key=item_key, error_text=str(exc))
             responses[item_key] = {
                 "results": [],
                 "total": {"value": 0, "relation": "eq"},
-                "query": query.model_dump(mode="json"),
+                "query": request_payload,
                 "status": 500,
                 "error": str(exc),
             }
