@@ -669,6 +669,7 @@ textarea{min-height:90px;resize:vertical}
 }
 .nameCardTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .nameCardLabel{font-weight:800;font-size:13px;color:#0f172a}
+.requiredMark{color:#dc2626;margin-left:2px;font-weight:800}
 .iconRemoveBtn{
   width:24px;
   height:24px;
