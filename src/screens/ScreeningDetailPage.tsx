@@ -2784,7 +2784,7 @@ export function ScreeningDetailPage() {
                 <strong>{hitEntityDialog.sourceEntity}</strong>
               </div>
               <div className="hitEntityRow">
-                <span className="muted">OFAC Hit Entities</span>
+                <span className="muted">Hit Entities</span>
                 {hitEntityDialog.hits.length === 0 ? (
                   <strong>No OFAC hit entity found.</strong>
                 ) : (
