@@ -283,31 +283,37 @@ a{color:inherit}
 .tabSwitch{
   display:inline-flex;
   align-items:center;
-  gap:2px;
-  padding:2px;
+  gap:8px;
+  padding:4px;
   border:1px solid var(--border);
-  border-radius:12px;
+  border-radius:14px;
   background:var(--tab-bg);
+  box-shadow:inset 0 0 0 1px rgba(15, 23, 42, 0.03);
 }
 .tabBtn{
-  border:1px solid transparent;
-  background:transparent;
+  border:1px solid var(--border);
+  background:var(--card);
   color:var(--tab-fg);
-  padding:8px 12px;
-  border-radius:10px;
+  padding:9px 14px;
+  border-radius:11px;
   display:flex;gap:8px;align-items:center;
   cursor:pointer;
+  min-height:40px;
+  font-weight:700;
 }
 .tabBtn.active{
-  background:var(--tab-active-bg);color:var(--tab-active-fg);border-color:var(--tab-active-bg);
+  background:var(--tab-active-bg);
+  color:var(--tab-active-fg);
+  border-color:var(--tab-active-bg);
+  box-shadow:0 6px 14px rgba(15, 23, 42, 0.18);
 }
 .tabSwitch .tabBtn:not(.active){
   color:var(--tab-fg);
 }
 .tabSwitch .tabBtn:not(.active):hover{
-  background:var(--nav-active-bg);
-  color:var(--nav-active-fg);
-  border-color:#dce3ee;
+  background:var(--app-surface);
+  color:var(--text-strong);
+  border-color:var(--border);
 }
 .tabIcon{opacity:.95}
 .executionModeBadge{
@@ -328,6 +334,15 @@ a{color:inherit}
   background:#eff3ff;
   color:#304cb2;
   border-color:#cad6ff;
+}
+.tabBtn.active .executionModeBadge{
+  background:rgba(255, 255, 255, 0.2);
+  color:#ffffff;
+  border-color:rgba(255, 255, 255, 0.35);
+}
+.tabBtn:disabled{
+  opacity:.6;
+  cursor:not-allowed;
 }
 @media(max-width:850px){
   .tabsRow{
@@ -414,11 +429,11 @@ a{color:inherit}
 }
 .screeningTypeCard:hover{
   border-color:#b9c8df;
-  background:#f8fbff;
+  background:var(--app-surface);
 }
 .screeningTypeCard.active{
-  border-color:#5f6cf1;
-  background:#eef2ff;
+  border-color:var(--primary);
+  background:var(--nav-active-bg);
   box-shadow:0 0 0 3px rgba(95,108,241,.12);
 }
 .screeningTypeHead{
@@ -664,7 +679,8 @@ select option{
 }
 
 .formSelectOption.active{
-  background:#eef2ff;
+  background:var(--nav-active-bg);
+  color:var(--nav-active-fg);
 }
 
 /* Enforce same typography for entity dropdown controls */
@@ -719,6 +735,32 @@ input:focus, select:focus, textarea:focus{
 }
 
 input::placeholder, textarea::placeholder{color:#94a3b8}
+
+/* Keep native date/datetime picker icon visible across themes */
+input[type="date"],
+input[type="datetime-local"]{
+  color-scheme: light;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  opacity:1;
+  cursor:pointer;
+}
+html[data-theme="dark"] input[type="date"],
+html[data-theme="dark"] input[type="datetime-local"]{
+  color-scheme: dark;
+}
+html[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+html[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  filter:invert(1) brightness(1.25);
+}
+input.noNativePickerIcon::-webkit-calendar-picker-indicator{
+  opacity:0 !important;
+  display:none;
+}
+input.noNativePickerIcon::-webkit-inner-spin-button{
+  display:none;
+}
 
 /* Buttons: consistent interactions */
 button{font-family:inherit}

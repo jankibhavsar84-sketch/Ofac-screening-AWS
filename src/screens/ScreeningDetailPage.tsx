@@ -651,7 +651,7 @@ function ScreeningTypeCards({
   return (
     <div className="screeningTypeWrap">
       <div className="sectionRow" style={{ marginBottom: 8 }}>
-        <div className="sectionTitle">Screening Types *</div>
+        <div className="sectionTitle">Screening Types <span className="requiredMark">*</span></div>
       </div>
       <div className="screeningTypeGrid">
         {SCREENING_TYPE_OPTIONS.map((option) => {
@@ -761,6 +761,18 @@ export function ScreeningDetailPage() {
   // dropzone
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const scheduleRunAtInputRef = useRef<HTMLInputElement | null>(null);
+
+  function openScheduleRunAtPicker() {
+    const picker = scheduleRunAtInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+    if (!picker) return;
+    if (typeof picker.showPicker === "function") {
+      picker.showPicker();
+      return;
+    }
+    picker.focus();
+    picker.click();
+  }
 
   useEffect(() => {
     if (!canBatchScreen && mode === "BATCH") {
@@ -1945,7 +1957,7 @@ export function ScreeningDetailPage() {
             <form onSubmit={submitSingle}>
               <div className="singleEntityTypeRow">
                 <div className="field singleEntityTypeField">
-                  <label>Entity Type *</label>
+                  <label>Entity Type <span className="requiredMark">*</span></label>
                   <FormSelect
                     value={selectedEntityType}
                     onChange={(uiType) => setEntityTypeForAll(uiType)}
@@ -2076,7 +2088,7 @@ export function ScreeningDetailPage() {
                     <>
                       <div className="grid2">
                         <div className="field" style={{ gridColumn: "1 / -1" }}>
-                          <label>Primary Name *</label>
+                          <label>Primary Name <span className="requiredMark">*</span></label>
                           <input value={primaryName.fullName} onChange={(e) => updateNameItem(primaryName.id, { fullName: e.target.value })} />
                         </div>
                       </div>
@@ -2108,7 +2120,7 @@ export function ScreeningDetailPage() {
                   ) : (
                     <div className="grid2">
                       <div className="field" style={{ gridColumn: "1 / -1" }}>
-                        <label>Primary Name *</label>
+                        <label>Primary Name <span className="requiredMark">*</span></label>
                         <input value={primaryName.fullName} onChange={(e) => updateNameItem(primaryName.id, { fullName: e.target.value })} />
                       </div>
                     </div>
@@ -2329,7 +2341,7 @@ export function ScreeningDetailPage() {
             )}
 
             <div className="field" style={{ marginTop: 14 }}>
-              <label>Batch Name *</label>
+              <label>Batch Name <span className="requiredMark">*</span></label>
               <input value={batchName} onChange={(e) => setBatchName(e.target.value)} placeholder="e.g., Q1 2024 Vendor Screening" />
             </div>
 
@@ -2455,7 +2467,7 @@ export function ScreeningDetailPage() {
 
             <form onSubmit={submitSchedule}>
               <div className="field" style={{ marginTop: 14 }}>
-                <label>Schedule Name *</label>
+                <label>Schedule Name <span className="requiredMark">*</span></label>
                 <input value={scheduleName} onChange={(e) => setScheduleName(e.target.value)} placeholder="e.g., Daily Vendor Watchlist Run" />
               </div>
 
@@ -2466,7 +2478,7 @@ export function ScreeningDetailPage() {
 
               <div className="grid2" style={{ marginTop: 10 }}>
                 <div className="field">
-                  <label>Frequency *</label>
+                  <label>Frequency <span className="requiredMark">*</span></label>
                   <select
                     value={scheduleFrequency}
                     onChange={(e) => setScheduleFrequency(e.target.value as ScheduleFrequency)}
@@ -2483,12 +2495,41 @@ export function ScreeningDetailPage() {
                 </div>
 
                 <div className="field">
-                  <label>First Run Date/Time *</label>
-                  <input
-                    type="datetime-local"
-                    value={scheduleRunAt}
-                    onChange={(e) => setScheduleRunAt(e.target.value)}
-                  />
+                  <label>First Run Date/Time <span className="requiredMark">*</span></label>
+                  <div className="isoDateWrap">
+                    <input
+                      ref={scheduleRunAtInputRef}
+                      className="isoDateText noNativePickerIcon"
+                      type="datetime-local"
+                      value={scheduleRunAt}
+                      onChange={(e) => setScheduleRunAt(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="isoDateBtn"
+                      onClick={openScheduleRunAtPicker}
+                      aria-label="Open date and time picker"
+                      title="Open date and time picker"
+                    >
+                      <svg
+                        className="isoDateIcon"
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
 
