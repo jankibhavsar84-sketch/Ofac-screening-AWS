@@ -32,6 +32,7 @@ class ScreeningService:
             raise ValueError("batch_name is required when daily_screening is enabled")
 
         daily_schedule_id: str | None = None
+        scheduled_next_run_at: str | None = None
         source_schedule_id = (payload.schedule_id or "").strip() or None
         schedule_frequency = self.repository.normalize_schedule_frequency(payload.schedule_frequency)
         source_upload_id = (payload.source_upload_id or "").strip() or None
@@ -55,6 +56,8 @@ class ScreeningService:
                 source_upload_id=source_upload_id,
             )
             source_schedule_id = daily_schedule_id
+            schedule_snapshot = self.repository.get_daily_schedule(daily_schedule_id)
+            scheduled_next_run_at = (schedule_snapshot or {}).get("next_run_at")
             self.repository.add_audit_event(
                 action="DAILY_SCHEDULE_CREATED" if created else "DAILY_SCHEDULE_UPDATED",
                 user_id=payload.user_id,
@@ -70,7 +73,44 @@ class ScreeningService:
                     "run_hour": settings.daily_screening_hour,
                     "run_minute": settings.daily_screening_minute,
                     "schedule_run_at": payload.schedule_run_at,
+                    "next_run_at": scheduled_next_run_at,
                 },
+            )
+
+        # Daily schedule setup should not execute immediately; worker triggers at next_run_at.
+        if payload.daily_screening and source_schedule_id:
+            job_id = str(uuid4())
+            submitted_at = self.repository.create_job(
+                job_id=job_id,
+                total_items=0,
+                status=JobStatus.completed,
+                source_schedule_id=source_schedule_id,
+                source_upload_id=source_upload_id,
+                user_id=payload.user_id,
+                user_name=payload.user_name,
+            )
+            self.repository.add_audit_event(
+                action="SCREENING_JOB_DEFERRED_UNTIL_SCHEDULE_TIME",
+                user_id=payload.user_id,
+                user_name=payload.user_name,
+                entity_type="screening_job",
+                entity_id=job_id,
+                details={
+                    "source_schedule_id": source_schedule_id,
+                    "batch_name": payload.batch_name,
+                    "total_items": 0,
+                    "schedule_frequency": schedule_frequency,
+                    "schedule_run_at": payload.schedule_run_at,
+                    "next_run_at": scheduled_next_run_at,
+                },
+            )
+            return MatchJobAccepted(
+                job_id=job_id,
+                status=JobStatus.completed,
+                submitted_at=submitted_at,
+                total_items=0,
+                daily_schedule_id=daily_schedule_id,
+                screened_item_keys=[],
             )
 
         queries_for_job = base_queries

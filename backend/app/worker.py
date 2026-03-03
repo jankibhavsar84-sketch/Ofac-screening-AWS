@@ -65,6 +65,7 @@ def run() -> None:
                     message.query,
                     message.screening_types,
                     message.mock_screening,
+                    requester_name=message.user_name,
                 )
                 repository.mark_item_completed(message.job_id, message.item_key, result)
                 if message.source_schedule_id and message.source_record_hash:

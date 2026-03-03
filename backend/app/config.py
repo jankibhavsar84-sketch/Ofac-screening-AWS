@@ -41,7 +41,15 @@ class Settings:
     aws_s3_upload_prefix: str
 
     actimize_base_url: str
+    actimize_provider: str
     actimize_api_key: str
+    actimize_bearer_token: str
+    actimize_token_url: str
+    actimize_client_id: str
+    actimize_client_secret: str
+    actimize_scope: str
+    actimize_source_system: str
+    actimize_requester_name: str
     actimize_timeout_s: float
     actimize_mock: bool
 
@@ -75,7 +83,15 @@ def load_settings() -> Settings:
         aws_s3_upload_bucket=os.getenv("AWS_S3_UPLOAD_BUCKET", "").strip(),
         aws_s3_upload_prefix=os.getenv("AWS_S3_UPLOAD_PREFIX", "screening-input").strip() or "screening-input",
         actimize_base_url=os.getenv("ACTIMIZE_BASE_URL", "").strip(),
+        actimize_provider=os.getenv("ACTIMIZE_PROVIDER", "opensanctions").strip().lower() or "opensanctions",
         actimize_api_key=os.getenv("ACTIMIZE_API_KEY", "").strip(),
+        actimize_bearer_token=os.getenv("ACTIMIZE_BEARER_TOKEN", "").strip(),
+        actimize_token_url=os.getenv("ACTIMIZE_TOKEN_URL", "").strip(),
+        actimize_client_id=os.getenv("ACTIMIZE_CLIENT_ID", "").strip(),
+        actimize_client_secret=os.getenv("ACTIMIZE_CLIENT_SECRET", "").strip(),
+        actimize_scope=os.getenv("ACTIMIZE_SCOPE", "").strip(),
+        actimize_source_system=os.getenv("ACTIMIZE_SOURCE_SYSTEM", "ZIP").strip() or "ZIP",
+        actimize_requester_name=os.getenv("ACTIMIZE_REQUESTER_NAME", "SCREENING_SYSTEM").strip() or "SCREENING_SYSTEM",
         actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 10.0),
         actimize_mock=_to_bool(os.getenv("ACTIMIZE_MOCK"), True),
         screening_tps=_to_int(os.getenv("SCREENING_TPS"), 32),

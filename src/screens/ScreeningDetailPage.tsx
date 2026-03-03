@@ -721,7 +721,6 @@ export function ScreeningDetailPage() {
   const [scheduleFrequency, setScheduleFrequency] = useState<ScheduleFrequency>("DAILY");
   const [scheduleRunAt, setScheduleRunAt] = useState(defaultScheduleRunAtValue);
   const [scheduleSubscriptionEmails, setScheduleSubscriptionEmails] = useState("");
-  const [scheduleMockScreening, setScheduleMockScreening] = useState(false);
   const [scheduleFile, setScheduleFile] = useState<File | null>(null);
   const [scheduleFileName, setScheduleFileName] = useState("");
   const [scheduleError, setScheduleError] = useState<string | null>(null);
@@ -903,7 +902,6 @@ export function ScreeningDetailPage() {
       setScheduleFrequency("DAILY");
       setScheduleRunAt(defaultScheduleRunAtValue());
       setScheduleSubscriptionEmails("");
-      setScheduleMockScreening(false);
       setScheduleFile(null);
       setScheduleFileName("");
       setScheduleTemplatesOpen(false);
@@ -1032,24 +1030,56 @@ export function ScreeningDetailPage() {
         return;
       }
 
-      // Build one API call containing multiple queries
+      // Build one API call containing one query. For Individual, merge AKA/Alias names into the same name list.
       const queries: Record<string, EntityExample> = {};
       const meta: { key: string; uiType: UiType; displayName: string }[] = [];
+      const [primaryName, ...akaNames] = names;
+      if (!primaryName) throw new Error("At least one name is required.");
 
-      names.forEach((n, idx) => {
-        const key = `single_${idx + 1}`;
+      const key = "single_1";
+      const displayName =
+        primaryName.uiType === "Individual"
+          ? safeTrim(primaryName.fullName) || [safeTrim(primaryName.firstName), safeTrim(primaryName.lastName)].filter(Boolean).join(" ")
+          : safeTrim(primaryName.fullName);
 
-        let displayName = "";
-        if (n.uiType === "Individual") {
-          const splitName = [safeTrim(n.firstName), safeTrim(n.lastName)].filter(Boolean).join(" ");
-          displayName = safeTrim(n.fullName) || splitName;
-        } else {
-          displayName = safeTrim(n.fullName);
+      const query = buildEntityExampleFromNameItem(primaryName);
+
+      if (primaryName.uiType === "Individual" && akaNames.length) {
+        const aliasNameValues = akaNames.flatMap((alias) => {
+          const values: string[] = [];
+          const split = [safeTrim(alias.firstName), safeTrim(alias.middleName), safeTrim(alias.lastName)].filter(Boolean).join(" ");
+          const full = safeTrim(alias.fullName);
+          const aliasField = safeTrim(alias.aliasName);
+          if (split) values.push(split);
+          if (full && full.toLowerCase() !== split.toLowerCase()) values.push(full);
+          if (aliasField) values.push(aliasField);
+          return values;
+        });
+
+        const props = (query.properties ?? {}) as Record<string, any>;
+        const existingNames = Array.isArray(props.name)
+          ? props.name.map((v) => safeTrim(String(v))).filter(Boolean)
+          : [];
+
+        const mergedNames: string[] = [];
+        const seenNames = new Set<string>();
+        [...existingNames, ...aliasNameValues].forEach((value) => {
+          const safeValue = safeTrim(value);
+          if (!safeValue) return;
+          const dedupeKey = safeValue.toLowerCase();
+          if (seenNames.has(dedupeKey)) return;
+          seenNames.add(dedupeKey);
+          mergedNames.push(safeValue);
+        });
+
+        if (mergedNames.length) {
+          props.name = mergedNames;
+          query.properties = props;
         }
+      }
 
-        meta.push({ key, uiType: n.uiType, displayName: displayName || `(Item ${idx + 1})` });
-        queries[key] = buildEntityExampleFromNameItem(n);
-      });
+      meta.push({ key, uiType: primaryName.uiType, displayName: displayName || "(Item 1)" });
+      queries[key] = query;
 
       const resp = await matchSync(queries, singleScreeningTypes, singleMockScreening, {
         id: currentUser.id,
@@ -1447,7 +1477,7 @@ export function ScreeningDetailPage() {
         dailyScreening: true,
         scheduleFrequency,
         scheduleRunAt: scheduleRunAtUtc,
-        mockScreening: scheduleMockScreening,
+        mockScreening: false,
         subscribeResults: subscriptionEmails.length > 0,
         subscribeEmails: subscriptionEmails,
         userName: currentUser.name,
@@ -1455,6 +1485,7 @@ export function ScreeningDetailPage() {
 
       const screenedKeySet = new Set((accepted.screened_item_keys ?? []).map((key) => safeTrim(String(key))).filter(Boolean));
       const hasScreenedSubset = screenedKeySet.size > 0;
+      const isDeferredScheduleStart = accepted.total_items === 0 && Boolean(accepted.daily_schedule_id);
 
       const placeholderItems: BatchSubmission["items"] = rowMeta.map((m) => {
         const isScheduledSkip = hasScreenedSubset && !screenedKeySet.has(m.key);
@@ -1468,7 +1499,11 @@ export function ScreeningDetailPage() {
           customerType: m.uiType === "Individual" ? "Person" : "Entity",
           displayName: m.displayName,
           result: isScheduledSkip ? "NO_HIT" : "PROCESSING",
-          message: isScheduledSkip ? "Skipped (already screened in previous schedule runs)." : "Screening in progress",
+          message: isScheduledSkip
+            ? "Skipped (already screened in previous schedule runs)."
+            : isDeferredScheduleStart
+              ? "Scheduled. Screening will start at the configured run time."
+              : "Screening in progress",
           details: { uiType: m.uiType, matches: fallbackMatches },
         };
       });
@@ -1481,7 +1516,7 @@ export function ScreeningDetailPage() {
         createdByUserName: currentUser.name,
         jobId: accepted.job_id,
         fileName: scheduleFile.name,
-        overallResult: accepted.total_items === 0 ? "NO_HIT" : "PROCESSING",
+        overallResult: isDeferredScheduleStart ? "PROCESSING" : accepted.total_items === 0 ? "NO_HIT" : "PROCESSING",
         screeningTypes: scheduleScreeningTypes,
         dailyScreening: true,
         scheduleFrequency,
@@ -1581,7 +1616,6 @@ export function ScreeningDetailPage() {
       setScheduleFrequency("DAILY");
       setScheduleRunAt(defaultScheduleRunAtValue());
       setScheduleSubscriptionEmails("");
-      setScheduleMockScreening(false);
       setScheduleFile(null);
       setScheduleFileName("");
       setScheduleTemplatesOpen(false);
@@ -2407,20 +2441,6 @@ export function ScreeningDetailPage() {
                   placeholder="compliance@company.com, analyst@company.com"
                 />
                 <div className="hintText">Use comma, semicolon, or new line to enter multiple email addresses.</div>
-              </div>
-
-              <div className="mockModeCard" style={{ marginTop: 10 }}>
-                <label className="mockModeCheck">
-                  <input
-                    type="checkbox"
-                    checked={scheduleMockScreening}
-                    onChange={(e) => setScheduleMockScreening(e.target.checked)}
-                  />
-                  <span>Mock screening only (no alert generation)</span>
-                </label>
-                <div className="mockModeHint">
-                  Use mock mode for dry-run validation before enabling production alert generation.
-                </div>
               </div>
 
               <div

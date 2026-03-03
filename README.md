@@ -152,7 +152,14 @@ Backend/Worker (`backend/.env.example`):
 - `APP_DB_URL` optional. If set to a `postgresql://...` URL, backend/worker use PostgreSQL instead of SQLite (`APP_DB_PATH`).
 - `SCREENING_TPS=32` for Actimize single-request throughput
 - `ACTIMIZE_MOCK=true` for local simulation
-- Set `ACTIMIZE_MOCK=false` + `ACTIMIZE_BASE_URL` + `ACTIMIZE_API_KEY` for real engine
+- `ACTIMIZE_PROVIDER=opensanctions` (default; current active path)
+- For Prudential sanctions API, set `ACTIMIZE_PROVIDER=prudential` and `ACTIMIZE_BASE_URL=<.../financial-governance/sanctions-screening/v1>`
+- Auth options for real engine:
+  - Option A: static bearer token via `ACTIMIZE_BEARER_TOKEN`
+  - Option B: Microsoft Entra client credentials via `ACTIMIZE_TOKEN_URL`, `ACTIMIZE_CLIENT_ID`, `ACTIMIZE_CLIENT_SECRET`, and optional `ACTIMIZE_SCOPE`
+  - Option C: legacy API key via `ACTIMIZE_API_KEY`
+- `ACTIMIZE_SOURCE_SYSTEM=ZIP` (used in `partyKey` and `sourceSystem`)
+- `ACTIMIZE_REQUESTER_NAME=SCREENING_SYSTEM` (fallback requester name when user name is unavailable)
 - `DAILY_SCREENING_TIMEZONE=America/New_York`
 - `DAILY_SCREENING_HOUR=0`
 - `DAILY_SCREENING_MINUTE=5`

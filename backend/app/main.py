@@ -413,6 +413,7 @@ def match_sync(
                 query,
                 payload.screening_types,
                 payload.mock_screening,
+                requester_name=payload.user_name,
             )
             raw_results = screened.get("results", [])
             results = raw_results if isinstance(raw_results, list) else []
