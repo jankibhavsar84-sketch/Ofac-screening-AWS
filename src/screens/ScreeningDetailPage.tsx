@@ -937,19 +937,22 @@ export function ScreeningDetailPage() {
         lastName: uiType === "Individual" ? n.lastName : "",
         middleName: uiType === "Individual" ? n.middleName : "",
       }));
-      return uiType === "Individual" ? normalized : normalized.slice(0, 1);
+      const supportsAlias = uiType === "Individual" || uiType === "Organization";
+      return supportsAlias ? normalized : normalized.slice(0, 1);
     });
   }
 
   function addName() {
     setNames((prev) => {
-      if ((prev[0]?.uiType ?? "Individual") !== "Individual") return prev;
+      const primaryType = prev[0]?.uiType ?? "Individual";
+      if (primaryType !== "Individual" && primaryType !== "Organization") return prev;
+      const isIndividual = primaryType === "Individual";
       return [
         ...prev,
         {
           id: uuid(),
-          uiType: "Individual",
-          nameMode: "split",
+          uiType: primaryType,
+          nameMode: isIndividual ? "split" : "full",
           firstName: "",
           lastName: "",
           middleName: "",
@@ -1044,7 +1047,7 @@ export function ScreeningDetailPage() {
         return;
       }
 
-      // Build one API call containing one query. For Individual, merge AKA/Alias names into the same name list.
+      // Build one API call containing one query. For Individual/Organization, merge AKA/Alias into the same name list.
       const queries: Record<string, EntityExample> = {};
       const meta: { key: string; uiType: UiType; displayName: string }[] = [];
       const [primaryName, ...akaNames] = names;
@@ -1058,15 +1061,22 @@ export function ScreeningDetailPage() {
 
       const query = buildEntityExampleFromNameItem(primaryName);
 
-      if (primaryName.uiType === "Individual" && akaNames.length) {
+      if ((primaryName.uiType === "Individual" || primaryName.uiType === "Organization") && akaNames.length) {
         const aliasNameValues = akaNames.flatMap((alias) => {
           const values: string[] = [];
-          const split = [safeTrim(alias.firstName), safeTrim(alias.middleName), safeTrim(alias.lastName)].filter(Boolean).join(" ");
-          const full = safeTrim(alias.fullName);
-          const aliasField = safeTrim(alias.aliasName);
-          if (split) values.push(split);
-          if (full && full.toLowerCase() !== split.toLowerCase()) values.push(full);
-          if (aliasField) values.push(aliasField);
+          if (primaryName.uiType === "Individual") {
+            const split = [safeTrim(alias.firstName), safeTrim(alias.middleName), safeTrim(alias.lastName)].filter(Boolean).join(" ");
+            const full = safeTrim(alias.fullName);
+            const aliasField = safeTrim(alias.aliasName);
+            if (split) values.push(split);
+            if (full && full.toLowerCase() !== split.toLowerCase()) values.push(full);
+            if (aliasField) values.push(aliasField);
+          } else {
+            const full = safeTrim(alias.fullName);
+            const aliasField = safeTrim(alias.aliasName);
+            if (full) values.push(full);
+            if (aliasField && aliasField.toLowerCase() !== full.toLowerCase()) values.push(aliasField);
+          }
           return values;
         });
 
@@ -1978,7 +1988,7 @@ export function ScreeningDetailPage() {
                       Primary Name <span className="requiredMark">*</span>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      {primaryName.uiType === "Individual" ? (
+                      {primaryName.uiType === "Individual" || primaryName.uiType === "Organization" ? (
                         <button type="button" className="btnAdd" onClick={addName}>
                           + Add AKA/Alias
                         </button>
@@ -2061,6 +2071,39 @@ export function ScreeningDetailPage() {
                           onChange={(value) => updateNameItem(primaryName.id, { dateOfBirth: value })}
                         />
                       </div>
+                    </>
+                  ) : primaryName.uiType === "Organization" ? (
+                    <>
+                      <div className="grid2">
+                        <div className="field" style={{ gridColumn: "1 / -1" }}>
+                          <label>Primary Name *</label>
+                          <input value={primaryName.fullName} onChange={(e) => updateNameItem(primaryName.id, { fullName: e.target.value })} />
+                        </div>
+                      </div>
+
+                      {aliasNames.map((alias, aliasIdx) => (
+                        <div key={alias.id} style={{ marginTop: 12 }}>
+                          <div className="nameCardTop">
+                            <div className="nameCardLabel">{`AKA/Alias #${aliasIdx + 1}`}</div>
+                            <button
+                              type="button"
+                              className="iconRemoveBtn inlineTrashBtn"
+                              onClick={() => removeName(alias.id)}
+                              aria-label={`Remove AKA/Alias ${aliasIdx + 1}`}
+                              title="Remove AKA/Alias"
+                            >
+                              {"\u{1F5D1}"}
+                            </button>
+                          </div>
+
+                          <div className="grid2">
+                            <div className="field" style={{ gridColumn: "1 / -1" }}>
+                              <label>Full Name</label>
+                              <input value={alias.fullName} onChange={(e) => updateNameItem(alias.id, { fullName: e.target.value })} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </>
                   ) : (
                     <div className="grid2">
