@@ -5,12 +5,23 @@ import { buildIdentity, hasPermission } from "../auth/claims";
 import { oidcAuthEnabled, oidcUseRpInitiatedLogout, redirectToSignedOutPage } from "../auth/oidc";
 import { setAccessToken } from "../auth/session";
 
+type ThemeMode = "light" | "dark";
+const THEME_STORAGE_KEY = "ws-theme-mode";
+
+function getInitialThemeMode(): ThemeMode {
+  if (typeof window === "undefined") return "light";
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 export const Route = createRootRoute({
   component: RootLayout,
 });
 
 function RootLayout() {
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => getInitialThemeMode());
   const auth = useAuth();
   const identity = buildIdentity(auth.user);
   const canManageUsers = hasPermission(identity, "screening.admin", "screening.useradmin");
@@ -19,6 +30,15 @@ function RootLayout() {
   useEffect(() => {
     setAccessToken(oidcAuthEnabled ? auth.user?.access_token ?? null : null);
   }, [auth.user]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", themeMode);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+    } catch {
+      // Ignore storage errors (private mode/browser policy).
+    }
+  }, [themeMode]);
 
   const handleSignOut = async () => {
     if (isSigningOut) return;
@@ -74,6 +94,19 @@ function RootLayout() {
             ) : null}
           </nav>
           <div className="authUserPanel">
+            <label className="themeToggle" title={`Switch to ${themeMode === "light" ? "dark" : "light"} mode`}>
+              <input
+                className="themeToggleInput"
+                type="checkbox"
+                checked={themeMode === "dark"}
+                onChange={(e) => setThemeMode(e.target.checked ? "dark" : "light")}
+                aria-label="Toggle light and dark mode"
+              />
+              <span className="themeToggleTrack" aria-hidden="true">
+                <span className="themeToggleThumb" />
+              </span>
+              <span className="themeToggleText">{themeMode === "dark" ? "Dark" : "Light"}</span>
+            </label>
             <div className="authUserMeta">
               <div className="authUserName">{identity?.name ?? "Unknown User"}</div>
               <div className="authUserEmail">{identity?.email || identity?.id || ""}</div>
