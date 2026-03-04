@@ -193,6 +193,7 @@ export function ManageUsersPage() {
   const [auditUserFilter, setAuditUserFilter] = useState("all");
   const [auditErrorsOnly, setAuditErrorsOnly] = useState(false);
   const [auditUserOptions, setAuditUserOptions] = useState<AuditUserOption[]>([]);
+  const [auditPage, setAuditPage] = useState(1);
 
   const sortedAuditUserOptions = useMemo(
     () => [...auditUserOptions].sort((a, b) => a.displayName.localeCompare(b.displayName)),
@@ -260,6 +261,11 @@ export function ManageUsersPage() {
       return action.includes("FAILED") || Boolean(readErrorFromDetails(details));
     });
   }, [auditEvents, auditErrorsOnly]);
+  const auditPageSize = 10;
+  const totalAuditPages = Math.max(1, Math.ceil(filteredAuditEvents.length / auditPageSize));
+  const auditPageSafe = Math.min(auditPage, totalAuditPages);
+  const auditStartIdx = (auditPageSafe - 1) * auditPageSize;
+  const pagedAuditEvents = filteredAuditEvents.slice(auditStartIdx, auditStartIdx + auditPageSize);
 
   if (!allowed) {
     return (
@@ -311,7 +317,13 @@ export function ManageUsersPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div className="field" style={{ minWidth: 220 }}>
                 <label>User Filter</label>
-                <select value={auditUserFilter} onChange={(e) => setAuditUserFilter(e.target.value)}>
+                <select
+                  value={auditUserFilter}
+                  onChange={(e) => {
+                    setAuditUserFilter(e.target.value);
+                    setAuditPage(1);
+                  }}
+                >
                   <option value="all">All users</option>
                   {sortedAuditUserOptions.map((option) => (
                     <option key={option.userId} value={option.userId}>
@@ -324,7 +336,10 @@ export function ManageUsersPage() {
                 <input
                   type="checkbox"
                   checked={auditErrorsOnly}
-                  onChange={(e) => setAuditErrorsOnly(e.target.checked)}
+                  onChange={(e) => {
+                    setAuditErrorsOnly(e.target.checked);
+                    setAuditPage(1);
+                  }}
                 />
                 <span>Show errors only</span>
               </label>
@@ -332,7 +347,10 @@ export function ManageUsersPage() {
             <button
               type="button"
               className="btnGhost"
-              onClick={() => void loadAuditEvents(auditUserFilter === "all" ? undefined : auditUserFilter)}
+              onClick={() => {
+                setAuditPage(1);
+                void loadAuditEvents(auditUserFilter === "all" ? undefined : auditUserFilter);
+              }}
               disabled={auditLoading}
             >
               {auditLoading ? "Refreshing..." : "Refresh"}
@@ -340,6 +358,21 @@ export function ManageUsersPage() {
           </div>
 
           {auditError ? <div className="errorBox" role="alert" aria-live="assertive">{auditError}</div> : null}
+
+          <div className="pagerRow" style={{ marginBottom: 10 }}>
+            <div className="pagerText">
+              Showing {filteredAuditEvents.length === 0 ? 0 : auditStartIdx + 1} to {Math.min(filteredAuditEvents.length, auditStartIdx + auditPageSize)} of {filteredAuditEvents.length} audit events
+            </div>
+            <div className="pagerRight">
+              <button className="pagerBtn" disabled={auditPageSafe <= 1} onClick={() => setAuditPage((p) => Math.max(1, p - 1))} type="button">
+                Previous
+              </button>
+              <div className="pagerText">Page {auditPageSafe} of {totalAuditPages}</div>
+              <button className="pagerBtn" disabled={auditPageSafe >= totalAuditPages} onClick={() => setAuditPage((p) => Math.min(totalAuditPages, p + 1))} type="button">
+                Next
+              </button>
+            </div>
+          </div>
 
           <div className="tableWrap">
             <table className="table">
@@ -353,14 +386,14 @@ export function ManageUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredAuditEvents.length === 0 ? (
+                {pagedAuditEvents.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="emptyRow">
                       {auditLoading ? "Loading audit events..." : "No audit events found."}
                     </td>
                   </tr>
                 ) : (
-                  filteredAuditEvents.map((event) => {
+                  pagedAuditEvents.map((event) => {
                     const details = event.details as Record<string, unknown> | undefined;
                     const errorText = readErrorFromDetails(details);
                     const rowUserId = readString(event.user_id);

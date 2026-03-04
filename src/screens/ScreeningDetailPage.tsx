@@ -1,5 +1,4 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
-import * as XLSX from "xlsx";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { useAuth } from "react-oidc-context";
 import { z } from "zod";
@@ -222,6 +221,13 @@ const ID_TYPE_OPTIONS = [
   "Other",
 ] as const;
 
+const UNIFIED_TEMPLATE = {
+  fileName: "Actimize_SSB1_template.xlsx",
+  title: "Unified Screening Template",
+  desc: "Supports Individual, Organization, and Unknown entity types in a single file.",
+  chips: ["entity name", "entity type", "alias/aka", "+8 more"],
+} as const;
+
 function uuid() {
   return crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
@@ -307,6 +313,55 @@ function buildEntityExampleFromNameItem(item: NameItem): EntityExample {
   }
 
   return { schema, properties: props };
+}
+
+function parseBatchRows(rows: any[]): {
+  queries: Record<string, EntityExample>;
+  rowMeta: { key: string; displayName: string; uiType: UiType }[];
+} {
+  const queries: Record<string, EntityExample> = {};
+  const rowMeta: { key: string; displayName: string; uiType: UiType }[] = [];
+
+  rows.forEach((r, idx) => {
+    const customerType = r.customerType === "Entity" ? "Entity" : "Person";
+    const uiType: UiType = customerType === "Person" ? "Individual" : "Organization";
+
+    const display =
+      uiType === "Individual"
+        ? [safeTrim(r.firstName || ""), safeTrim(r.lastName || "")].filter(Boolean).join(" ")
+        : safeTrim(r.fullName || "");
+
+    const key = `row_${idx + 1}`;
+    rowMeta.push({ key, displayName: display || `(Row ${idx + 1})`, uiType });
+
+    if (uiType === "Individual" && (!safeTrim(r.firstName || "") || !safeTrim(r.lastName || ""))) return;
+    if (uiType !== "Individual" && !safeTrim(r.fullName || "")) return;
+
+    const item: NameItem = {
+      id: key,
+      uiType,
+      nameMode: uiType === "Individual" ? "split" : "full",
+      firstName: safeTrim(r.firstName || ""),
+      lastName: safeTrim(r.lastName || ""),
+      middleName: safeTrim(r.middleName || ""),
+      fullName: safeTrim(r.fullName || ""),
+      aliasName: safeTrim(r.aliasName || ""),
+      dateOfBirth: safeTrim(r.dateOfBirth || ""),
+      countries: safeTrim(r.countries || "") ? String(r.countries).split(",").map((x) => safeTrim(x)) : [safeTrim(r.country || "")].filter(Boolean),
+      addresses: safeTrim(r.addresses || "") ? String(r.addresses).split(",").map((x) => safeTrim(x)) : [],
+      ids: [
+        {
+          idType: safeTrim(r.idType || r.idCode || ""),
+          idNumber: safeTrim(r.idNumber || ""),
+          idCountry: safeTrim(r.idCountry || r.idIssueCountry || ""),
+        },
+      ],
+    };
+
+    queries[key] = buildEntityExampleFromNameItem(item);
+  });
+
+  return { queries, rowMeta };
 }
 
 type EngineStatus = "NO_HIT" | "HIT" | "PROCESSING" | "ERROR";
@@ -498,148 +553,13 @@ function exportTimestamp() {
   return `${yyyy}${mm}${dd}_${hh}${mi}${ss}`;
 }
 
-function downloadTemplate(kind: UiType | "Mixed", format: "csv" | "xlsx") {
-  // Base fields you already parse; extra fields are ok (ignored if not used)
-  const headers = [
-    "customerType", // Person/Entity
-    "firstName",
-    "middleName",
-    "lastName",
-    "fullName",
-    "aliasName",
-    "dateOfBirth",
-    "countries",      // comma separated optional
-    "addresses",      // comma separated optional
-    "idType",
-    "idNumber",
-    "idCountry",
-    // extra demo fields
-    "imoNumber",
-    "tailNumber",
-  ];
-
-  const sampleRows: any[] = [];
-
-  if (kind === "Individual") {
-    sampleRows.push({
-      customerType: "Person",
-      firstName: "John",
-      middleName: "",
-      lastName: "Doe",
-      fullName: "",
-      aliasName: "Johnny",
-      dateOfBirth: "1980-01-01",
-      countries: "US,CA",
-      addresses: "123 Main St, New York, NY 10001",
-      idType: "Passport",
-      idNumber: "X1234567",
-      idCountry: "US",
-      imoNumber: "",
-      tailNumber: "",
-    });
-  } else if (kind === "Organization" || kind === "Unknown") {
-    sampleRows.push({
-      customerType: "Entity",
-      firstName: "",
-      middleName: "",
-      lastName: "",
-      fullName: "ACME Holdings LLC",
-      aliasName: "",
-      dateOfBirth: "",
-      countries: "US",
-      addresses: "200 Business Rd, Newark, NJ 07102",
-      idType: "EIN",
-      idNumber: "12-3456789",
-      idCountry: "US",
-      imoNumber: "",
-      tailNumber: "",
-    });
-  } else if (kind === "Vessel") {
-    sampleRows.push({
-      customerType: "Entity",
-      firstName: "",
-      middleName: "",
-      lastName: "",
-      fullName: "MV Example Vessel",
-      aliasName: "",
-      dateOfBirth: "",
-      countries: "PA",
-      addresses: "",
-      idType: "IMO",
-      idNumber: "9395044",
-      idCountry: "",
-      imoNumber: "9395044",
-      tailNumber: "",
-    });
-  } else if (kind === "Aircraft") {
-    sampleRows.push({
-      customerType: "Entity",
-      firstName: "",
-      middleName: "",
-      lastName: "",
-      fullName: "Example Aircraft",
-      aliasName: "",
-      dateOfBirth: "",
-      countries: "US",
-      addresses: "",
-      idType: "Tail",
-      idNumber: "N123AB",
-      idCountry: "US",
-      imoNumber: "",
-      tailNumber: "N123AB",
-    });
-  } else {
-    // Mixed
-    sampleRows.push(
-      {
-        customerType: "Person",
-        firstName: "John",
-        middleName: "",
-        lastName: "Doe",
-        fullName: "",
-        aliasName: "",
-        dateOfBirth: "1980-01-01",
-        countries: "US",
-        addresses: "",
-        idType: "Passport",
-        idNumber: "X1234567",
-        idCountry: "US",
-        imoNumber: "",
-        tailNumber: "",
-      },
-      {
-        customerType: "Entity",
-        firstName: "",
-        middleName: "",
-        lastName: "",
-        fullName: "ACME Holdings LLC",
-        aliasName: "",
-        dateOfBirth: "",
-        countries: "CA",
-        addresses: "",
-        idType: "Reg",
-        idNumber: "REG-001",
-        idCountry: "CA",
-        imoNumber: "",
-        tailNumber: "",
-      }
-    );
-  }
-
-  if (format === "csv") {
-    const lines = [
-      headers.join(","),
-      ...sampleRows.map((r) => headers.map((h) => csvEscape((r as any)[h])).join(",")),
-    ].join("\n");
-    downloadBlob(new Blob([lines], { type: "text/csv;charset=utf-8" }), `ofac_${kind.toLowerCase()}_template.csv`);
-    return;
-  }
-
-  const ws = XLSX.utils.json_to_sheet(sampleRows, { header: headers });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Template");
-  const out = XLSX.write(wb, { type: "array", bookType: "xlsx" });
-  downloadBlob(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `ofac_${kind.toLowerCase()}_template.xlsx`);
+function downloadUnifiedTemplate() {
+  const a = document.createElement("a");
+  a.href = `/${UNIFIED_TEMPLATE.fileName}`;
+  a.download = UNIFIED_TEMPLATE.fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 function RefreshIcon() {
@@ -1229,51 +1149,7 @@ export function ScreeningDetailPage() {
 
       if (!rows.length) throw new Error("No rows found in the file.");
 
-      // Build queries (one API call)
-      const queries: Record<string, EntityExample> = {};
-      const rowMeta: { key: string; displayName: string; uiType: UiType }[] = [];
-
-      rows.forEach((r, idx) => {
-        const customerType = r.customerType === "Entity" ? "Entity" : "Person";
-        const uiType: UiType =
-          customerType === "Person" ? "Individual" : "Organization";
-
-        const display =
-          uiType === "Individual"
-            ? [safeTrim(r.firstName || ""), safeTrim(r.lastName || "")].filter(Boolean).join(" ")
-            : safeTrim(r.fullName || "");
-
-        const key = `row_${idx + 1}`;
-        rowMeta.push({ key, displayName: display || `(Row ${idx + 1})`, uiType });
-
-        // required names
-        if (uiType === "Individual" && (!safeTrim(r.firstName || "") || !safeTrim(r.lastName || ""))) return;
-        if (uiType !== "Individual" && !safeTrim(r.fullName || "")) return;
-
-        // Reuse your existing batchRow conversion idea
-        const item: NameItem = {
-          id: key,
-          uiType,
-          nameMode: uiType === "Individual" ? "split" : "full",
-          firstName: safeTrim(r.firstName || ""),
-          lastName: safeTrim(r.lastName || ""),
-          middleName: safeTrim(r.middleName || ""),
-          fullName: safeTrim(r.fullName || ""),
-          aliasName: safeTrim(r.aliasName || ""),
-          dateOfBirth: safeTrim(r.dateOfBirth || ""),
-          countries: safeTrim(r.countries || "") ? String(r.countries).split(",").map((x) => safeTrim(x)) : [safeTrim(r.country || "")].filter(Boolean),
-          addresses: safeTrim(r.addresses || "") ? String(r.addresses).split(",").map((x) => safeTrim(x)) : [],
-          ids: [
-            {
-              idType: safeTrim(r.idType || r.idCode || ""),
-              idNumber: safeTrim(r.idNumber || ""),
-              idCountry: safeTrim(r.idCountry || r.idIssueCountry || ""),
-            },
-          ],
-        };
-
-        queries[key] = buildEntityExampleFromNameItem(item);
-      });
+      const { queries, rowMeta } = parseBatchRows(rows);
 
       if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
 
@@ -1480,49 +1356,7 @@ export function ScreeningDetailPage() {
 
       if (!rows.length) throw new Error("No rows found in the file.");
 
-      const queries: Record<string, EntityExample> = {};
-      const rowMeta: { key: string; displayName: string; uiType: UiType }[] = [];
-
-      rows.forEach((r, idx) => {
-        const customerType = r.customerType === "Entity" ? "Entity" : "Person";
-        const uiType: UiType = customerType === "Person" ? "Individual" : "Organization";
-
-        const display =
-          uiType === "Individual"
-            ? [safeTrim(r.firstName || ""), safeTrim(r.lastName || "")].filter(Boolean).join(" ")
-            : safeTrim(r.fullName || "");
-
-        const key = `row_${idx + 1}`;
-        rowMeta.push({ key, displayName: display || `(Row ${idx + 1})`, uiType });
-
-        if (uiType === "Individual" && (!safeTrim(r.firstName || "") || !safeTrim(r.lastName || ""))) return;
-        if (uiType !== "Individual" && !safeTrim(r.fullName || "")) return;
-
-        const item: NameItem = {
-          id: key,
-          uiType,
-          nameMode: uiType === "Individual" ? "split" : "full",
-          firstName: safeTrim(r.firstName || ""),
-          lastName: safeTrim(r.lastName || ""),
-          middleName: safeTrim(r.middleName || ""),
-          fullName: safeTrim(r.fullName || ""),
-          aliasName: safeTrim(r.aliasName || ""),
-          dateOfBirth: safeTrim(r.dateOfBirth || ""),
-          countries: safeTrim(r.countries || "")
-            ? String(r.countries).split(",").map((x) => safeTrim(x))
-            : [safeTrim(r.country || "")].filter(Boolean),
-          addresses: safeTrim(r.addresses || "") ? String(r.addresses).split(",").map((x) => safeTrim(x)) : [],
-          ids: [
-            {
-              idType: safeTrim(r.idType || r.idCode || ""),
-              idNumber: safeTrim(r.idNumber || ""),
-              idCountry: safeTrim(r.idCountry || r.idIssueCountry || ""),
-            },
-          ],
-        };
-
-        queries[key] = buildEntityExampleFromNameItem(item);
-      });
+      const { queries, rowMeta } = parseBatchRows(rows);
 
       if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
 
@@ -2359,7 +2193,7 @@ export function ScreeningDetailPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span className="accordionIcon">{"\u2B07"}</span>
                 <span>Download Screening Templates</span>
-                <span className="badgeCount">5 templates</span>
+                <span className="badgeCount">1 template</span>
               </div>
               <span className="chev">{templatesOpen ? "\u25B4" : "\u25BE"}</span>
             </button>
@@ -2368,34 +2202,11 @@ export function ScreeningDetailPage() {
             {templatesOpen && (
               <div className="templateGrid5">
                 <TemplateCard
-                  title="Individual Screening"
-                  desc="Persons, employees, customers, beneficial owners"
-                  chips={["entity name", "entity type", "date of birth", "+5 more"]}
-                  onCsv={() => downloadTemplate("Individual", "csv")}
-                />
-                <TemplateCard
-                  title="Organization Screening"
-                  desc="Companies, vendors, partners, subsidiaries"
-                  chips={["entity name", "entity type", "dba name", "+5 more"]}
-                  onCsv={() => downloadTemplate("Organization", "csv")}
-                />
-                <TemplateCard
-                  title="Vessel Screening"
-                  desc="Ships, tankers, cargo vessels, maritime assets"
-                  chips={["entity name", "entity type", "imo number", "+5 more"]}
-                  onCsv={() => downloadTemplate("Vessel", "csv")}
-                />
-                <TemplateCard
-                  title="Aircraft Screening"
-                  desc="Aircraft, jets, aviation assets"
-                  chips={["entity name", "entity type", "tail number", "+5 more"]}
-                  onCsv={() => downloadTemplate("Aircraft", "csv")}
-                />
-                <TemplateCard
-                  title="Mixed / Combined"
-                  desc="Combined list of individuals and organizations"
-                  chips={["entity name", "entity type", "dba name", "+8 more"]}
-                  onCsv={() => downloadTemplate("Mixed", "csv")}
+                  title={UNIFIED_TEMPLATE.title}
+                  desc={UNIFIED_TEMPLATE.desc}
+                  chips={UNIFIED_TEMPLATE.chips}
+                  actionLabel="Template"
+                  onAction={downloadUnifiedTemplate}
                 />
               </div>
             )}
@@ -2487,7 +2298,7 @@ export function ScreeningDetailPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span className="accordionIcon">{"\u2B07"}</span>
                 <span>Download Screening Templates</span>
-                <span className="badgeCount">5 templates</span>
+                <span className="badgeCount">1 template</span>
               </div>
               <span className="chev">{scheduleTemplatesOpen ? "\u25B4" : "\u25BE"}</span>
             </button>
@@ -2495,34 +2306,11 @@ export function ScreeningDetailPage() {
             {scheduleTemplatesOpen && (
               <div className="templateGrid5">
                 <TemplateCard
-                  title="Individual Screening"
-                  desc="Persons, employees, customers, beneficial owners"
-                  chips={["entity name", "entity type", "date of birth", "+5 more"]}
-                  onCsv={() => downloadTemplate("Individual", "csv")}
-                />
-                <TemplateCard
-                  title="Organization Screening"
-                  desc="Companies, vendors, partners, subsidiaries"
-                  chips={["entity name", "entity type", "dba name", "+5 more"]}
-                  onCsv={() => downloadTemplate("Organization", "csv")}
-                />
-                <TemplateCard
-                  title="Vessel Screening"
-                  desc="Ships, tankers, cargo vessels, maritime assets"
-                  chips={["entity name", "entity type", "imo number", "+5 more"]}
-                  onCsv={() => downloadTemplate("Vessel", "csv")}
-                />
-                <TemplateCard
-                  title="Aircraft Screening"
-                  desc="Aircraft, jets, aviation assets"
-                  chips={["entity name", "entity type", "tail number", "+5 more"]}
-                  onCsv={() => downloadTemplate("Aircraft", "csv")}
-                />
-                <TemplateCard
-                  title="Mixed / Combined"
-                  desc="Combined list of individuals and organizations"
-                  chips={["entity name", "entity type", "dba name", "+8 more"]}
-                  onCsv={() => downloadTemplate("Mixed", "csv")}
+                  title={UNIFIED_TEMPLATE.title}
+                  desc={UNIFIED_TEMPLATE.desc}
+                  chips={UNIFIED_TEMPLATE.chips}
+                  actionLabel="Template"
+                  onAction={downloadUnifiedTemplate}
                 />
               </div>
             )}
@@ -2867,8 +2655,9 @@ export function ScreeningDetailPage() {
 function TemplateCard(props: {
   title: string;
   desc: string;
-  chips: string[];
-  onCsv: () => void;
+  chips: readonly string[];
+  actionLabel: string;
+  onAction: () => void;
 }) {
   return (
     <div className="templateCard">
@@ -2878,8 +2667,8 @@ function TemplateCard(props: {
           <div className="templateDesc">{props.desc}</div>
         </div>
 
-        <button type="button" className="templateCsvBtn" onClick={props.onCsv}>
-          CSV
+        <button type="button" className="templateCsvBtn" onClick={props.onAction}>
+          {props.actionLabel}
         </button>
       </div>
 
