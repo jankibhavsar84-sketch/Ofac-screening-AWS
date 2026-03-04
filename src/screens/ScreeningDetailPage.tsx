@@ -8,7 +8,6 @@ import {
   listDailySchedules,
   listScreeningSubmissions,
   matchSync,
-  removeDailySchedule,
   uploadBatchAndSubmitJob,
   waitForScreeningJob,
   type EntityExample,
@@ -759,8 +758,6 @@ export function ScreeningDetailPage() {
 
   const [singleError, setSingleError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [dailyDisableError, setDailyDisableError] = useState<string | null>(null);
-  const [disablingScheduleId, setDisablingScheduleId] = useState<string | null>(null);
   const selectedEntityType: UiType = names[0]?.uiType ?? "Individual";
   const primaryName = names[0];
   const aliasNames = names.slice(1);
@@ -918,7 +915,6 @@ export function ScreeningDetailPage() {
     setSingleError(null);
     setBatchError(null);
     setScheduleError(null);
-    setDailyDisableError(null);
     setLatest(null);
 
     if (mode === "SINGLE") {
@@ -1919,30 +1915,6 @@ export function ScreeningDetailPage() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [hitEntityDialog]);
 
-  async function disableDailyScreeningForBatch(row: ResultRow) {
-    if (!row.batchSubmissionId || !row.dailyScheduleId || !row.dailyScheduleActive) return;
-    if (!canDailyScreening) {
-      setDailyDisableError("Only Compliance/Admin can disable daily screening.");
-      return;
-    }
-
-    setDisablingScheduleId(row.dailyScheduleId);
-    setDailyDisableError(null);
-    try {
-      await removeDailySchedule(row.dailyScheduleId, { id: currentUser?.id, name: currentUser?.name });
-      setSubmissions((prev) =>
-        prev.map((s) => {
-          if (s.mode !== "BATCH" || s.id !== row.batchSubmissionId) return s;
-          return { ...s, dailyScreening: false, dailyScheduleActive: false } as BatchSubmission;
-        })
-      );
-    } catch (err: any) {
-      setDailyDisableError(err?.message ?? "Failed to disable daily screening.");
-    } finally {
-      setDisablingScheduleId(null);
-    }
-  }
-
   function handleModeTabKeyDown(e: React.KeyboardEvent<HTMLButtonElement>, current: Mode) {
     const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
     if (!keys.includes(e.key)) return;
@@ -2775,7 +2747,6 @@ export function ScreeningDetailPage() {
         </div>
 
         <div className="cardBody">
-          {dailyDisableError ? <div className="errorBox" role="alert" aria-live="assertive" style={{ marginBottom: 10 }}>{dailyDisableError}</div> : null}
           <div className="tableWrap">
             <table className="table">
               <thead>
@@ -2816,18 +2787,6 @@ export function ScreeningDetailPage() {
                         <td>
                           <div className="rowActions">
                             <div className="actionControls">
-                              {r.dailyScheduleActive && r.dailyScheduleId ? (
-                                <button
-                                  type="button"
-                                  className="btnGhostSmall"
-                                  title={`Disable daily screening for ${(r.raw?.submission?.fileName as string) || "this batch file"}`}
-                                  aria-label={`Disable daily screening for ${(r.raw?.submission?.fileName as string) || r.entity}`}
-                                  disabled={!canDailyScreening || disablingScheduleId === r.dailyScheduleId}
-                                  onClick={() => void disableDailyScreeningForBatch(r)}
-                                >
-                                  {disablingScheduleId === r.dailyScheduleId ? "Disabling..." : "Disable Daily"}
-                                </button>
-                              ) : null}
                               <button
                                 type="button"
                                 className="iconBtn"
