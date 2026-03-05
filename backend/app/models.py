@@ -156,6 +156,11 @@ class UserBusinessUnitUpdateRequest(BaseModel):
     business_unit_codes: list[str] = Field(default_factory=list)
 
 
+class AdminUserOption(BaseModel):
+    user_id: str
+    display_name: str
+
+
 class ScheduleSubscription(BaseModel):
     subscription_id: str
     schedule_id: str

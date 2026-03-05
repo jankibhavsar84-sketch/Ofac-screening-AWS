@@ -1991,6 +1991,47 @@ class JobRepository:
 
         return list(grouped.values())
 
+    def list_known_users(self) -> list[dict[str, str]]:
+        with self._connect() as conn:
+            rows = self._execute(
+                conn,
+                """
+                SELECT user_id, user_name
+                FROM (
+                  SELECT user_id, user_name FROM user_business_units WHERE TRIM(COALESCE(user_id, '')) <> ''
+                  UNION ALL
+                  SELECT user_id, user_name FROM jobs WHERE TRIM(COALESCE(user_id, '')) <> ''
+                  UNION ALL
+                  SELECT user_id, user_name FROM daily_schedules WHERE TRIM(COALESCE(user_id, '')) <> ''
+                  UNION ALL
+                  SELECT user_id, user_name FROM batch_file_uploads WHERE TRIM(COALESCE(user_id, '')) <> ''
+                  UNION ALL
+                  SELECT user_id, user_name FROM audit_events WHERE TRIM(COALESCE(user_id, '')) <> ''
+                ) known_users
+                """,
+            ).fetchall()
+
+        merged: dict[str, str] = {}
+        for row in rows:
+            user_id = str(row["user_id"] or "").strip()
+            if not user_id:
+                continue
+            user_name = str(row["user_name"] or "").strip()
+            existing = merged.get(user_id, "")
+            if not existing:
+                merged[user_id] = user_name or user_id
+                continue
+            if _is_technical_identifier(existing) and user_name and not _is_technical_identifier(user_name):
+                merged[user_id] = user_name
+
+        return [
+            {"user_id": user_id, "display_name": (display_name or user_id)}
+            for user_id, display_name in sorted(
+                merged.items(),
+                key=lambda item: (str(item[1] or item[0]).lower(), str(item[0]).lower()),
+            )
+        ]
+
     def add_audit_event(
         self,
         action: str,

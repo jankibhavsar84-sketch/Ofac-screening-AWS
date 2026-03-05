@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 from uuid import uuid4
 
+import boto3
+
 from .config import settings
 from .models import (
+    AdminUserOption,
     AuditEvent,
     BusinessUnit,
     DailyScheduleInfo,
@@ -27,6 +31,50 @@ class ScreeningService:
     def __init__(self, repository: JobRepository, queue: SqsQueue) -> None:
         self.repository = repository
         self.queue = queue
+
+    @staticmethod
+    def _extract_cognito_user_pool_id(auth_issuer: str) -> str:
+        issuer = (auth_issuer or "").strip().rstrip("/")
+        if not issuer:
+            return ""
+        # Expected issuer format:
+        # https://cognito-idp.<region>.amazonaws.com/<user_pool_id>
+        match = re.match(r"^https://cognito-idp\.[^.]+\.amazonaws\.com/([A-Za-z0-9_-]+)$", issuer)
+        if not match:
+            return ""
+        return match.group(1).strip()
+
+    def _list_cognito_users(self) -> list[dict[str, str]]:
+        user_pool_id = self._extract_cognito_user_pool_id(settings.auth_issuer)
+        if not user_pool_id:
+            return []
+
+        client = boto3.client("cognito-idp", region_name=settings.aws_region or None)
+        token: str | None = None
+        users: list[dict[str, str]] = []
+
+        while True:
+            kwargs: dict[str, Any] = {"UserPoolId": user_pool_id, "Limit": 60}
+            if token:
+                kwargs["PaginationToken"] = token
+            page = client.list_users(**kwargs)
+            for item in page.get("Users", []) or []:
+                attrs_raw = item.get("Attributes") or []
+                attrs = {
+                    str(attr.get("Name") or "").strip(): str(attr.get("Value") or "").strip()
+                    for attr in attrs_raw
+                    if str(attr.get("Name") or "").strip()
+                }
+                user_id = attrs.get("sub") or str(item.get("Username") or "").strip()
+                if not user_id:
+                    continue
+                display_name = attrs.get("name") or attrs.get("email") or attrs.get("preferred_username") or str(item.get("Username") or "").strip() or user_id
+                users.append({"user_id": user_id, "display_name": display_name})
+            token = page.get("PaginationToken")
+            if not token:
+                break
+
+        return users
 
     def submit_job(self, payload: MatchJobRequest) -> MatchJobAccepted:
         if not payload.queries:
@@ -656,6 +704,36 @@ class ScreeningService:
     def list_audit_events(self, limit: int = 200, user_id: str | None = None, offset: int = 0) -> list[AuditEvent]:
         events = self.repository.list_audit_events(limit=limit, user_id=user_id, offset=offset)
         return [AuditEvent.model_validate(e) for e in events]
+
+    def list_admin_users(self) -> list[AdminUserOption]:
+        merged: dict[str, str] = {}
+        for row in self.repository.list_known_users():
+            user_id = str(row.get("user_id") or "").strip()
+            if not user_id:
+                continue
+            display_name = str(row.get("display_name") or "").strip() or user_id
+            merged[user_id] = display_name
+
+        try:
+            for row in self._list_cognito_users():
+                user_id = str(row.get("user_id") or "").strip()
+                if not user_id:
+                    continue
+                display_name = str(row.get("display_name") or "").strip() or user_id
+                existing = merged.get(user_id)
+                if not existing or existing == user_id:
+                    merged[user_id] = display_name
+        except Exception:
+            # Fall back to DB-known users when Cognito listing is unavailable.
+            pass
+
+        return [
+            AdminUserOption(user_id=user_id, display_name=display_name or user_id)
+            for user_id, display_name in sorted(
+                merged.items(),
+                key=lambda item: (str(item[1] or item[0]).lower(), str(item[0]).lower()),
+            )
+        ]
 
     def subscribe_to_schedule(
         self,

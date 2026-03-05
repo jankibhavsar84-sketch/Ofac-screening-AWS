@@ -956,14 +956,171 @@ textarea{min-height:90px;resize:vertical}
   grid-template-columns:repeat(4, minmax(0, 1fr));
   gap:12px;
 }
+.buAdminBody{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.buAdminHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.buAdminIntro{
+  min-width:260px;
+}
+.buAdminIntroTitle{
+  margin:0;
+  font-size:13px;
+  font-weight:800;
+  color:var(--text-strong);
+}
+.buAdminIntroSub{
+  margin:4px 0 0;
+  font-size:12px;
+  color:var(--muted);
+}
+.buAdminStats{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(140px, 1fr));
+  gap:10px;
+}
+.buStatCard{
+  border:1px solid #d8e2ef;
+  border-radius:12px;
+  background:var(--card);
+  padding:10px 12px;
+  min-height:72px;
+}
+.buStatLabel{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.buStatValue{
+  margin-top:6px;
+  font-size:24px;
+  line-height:1;
+  font-weight:900;
+  color:var(--text-strong);
+}
+.buRefreshBtn{
+  align-self:flex-start;
+}
+.buAdminGrid{
+  display:grid;
+  grid-template-columns:minmax(300px, 1fr) minmax(0, 1.25fr);
+  gap:12px;
+}
+.buAdminPanel{
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--app-surface);
+  padding:14px;
+}
+.buPanelHeading h3{
+  margin:0;
+  font-size:14px;
+  color:var(--text-strong);
+}
+.buPanelHeading p{
+  margin:4px 0 12px;
+  font-size:12px;
+  color:var(--muted);
+}
+.buCodeInput{
+  font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  letter-spacing:.02em;
+}
+.buFieldSpacing{
+  margin-top:10px;
+}
+.buActionRow{
+  margin-top:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.buPrimaryBtn{
+  border:1px solid #4858db;
+  background:linear-gradient(135deg, #5b68ee 0%, #4b58d9 100%);
+  color:#ffffff;
+  border-radius:10px;
+  padding:10px 14px;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+  box-shadow:0 8px 18px rgba(63, 82, 201, 0.24);
+}
+.buPrimaryBtn:hover:enabled{
+  filter:brightness(1.05);
+}
+.buPrimaryBtn:disabled{
+  opacity:.7;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+.buColCode{
+  width:220px;
+}
+.buColActions{
+  width:160px;
+  text-align:right !important;
+}
+.buCellActions{
+  text-align:right;
+}
+.buTableActions{
+  display:inline-flex;
+  gap:6px;
+}
+.buMappingPanel{
+  margin-top:2px;
+}
+.buMappingUserSelect{
+  max-width:340px;
+}
+.buMappingHeaderRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:6px;
+}
+.buMappingLabel{
+  font-size:12px;
+  font-weight:700;
+  color:var(--tab-fg);
+}
+.buMappingCount{
+  display:inline-flex;
+  align-items:center;
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:3px 8px;
+  font-size:11px;
+  font-weight:800;
+  color:var(--muted);
+  background:var(--card);
+}
 .buCheckboxGrid{
   display:grid;
   grid-template-columns:repeat(2, minmax(0, 1fr));
   gap:8px 12px;
   border:1px solid var(--border);
   border-radius:12px;
-  background:var(--app-surface);
-  padding:10px;
+  background:var(--card);
+  padding:12px;
+  max-height:280px;
+  overflow:auto;
+}
+.buEmptyState{
+  border-radius:10px;
 }
 .rolePermissionCard{
   border:1px solid var(--border);
@@ -1138,6 +1295,12 @@ textarea{min-height:90px;resize:vertical}
   }
 }
 @media(max-width:850px){
+  .buAdminGrid{
+    grid-template-columns:1fr;
+  }
+  .buAdminStats{
+    width:100%;
+  }
   .userAdminHero{
     flex-wrap:wrap;
   }
@@ -1831,6 +1994,35 @@ html[data-theme="dark"] .buCheckboxGrid{
   background:var(--card);
   border-color:var(--border);
   color:var(--text);
+}
+
+html[data-theme="dark"] .buAdminPanel{
+  background:#101f35;
+  border-color:#314763;
+}
+
+html[data-theme="dark"] .buAdminIntroTitle,
+html[data-theme="dark"] .buPanelHeading h3,
+html[data-theme="dark"] .buStatValue{
+  color:#e5edf8;
+}
+
+html[data-theme="dark"] .buAdminIntroSub,
+html[data-theme="dark"] .buPanelHeading p,
+html[data-theme="dark"] .buStatLabel,
+html[data-theme="dark"] .buMappingCount{
+  color:#9eb0c8;
+}
+
+html[data-theme="dark"] .buStatCard,
+html[data-theme="dark"] .buMappingCount{
+  background:#13243e;
+  border-color:#314763;
+}
+
+html[data-theme="dark"] .buPrimaryBtn{
+  background:linear-gradient(135deg, #5d6de7 0%, #4a58c4 100%);
+  border-color:#7081ff;
 }
 
 html[data-theme="dark"] .searchBox input{

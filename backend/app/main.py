@@ -14,6 +14,7 @@ from .auth import AuthPrincipal, principal_has_permission, require_any_scope
 from .config import settings
 from .file_store import S3FileStore
 from .models import (
+    AdminUserOption,
     AuditEvent,
     BatchUploadAccepted,
     BusinessUnit,
@@ -409,6 +410,14 @@ def list_admin_business_unit_mappings(
     svc: ScreeningService = Depends(get_service),
 ) -> list[UserBusinessUnitMapping]:
     return svc.list_user_business_unit_mappings()
+
+
+@app.get("/api/v1/admin/users", response_model=list[AdminUserOption])
+def list_admin_users(
+    _: AuthPrincipal = Depends(require_any_scope("screening.admin", "screening.useradmin")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[AdminUserOption]:
+    return svc.list_admin_users()
 
 
 @app.put("/api/v1/admin/business-unit-mappings/{user_id}", response_model=UserBusinessUnitMapping)

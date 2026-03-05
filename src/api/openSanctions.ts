@@ -114,6 +114,11 @@ export type UserBusinessUnitMapping = {
   business_unit_codes: string[];
 };
 
+export type AdminUserOption = {
+  user_id: string;
+  display_name: string;
+};
+
 export type JobStatus = "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED";
 
 export type JobAccepted = {
@@ -471,6 +476,17 @@ export async function listBusinessUnitMappings(): Promise<UserBusinessUnitMappin
     throw new Error(`Failed to load business unit mappings: ${await parseApiError(resp)}`);
   }
   return (await resp.json()) as UserBusinessUnitMapping[];
+}
+
+export async function listAdminUsers(): Promise<AdminUserOption[]> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const resp = await fetch(`${baseUrl}/admin/users`, {
+    headers: withAuthHeaders(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load users: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as AdminUserOption[];
 }
 
 export async function updateBusinessUnitMapping(

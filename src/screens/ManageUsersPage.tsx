@@ -4,12 +4,11 @@ import { buildIdentity, hasPermission } from "../auth/claims";
 import {
   createAdminBusinessUnit,
   deleteAdminBusinessUnit,
+  listAdminUsers,
   listAdminBusinessUnits,
-  listAuditEvents,
   listBusinessUnitMappings,
   updateAdminBusinessUnit,
   updateBusinessUnitMapping,
-  type AuditEvent,
   type BusinessUnit,
   type UserBusinessUnitMapping,
 } from "../api/openSanctions";
@@ -35,33 +34,6 @@ function readString(value: unknown): string {
 
 function normalizeBusinessUnitCode(value: string): string {
   return readString(value).toUpperCase();
-}
-
-function isTechnicalIdentifier(value: string): boolean {
-  const raw = value.trim();
-  if (!raw) return true;
-  if (/^\d+$/.test(raw)) return true;
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw)) return true;
-  return false;
-}
-
-function resolveAuditUserName(event: AuditEvent): string {
-  const details = (event.details as Record<string, unknown> | undefined) || undefined;
-  const candidates = [
-    readString(event.user_name),
-    readString(event.user_id).includes("@") ? readString(event.user_id) : "",
-    readString(details?.user_email),
-    readString(details?.user_name),
-    readString(details?.disabled_by),
-    readString(details?.actor_name),
-  ];
-  for (const candidate of candidates) {
-    if (candidate && !isTechnicalIdentifier(candidate)) return candidate;
-  }
-  for (const candidate of candidates) {
-    if (candidate) return candidate;
-  }
-  return readString(event.user_id) || "-";
 }
 
 function SectionIcon() {
@@ -161,26 +133,16 @@ export function ManageUsersPage() {
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
   }, [auditUserOptions, businessUnitMappings, identity?.id, identity?.name]);
 
-  async function loadAuditUserOptions() {
+  async function loadAdminUserOptions() {
     try {
-      const pageSize = 1000;
-      const maxRows = 50000;
-      let offset = 0;
-      const rows: AuditEvent[] = [];
-
-      while (offset < maxRows) {
-        const page = await listAuditEvents(pageSize, undefined, offset);
-        rows.push(...page);
-        if (page.length < pageSize) break;
-        offset += page.length;
-      }
+      const rows = await listAdminUsers();
 
       setAuditUserOptions((prev) => {
         const merged = new Map<string, string>(prev.map((item) => [item.userId, item.displayName]));
         for (const row of rows) {
           const userId = readString(row.user_id);
           if (!userId) continue;
-          const displayName = resolveAuditUserName(row);
+          const displayName = readString(row.display_name) || userId;
           const existing = merged.get(userId);
           if (!existing || existing === userId) {
             merged.set(userId, displayName || userId);
@@ -220,7 +182,7 @@ export function ManageUsersPage() {
   useEffect(() => {
     if (!allowed) return;
     void loadBusinessUnitAdminData();
-    void loadAuditUserOptions();
+    void loadAdminUserOptions();
   }, [allowed]);
 
   useEffect(() => {
@@ -372,19 +334,44 @@ export function ManageUsersPage() {
             Business Unit Administration
           </h2>
         </div>
-        <div className="cardBody">
+        <div className="cardBody buAdminBody">
           {businessUnitError ? <div className="errorBox" role="alert" aria-live="assertive">{businessUnitError}</div> : null}
-          <div className="grid2" style={{ alignItems: "start" }}>
-            <div>
+          <div className="buAdminHeader">
+            <div className="buAdminIntro">
+              <p className="buAdminIntroTitle">Business Unit Catalog and User Mapping</p>
+              <p className="buAdminIntroSub">Create business units, maintain names/codes, and control user-level BU access.</p>
+            </div>
+            <div className="buAdminStats">
+              <div className="buStatCard">
+                <div className="buStatLabel">Active Business Units</div>
+                <div className="buStatValue">{activeBusinessUnits.length}</div>
+              </div>
+              <div className="buStatCard">
+                <div className="buStatLabel">Mapped Users</div>
+                <div className="buStatValue">{businessUnitMappings.length}</div>
+              </div>
+            </div>
+            <button type="button" className="btnGhostSmall buRefreshBtn" onClick={() => void loadBusinessUnitAdminData()} disabled={businessUnitLoading || businessUnitSaving || mappingSaving}>
+              {businessUnitLoading ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
+
+          <div className="buAdminGrid">
+            <div className="buAdminPanel">
+              <div className="buPanelHeading">
+                <h3>Add / Edit Business Unit</h3>
+                <p>Use consistent BU code format. Editing updates mapped references automatically.</p>
+              </div>
               <div className="field">
                 <label>Business Unit Code <span className="requiredMark">*</span></label>
                 <input
+                  className="buCodeInput"
                   value={businessUnitCodeInput}
                   onChange={(e) => setBusinessUnitCodeInput(normalizeBusinessUnitCode(e.target.value))}
                   placeholder="e.g., US_PRU_OSGLI"
                 />
               </div>
-              <div className="field" style={{ marginTop: 10 }}>
+              <div className="field buFieldSpacing">
                 <label>Business Unit Name <span className="requiredMark">*</span></label>
                 <input
                   value={businessUnitNameInput}
@@ -392,8 +379,8 @@ export function ManageUsersPage() {
                   placeholder="e.g., OSGLI"
                 />
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <button type="button" className="btnGhostSmall" onClick={() => void saveBusinessUnit()} disabled={businessUnitSaving}>
+              <div className="buActionRow">
+                <button type="button" className="buPrimaryBtn" onClick={() => void saveBusinessUnit()} disabled={businessUnitSaving}>
                   {businessUnitSaving ? "Saving..." : editingBusinessUnitCode ? "Update Business Unit" : "Add Business Unit"}
                 </button>
                 {editingBusinessUnitCode ? (
@@ -403,14 +390,18 @@ export function ManageUsersPage() {
                 ) : null}
               </div>
             </div>
-            <div>
+            <div className="buAdminPanel">
+              <div className="buPanelHeading">
+                <h3>Business Unit Catalog</h3>
+                <p>Review existing Business Units and manage updates.</p>
+              </div>
               <div className="tableWrap">
                 <table className="table">
                   <thead>
                     <tr>
-                      <th scope="col" style={{ width: 200 }}>Code</th>
+                      <th scope="col" className="buColCode">Code</th>
                       <th scope="col">Name</th>
-                      <th scope="col" style={{ width: 150, textAlign: "right" }}>Actions</th>
+                      <th scope="col" className="buColActions">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -428,8 +419,8 @@ export function ManageUsersPage() {
                           <tr key={row.business_unit_code}>
                             <td>{row.business_unit_code}</td>
                             <td>{row.business_unit_name}</td>
-                            <td style={{ textAlign: "right" }}>
-                              <div style={{ display: "inline-flex", gap: 6 }}>
+                            <td className="buCellActions">
+                              <div className="buTableActions">
                                 <button
                                   type="button"
                                   className="btnGhostSmall"
@@ -461,9 +452,12 @@ export function ManageUsersPage() {
             </div>
           </div>
 
-          <div style={{ marginTop: 18 }}>
-            <h3 style={{ marginTop: 0 }}>User to Business Unit Mapping</h3>
-            <div>
+          <div className="buAdminPanel buMappingPanel">
+            <div className="buPanelHeading">
+              <h3>User to Business Unit Mapping</h3>
+              <p>Select a user and assign one or more Business Units.</p>
+            </div>
+            <div className="buMappingUserSelect">
               <div className="field">
                 <label>User (select existing)</label>
                 <select
@@ -480,11 +474,14 @@ export function ManageUsersPage() {
               </div>
             </div>
 
-            <div className="field" style={{ marginTop: 10 }}>
-              <label>Mapped Business Units</label>
+            <div className="field buFieldSpacing">
+              <div className="buMappingHeaderRow">
+                <span className="buMappingLabel">Mapped Business Units</span>
+                <span className="buMappingCount">{selectedMappingCodes.length} selected</span>
+              </div>
               <div className="buCheckboxGrid">
                 {activeBusinessUnits.length === 0 ? (
-                  <div className="emptyRow" style={{ borderRadius: 10 }}>No active Business Units available.</div>
+                  <div className="emptyRow buEmptyState">No active Business Units available.</div>
                 ) : (
                   activeBusinessUnits.map((row) => {
                     const code = normalizeBusinessUnitCode(row.business_unit_code);
@@ -500,8 +497,8 @@ export function ManageUsersPage() {
               </div>
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <button type="button" className="btnGhostSmall" onClick={() => void saveUserBusinessUnitMapping()} disabled={mappingSaving || businessUnitSaving}>
+            <div className="buActionRow">
+              <button type="button" className="buPrimaryBtn" onClick={() => void saveUserBusinessUnitMapping()} disabled={mappingSaving || businessUnitSaving}>
                 {mappingSaving ? "Saving Mapping..." : "Save User Mapping"}
               </button>
             </div>
