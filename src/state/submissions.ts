@@ -9,6 +9,7 @@ export type SingleSubmission = {
   mode: "SINGLE";
   createdByUserId?: string;
   createdByUserName?: string;
+  businessUnitCode?: string;
   customerType: "Person" | "Entity";
   displayName: string;
   result: HitResult;
@@ -31,6 +32,7 @@ export type BatchSubmission = {
   mode: "BATCH";
   createdByUserId?: string;
   createdByUserName?: string;
+  businessUnitCode?: string;
   jobId?: string;
   fileName: string;
   overallResult: HitResult;

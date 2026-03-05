@@ -33,6 +33,26 @@ def _as_bool(value: Any) -> bool:
 
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.IGNORECASE)
 
+DEFAULT_BUSINESS_UNITS: list[tuple[str, str]] = [
+    ("US_PRU_OSGLI", "OSGLI"),
+    ("US_PRU_VM", "Vendor Management"),
+    ("US_PRU_HR", "Human Resources"),
+    ("US_PRU_OPES", "Operation/Enabling Solutions"),
+    ("US_PRU_PGIM", "PGIM"),
+    ("US_PRU_PGIM_RE_TENANT", "PGIM Real Estate tenant"),
+    ("US_PRU_PGIM_RE", "PGIM Real Estate"),
+    ("US_PRU_PGIM_FI", "PGIM Fixed Income"),
+    ("US_PRU_PGIM_PP_FI", "PGIMPublic and Private Fixed Income"),
+    ("US_PRU_PGIM_MA", "PGIM Multi Asset Solutions"),
+    ("US_PRU_PGIM_CIO", "PGIM CIO"),
+    ("US_PRU_PGIM_JAPAN", "PGIM Japan"),
+    ("US_PRU_PGIM_JK_ASC", "PGIM Jenkins Associates"),
+    ("US_PRU_PGIM_NE_FI", "PGIM Netherlands"),
+    ("US_PRU_PGIM_QUANT", "PGIM Quant Compliance"),
+    ("US_PRU_PGIM_RE_APAC", "PGIM Real Estate APAC"),
+    ("US_PRU_PGIM_LATAM", "PGIM LATAM"),
+]
+
 
 def _is_technical_identifier(value: str | None) -> bool:
     raw = str(value or "").strip()
@@ -282,6 +302,33 @@ class JobRepository:
             self._execute(
                 conn,
                 """
+                CREATE TABLE IF NOT EXISTS business_units (
+                  business_unit_code TEXT PRIMARY KEY,
+                  business_unit_name TEXT NOT NULL,
+                  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL
+                );
+                """,
+            )
+            self._execute(
+                conn,
+                """
+                CREATE TABLE IF NOT EXISTS user_business_units (
+                  user_id TEXT NOT NULL,
+                  user_name TEXT,
+                  business_unit_code TEXT NOT NULL,
+                  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL,
+                  PRIMARY KEY(user_id, business_unit_code)
+                );
+                """,
+            )
+
+            self._execute(
+                conn,
+                """
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_subscriptions_unique
                 ON schedule_subscriptions(schedule_id, email);
                 """,
@@ -307,6 +354,20 @@ class JobRepository:
                 ON schedule_notifications(email, created_at);
                 """,
             )
+            self._execute(
+                conn,
+                """
+                CREATE INDEX IF NOT EXISTS idx_user_business_units_user
+                ON user_business_units(user_id, is_active);
+                """,
+            )
+            self._execute(
+                conn,
+                """
+                CREATE INDEX IF NOT EXISTS idx_user_business_units_code
+                ON user_business_units(business_unit_code, is_active);
+                """,
+            )
 
             self._ensure_column(conn, "jobs", "source_schedule_id", "TEXT")
             self._ensure_column(conn, "jobs", "source_upload_id", "TEXT")
@@ -323,6 +384,7 @@ class JobRepository:
             self._ensure_column(conn, "job_metadata", "daily_schedule_id", "TEXT")
             self._ensure_column(conn, "job_metadata", "query_count", "INTEGER NOT NULL DEFAULT 0")
             self._ensure_column(conn, "job_metadata", "deferred_until", "TEXT")
+            self._ensure_column(conn, "job_metadata", "business_unit_code", "TEXT")
 
             self._ensure_column(conn, "daily_schedules", "user_id", "TEXT")
             self._ensure_column(conn, "daily_schedules", "user_name", "TEXT")
@@ -330,6 +392,9 @@ class JobRepository:
             self._ensure_column(conn, "daily_schedules", "source_upload_id", "TEXT")
             self._ensure_column(conn, "daily_schedules", "source_file_name", "TEXT")
             self._ensure_column(conn, "daily_schedules", "source_s3_uri", "TEXT")
+            self._ensure_column(conn, "daily_schedules", "business_unit_code", "TEXT")
+
+            self._seed_default_business_units(conn)
 
     def _ensure_column(self, conn: Any, table_name: str, column_name: str, column_def: str) -> None:
         if self.is_postgres:
@@ -341,6 +406,39 @@ class JobRepository:
         if exists:
             return
         self._execute(conn, f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}")
+
+    @staticmethod
+    def _normalize_business_unit_code(value: str | None) -> str:
+        return str(value or "").strip().upper()
+
+    def _seed_default_business_units(self, conn: Any) -> None:
+        ts = now_iso()
+        for code, name in DEFAULT_BUSINESS_UNITS:
+            safe_code = self._normalize_business_unit_code(code)
+            safe_name = str(name or "").strip()
+            if not safe_code or not safe_name:
+                continue
+            if self.is_postgres:
+                self._execute(
+                    conn,
+                    """
+                    INSERT INTO business_units(
+                      business_unit_code, business_unit_name, is_active, created_at, updated_at
+                    ) VALUES(?, ?, TRUE, ?, ?)
+                    ON CONFLICT(business_unit_code) DO NOTHING
+                    """,
+                    (safe_code, safe_name, ts, ts),
+                )
+            else:
+                self._execute(
+                    conn,
+                    """
+                    INSERT OR IGNORE INTO business_units(
+                      business_unit_code, business_unit_name, is_active, created_at, updated_at
+                    ) VALUES(?, ?, TRUE, ?, ?)
+                    """,
+                    (safe_code, safe_name, ts, ts),
+                )
 
     @staticmethod
     def normalize_schedule_frequency(value: str | None) -> str:
@@ -435,7 +533,7 @@ class JobRepository:
                 """
                 SELECT
                   job_id, mode, screening_types_json, mock_screening, batch_name, file_name,
-                  daily_screening, schedule_frequency, daily_schedule_id, query_count, deferred_until
+                  daily_screening, schedule_frequency, daily_schedule_id, query_count, deferred_until, business_unit_code
                 FROM job_metadata
                 WHERE job_id = ?
                 """,
@@ -465,6 +563,7 @@ class JobRepository:
             "daily_schedule_id": row["daily_schedule_id"],
             "query_count": int(row["query_count"] or 0),
             "deferred_until": row["deferred_until"],
+            "business_unit_code": row["business_unit_code"],
         }
 
     def upsert_job_metadata(
@@ -480,6 +579,7 @@ class JobRepository:
         daily_schedule_id: str | None = None,
         query_count: int | None = None,
         deferred_until: str | None = None,
+        business_unit_code: str | None = None,
     ) -> None:
         safe_job_id = (job_id or "").strip()
         if not safe_job_id:
@@ -501,6 +601,11 @@ class JobRepository:
         schedule_id_value = daily_schedule_id if daily_schedule_id is not None else existing.get("daily_schedule_id")
         query_count_value = int(query_count) if query_count is not None else int(existing.get("query_count") or 0)
         deferred_value = deferred_until if deferred_until is not None else existing.get("deferred_until")
+        business_unit_value = (
+            self._normalize_business_unit_code(business_unit_code)
+            if business_unit_code is not None
+            else self._normalize_business_unit_code(existing.get("business_unit_code"))
+        )
 
         with self._connect() as conn:
             self._execute(
@@ -508,8 +613,8 @@ class JobRepository:
                 """
                 INSERT INTO job_metadata(
                   job_id, mode, screening_types_json, mock_screening, batch_name, file_name,
-                  daily_screening, schedule_frequency, daily_schedule_id, query_count, deferred_until
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  daily_screening, schedule_frequency, daily_schedule_id, query_count, deferred_until, business_unit_code
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(job_id) DO UPDATE SET
                   mode = excluded.mode,
                   screening_types_json = excluded.screening_types_json,
@@ -520,7 +625,8 @@ class JobRepository:
                   schedule_frequency = excluded.schedule_frequency,
                   daily_schedule_id = excluded.daily_schedule_id,
                   query_count = excluded.query_count,
-                  deferred_until = excluded.deferred_until
+                  deferred_until = excluded.deferred_until,
+                  business_unit_code = excluded.business_unit_code
                 """,
                 (
                     safe_job_id,
@@ -534,6 +640,7 @@ class JobRepository:
                     (schedule_id_value or "").strip() or None,
                     max(query_count_value, 0),
                     (deferred_value or "").strip() or None,
+                    business_unit_value or None,
                 ),
             )
 
@@ -556,7 +663,7 @@ class JobRepository:
                       j.job_id, j.status, j.created_at, j.updated_at, j.total_items,
                       j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
                       jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until,
+                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
                       bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
                     FROM jobs j
                     LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
@@ -575,7 +682,7 @@ class JobRepository:
                       j.job_id, j.status, j.created_at, j.updated_at, j.total_items,
                       j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
                       jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until,
+                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
                       bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
                     FROM jobs j
                     LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
@@ -594,7 +701,7 @@ class JobRepository:
                       j.job_id, j.status, j.created_at, j.updated_at, j.total_items,
                       j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
                       jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until,
+                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
                       bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
                     FROM jobs j
                     LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
@@ -628,6 +735,7 @@ class JobRepository:
                     "daily_schedule_id": row["daily_schedule_id"],
                     "query_count": int(row["query_count"] or 0) if row["query_count"] is not None else 0,
                     "deferred_until": row["deferred_until"],
+                    "business_unit_code": row["business_unit_code"],
                     "upload_file_name": row["upload_file_name"],
                     "upload_s3_uri": row["upload_s3_uri"],
                 }
@@ -851,6 +959,7 @@ class JobRepository:
         batch_name: str,
         user_id: str | None,
         user_name: str | None,
+        business_unit_code: str | None,
         queries: dict[str, Any],
         screening_types: list[str],
         mock_screening: bool,
@@ -868,6 +977,7 @@ class JobRepository:
         safe_schedule_id = (schedule_id or "").strip()
         if not safe_schedule_id:
             safe_schedule_id = str(uuid4())
+        safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
 
         safe_frequency = self.normalize_schedule_frequency(schedule_frequency)
         safe_timezone = timezone_name.strip() or "America/New_York"
@@ -925,6 +1035,7 @@ class JobRepository:
                   source_upload_id = ?,
                   source_file_name = ?,
                   source_s3_uri = ?,
+                  business_unit_code = ?,
                   is_active = TRUE
                 WHERE schedule_id = ?
                 """,
@@ -943,6 +1054,7 @@ class JobRepository:
                     (source_upload_id or "").strip() or None,
                     (source_file_name or "").strip() or None,
                     (source_s3_uri or "").strip() or None,
+                    safe_business_unit_code or None,
                     safe_schedule_id,
                 ),
             )
@@ -955,8 +1067,8 @@ class JobRepository:
                 INSERT INTO daily_schedules(
                   schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
                   schedule_frequency, timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active,
-                  source_upload_id, source_file_name, source_s3_uri
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, TRUE, ?, ?, ?)
+                  source_upload_id, source_file_name, source_s3_uri, business_unit_code
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, TRUE, ?, ?, ?, ?)
                 """,
                 (
                     safe_schedule_id,
@@ -975,6 +1087,7 @@ class JobRepository:
                     (source_upload_id or "").strip() or None,
                     (source_file_name or "").strip() or None,
                     (source_s3_uri or "").strip() or None,
+                    safe_business_unit_code or None,
                 ),
             )
         return safe_schedule_id, True
@@ -988,6 +1101,7 @@ class JobRepository:
         source_upload_id: str | None,
         source_file_name: str | None,
         source_s3_uri: str | None,
+        business_unit_code: str | None = None,
         schedule_frequency: str | None = None,
         batch_name: str | None = None,
     ) -> bool:
@@ -996,6 +1110,7 @@ class JobRepository:
             return False
 
         safe_frequency = self.normalize_schedule_frequency(schedule_frequency) if schedule_frequency else None
+        safe_business_unit_code = self._normalize_business_unit_code(business_unit_code) if business_unit_code is not None else None
 
         with self._connect() as conn:
             if safe_frequency:
@@ -1011,6 +1126,7 @@ class JobRepository:
                       source_file_name = ?,
                       source_s3_uri = ?,
                       schedule_frequency = ?,
+                      business_unit_code = COALESCE(?, business_unit_code),
                       batch_name = COALESCE(?, batch_name),
                       is_active = TRUE
                     WHERE schedule_id = ?
@@ -1023,6 +1139,7 @@ class JobRepository:
                         (source_file_name or "").strip() or None,
                         (source_s3_uri or "").strip() or None,
                         safe_frequency,
+                        safe_business_unit_code,
                         (batch_name or "").strip() or None,
                         safe_schedule_id,
                     ),
@@ -1039,6 +1156,7 @@ class JobRepository:
                       source_upload_id = ?,
                       source_file_name = ?,
                       source_s3_uri = ?,
+                      business_unit_code = COALESCE(?, business_unit_code),
                       batch_name = COALESCE(?, batch_name),
                       is_active = TRUE
                     WHERE schedule_id = ?
@@ -1050,6 +1168,7 @@ class JobRepository:
                         (source_upload_id or "").strip() or None,
                         (source_file_name or "").strip() or None,
                         (source_s3_uri or "").strip() or None,
+                        safe_business_unit_code,
                         (batch_name or "").strip() or None,
                         safe_schedule_id,
                     ),
@@ -1067,7 +1186,7 @@ class JobRepository:
                 SELECT
                   schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
                   schedule_frequency, timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active,
-                  source_upload_id, source_file_name, source_s3_uri
+                  source_upload_id, source_file_name, source_s3_uri, business_unit_code
                 FROM daily_schedules
                 WHERE schedule_id = ?
                 """,
@@ -1085,7 +1204,7 @@ class JobRepository:
                 SELECT
                   schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
                   schedule_frequency, timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active,
-                  source_upload_id, source_file_name, source_s3_uri
+                  source_upload_id, source_file_name, source_s3_uri, business_unit_code
                 FROM daily_schedules
                 WHERE is_active = TRUE
                   AND next_run_at <= ?
@@ -1098,6 +1217,11 @@ class JobRepository:
 
     @staticmethod
     def _parse_daily_schedule_row(row: Any) -> dict[str, Any]:
+        business_unit_code = ""
+        try:
+            business_unit_code = str(row["business_unit_code"] or "").strip()
+        except Exception:  # noqa: BLE001
+            business_unit_code = ""
         return {
             "schedule_id": row["schedule_id"],
             "batch_name": row["batch_name"],
@@ -1117,6 +1241,7 @@ class JobRepository:
             "source_upload_id": row["source_upload_id"],
             "source_file_name": row["source_file_name"],
             "source_s3_uri": row["source_s3_uri"],
+            "business_unit_code": business_unit_code,
         }
 
     def list_active_daily_schedules(self, user_id: str | None = None) -> list[dict[str, Any]]:
@@ -1128,7 +1253,7 @@ class JobRepository:
                     SELECT
                       schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
                       schedule_frequency, timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active,
-                      source_upload_id, source_file_name, source_s3_uri
+                      source_upload_id, source_file_name, source_s3_uri, business_unit_code
                     FROM daily_schedules
                     WHERE is_active = TRUE
                       AND user_id = ?
@@ -1143,7 +1268,7 @@ class JobRepository:
                     SELECT
                       schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
                       schedule_frequency, timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active,
-                      source_upload_id, source_file_name, source_s3_uri
+                      source_upload_id, source_file_name, source_s3_uri, business_unit_code
                     FROM daily_schedules
                     WHERE is_active = TRUE
                     ORDER BY created_at DESC
@@ -1544,6 +1669,328 @@ class JobRepository:
             )
         return notifications
 
+    def list_business_units(self, user_id: str | None = None, include_inactive: bool = False) -> list[dict[str, Any]]:
+        safe_user_id = (user_id or "").strip()
+        with self._connect() as conn:
+            if safe_user_id:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT bu.business_unit_code, bu.business_unit_name, bu.is_active, bu.created_at, bu.updated_at
+                    FROM business_units bu
+                    JOIN user_business_units ubu
+                      ON ubu.business_unit_code = bu.business_unit_code
+                     AND ubu.user_id = ?
+                     AND ubu.is_active = TRUE
+                    WHERE (? = TRUE OR bu.is_active = TRUE)
+                    ORDER BY bu.business_unit_name ASC, bu.business_unit_code ASC
+                    """,
+                    (safe_user_id, include_inactive),
+                ).fetchall()
+            else:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT business_unit_code, business_unit_name, is_active, created_at, updated_at
+                    FROM business_units
+                    WHERE (? = TRUE OR is_active = TRUE)
+                    ORDER BY business_unit_name ASC, business_unit_code ASC
+                    """,
+                    (include_inactive,),
+                ).fetchall()
+
+        return [
+            {
+                "business_unit_code": str(row["business_unit_code"] or "").strip(),
+                "business_unit_name": str(row["business_unit_name"] or "").strip(),
+                "is_active": _as_bool(row["is_active"]),
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+            }
+            for row in rows
+            if str(row["business_unit_code"] or "").strip()
+        ]
+
+    def list_user_business_unit_codes(self, user_id: str) -> list[str]:
+        safe_user_id = (user_id or "").strip()
+        if not safe_user_id:
+            return []
+        rows = self.list_business_units(user_id=safe_user_id, include_inactive=False)
+        return [str(row["business_unit_code"]).strip() for row in rows if str(row.get("business_unit_code") or "").strip()]
+
+    def user_has_business_unit(self, user_id: str | None, business_unit_code: str | None) -> bool:
+        safe_user_id = (user_id or "").strip()
+        safe_code = self._normalize_business_unit_code(business_unit_code)
+        if not safe_user_id or not safe_code:
+            return False
+        with self._connect() as conn:
+            row = self._execute(
+                conn,
+                """
+                SELECT 1
+                FROM user_business_units ubu
+                JOIN business_units bu
+                  ON bu.business_unit_code = ubu.business_unit_code
+                WHERE ubu.user_id = ?
+                  AND ubu.business_unit_code = ?
+                  AND ubu.is_active = TRUE
+                  AND bu.is_active = TRUE
+                LIMIT 1
+                """,
+                (safe_user_id, safe_code),
+            ).fetchone()
+        return bool(row)
+
+    def upsert_business_unit(self, business_unit_code: str, business_unit_name: str) -> dict[str, Any]:
+        safe_code = self._normalize_business_unit_code(business_unit_code)
+        safe_name = str(business_unit_name or "").strip()
+        if not safe_code:
+            raise ValueError("Business Unit code is required")
+        if not safe_name:
+            raise ValueError("Business Unit name is required")
+
+        ts = now_iso()
+        with self._connect() as conn:
+            if self.is_postgres:
+                self._execute(
+                    conn,
+                    """
+                    INSERT INTO business_units(
+                      business_unit_code, business_unit_name, is_active, created_at, updated_at
+                    ) VALUES(?, ?, TRUE, ?, ?)
+                    ON CONFLICT(business_unit_code)
+                    DO UPDATE SET
+                      business_unit_name = excluded.business_unit_name,
+                      is_active = TRUE,
+                      updated_at = excluded.updated_at
+                    """,
+                    (safe_code, safe_name, ts, ts),
+                )
+            else:
+                self._execute(
+                    conn,
+                    """
+                    INSERT INTO business_units(
+                      business_unit_code, business_unit_name, is_active, created_at, updated_at
+                    ) VALUES(?, ?, TRUE, ?, ?)
+                    ON CONFLICT(business_unit_code)
+                    DO UPDATE SET
+                      business_unit_name = excluded.business_unit_name,
+                      is_active = TRUE,
+                      updated_at = excluded.updated_at
+                    """,
+                    (safe_code, safe_name, ts, ts),
+                )
+
+        matches = [row for row in self.list_business_units(include_inactive=True) if row["business_unit_code"] == safe_code]
+        if not matches:
+            raise ValueError("Failed to save Business Unit")
+        return matches[0]
+
+    def update_business_unit(
+        self,
+        business_unit_code: str,
+        next_business_unit_code: str | None,
+        next_business_unit_name: str | None,
+    ) -> dict[str, Any] | None:
+        safe_code = self._normalize_business_unit_code(business_unit_code)
+        if not safe_code:
+            return None
+        desired_code = self._normalize_business_unit_code(next_business_unit_code) or safe_code
+        desired_name = str(next_business_unit_name or "").strip()
+        if not desired_name:
+            raise ValueError("Business Unit name is required")
+
+        ts = now_iso()
+        with self._connect() as conn:
+            existing = self._execute(
+                conn,
+                """
+                SELECT business_unit_code
+                FROM business_units
+                WHERE business_unit_code = ?
+                """,
+                (safe_code,),
+            ).fetchone()
+            if not existing:
+                return None
+
+            if desired_code != safe_code:
+                duplicate = self._execute(
+                    conn,
+                    """
+                    SELECT business_unit_code
+                    FROM business_units
+                    WHERE business_unit_code = ?
+                    """,
+                    (desired_code,),
+                ).fetchone()
+                if duplicate:
+                    raise ValueError(f"Business Unit code {desired_code} already exists")
+
+            self._execute(
+                conn,
+                """
+                UPDATE business_units
+                SET business_unit_code = ?, business_unit_name = ?, is_active = TRUE, updated_at = ?
+                WHERE business_unit_code = ?
+                """,
+                (desired_code, desired_name, ts, safe_code),
+            )
+            if desired_code != safe_code:
+                self._execute(
+                    conn,
+                    """
+                    UPDATE user_business_units
+                    SET business_unit_code = ?, updated_at = ?
+                    WHERE business_unit_code = ?
+                    """,
+                    (desired_code, ts, safe_code),
+                )
+                self._execute(
+                    conn,
+                    """
+                    UPDATE job_metadata
+                    SET business_unit_code = ?
+                    WHERE business_unit_code = ?
+                    """,
+                    (desired_code, safe_code),
+                )
+                self._execute(
+                    conn,
+                    """
+                    UPDATE daily_schedules
+                    SET business_unit_code = ?
+                    WHERE business_unit_code = ?
+                    """,
+                    (desired_code, safe_code),
+                )
+
+        matches = [row for row in self.list_business_units(include_inactive=True) if row["business_unit_code"] == desired_code]
+        if not matches:
+            return None
+        return matches[0]
+
+    def delete_business_unit(self, business_unit_code: str) -> bool:
+        safe_code = self._normalize_business_unit_code(business_unit_code)
+        if not safe_code:
+            return False
+        with self._connect() as conn:
+            self._execute(
+                conn,
+                """
+                DELETE FROM user_business_units
+                WHERE business_unit_code = ?
+                """,
+                (safe_code,),
+            )
+            cur = self._execute(
+                conn,
+                """
+                DELETE FROM business_units
+                WHERE business_unit_code = ?
+                """,
+                (safe_code,),
+            )
+            return cur.rowcount > 0
+
+    def set_user_business_units(
+        self,
+        user_id: str,
+        user_name: str | None,
+        business_unit_codes: list[str],
+    ) -> list[str]:
+        safe_user_id = (user_id or "").strip()
+        if not safe_user_id:
+            raise ValueError("user_id is required")
+
+        seen: set[str] = set()
+        normalized_codes: list[str] = []
+        for raw in business_unit_codes:
+            code = self._normalize_business_unit_code(raw)
+            if not code or code in seen:
+                continue
+            seen.add(code)
+            normalized_codes.append(code)
+
+        ts = now_iso()
+        with self._connect() as conn:
+            valid_codes: set[str] = set()
+            if normalized_codes:
+                placeholders = ", ".join("?" for _ in normalized_codes)
+                rows = self._execute(
+                    conn,
+                    f"""
+                    SELECT business_unit_code
+                    FROM business_units
+                    WHERE business_unit_code IN ({placeholders})
+                      AND is_active = TRUE
+                    """,
+                    tuple(normalized_codes),
+                ).fetchall()
+                valid_codes = {self._normalize_business_unit_code(row["business_unit_code"]) for row in rows}
+
+            self._execute(
+                conn,
+                """
+                DELETE FROM user_business_units
+                WHERE user_id = ?
+                """,
+                (safe_user_id,),
+            )
+
+            for code in normalized_codes:
+                if code not in valid_codes:
+                    continue
+                self._execute(
+                    conn,
+                    """
+                    INSERT INTO user_business_units(
+                      user_id, user_name, business_unit_code, is_active, created_at, updated_at
+                    ) VALUES(?, ?, ?, TRUE, ?, ?)
+                    """,
+                    (safe_user_id, (user_name or "").strip() or None, code, ts, ts),
+                )
+
+        return [code for code in normalized_codes if code in valid_codes]
+
+    def list_user_business_unit_mappings(self) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = self._execute(
+                conn,
+                """
+                SELECT ubu.user_id, ubu.user_name, ubu.business_unit_code
+                FROM user_business_units ubu
+                JOIN business_units bu
+                  ON bu.business_unit_code = ubu.business_unit_code
+                WHERE ubu.is_active = TRUE
+                  AND bu.is_active = TRUE
+                ORDER BY LOWER(COALESCE(ubu.user_name, ubu.user_id)), ubu.user_id, ubu.business_unit_code
+                """,
+            ).fetchall()
+
+        grouped: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            user_id = str(row["user_id"] or "").strip()
+            if not user_id:
+                continue
+            code = self._normalize_business_unit_code(row["business_unit_code"])
+            if not code:
+                continue
+            current = grouped.setdefault(
+                user_id,
+                {
+                    "user_id": user_id,
+                    "user_name": str(row["user_name"] or "").strip() or user_id,
+                    "business_unit_codes": [],
+                },
+            )
+            codes = current["business_unit_codes"]
+            if code not in codes:
+                codes.append(code)
+
+        return list(grouped.values())
+
     def add_audit_event(
         self,
         action: str,
@@ -1596,8 +2043,9 @@ class JobRepository:
             )
             return int(cur.lastrowid)
 
-    def list_audit_events(self, limit: int = 200, user_id: str | None = None) -> list[dict[str, Any]]:
+    def list_audit_events(self, limit: int = 200, user_id: str | None = None, offset: int = 0) -> list[dict[str, Any]]:
         safe_limit = min(max(int(limit), 1), 1000)
+        safe_offset = max(int(offset), 0)
         with self._connect() as conn:
             if user_id and user_id.strip():
                 rows = self._execute(
@@ -1608,8 +2056,9 @@ class JobRepository:
                     WHERE user_id = ?
                     ORDER BY event_id DESC
                     LIMIT ?
+                    OFFSET ?
                     """,
-                    (user_id.strip(), safe_limit),
+                    (user_id.strip(), safe_limit, safe_offset),
                 ).fetchall()
             else:
                 rows = self._execute(
@@ -1619,8 +2068,9 @@ class JobRepository:
                     FROM audit_events
                     ORDER BY event_id DESC
                     LIMIT ?
+                    OFFSET ?
                     """,
-                    (safe_limit,),
+                    (safe_limit, safe_offset),
                 ).fetchall()
 
             missing_name_user_ids = sorted(

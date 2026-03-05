@@ -16,6 +16,9 @@ from .file_store import S3FileStore
 from .models import (
     AuditEvent,
     BatchUploadAccepted,
+    BusinessUnit,
+    BusinessUnitUpdateRequest,
+    BusinessUnitUpsertRequest,
     DailyScheduleInfo,
     EntityExample,
     EntityMatchResponse,
@@ -24,6 +27,8 @@ from .models import (
     MatchJobProgress,
     MatchJobRequest,
     ScheduleSubscription,
+    UserBusinessUnitMapping,
+    UserBusinessUnitUpdateRequest,
     UserNotification,
 )
 from .queue import SqsQueue
@@ -104,6 +109,10 @@ def _parse_subscription_emails(raw_values: list[str]) -> list[str]:
     return emails
 
 
+def _normalize_business_unit_code(value: str | None) -> str:
+    return str(value or "").strip().upper()
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -140,6 +149,7 @@ async def create_batch_job_with_upload(
     subscribe_results: bool = Form(default=False),
     subscribe_email: str | None = Form(default=None),
     subscribe_emails: str | None = Form(default=None),
+    business_unit_code: str = Form(...),
     user_name: str | None = Form(default=None),
     principal: AuthPrincipal = Depends(require_any_scope("screening.write", "screening.daily", "screening.admin")),
     svc: ScreeningService = Depends(get_service),
@@ -207,6 +217,7 @@ async def create_batch_job_with_upload(
         queries=queries,
         screening_types=screening_types,
         mock_screening=bool(mock_screening),
+        business_unit_code=_normalize_business_unit_code(business_unit_code),
         daily_screening=bool(daily_screening),
         schedule_frequency=schedule_frequency,
         schedule_run_at=(schedule_run_at or "").strip() or None,
@@ -238,6 +249,7 @@ async def create_batch_job_with_upload(
         daily_schedule_id=accepted.daily_schedule_id,
         query_count=len(queries),
         deferred_until=deferred_until if (accepted.total_items == 0 and daily_screening and accepted.daily_schedule_id) else None,
+        business_unit_code=payload.business_unit_code,
     )
 
     repository.attach_upload_to_job(upload_id=upload_id, job_id=accepted.job_id)
@@ -280,6 +292,7 @@ async def create_batch_job_with_upload(
             "schedule_frequency": payload.schedule_frequency,
             "schedule_run_at": payload.schedule_run_at,
             "schedule_id": payload.schedule_id,
+            "business_unit_code": payload.business_unit_code,
         },
     )
 
@@ -288,6 +301,7 @@ async def create_batch_job_with_upload(
         status=accepted.status,
         submitted_at=accepted.submitted_at,
         total_items=accepted.total_items,
+        business_unit_code=accepted.business_unit_code,
         daily_schedule_id=accepted.daily_schedule_id,
         screened_item_keys=accepted.screened_item_keys,
         source_upload_id=upload_id,
@@ -315,6 +329,105 @@ def list_daily_schedules(
     svc: ScreeningService = Depends(get_service),
 ) -> list[DailyScheduleInfo]:
     return svc.list_daily_schedules()
+
+
+@app.get("/api/v1/business-units", response_model=list[BusinessUnit])
+def list_user_business_units(
+    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[BusinessUnit]:
+    return svc.list_business_units_for_user(principal.user_id)
+
+
+@app.get("/api/v1/admin/business-units", response_model=list[BusinessUnit])
+def list_admin_business_units(
+    include_inactive: bool = Query(default=True),
+    _: AuthPrincipal = Depends(require_any_scope("screening.admin", "screening.useradmin")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[BusinessUnit]:
+    return svc.list_all_business_units(include_inactive=include_inactive)
+
+
+@app.post("/api/v1/admin/business-units", response_model=BusinessUnit)
+def create_admin_business_unit(
+    payload: BusinessUnitUpsertRequest,
+    principal: AuthPrincipal = Depends(require_any_scope("screening.admin", "screening.useradmin")),
+    svc: ScreeningService = Depends(get_service),
+) -> BusinessUnit:
+    try:
+        return svc.create_business_unit(
+            business_unit_code=payload.business_unit_code,
+            business_unit_name=payload.business_unit_name,
+            actor_user_id=principal.user_id,
+            actor_user_name=_preferred_actor_name(principal),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.put("/api/v1/admin/business-units/{business_unit_code}", response_model=BusinessUnit)
+def update_admin_business_unit(
+    business_unit_code: str,
+    payload: BusinessUnitUpdateRequest,
+    principal: AuthPrincipal = Depends(require_any_scope("screening.admin", "screening.useradmin")),
+    svc: ScreeningService = Depends(get_service),
+) -> BusinessUnit:
+    try:
+        updated = svc.update_business_unit(
+            business_unit_code=business_unit_code,
+            next_business_unit_code=payload.business_unit_code,
+            next_business_unit_name=payload.business_unit_name,
+            actor_user_id=principal.user_id,
+            actor_user_name=_preferred_actor_name(principal),
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Business Unit {business_unit_code} not found")
+        return updated
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.delete("/api/v1/admin/business-units/{business_unit_code}")
+def delete_admin_business_unit(
+    business_unit_code: str,
+    principal: AuthPrincipal = Depends(require_any_scope("screening.admin", "screening.useradmin")),
+    svc: ScreeningService = Depends(get_service),
+) -> dict[str, str]:
+    removed = svc.delete_business_unit(
+        business_unit_code=business_unit_code,
+        actor_user_id=principal.user_id,
+        actor_user_name=_preferred_actor_name(principal),
+    )
+    if not removed:
+        raise HTTPException(status_code=404, detail=f"Business Unit {business_unit_code} not found")
+    return {"status": "removed", "business_unit_code": _normalize_business_unit_code(business_unit_code)}
+
+
+@app.get("/api/v1/admin/business-unit-mappings", response_model=list[UserBusinessUnitMapping])
+def list_admin_business_unit_mappings(
+    _: AuthPrincipal = Depends(require_any_scope("screening.admin", "screening.useradmin")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[UserBusinessUnitMapping]:
+    return svc.list_user_business_unit_mappings()
+
+
+@app.put("/api/v1/admin/business-unit-mappings/{user_id}", response_model=UserBusinessUnitMapping)
+def upsert_admin_business_unit_mapping(
+    user_id: str,
+    payload: UserBusinessUnitUpdateRequest,
+    principal: AuthPrincipal = Depends(require_any_scope("screening.admin", "screening.useradmin")),
+    svc: ScreeningService = Depends(get_service),
+) -> UserBusinessUnitMapping:
+    try:
+        return svc.set_user_business_unit_mapping(
+            user_id=user_id,
+            user_name=payload.user_name,
+            business_unit_codes=payload.business_unit_codes,
+            actor_user_id=principal.user_id,
+            actor_user_name=_preferred_actor_name(principal),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/v1/screenings/submissions", response_model=list[dict[str, Any]])
@@ -397,11 +510,12 @@ def remove_daily_schedule(
 @app.get("/api/v1/audit-events", response_model=list[AuditEvent])
 def list_audit_events(
     limit: int = Query(default=200, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
     user_id: str | None = Query(default=None),
     _: AuthPrincipal = Depends(require_any_scope("screening.admin", "screening.useradmin")),
     svc: ScreeningService = Depends(get_service),
 ) -> list[AuditEvent]:
-    return svc.list_audit_events(limit=limit, user_id=user_id)
+    return svc.list_audit_events(limit=limit, user_id=user_id, offset=offset)
 
 
 @app.get("/api/v1/notifications", response_model=list[UserNotification])
@@ -425,6 +539,11 @@ def match_sync(
         raise HTTPException(status_code=403, detail="Viewer can perform only mock single screening")
 
     actor_user_name = _preferred_actor_name(principal, payload.user_name)
+    normalized_business_unit_code = _normalize_business_unit_code(payload.business_unit_code)
+    if not normalized_business_unit_code:
+        raise HTTPException(status_code=400, detail="Business Unit is required")
+    if not repository.user_has_business_unit(principal.user_id, normalized_business_unit_code):
+        raise HTTPException(status_code=403, detail="Selected Business Unit is not mapped to this user")
     payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": actor_user_name})
     job_id = str(uuid4())
     repository.create_job(
@@ -440,6 +559,7 @@ def match_sync(
         screening_types=payload.screening_types,
         mock_screening=payload.mock_screening,
         query_count=len(payload.queries),
+        business_unit_code=normalized_business_unit_code,
     )
     repository.add_audit_event(
         action="SYNC_SCREENING_SUBMITTED",
@@ -452,6 +572,7 @@ def match_sync(
             "total_items": len(payload.queries),
             "screening_types": payload.screening_types,
             "mock_screening": payload.mock_screening,
+            "business_unit_code": normalized_business_unit_code,
         },
     )
 

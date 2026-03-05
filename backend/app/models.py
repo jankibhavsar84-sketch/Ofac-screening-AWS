@@ -38,6 +38,7 @@ class MatchJobRequest(BaseModel):
     queries: dict[str, EntityExample]
     screening_types: list[str] = Field(default_factory=list)
     mock_screening: bool = False
+    business_unit_code: str | None = None
     daily_screening: bool = False
     schedule_frequency: str = "DAILY"
     schedule_run_at: str | None = None
@@ -60,6 +61,7 @@ class MatchJobAccepted(BaseModel):
     status: JobStatus
     submitted_at: str
     total_items: int
+    business_unit_code: str | None = None
     daily_schedule_id: str | None = None
     screened_item_keys: list[str] = Field(default_factory=list)
 
@@ -82,6 +84,7 @@ class DailyScheduleInfo(BaseModel):
     batch_name: str
     user_id: str | None = None
     user_name: str | None = None
+    business_unit_code: str | None = None
     screening_types: list[str] = Field(default_factory=list)
     schedule_frequency: str = "DAILY"
     timezone: str
@@ -115,12 +118,42 @@ class BatchUploadAccepted(BaseModel):
     status: JobStatus
     submitted_at: str
     total_items: int
+    business_unit_code: str | None = None
     daily_schedule_id: str | None = None
     screened_item_keys: list[str] = Field(default_factory=list)
     source_upload_id: str | None = None
     file_name: str
     s3_uri: str | None = None
     schedule_frequency: str | None = None
+
+
+class BusinessUnit(BaseModel):
+    business_unit_code: str
+    business_unit_name: str
+    is_active: bool = True
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class BusinessUnitUpsertRequest(BaseModel):
+    business_unit_code: str
+    business_unit_name: str
+
+
+class BusinessUnitUpdateRequest(BaseModel):
+    business_unit_code: str | None = None
+    business_unit_name: str
+
+
+class UserBusinessUnitMapping(BaseModel):
+    user_id: str
+    user_name: str | None = None
+    business_unit_codes: list[str] = Field(default_factory=list)
+
+
+class UserBusinessUnitUpdateRequest(BaseModel):
+    user_name: str | None = None
+    business_unit_codes: list[str] = Field(default_factory=list)
 
 
 class ScheduleSubscription(BaseModel):

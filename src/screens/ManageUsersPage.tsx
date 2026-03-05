@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { buildIdentity, hasPermission } from "../auth/claims";
-import { listAuditEvents, type AuditEvent } from "../api/openSanctions";
+import {
+  createAdminBusinessUnit,
+  deleteAdminBusinessUnit,
+  listAdminBusinessUnits,
+  listAuditEvents,
+  listBusinessUnitMappings,
+  updateAdminBusinessUnit,
+  updateBusinessUnitMapping,
+  type AuditEvent,
+  type BusinessUnit,
+  type UserBusinessUnitMapping,
+} from "../api/openSanctions";
 import type { UserRole } from "../state/users";
 
 const ROLE_OPTIONS: UserRole[] = ["Admin", "Compliance Officer", "Analyst", "Viewer"];
@@ -20,6 +31,10 @@ type AuditUserOption = {
 
 function readString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeBusinessUnitCode(value: string): string {
+  return readString(value).toUpperCase();
 }
 
 function toStringArray(value: unknown): string[] {
@@ -194,6 +209,18 @@ export function ManageUsersPage() {
   const [auditErrorsOnly, setAuditErrorsOnly] = useState(false);
   const [auditUserOptions, setAuditUserOptions] = useState<AuditUserOption[]>([]);
   const [auditPage, setAuditPage] = useState(1);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const [businessUnitMappings, setBusinessUnitMappings] = useState<UserBusinessUnitMapping[]>([]);
+  const [businessUnitLoading, setBusinessUnitLoading] = useState(false);
+  const [businessUnitError, setBusinessUnitError] = useState<string | null>(null);
+  const [businessUnitCodeInput, setBusinessUnitCodeInput] = useState("");
+  const [businessUnitNameInput, setBusinessUnitNameInput] = useState("");
+  const [editingBusinessUnitCode, setEditingBusinessUnitCode] = useState<string | null>(null);
+  const [businessUnitSaving, setBusinessUnitSaving] = useState(false);
+  const [selectedMappingUserId, setSelectedMappingUserId] = useState("");
+  const [selectedMappingUserName, setSelectedMappingUserName] = useState("");
+  const [selectedMappingCodes, setSelectedMappingCodes] = useState<string[]>([]);
+  const [mappingSaving, setMappingSaving] = useState(false);
 
   const sortedAuditUserOptions = useMemo(
     () => [...auditUserOptions].sort((a, b) => a.displayName.localeCompare(b.displayName)),
@@ -211,12 +238,60 @@ export function ManageUsersPage() {
     }
     return map;
   }, [auditUserOptions]);
+  const activeBusinessUnits = useMemo(
+    () =>
+      [...businessUnits]
+        .filter((row) => row.is_active)
+        .sort((a, b) => `${a.business_unit_name}`.localeCompare(`${b.business_unit_name}`)),
+    [businessUnits]
+  );
+  const businessUnitMappingsByUser = useMemo(() => {
+    const map = new Map<string, UserBusinessUnitMapping>();
+    for (const row of businessUnitMappings) {
+      const id = readString(row.user_id);
+      if (!id) continue;
+      map.set(id, row);
+    }
+    return map;
+  }, [businessUnitMappings]);
+  const mappingUserOptions = useMemo(() => {
+    const merged = new Map<string, string>();
+    for (const option of auditUserOptions) {
+      const id = readString(option.userId);
+      if (!id) continue;
+      merged.set(id, readString(option.displayName) || id);
+    }
+    for (const mapping of businessUnitMappings) {
+      const id = readString(mapping.user_id);
+      if (!id) continue;
+      const name = readString(mapping.user_name) || merged.get(id) || id;
+      merged.set(id, name);
+    }
+    if (identity?.id) {
+      const id = readString(identity.id);
+      if (id && !merged.has(id)) merged.set(id, readString(identity.name) || id);
+    }
+    return Array.from(merged.entries())
+      .map(([userId, displayName]) => ({ userId, displayName }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }, [auditUserOptions, businessUnitMappings, identity?.id, identity?.name]);
 
   async function loadAuditEvents(userId?: string) {
     setAuditError(null);
     setAuditLoading(true);
     try {
-      const rows = await listAuditEvents(500, userId);
+      const pageSize = 1000;
+      const maxRows = 50000;
+      let offset = 0;
+      const rows: AuditEvent[] = [];
+
+      while (offset < maxRows) {
+        const page = await listAuditEvents(pageSize, userId, offset);
+        rows.push(...page);
+        if (page.length < pageSize) break;
+        offset += page.length;
+      }
+
       setAuditEvents(rows);
       setAuditUserOptions((prev) => {
         const merged = new Map<string, string>(prev.map((item) => [item.userId, item.displayName]));
@@ -247,11 +322,40 @@ export function ManageUsersPage() {
     }
   }
 
+  async function loadBusinessUnitAdminData() {
+    setBusinessUnitError(null);
+    setBusinessUnitLoading(true);
+    try {
+      const [units, mappings] = await Promise.all([listAdminBusinessUnits(true), listBusinessUnitMappings()]);
+      setBusinessUnits(units);
+      setBusinessUnitMappings(mappings);
+      setAuditUserOptions((prev) => {
+        const merged = new Map<string, string>(prev.map((item) => [item.userId, item.displayName]));
+        for (const row of mappings) {
+          const userId = readString(row.user_id);
+          if (!userId) continue;
+          const userName = readString(row.user_name) || userId;
+          if (!merged.has(userId)) merged.set(userId, userName);
+        }
+        return Array.from(merged.entries()).map(([userId, displayName]) => ({ userId, displayName }));
+      });
+    } catch (err: any) {
+      setBusinessUnitError(err?.message ?? "Failed to load Business Unit administration data.");
+    } finally {
+      setBusinessUnitLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!allowed) return;
     const userId = auditUserFilter === "all" ? undefined : auditUserFilter;
     void loadAuditEvents(userId);
   }, [allowed, auditUserFilter]);
+
+  useEffect(() => {
+    if (!allowed) return;
+    void loadBusinessUnitAdminData();
+  }, [allowed]);
 
   const filteredAuditEvents = useMemo(() => {
     if (!auditErrorsOnly) return auditEvents;
@@ -266,6 +370,112 @@ export function ManageUsersPage() {
   const auditPageSafe = Math.min(auditPage, totalAuditPages);
   const auditStartIdx = (auditPageSafe - 1) * auditPageSize;
   const pagedAuditEvents = filteredAuditEvents.slice(auditStartIdx, auditStartIdx + auditPageSize);
+
+  useEffect(() => {
+    if (selectedMappingUserId) return;
+    const first = mappingUserOptions[0]?.userId ?? "";
+    if (first) setSelectedMappingUserId(first);
+  }, [mappingUserOptions, selectedMappingUserId]);
+
+  useEffect(() => {
+    const safeUserId = readString(selectedMappingUserId);
+    if (!safeUserId) {
+      setSelectedMappingUserName("");
+      setSelectedMappingCodes([]);
+      return;
+    }
+    const mapped = businessUnitMappingsByUser.get(safeUserId);
+    const optionName = mappingUserOptions.find((opt) => opt.userId === safeUserId)?.displayName || safeUserId;
+    setSelectedMappingUserName(readString(mapped?.user_name) || optionName);
+    const codes = Array.isArray(mapped?.business_unit_codes)
+      ? mapped.business_unit_codes.map((code) => normalizeBusinessUnitCode(String(code))).filter(Boolean)
+      : [];
+    setSelectedMappingCodes(Array.from(new Set(codes)));
+  }, [selectedMappingUserId, businessUnitMappingsByUser, mappingUserOptions]);
+
+  function resetBusinessUnitForm() {
+    setEditingBusinessUnitCode(null);
+    setBusinessUnitCodeInput("");
+    setBusinessUnitNameInput("");
+  }
+
+  function toggleMappingCode(code: string) {
+    const safeCode = normalizeBusinessUnitCode(code);
+    if (!safeCode) return;
+    setSelectedMappingCodes((prev) => (prev.includes(safeCode) ? prev.filter((value) => value !== safeCode) : [...prev, safeCode]));
+  }
+
+  async function saveBusinessUnit() {
+    const code = normalizeBusinessUnitCode(businessUnitCodeInput);
+    const name = readString(businessUnitNameInput);
+    if (!code || !name) {
+      setBusinessUnitError("Business Unit code and name are required.");
+      return;
+    }
+
+    setBusinessUnitError(null);
+    setBusinessUnitSaving(true);
+    try {
+      if (editingBusinessUnitCode) {
+        await updateAdminBusinessUnit(editingBusinessUnitCode, code, name);
+      } else {
+        await createAdminBusinessUnit(code, name);
+      }
+      await loadBusinessUnitAdminData();
+      resetBusinessUnitForm();
+    } catch (err: any) {
+      setBusinessUnitError(err?.message ?? "Failed to save Business Unit.");
+    } finally {
+      setBusinessUnitSaving(false);
+    }
+  }
+
+  async function removeBusinessUnit(code: string) {
+    const safeCode = normalizeBusinessUnitCode(code);
+    if (!safeCode) return;
+    if (!window.confirm(`Delete Business Unit ${safeCode}?`)) return;
+
+    setBusinessUnitError(null);
+    setBusinessUnitSaving(true);
+    try {
+      await deleteAdminBusinessUnit(safeCode);
+      await loadBusinessUnitAdminData();
+      if (editingBusinessUnitCode === safeCode) {
+        resetBusinessUnitForm();
+      }
+      setSelectedMappingCodes((prev) => prev.filter((value) => value !== safeCode));
+    } catch (err: any) {
+      setBusinessUnitError(err?.message ?? "Failed to delete Business Unit.");
+    } finally {
+      setBusinessUnitSaving(false);
+    }
+  }
+
+  async function saveUserBusinessUnitMapping() {
+    const userId = readString(selectedMappingUserId);
+    if (!userId) {
+      setBusinessUnitError("Select a user to map Business Units.");
+      return;
+    }
+
+    setBusinessUnitError(null);
+    setMappingSaving(true);
+    try {
+      const saved = await updateBusinessUnitMapping(userId, {
+        userName: selectedMappingUserName,
+        businessUnitCodes: selectedMappingCodes,
+      });
+      setBusinessUnitMappings((prev) => {
+        const next = prev.filter((row) => readString(row.user_id) !== userId);
+        next.push(saved);
+        return next;
+      });
+    } catch (err: any) {
+      setBusinessUnitError(err?.message ?? "Failed to save user mapping.");
+    } finally {
+      setMappingSaving(false);
+    }
+  }
 
   if (!allowed) {
     return (
@@ -299,6 +509,168 @@ export function ManageUsersPage() {
                 <div className="rolePermissionDesc">{roleDescriptions[role]}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 18 }}>
+        <div className="cardHeader">
+          <h2 className="userAdminSectionTitle">
+            <span className="userAdminInlineIcon" aria-hidden="true">
+              <SectionIcon />
+            </span>
+            Business Unit Administration
+          </h2>
+        </div>
+        <div className="cardBody">
+          {businessUnitError ? <div className="errorBox" role="alert" aria-live="assertive">{businessUnitError}</div> : null}
+          <div className="grid2" style={{ alignItems: "start" }}>
+            <div>
+              <div className="field">
+                <label>Business Unit Code <span className="requiredMark">*</span></label>
+                <input
+                  value={businessUnitCodeInput}
+                  onChange={(e) => setBusinessUnitCodeInput(normalizeBusinessUnitCode(e.target.value))}
+                  placeholder="e.g., US_PRU_OSGLI"
+                />
+              </div>
+              <div className="field" style={{ marginTop: 10 }}>
+                <label>Business Unit Name <span className="requiredMark">*</span></label>
+                <input
+                  value={businessUnitNameInput}
+                  onChange={(e) => setBusinessUnitNameInput(e.target.value)}
+                  placeholder="e.g., OSGLI"
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button type="button" className="btnGhostSmall" onClick={() => void saveBusinessUnit()} disabled={businessUnitSaving}>
+                  {businessUnitSaving ? "Saving..." : editingBusinessUnitCode ? "Update Business Unit" : "Add Business Unit"}
+                </button>
+                {editingBusinessUnitCode ? (
+                  <button type="button" className="btnGhostSmall" onClick={resetBusinessUnitForm} disabled={businessUnitSaving}>
+                    Cancel
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div>
+              <div className="tableWrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th scope="col" style={{ width: 200 }}>Code</th>
+                      <th scope="col">Name</th>
+                      <th scope="col" style={{ width: 150, textAlign: "right" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {businessUnits.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="emptyRow">
+                          {businessUnitLoading ? "Loading business units..." : "No Business Units found."}
+                        </td>
+                      </tr>
+                    ) : (
+                      businessUnits
+                        .slice()
+                        .sort((a, b) => `${a.business_unit_name}`.localeCompare(`${b.business_unit_name}`))
+                        .map((row) => (
+                          <tr key={row.business_unit_code}>
+                            <td>{row.business_unit_code}</td>
+                            <td>{row.business_unit_name}</td>
+                            <td style={{ textAlign: "right" }}>
+                              <div style={{ display: "inline-flex", gap: 6 }}>
+                                <button
+                                  type="button"
+                                  className="btnGhostSmall"
+                                  onClick={() => {
+                                    setEditingBusinessUnitCode(row.business_unit_code);
+                                    setBusinessUnitCodeInput(normalizeBusinessUnitCode(row.business_unit_code));
+                                    setBusinessUnitNameInput(readString(row.business_unit_name));
+                                  }}
+                                  disabled={businessUnitSaving}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btnGhostSmall"
+                                  onClick={() => void removeBusinessUnit(row.business_unit_code)}
+                                  disabled={businessUnitSaving}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 18 }}>
+            <h3 style={{ marginTop: 0 }}>User to Business Unit Mapping</h3>
+            <div className="grid2">
+              <div className="field">
+                <label>User (select existing)</label>
+                <select
+                  value={selectedMappingUserId}
+                  onChange={(e) => setSelectedMappingUserId(e.target.value)}
+                >
+                  <option value="">Select user</option>
+                  {mappingUserOptions.map((option) => (
+                    <option key={option.userId} value={option.userId}>
+                      {option.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>User ID <span className="requiredMark">*</span></label>
+                <input
+                  value={selectedMappingUserId}
+                  onChange={(e) => setSelectedMappingUserId(e.target.value)}
+                  placeholder="Enter login user identifier"
+                />
+              </div>
+              <div className="field">
+                <label>User Name</label>
+                <input
+                  value={selectedMappingUserName}
+                  onChange={(e) => setSelectedMappingUserName(e.target.value)}
+                  placeholder="Display name"
+                />
+              </div>
+            </div>
+
+            <div className="field" style={{ marginTop: 10 }}>
+              <label>Mapped Business Units</label>
+              <div className="buCheckboxGrid">
+                {activeBusinessUnits.length === 0 ? (
+                  <div className="emptyRow" style={{ borderRadius: 10 }}>No active Business Units available.</div>
+                ) : (
+                  activeBusinessUnits.map((row) => {
+                    const code = normalizeBusinessUnitCode(row.business_unit_code);
+                    const checked = selectedMappingCodes.includes(code);
+                    return (
+                      <label key={code} className="mockModeCheck">
+                        <input type="checkbox" checked={checked} onChange={() => toggleMappingCode(code)} />
+                        <span>{row.business_unit_name} ({code})</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <button type="button" className="btnGhostSmall" onClick={() => void saveUserBusinessUnitMapping()} disabled={mappingSaving || businessUnitSaving}>
+                {mappingSaving ? "Saving Mapping..." : "Save User Mapping"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

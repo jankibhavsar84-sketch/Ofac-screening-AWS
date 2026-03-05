@@ -152,6 +152,7 @@ def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningSer
                 queries=schedule["queries"],
                 screening_types=schedule["screening_types"],
                 mock_screening=bool(schedule["mock_screening"]),
+                business_unit_code=schedule.get("business_unit_code"),
                 daily_screening=False,
                 schedule_id=schedule["schedule_id"],
                 source_upload_id=schedule.get("source_upload_id"),

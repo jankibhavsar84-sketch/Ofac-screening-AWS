@@ -10,6 +10,7 @@ export type EntityMatchQuery = {
   queries: Record<string, EntityExample>;
   screening_types?: string[];
   mock_screening?: boolean;
+  business_unit_code?: string;
   daily_screening?: boolean;
   schedule_frequency?: string;
   schedule_id?: string;
@@ -47,6 +48,7 @@ export type DailySchedule = {
   batch_name: string;
   user_id?: string | null;
   user_name?: string | null;
+  business_unit_code?: string | null;
   screening_types: string[];
   schedule_frequency?: string;
   timezone: string;
@@ -98,6 +100,20 @@ export type AuditEvent = {
 
 export type SubmissionHistoryEntry = Record<string, unknown>;
 
+export type BusinessUnit = {
+  business_unit_code: string;
+  business_unit_name: string;
+  is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type UserBusinessUnitMapping = {
+  user_id: string;
+  user_name?: string | null;
+  business_unit_codes: string[];
+};
+
 export type JobStatus = "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED";
 
 export type JobAccepted = {
@@ -105,6 +121,7 @@ export type JobAccepted = {
   status: JobStatus;
   submitted_at: string;
   total_items: number;
+  business_unit_code?: string;
   daily_schedule_id?: string;
   screened_item_keys?: string[];
 };
@@ -114,6 +131,7 @@ export type BatchUploadAccepted = {
   status: JobStatus;
   submitted_at: string;
   total_items: number;
+  business_unit_code?: string;
   daily_schedule_id?: string;
   screened_item_keys?: string[];
   source_upload_id?: string;
@@ -186,6 +204,7 @@ type BatchOptions = {
   scheduleFrequency?: string;
   scheduleId?: string;
   sourceUploadId?: string;
+  businessUnitCode?: string;
   batchName?: string;
   userId?: string;
   userName?: string;
@@ -202,6 +221,7 @@ function buildBatchBody(
   if (options.scheduleFrequency && options.scheduleFrequency.trim()) body.schedule_frequency = options.scheduleFrequency.trim();
   if (options.scheduleId && options.scheduleId.trim()) body.schedule_id = options.scheduleId.trim();
   if (options.sourceUploadId && options.sourceUploadId.trim()) body.source_upload_id = options.sourceUploadId.trim();
+  if (options.businessUnitCode && options.businessUnitCode.trim()) body.business_unit_code = options.businessUnitCode.trim();
   if (options.batchName && options.batchName.trim()) body.batch_name = options.batchName.trim();
   if (options.userId && options.userId.trim()) body.user_id = options.userId.trim();
   if (options.userName && options.userName.trim()) body.user_name = options.userName.trim();
@@ -217,6 +237,7 @@ type BatchUploadRequest = {
   scheduleFrequency?: "DAILY" | "WEEKLY" | "MONTHLY";
   scheduleRunAt?: string;
   scheduleId?: string;
+  businessUnitCode?: string;
   mockScreening?: boolean;
   subscribeResults?: boolean;
   subscribeEmail?: string;
@@ -235,6 +256,7 @@ export async function uploadBatchAndSubmitJob(payload: BatchUploadRequest): Prom
   if (payload.scheduleFrequency) form.set("schedule_frequency", payload.scheduleFrequency);
   if (payload.scheduleRunAt && payload.scheduleRunAt.trim()) form.set("schedule_run_at", payload.scheduleRunAt.trim());
   if (payload.scheduleId && payload.scheduleId.trim()) form.set("schedule_id", payload.scheduleId.trim());
+  if (payload.businessUnitCode && payload.businessUnitCode.trim()) form.set("business_unit_code", payload.businessUnitCode.trim());
   form.set("mock_screening", payload.mockScreening ? "true" : "false");
   form.set("subscribe_results", payload.subscribeResults ? "true" : "false");
   if (payload.subscribeEmail && payload.subscribeEmail.trim()) form.set("subscribe_email", payload.subscribeEmail.trim());
@@ -323,12 +345,14 @@ export async function matchSync(
   queries: Record<string, EntityExample>,
   screeningTypes: string[] = [],
   mockScreening = false,
-  user?: { id: string; name: string }
+  user?: { id: string; name: string },
+  businessUnitCode?: string
 ): Promise<EntityMatchResponse> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
   const body: EntityMatchQuery = { queries };
   if (screeningTypes.length) body.screening_types = screeningTypes;
   body.mock_screening = Boolean(mockScreening);
+  if (businessUnitCode && businessUnitCode.trim()) body.business_unit_code = businessUnitCode.trim();
   if (user?.id) body.user_id = user.id;
   if (user?.name) body.user_name = user.name;
 
@@ -345,10 +369,11 @@ export async function matchSync(
   return (await resp.json()) as EntityMatchResponse;
 }
 
-export async function listAuditEvents(limit = 200, userId?: string): Promise<AuditEvent[]> {
+export async function listAuditEvents(limit = 200, userId?: string, offset = 0): Promise<AuditEvent[]> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
   const url = new URL(`${baseUrl}/audit-events`, window.location.origin);
   url.searchParams.set("limit", String(limit));
+  url.searchParams.set("offset", String(Math.max(0, offset)));
   if (userId && userId.trim()) {
     url.searchParams.set("user_id", userId.trim());
   }
@@ -370,6 +395,101 @@ export async function listDailySchedules(): Promise<DailySchedule[]> {
     throw new Error(`Failed to load daily schedules: ${await parseApiError(resp)}`);
   }
   return (await resp.json()) as DailySchedule[];
+}
+
+export async function listMyBusinessUnits(): Promise<BusinessUnit[]> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const resp = await fetch(`${baseUrl}/business-units`, {
+    headers: withAuthHeaders(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load business units: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as BusinessUnit[];
+}
+
+export async function listAdminBusinessUnits(includeInactive = true): Promise<BusinessUnit[]> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/admin/business-units`, window.location.origin);
+  url.searchParams.set("include_inactive", includeInactive ? "true" : "false");
+  const resp = await fetch(url.toString(), {
+    headers: withAuthHeaders(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load business units: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as BusinessUnit[];
+}
+
+export async function createAdminBusinessUnit(code: string, name: string): Promise<BusinessUnit> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const resp = await fetch(`${baseUrl}/admin/business-units`, {
+    method: "POST",
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ business_unit_code: code, business_unit_name: name }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to create business unit: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as BusinessUnit;
+}
+
+export async function updateAdminBusinessUnit(
+  currentCode: string,
+  nextCode: string,
+  nextName: string
+): Promise<BusinessUnit> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const resp = await fetch(`${baseUrl}/admin/business-units/${encodeURIComponent(currentCode)}`, {
+    method: "PUT",
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ business_unit_code: nextCode, business_unit_name: nextName }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to update business unit: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as BusinessUnit;
+}
+
+export async function deleteAdminBusinessUnit(code: string): Promise<void> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const resp = await fetch(`${baseUrl}/admin/business-units/${encodeURIComponent(code)}`, {
+    method: "DELETE",
+    headers: withAuthHeaders(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to delete business unit: ${await parseApiError(resp)}`);
+  }
+}
+
+export async function listBusinessUnitMappings(): Promise<UserBusinessUnitMapping[]> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const resp = await fetch(`${baseUrl}/admin/business-unit-mappings`, {
+    headers: withAuthHeaders(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load business unit mappings: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as UserBusinessUnitMapping[];
+}
+
+export async function updateBusinessUnitMapping(
+  userId: string,
+  payload: { userName?: string; businessUnitCodes: string[] }
+): Promise<UserBusinessUnitMapping> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const resp = await fetch(`${baseUrl}/admin/business-unit-mappings/${encodeURIComponent(userId)}`, {
+    method: "PUT",
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      user_name: payload.userName,
+      business_unit_codes: payload.businessUnitCodes,
+    }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to update business unit mapping: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as UserBusinessUnitMapping;
 }
 
 export async function removeDailySchedule(scheduleId: string, user?: { id?: string; name?: string }): Promise<void> {

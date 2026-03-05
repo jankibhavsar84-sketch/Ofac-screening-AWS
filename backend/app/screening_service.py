@@ -6,6 +6,7 @@ from uuid import uuid4
 from .config import settings
 from .models import (
     AuditEvent,
+    BusinessUnit,
     DailyScheduleInfo,
     EntityMatchResponse,
     EntityMatches,
@@ -15,6 +16,7 @@ from .models import (
     MatchJobRequest,
     ScheduleSubscription,
     ScreeningQueueMessage,
+    UserBusinessUnitMapping,
     UserNotification,
 )
 from .queue import SqsQueue
@@ -35,6 +37,7 @@ class ScreeningService:
         daily_schedule_id: str | None = None
         scheduled_next_run_at: str | None = None
         source_schedule_id = (payload.schedule_id or "").strip() or None
+        business_unit_code = self._normalize_business_unit_code(payload.business_unit_code)
         schedule_frequency = self.repository.normalize_schedule_frequency(payload.schedule_frequency)
         source_upload_id = (payload.source_upload_id or "").strip() or None
         base_queries = {k: v.model_dump(mode="json") for k, v in payload.queries.items()}
@@ -48,12 +51,14 @@ class ScreeningService:
         )
 
         if payload.daily_screening:
+            self._validate_business_unit_access(payload.user_id, business_unit_code)
             schedule_id = source_schedule_id or str(uuid4())
             daily_schedule_id, created = self.repository.create_or_update_daily_schedule(
                 schedule_id=schedule_id,
                 batch_name=payload.batch_name.strip(),
                 user_id=payload.user_id,
                 user_name=payload.user_name,
+                business_unit_code=business_unit_code,
                 queries=base_queries,
                 screening_types=payload.screening_types,
                 mock_screening=payload.mock_screening,
@@ -67,6 +72,7 @@ class ScreeningService:
             source_schedule_id = daily_schedule_id
             schedule_snapshot = self.repository.get_daily_schedule(daily_schedule_id)
             scheduled_next_run_at = (schedule_snapshot or {}).get("next_run_at")
+            business_unit_code = self._normalize_business_unit_code((schedule_snapshot or {}).get("business_unit_code")) or business_unit_code
             self.repository.add_audit_event(
                 action="DAILY_SCHEDULE_CREATED" if created else "DAILY_SCHEDULE_UPDATED",
                 user_id=payload.user_id,
@@ -83,12 +89,19 @@ class ScreeningService:
                     "run_minute": settings.daily_screening_minute,
                     "schedule_run_at": payload.schedule_run_at,
                     "next_run_at": scheduled_next_run_at,
+                    "business_unit_code": business_unit_code,
                 },
             )
         elif source_schedule_id:
             schedule_snapshot = self.repository.get_daily_schedule(source_schedule_id)
-            if schedule_snapshot:
-                schedule_frequency = self.repository.normalize_schedule_frequency(schedule_snapshot.get("schedule_frequency"))
+            if not schedule_snapshot:
+                raise ValueError(f"Daily schedule {source_schedule_id} not found")
+            schedule_frequency = self.repository.normalize_schedule_frequency(schedule_snapshot.get("schedule_frequency"))
+            business_unit_code = self._normalize_business_unit_code(schedule_snapshot.get("business_unit_code"))
+            if not business_unit_code:
+                raise ValueError("Business Unit is required for scheduled screening")
+        else:
+            self._validate_business_unit_access(payload.user_id, business_unit_code)
 
         # Daily schedule setup should not execute immediately; worker triggers at next_run_at.
         if payload.daily_screening and source_schedule_id:
@@ -113,6 +126,7 @@ class ScreeningService:
                 daily_schedule_id=source_schedule_id,
                 query_count=len(base_queries),
                 deferred_until=scheduled_next_run_at,
+                business_unit_code=business_unit_code,
             )
             self.repository.add_audit_event(
                 action="SCREENING_JOB_DEFERRED_UNTIL_SCHEDULE_TIME",
@@ -127,6 +141,7 @@ class ScreeningService:
                     "schedule_frequency": schedule_frequency,
                     "schedule_run_at": payload.schedule_run_at,
                     "next_run_at": scheduled_next_run_at,
+                    "business_unit_code": business_unit_code,
                 },
             )
             return MatchJobAccepted(
@@ -134,6 +149,7 @@ class ScreeningService:
                 status=JobStatus.completed,
                 submitted_at=submitted_at,
                 total_items=0,
+                business_unit_code=business_unit_code or None,
                 daily_schedule_id=daily_schedule_id,
                 screened_item_keys=[],
             )
@@ -170,6 +186,7 @@ class ScreeningService:
                 schedule_frequency=schedule_frequency if (payload.daily_screening or source_schedule_id) else None,
                 daily_schedule_id=source_schedule_id,
                 query_count=len(base_queries),
+                business_unit_code=business_unit_code,
             )
             self.repository.add_audit_event(
                 action="SCREENING_JOB_SKIPPED_NO_NEW_RECORDS",
@@ -181,6 +198,7 @@ class ScreeningService:
                     "source_schedule_id": source_schedule_id,
                     "total_items": 0,
                     "skipped_existing_records": skipped_existing_records,
+                    "business_unit_code": business_unit_code,
                 },
             )
             return MatchJobAccepted(
@@ -188,6 +206,7 @@ class ScreeningService:
                 status=JobStatus.completed,
                 submitted_at=submitted_at,
                 total_items=0,
+                business_unit_code=business_unit_code or None,
                 daily_schedule_id=daily_schedule_id,
                 screened_item_keys=[],
             )
@@ -211,6 +230,7 @@ class ScreeningService:
             schedule_frequency=schedule_frequency if (payload.daily_screening or source_schedule_id) else None,
             daily_schedule_id=source_schedule_id,
             query_count=len(base_queries),
+            business_unit_code=business_unit_code,
         )
 
         for item_key, query_payload in queries_for_job.items():
@@ -237,26 +257,41 @@ class ScreeningService:
             user_name=payload.user_name,
             entity_type="screening_job",
             entity_id=job_id,
-            details={
-                "total_items": len(queries_for_job),
-                "screening_types": payload.screening_types,
-                "daily_screening": payload.daily_screening,
-                "batch_name": payload.batch_name,
-                "mock_screening": payload.mock_screening,
-                "source_schedule_id": source_schedule_id,
-                "source_upload_id": source_upload_id,
-                "skipped_existing_records": skipped_existing_records,
-            },
-        )
+                details={
+                    "total_items": len(queries_for_job),
+                    "screening_types": payload.screening_types,
+                    "daily_screening": payload.daily_screening,
+                    "batch_name": payload.batch_name,
+                    "mock_screening": payload.mock_screening,
+                    "source_schedule_id": source_schedule_id,
+                    "source_upload_id": source_upload_id,
+                    "skipped_existing_records": skipped_existing_records,
+                    "business_unit_code": business_unit_code,
+                },
+            )
 
         return MatchJobAccepted(
             job_id=job_id,
             status=JobStatus.queued,
             submitted_at=submitted_at,
             total_items=len(queries_for_job),
+            business_unit_code=business_unit_code or None,
             daily_schedule_id=daily_schedule_id,
             screened_item_keys=list(queries_for_job.keys()),
         )
+
+    @staticmethod
+    def _normalize_business_unit_code(value: str | None) -> str:
+        return str(value or "").strip().upper()
+
+    def _validate_business_unit_access(self, user_id: str | None, business_unit_code: str | None) -> str:
+        safe_code = self._normalize_business_unit_code(business_unit_code)
+        if not safe_code:
+            raise ValueError("Business Unit is required")
+        safe_user_id = str(user_id or "").strip()
+        if safe_user_id and not self.repository.user_has_business_unit(safe_user_id, safe_code):
+            raise ValueError("Selected Business Unit is not mapped to this user")
+        return safe_code
 
     def get_progress(self, job_id: str) -> MatchJobProgress | None:
         snapshot = self.repository.get_job_snapshot(job_id)
@@ -445,11 +480,13 @@ class ScreeningService:
                         "displayName": f"Single Screening ({len(meta)})",
                         "result": overall,
                         "screeningTypes": screening_types,
+                        "businessUnitCode": row.get("business_unit_code"),
                         "details": {
                             "meta": meta,
                             "responses": responses,
                             "screeningTypes": screening_types,
                             "mockScreening": bool(row.get("mock_screening")),
+                            "businessUnitCode": row.get("business_unit_code"),
                         },
                     }
                 )
@@ -570,6 +607,7 @@ class ScreeningService:
                     "dailyScheduleActive": daily_schedule_active,
                     "sourceUploadId": row.get("source_upload_id"),
                     "sourceS3Uri": row.get("upload_s3_uri"),
+                    "businessUnitCode": row.get("business_unit_code"),
                     "items": batch_items,
                 }
             )
@@ -584,6 +622,7 @@ class ScreeningService:
                 batch_name=s["batch_name"],
                 user_id=s.get("user_id"),
                 user_name=s.get("user_name"),
+                business_unit_code=s.get("business_unit_code"),
                 screening_types=s["screening_types"] if isinstance(s["screening_types"], list) else [],
                 schedule_frequency=s.get("schedule_frequency", "DAILY"),
                 timezone=s["timezone"],
@@ -614,8 +653,8 @@ class ScreeningService:
             )
         return removed
 
-    def list_audit_events(self, limit: int = 200, user_id: str | None = None) -> list[AuditEvent]:
-        events = self.repository.list_audit_events(limit=limit, user_id=user_id)
+    def list_audit_events(self, limit: int = 200, user_id: str | None = None, offset: int = 0) -> list[AuditEvent]:
+        events = self.repository.list_audit_events(limit=limit, user_id=user_id, offset=offset)
         return [AuditEvent.model_validate(e) for e in events]
 
     def subscribe_to_schedule(
@@ -684,3 +723,93 @@ class ScreeningService:
     ) -> list[UserNotification]:
         rows = self.repository.list_user_notifications(limit=limit, user_id=user_id, email=email)
         return [UserNotification.model_validate(row) for row in rows]
+
+    def list_business_units_for_user(self, user_id: str) -> list[BusinessUnit]:
+        rows = self.repository.list_business_units(user_id=user_id, include_inactive=False)
+        return [BusinessUnit.model_validate(row) for row in rows]
+
+    def list_all_business_units(self, include_inactive: bool = True) -> list[BusinessUnit]:
+        rows = self.repository.list_business_units(user_id=None, include_inactive=include_inactive)
+        return [BusinessUnit.model_validate(row) for row in rows]
+
+    def create_business_unit(
+        self,
+        business_unit_code: str,
+        business_unit_name: str,
+        actor_user_id: str | None,
+        actor_user_name: str | None,
+    ) -> BusinessUnit:
+        row = self.repository.upsert_business_unit(business_unit_code=business_unit_code, business_unit_name=business_unit_name)
+        self.repository.add_audit_event(
+            action="BUSINESS_UNIT_UPSERTED",
+            user_id=actor_user_id,
+            user_name=actor_user_name,
+            entity_type="business_unit",
+            entity_id=row.get("business_unit_code"),
+            details={"business_unit_name": row.get("business_unit_name")},
+        )
+        return BusinessUnit.model_validate(row)
+
+    def update_business_unit(
+        self,
+        business_unit_code: str,
+        next_business_unit_code: str | None,
+        next_business_unit_name: str,
+        actor_user_id: str | None,
+        actor_user_name: str | None,
+    ) -> BusinessUnit | None:
+        row = self.repository.update_business_unit(
+            business_unit_code=business_unit_code,
+            next_business_unit_code=next_business_unit_code,
+            next_business_unit_name=next_business_unit_name,
+        )
+        if not row:
+            return None
+        self.repository.add_audit_event(
+            action="BUSINESS_UNIT_UPDATED",
+            user_id=actor_user_id,
+            user_name=actor_user_name,
+            entity_type="business_unit",
+            entity_id=row.get("business_unit_code"),
+            details={"business_unit_name": row.get("business_unit_name")},
+        )
+        return BusinessUnit.model_validate(row)
+
+    def delete_business_unit(self, business_unit_code: str, actor_user_id: str | None, actor_user_name: str | None) -> bool:
+        removed = self.repository.delete_business_unit(business_unit_code)
+        if removed:
+            self.repository.add_audit_event(
+                action="BUSINESS_UNIT_DELETED",
+                user_id=actor_user_id,
+                user_name=actor_user_name,
+                entity_type="business_unit",
+                entity_id=business_unit_code,
+            )
+        return removed
+
+    def list_user_business_unit_mappings(self) -> list[UserBusinessUnitMapping]:
+        rows = self.repository.list_user_business_unit_mappings()
+        return [UserBusinessUnitMapping.model_validate(row) for row in rows]
+
+    def set_user_business_unit_mapping(
+        self,
+        user_id: str,
+        user_name: str | None,
+        business_unit_codes: list[str],
+        actor_user_id: str | None,
+        actor_user_name: str | None,
+    ) -> UserBusinessUnitMapping:
+        saved_codes = self.repository.set_user_business_units(
+            user_id=user_id,
+            user_name=user_name,
+            business_unit_codes=business_unit_codes,
+        )
+        self.repository.add_audit_event(
+            action="USER_BUSINESS_UNITS_UPDATED",
+            user_id=actor_user_id,
+            user_name=actor_user_name,
+            entity_type="user_business_units",
+            entity_id=user_id,
+            details={"user_name": user_name, "business_unit_codes": saved_codes},
+        )
+        return UserBusinessUnitMapping(user_id=user_id, user_name=user_name, business_unit_codes=saved_codes)

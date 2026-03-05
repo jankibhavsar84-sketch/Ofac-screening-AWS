@@ -5,10 +5,12 @@ import { z } from "zod";
 import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
 import {
   listDailySchedules,
+  listMyBusinessUnits,
   listScreeningSubmissions,
   matchSync,
   uploadBatchAndSubmitJob,
   waitForScreeningJob,
+  type BusinessUnit,
   type EntityExample,
   type EntityMatches,
 } from "../api/openSanctions";
@@ -656,11 +658,13 @@ export function ScreeningDetailPage() {
   const [notes, setNotes] = useState("");
   const [singleScreeningTypes, setSingleScreeningTypes] = useState<ScreeningType[]>(["Sanction"]);
   const [singleMockScreening, setSingleMockScreening] = useState(true);
+  const [singleBusinessUnitCode, setSingleBusinessUnitCode] = useState("");
 
   // BATCH
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [batchName, setBatchName] = useState("");
   const [batchScreeningTypes, setBatchScreeningTypes] = useState<ScreeningType[]>(["Sanction"]);
+  const [batchBusinessUnitCode, setBatchBusinessUnitCode] = useState("");
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [batchFileName, setBatchFileName] = useState("");
   const [batchError, setBatchError] = useState<string | null>(null);
@@ -669,6 +673,7 @@ export function ScreeningDetailPage() {
   const [scheduleTemplatesOpen, setScheduleTemplatesOpen] = useState(false);
   const [scheduleName, setScheduleName] = useState("");
   const [scheduleScreeningTypes, setScheduleScreeningTypes] = useState<ScreeningType[]>(["Sanction"]);
+  const [scheduleBusinessUnitCode, setScheduleBusinessUnitCode] = useState("");
   const [scheduleFrequency, setScheduleFrequency] = useState<ScheduleFrequency>("DAILY");
   const [scheduleRunAt, setScheduleRunAt] = useState(defaultScheduleRunAtValue);
   const [scheduleSubscriptionEmails, setScheduleSubscriptionEmails] = useState("");
@@ -678,6 +683,8 @@ export function ScreeningDetailPage() {
 
   const [singleError, setSingleError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const [businessUnitsError, setBusinessUnitsError] = useState<string | null>(null);
   const selectedEntityType: UiType = names[0]?.uiType ?? "Individual";
   const primaryName = names[0];
   const aliasNames = names.slice(1);
@@ -727,6 +734,41 @@ export function ScreeningDetailPage() {
       setMode("SINGLE");
     }
   }, [canDailyScreening, mode]);
+
+  const businessUnitOptions = useMemo(
+    () =>
+      [...businessUnits]
+        .map((row) => ({
+          code: safeTrim(String(row.business_unit_code || "")).toUpperCase(),
+          name: safeTrim(String(row.business_unit_name || "")),
+        }))
+        .filter((row) => row.code && row.name)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [businessUnits]
+  );
+
+  useEffect(() => {
+    if (!currentUser) return;
+    void (async () => {
+      try {
+        setBusinessUnitsError(null);
+        const rows = await listMyBusinessUnits();
+        setBusinessUnits(Array.isArray(rows) ? rows : []);
+      } catch (err: any) {
+        setBusinessUnits([]);
+        setBusinessUnitsError(err?.message ?? "Failed to load Business Units.");
+      }
+    })();
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    const validCodes = new Set(businessUnitOptions.map((row) => row.code));
+    const firstCode = businessUnitOptions[0]?.code ?? "";
+
+    if (!validCodes.has(singleBusinessUnitCode)) setSingleBusinessUnitCode(firstCode);
+    if (!validCodes.has(batchBusinessUnitCode)) setBatchBusinessUnitCode(firstCode);
+    if (!validCodes.has(scheduleBusinessUnitCode)) setScheduleBusinessUnitCode(firstCode);
+  }, [businessUnitOptions, singleBusinessUnitCode, batchBusinessUnitCode, scheduleBusinessUnitCode]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -992,6 +1034,11 @@ export function ScreeningDetailPage() {
         setSubmitting(false);
         return;
       }
+      if (!safeTrim(singleBusinessUnitCode)) {
+        setSingleError("Business Unit is required.");
+        setSubmitting(false);
+        return;
+      }
 
       const parsed = singleSchema.safeParse(names);
       if (!parsed.success) {
@@ -1061,7 +1108,7 @@ export function ScreeningDetailPage() {
       const resp = await matchSync(queries, singleScreeningTypes, singleMockScreening, {
         id: currentUser.id,
         name: currentUser.name,
-      });
+      }, singleBusinessUnitCode);
 
       // Convert to a single "SINGLE" submission containing multiple items (still SINGLE mode for your history)
       // We store as SingleSubmission but keep details so results table can read it
@@ -1071,6 +1118,7 @@ export function ScreeningDetailPage() {
         mode: "SINGLE",
         createdByUserId: currentUser.id,
         createdByUserName: currentUser.name,
+        businessUnitCode: singleBusinessUnitCode,
         customerType: "Person", // not used by new results table; keep for backward compatibility
         displayName: `Single Screening (${meta.length})`,
         result: "NO_HIT",
@@ -1082,6 +1130,7 @@ export function ScreeningDetailPage() {
           notes,
           screeningTypes: singleScreeningTypes,
           mockScreening: singleMockScreening,
+          businessUnitCode: singleBusinessUnitCode,
         },
       };
 
@@ -1133,6 +1182,10 @@ export function ScreeningDetailPage() {
       setBatchError("Select at least one screening type.");
       return;
     }
+    if (!safeTrim(batchBusinessUnitCode)) {
+      setBatchError("Business Unit is required.");
+      return;
+    }
     if (!batchFile) {
       setBatchError("Please drop or select a CSV/XLSX file.");
       return;
@@ -1158,6 +1211,7 @@ export function ScreeningDetailPage() {
         queries,
         screeningTypes: batchScreeningTypes,
         batchName,
+        businessUnitCode: batchBusinessUnitCode,
         dailyScreening: false,
         mockScreening: false,
         subscribeResults: false,
@@ -1194,6 +1248,7 @@ export function ScreeningDetailPage() {
         mode: "BATCH",
         createdByUserId: currentUser.id,
         createdByUserName: currentUser.name,
+        businessUnitCode: batchBusinessUnitCode,
         jobId: accepted.job_id,
         fileName: batchFile.name,
         overallResult: accepted.total_items === 0 ? "NO_HIT" : "PROCESSING",
@@ -1329,6 +1384,10 @@ export function ScreeningDetailPage() {
       setScheduleError("Select at least one screening type.");
       return;
     }
+    if (!safeTrim(scheduleBusinessUnitCode)) {
+      setScheduleError("Business Unit is required.");
+      return;
+    }
     if (!safeTrim(scheduleRunAt)) {
       setScheduleError("Run date/time is required.");
       return;
@@ -1365,6 +1424,7 @@ export function ScreeningDetailPage() {
         queries,
         screeningTypes: scheduleScreeningTypes,
         batchName: scheduleName,
+        businessUnitCode: scheduleBusinessUnitCode,
         dailyScreening: true,
         scheduleFrequency,
         scheduleRunAt: scheduleRunAtUtc,
@@ -1405,6 +1465,7 @@ export function ScreeningDetailPage() {
         mode: "BATCH",
         createdByUserId: currentUser.id,
         createdByUserName: currentUser.name,
+        businessUnitCode: scheduleBusinessUnitCode,
         jobId: accepted.job_id,
         fileName: scheduleFile.name,
         overallResult: isDeferredScheduleStart ? "PROCESSING" : accepted.total_items === 0 ? "NO_HIT" : "PROCESSING",
@@ -1858,7 +1919,29 @@ export function ScreeningDetailPage() {
                     ariaLabel="Entity type"
                   />
                 </div>
+                <div className="field singleEntityTypeField">
+                  <label>Business Unit <span className="requiredMark">*</span></label>
+                  <select
+                    value={singleBusinessUnitCode}
+                    onChange={(e) => setSingleBusinessUnitCode(e.target.value)}
+                    required
+                  >
+                    <option value="">Select Business Unit</option>
+                    {businessUnitOptions.map((row) => (
+                      <option key={row.code} value={row.code}>
+                        {row.name} ({row.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              {businessUnitsError ? <div className="errorBox" role="alert" aria-live="assertive">{businessUnitsError}</div> : null}
+              {!businessUnitOptions.length && !businessUnitsError ? (
+                <div className="errorBox" role="alert" aria-live="polite">
+                  No Business Unit is mapped to your user. Please contact an administrator.
+                </div>
+              ) : null}
 
               <ScreeningTypeCards
                 selected={singleScreeningTypes}
@@ -2216,6 +2299,22 @@ export function ScreeningDetailPage() {
               <input required value={batchName} onChange={(e) => setBatchName(e.target.value)} placeholder="e.g., Q1 2024 Vendor Screening" />
             </div>
 
+            <div className="field" style={{ marginTop: 10 }}>
+              <label>Business Unit <span className="requiredMark">*</span></label>
+              <select
+                required
+                value={batchBusinessUnitCode}
+                onChange={(e) => setBatchBusinessUnitCode(e.target.value)}
+              >
+                <option value="">Select Business Unit</option>
+                {businessUnitOptions.map((row) => (
+                  <option key={row.code} value={row.code}>
+                    {row.name} ({row.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <ScreeningTypeCards
               selected={batchScreeningTypes}
               onToggle={(value) => toggleScreeningType(value, setBatchScreeningTypes)}
@@ -2272,6 +2371,12 @@ export function ScreeningDetailPage() {
               />
             </div>
 
+            {businessUnitsError ? <div className="errorBox" role="alert" aria-live="assertive">{businessUnitsError}</div> : null}
+            {!businessUnitOptions.length && !businessUnitsError ? (
+              <div className="errorBox" role="alert" aria-live="polite">
+                No Business Unit is mapped to your user. Please contact an administrator.
+              </div>
+            ) : null}
             {batchError ? <div className="errorBox" role="alert" aria-live="assertive">{batchError}</div> : null}
             <form onSubmit={submitBatch}>
               <button className="btnBatchWide" type="submit" disabled={submitting}>
@@ -2319,6 +2424,22 @@ export function ScreeningDetailPage() {
               <div className="field" style={{ marginTop: 14 }}>
                 <label>Schedule Name <span className="requiredMark">*</span></label>
                 <input required value={scheduleName} onChange={(e) => setScheduleName(e.target.value)} placeholder="e.g., Daily Vendor Watchlist Run" />
+              </div>
+
+              <div className="field" style={{ marginTop: 10 }}>
+                <label>Business Unit <span className="requiredMark">*</span></label>
+                <select
+                  required
+                  value={scheduleBusinessUnitCode}
+                  onChange={(e) => setScheduleBusinessUnitCode(e.target.value)}
+                >
+                  <option value="">Select Business Unit</option>
+                  {businessUnitOptions.map((row) => (
+                    <option key={row.code} value={row.code}>
+                      {row.name} ({row.code})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <ScreeningTypeCards
@@ -2386,7 +2507,7 @@ export function ScreeningDetailPage() {
               </div>
 
               <div className="field" style={{ marginTop: 10 }}>
-                <label>Subscription Emails (optional - email delivery)</label>
+                <label>Subscription Emails</label>
                 <textarea
                   value={scheduleSubscriptionEmails}
                   onChange={(e) => setScheduleSubscriptionEmails(e.target.value)}
@@ -2447,6 +2568,12 @@ export function ScreeningDetailPage() {
                 />
               </div>
 
+              {businessUnitsError ? <div className="errorBox" role="alert" aria-live="assertive">{businessUnitsError}</div> : null}
+              {!businessUnitOptions.length && !businessUnitsError ? (
+                <div className="errorBox" role="alert" aria-live="polite">
+                  No Business Unit is mapped to your user. Please contact an administrator.
+                </div>
+              ) : null}
               {scheduleError ? <div className="errorBox" role="alert" aria-live="assertive">{scheduleError}</div> : null}
               <button className="btnBatchWide" type="submit" disabled={submitting}>
                 {submitting ? "Starting..." : "Create Scheduled Screening"}
