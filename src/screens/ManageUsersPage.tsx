@@ -37,35 +37,6 @@ function normalizeBusinessUnitCode(value: string): string {
   return readString(value).toUpperCase();
 }
 
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => String(item || "").trim()).filter(Boolean);
-}
-
-function toTitleCaseWords(input: string): string {
-  const normalized = input.replace(/[_-]+/g, " ").trim();
-  if (!normalized) return "";
-  return normalized
-    .split(/\s+/g)
-    .map((word) => (word ? word[0].toUpperCase() + word.slice(1).toLowerCase() : ""))
-    .join(" ");
-}
-
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-}
-
-function readErrorFromDetails(details: Record<string, unknown> | undefined): string {
-  if (!details) return "";
-  const candidates = [details.error, details.error_text, details.message, details.detail];
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
-  }
-  return "";
-}
-
 function isTechnicalIdentifier(value: string): boolean {
   const raw = value.trim();
   if (!raw) return true;
@@ -91,70 +62,6 @@ function resolveAuditUserName(event: AuditEvent): string {
     if (candidate) return candidate;
   }
   return readString(event.user_id) || "-";
-}
-
-function formatActionLabel(action: string): string {
-  const normalized = readString(action);
-  return normalized ? toTitleCaseWords(normalized) : "-";
-}
-
-function shortId(value: string): string {
-  const trimmed = readString(value);
-  if (!trimmed) return "";
-  if (trimmed.length <= 12) return trimmed;
-  return `${trimmed.slice(0, 8)}...`;
-}
-
-function resolveEntityLabel(event: AuditEvent): string {
-  const details = (event.details as Record<string, unknown> | undefined) || undefined;
-  const entityType = readString(event.entity_type).toLowerCase();
-  const entityId = readString(event.entity_id);
-  const action = readString(event.action).toUpperCase();
-
-  if (entityType === "screening_job" || action.includes("SCREENING_JOB")) {
-    const batchName = readString(details?.batch_name);
-    const totalItemsRaw = Number(details?.total_items);
-    const screeningTypes = toStringArray(details?.screening_types);
-    const base = batchName ? `Batch "${batchName}"` : "Batch screening job";
-    const parts: string[] = [];
-    if (Number.isFinite(totalItemsRaw) && totalItemsRaw > 0) parts.push(`${totalItemsRaw} items`);
-    if (screeningTypes.length) parts.push(screeningTypes.join(", "));
-    if (entityId) parts.push(`job ${shortId(entityId)}`);
-    return parts.length ? `${base} (${parts.join(" | ")})` : base;
-  }
-
-  if (entityType === "sync_screening") {
-    const totalItemsRaw = Number(details?.total_items);
-    const screeningTypes = toStringArray(details?.screening_types);
-    const parts: string[] = [];
-    if (Number.isFinite(totalItemsRaw) && totalItemsRaw > 0) parts.push(`${totalItemsRaw} item${totalItemsRaw > 1 ? "s" : ""}`);
-    if (screeningTypes.length) parts.push(screeningTypes.join(", "));
-    return parts.length ? `Single screening (${parts.join(" | ")})` : "Single screening";
-  }
-
-  if (entityType === "screening_item") {
-    const itemKey = readString(details?.item_key) || (entityId.includes(":") ? entityId.split(":")[1] : "");
-    const jobId = readString(details?.job_id) || (entityId.includes(":") ? entityId.split(":")[0] : "");
-    const base = itemKey ? `Batch item ${itemKey}` : "Batch item";
-    return jobId ? `${base} (job ${shortId(jobId)})` : base;
-  }
-
-  if (entityType === "sync_screening_item") {
-    const itemKey = readString(details?.item_key) || entityId;
-    return itemKey ? `Single screening item ${itemKey}` : "Single screening item";
-  }
-
-  if (entityType === "daily_schedule") {
-    const batchName = readString(details?.batch_name);
-    const base = batchName ? `Daily schedule "${batchName}"` : "Daily schedule";
-    return entityId ? `${base} (${shortId(entityId)})` : base;
-  }
-
-  const fallbackType = entityType ? toTitleCaseWords(entityType) : toTitleCaseWords(action);
-  if (fallbackType && entityId) return `${fallbackType} (${entityId})`;
-  if (fallbackType) return fallbackType;
-  if (entityId) return entityId;
-  return "-";
 }
 
 function SectionIcon() {
@@ -202,13 +109,8 @@ export function ManageUsersPage() {
   const auth = useAuth();
   const identity = buildIdentity(auth.user);
   const allowed = hasPermission(identity, "screening.admin", "screening.useradmin");
-  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditError, setAuditError] = useState<string | null>(null);
-  const [auditUserFilter, setAuditUserFilter] = useState("all");
-  const [auditErrorsOnly, setAuditErrorsOnly] = useState(false);
+
   const [auditUserOptions, setAuditUserOptions] = useState<AuditUserOption[]>([]);
-  const [auditPage, setAuditPage] = useState(1);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [businessUnitMappings, setBusinessUnitMappings] = useState<UserBusinessUnitMapping[]>([]);
   const [businessUnitLoading, setBusinessUnitLoading] = useState(false);
@@ -218,26 +120,9 @@ export function ManageUsersPage() {
   const [editingBusinessUnitCode, setEditingBusinessUnitCode] = useState<string | null>(null);
   const [businessUnitSaving, setBusinessUnitSaving] = useState(false);
   const [selectedMappingUserId, setSelectedMappingUserId] = useState("");
-  const [selectedMappingUserName, setSelectedMappingUserName] = useState("");
   const [selectedMappingCodes, setSelectedMappingCodes] = useState<string[]>([]);
   const [mappingSaving, setMappingSaving] = useState(false);
 
-  const sortedAuditUserOptions = useMemo(
-    () => [...auditUserOptions].sort((a, b) => a.displayName.localeCompare(b.displayName)),
-    [auditUserOptions]
-  );
-  const auditUserNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const option of auditUserOptions) {
-      const id = option.userId.trim();
-      const name = option.displayName.trim();
-      if (!id || !name) continue;
-      if (!map.has(id) || isTechnicalIdentifier(map.get(id) || "")) {
-        map.set(id, name);
-      }
-    }
-    return map;
-  }, [auditUserOptions]);
   const activeBusinessUnits = useMemo(
     () =>
       [...businessUnits]
@@ -276,9 +161,7 @@ export function ManageUsersPage() {
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
   }, [auditUserOptions, businessUnitMappings, identity?.id, identity?.name]);
 
-  async function loadAuditEvents(userId?: string) {
-    setAuditError(null);
-    setAuditLoading(true);
+  async function loadAuditUserOptions() {
     try {
       const pageSize = 1000;
       const maxRows = 50000;
@@ -286,39 +169,27 @@ export function ManageUsersPage() {
       const rows: AuditEvent[] = [];
 
       while (offset < maxRows) {
-        const page = await listAuditEvents(pageSize, userId, offset);
+        const page = await listAuditEvents(pageSize, undefined, offset);
         rows.push(...page);
         if (page.length < pageSize) break;
         offset += page.length;
       }
 
-      setAuditEvents(rows);
       setAuditUserOptions((prev) => {
         const merged = new Map<string, string>(prev.map((item) => [item.userId, item.displayName]));
         for (const row of rows) {
-          const rowUserId = readString(row.user_id);
-          if (!rowUserId) continue;
-          const resolvedName = resolveAuditUserName(row);
-          const existing = merged.get(rowUserId);
-          if (!existing || existing === rowUserId) {
-            merged.set(rowUserId, resolvedName || rowUserId);
+          const userId = readString(row.user_id);
+          if (!userId) continue;
+          const displayName = resolveAuditUserName(row);
+          const existing = merged.get(userId);
+          if (!existing || existing === userId) {
+            merged.set(userId, displayName || userId);
           }
         }
-        if (identity?.id) {
-          const id = identity.id.trim();
-          if (id && !merged.has(id)) {
-            merged.set(id, (identity.name || identity.email || identity.id).trim());
-          }
-        }
-        return Array.from(merged.entries()).map(([userIdValue, displayName]) => ({
-          userId: userIdValue,
-          displayName: displayName || userIdValue,
-        }));
+        return Array.from(merged.entries()).map(([userId, displayName]) => ({ userId, displayName }));
       });
-    } catch (err: any) {
-      setAuditError(err?.message ?? "Failed to load audit events.");
-    } finally {
-      setAuditLoading(false);
+    } catch {
+      // best-effort source for user options
     }
   }
 
@@ -348,28 +219,9 @@ export function ManageUsersPage() {
 
   useEffect(() => {
     if (!allowed) return;
-    const userId = auditUserFilter === "all" ? undefined : auditUserFilter;
-    void loadAuditEvents(userId);
-  }, [allowed, auditUserFilter]);
-
-  useEffect(() => {
-    if (!allowed) return;
     void loadBusinessUnitAdminData();
+    void loadAuditUserOptions();
   }, [allowed]);
-
-  const filteredAuditEvents = useMemo(() => {
-    if (!auditErrorsOnly) return auditEvents;
-    return auditEvents.filter((event) => {
-      const action = (event.action || "").toUpperCase();
-      const details = event.details as Record<string, unknown> | undefined;
-      return action.includes("FAILED") || Boolean(readErrorFromDetails(details));
-    });
-  }, [auditEvents, auditErrorsOnly]);
-  const auditPageSize = 10;
-  const totalAuditPages = Math.max(1, Math.ceil(filteredAuditEvents.length / auditPageSize));
-  const auditPageSafe = Math.min(auditPage, totalAuditPages);
-  const auditStartIdx = (auditPageSafe - 1) * auditPageSize;
-  const pagedAuditEvents = filteredAuditEvents.slice(auditStartIdx, auditStartIdx + auditPageSize);
 
   useEffect(() => {
     if (selectedMappingUserId) return;
@@ -380,18 +232,15 @@ export function ManageUsersPage() {
   useEffect(() => {
     const safeUserId = readString(selectedMappingUserId);
     if (!safeUserId) {
-      setSelectedMappingUserName("");
       setSelectedMappingCodes([]);
       return;
     }
     const mapped = businessUnitMappingsByUser.get(safeUserId);
-    const optionName = mappingUserOptions.find((opt) => opt.userId === safeUserId)?.displayName || safeUserId;
-    setSelectedMappingUserName(readString(mapped?.user_name) || optionName);
     const codes = Array.isArray(mapped?.business_unit_codes)
       ? mapped.business_unit_codes.map((code) => normalizeBusinessUnitCode(String(code))).filter(Boolean)
       : [];
     setSelectedMappingCodes(Array.from(new Set(codes)));
-  }, [selectedMappingUserId, businessUnitMappingsByUser, mappingUserOptions]);
+  }, [selectedMappingUserId, businessUnitMappingsByUser]);
 
   function resetBusinessUnitForm() {
     setEditingBusinessUnitCode(null);
@@ -457,12 +306,13 @@ export function ManageUsersPage() {
       setBusinessUnitError("Select a user to map Business Units.");
       return;
     }
+    const userName = mappingUserOptions.find((row) => row.userId === userId)?.displayName || userId;
 
     setBusinessUnitError(null);
     setMappingSaving(true);
     try {
       const saved = await updateBusinessUnitMapping(userId, {
-        userName: selectedMappingUserName,
+        userName,
         businessUnitCodes: selectedMappingCodes,
       });
       setBusinessUnitMappings((prev) => {
@@ -485,7 +335,7 @@ export function ManageUsersPage() {
             <h2>Access Denied</h2>
           </div>
           <div className="cardBody">
-            <p className="muted">Administrator access is required (`admin` or `screening.admin`).</p>
+            <p className="muted">Administrator access is required (`screening.admin` or `screening.useradmin`).</p>
           </div>
         </div>
       </div>
@@ -613,7 +463,7 @@ export function ManageUsersPage() {
 
           <div style={{ marginTop: 18 }}>
             <h3 style={{ marginTop: 0 }}>User to Business Unit Mapping</h3>
-            <div className="grid2">
+            <div>
               <div className="field">
                 <label>User (select existing)</label>
                 <select
@@ -627,22 +477,6 @@ export function ManageUsersPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="field">
-                <label>User ID <span className="requiredMark">*</span></label>
-                <input
-                  value={selectedMappingUserId}
-                  onChange={(e) => setSelectedMappingUserId(e.target.value)}
-                  placeholder="Enter login user identifier"
-                />
-              </div>
-              <div className="field">
-                <label>User Name</label>
-                <input
-                  value={selectedMappingUserName}
-                  onChange={(e) => setSelectedMappingUserName(e.target.value)}
-                  placeholder="Display name"
-                />
               </div>
             </div>
 
@@ -671,120 +505,6 @@ export function ManageUsersPage() {
                 {mappingSaving ? "Saving Mapping..." : "Save User Mapping"}
               </button>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 18 }}>
-        <div className="cardHeader">
-          <h2 className="userAdminSectionTitle">
-            <span className="userAdminInlineIcon" aria-hidden="true">
-              <SectionIcon />
-            </span>
-            User Audit Logs
-          </h2>
-        </div>
-        <div className="cardBody">
-          <div className="adminScheduleHeader" style={{ marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <div className="field" style={{ minWidth: 220 }}>
-                <label>User Filter</label>
-                <select
-                  value={auditUserFilter}
-                  onChange={(e) => {
-                    setAuditUserFilter(e.target.value);
-                    setAuditPage(1);
-                  }}
-                >
-                  <option value="all">All users</option>
-                  {sortedAuditUserOptions.map((option) => (
-                    <option key={option.userId} value={option.userId}>
-                      {option.displayName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <label className="mockModeCheck" style={{ marginTop: 18 }}>
-                <input
-                  type="checkbox"
-                  checked={auditErrorsOnly}
-                  onChange={(e) => {
-                    setAuditErrorsOnly(e.target.checked);
-                    setAuditPage(1);
-                  }}
-                />
-                <span>Show errors only</span>
-              </label>
-            </div>
-            <button
-              type="button"
-              className="btnGhost"
-              onClick={() => {
-                setAuditPage(1);
-                void loadAuditEvents(auditUserFilter === "all" ? undefined : auditUserFilter);
-              }}
-              disabled={auditLoading}
-            >
-              {auditLoading ? "Refreshing..." : "Refresh"}
-            </button>
-          </div>
-
-          {auditError ? <div className="errorBox" role="alert" aria-live="assertive">{auditError}</div> : null}
-
-          <div className="pagerRow" style={{ marginBottom: 10 }}>
-            <div className="pagerText">
-              Showing {filteredAuditEvents.length === 0 ? 0 : auditStartIdx + 1} to {Math.min(filteredAuditEvents.length, auditStartIdx + auditPageSize)} of {filteredAuditEvents.length} audit events
-            </div>
-            <div className="pagerRight">
-              <button className="pagerBtn" disabled={auditPageSafe <= 1} onClick={() => setAuditPage((p) => Math.max(1, p - 1))} type="button">
-                Previous
-              </button>
-              <div className="pagerText">Page {auditPageSafe} of {totalAuditPages}</div>
-              <button className="pagerBtn" disabled={auditPageSafe >= totalAuditPages} onClick={() => setAuditPage((p) => Math.min(totalAuditPages, p + 1))} type="button">
-                Next
-              </button>
-            </div>
-          </div>
-
-          <div className="tableWrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th scope="col" style={{ width: 180 }}>Time</th>
-                  <th scope="col" style={{ width: 220 }}>User</th>
-                  <th scope="col" style={{ width: 220 }}>Action</th>
-                  <th scope="col" style={{ width: 360 }}>Entity</th>
-                  <th scope="col">Error</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagedAuditEvents.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="emptyRow">
-                      {auditLoading ? "Loading audit events..." : "No audit events found."}
-                    </td>
-                  </tr>
-                ) : (
-                  pagedAuditEvents.map((event) => {
-                    const details = event.details as Record<string, unknown> | undefined;
-                    const errorText = readErrorFromDetails(details);
-                    const rowUserId = readString(event.user_id);
-                    const resolvedUserName = (rowUserId ? auditUserNameById.get(rowUserId) : "") || resolveAuditUserName(event);
-                    return (
-                      <tr key={event.event_id}>
-                        <td className="muted">{formatDateTime(event.created_at)}</td>
-                        <td>{resolvedUserName}</td>
-                        <td>
-                          <span className="statusPill statusPending">{formatActionLabel(event.action)}</span>
-                        </td>
-                        <td className="muted">{resolveEntityLabel(event)}</td>
-                        <td className="muted">{errorText || "-"}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
           </div>
         </div>
       </div>

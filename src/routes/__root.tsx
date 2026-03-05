@@ -25,6 +25,7 @@ function RootLayout() {
   const auth = useAuth();
   const identity = buildIdentity(auth.user);
   const canManageUsers = hasPermission(identity, "screening.admin", "screening.useradmin");
+  const canViewAuditLogs = hasPermission(identity, "screening.admin");
   const canManageDailySchedules = hasPermission(identity, "screening.daily", "screening.admin");
 
   useEffect(() => {
@@ -91,6 +92,11 @@ function RootLayout() {
             {canManageUsers ? (
               <Link to="/manage-users" className="navLink" activeProps={{ className: "navLink active" }}>
                 User Administration
+              </Link>
+            ) : null}
+            {canViewAuditLogs ? (
+              <Link to="/audit-logs" className="navLink" activeProps={{ className: "navLink active" }}>
+                User Audit Logs
               </Link>
             ) : null}
           </nav>
