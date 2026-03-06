@@ -254,6 +254,26 @@ export function AuditLogsPage() {
 
   return (
     <div className="page">
+      <section className="pageHero" aria-label="Audit Log">
+        <div className="pageHeroMain">
+          <div className="pageHeroHead">
+            <span className="pageHeroIcon" aria-hidden="true">
+              <SectionIcon />
+            </span>
+            <div>
+              <p className="pageHeroEyebrow">Audit Log</p>
+              <h1 className="pageHeroTitle">Enterprise Activity Monitoring</h1>
+            </div>
+          </div>
+          <p className="pageHeroSub">Track system and user actions across screening, scheduling, notifications, and administration to support compliance traceability.</p>
+        </div>
+        <div className="pageHeroMeta" aria-hidden="true">
+          <span className="pageHeroPill">{filteredAuditEvents.length} Events</span>
+          <span className="pageHeroPill">Admin Scope</span>
+          <span className="pageHeroPill">Paginated View</span>
+        </div>
+      </section>
+
       <div className="card">
         <div className="cardHeader">
           <h2 className="userAdminSectionTitle">

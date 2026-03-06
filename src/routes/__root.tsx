@@ -86,7 +86,7 @@ function RootLayout() {
             </Link>
             {canManageDailySchedules ? (
               <Link to="/daily-schedules" className="navLink" activeProps={{ className: "navLink active" }}>
-                Daily Schedules
+                Daily Schedule
               </Link>
             ) : null}
             {canManageUsers ? (

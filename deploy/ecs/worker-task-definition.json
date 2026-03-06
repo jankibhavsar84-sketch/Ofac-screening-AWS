@@ -11,7 +11,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "worker",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260306075354",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260306141739",
                                      "essential":  true,
                                      "command":  [
                                                      "python",
@@ -60,6 +60,10 @@
                                                              "value":  "https://api.opensanctions.org"
                                                          },
                                                          {
+                                                             "name":  "ACTIMIZE_ALERT_REVIEW_URL",
+                                                             "value":  ""
+                                                         },
+                                                         {
                                                              "name":  "ACTIMIZE_API_KEY",
                                                              "value":  "ddae133d0725fee8b8b2f6d3bcc28f23"
                                                          },
@@ -74,6 +78,14 @@
                                                          {
                                                              "name":  "AWS_S3_UPLOAD_PREFIX",
                                                              "value":  "screening-input"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_SNS_NOTIFICATIONS_ENABLED",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_SNS_SCHEDULE_TOPIC_PREFIX",
+                                                             "value":  "ofac-screening-schedule"
                                                          }
                                                      ],
                                      "logConfiguration":  {
@@ -87,4 +99,6 @@
                                  }
                              ]
 }
+
+
 

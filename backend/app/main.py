@@ -37,10 +37,12 @@ from .models import (
 from .queue import SqsQueue
 from .repository import JobRepository
 from .screening_service import ScreeningService
+from .sns_notifier import SnsNotifier
 
 repository = JobRepository(settings.app_db_path, settings.app_db_url)
 queue = SqsQueue()
-service = ScreeningService(repository=repository, queue=queue)
+notifier = SnsNotifier()
+service = ScreeningService(repository=repository, queue=queue, notifier=notifier)
 actimize = ActimizeClient()
 file_store = S3FileStore()
 

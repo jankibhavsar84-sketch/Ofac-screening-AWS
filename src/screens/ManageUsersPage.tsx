@@ -93,6 +93,7 @@ export function ManageUsersPage() {
   const [businessUnitSaving, setBusinessUnitSaving] = useState(false);
   const [selectedMappingUserId, setSelectedMappingUserId] = useState("");
   const [selectedMappingCodes, setSelectedMappingCodes] = useState<string[]>([]);
+  const [mappingSearch, setMappingSearch] = useState("");
   const [mappingSaving, setMappingSaving] = useState(false);
 
   const activeBusinessUnits = useMemo(
@@ -132,6 +133,48 @@ export function ManageUsersPage() {
       .map(([userId, displayName]) => ({ userId, displayName }))
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
   }, [auditUserOptions, businessUnitMappings, identity?.id, identity?.name]);
+  const filteredBusinessUnits = useMemo(() => {
+    const term = readString(mappingSearch).toLowerCase();
+    const ranked = [...activeBusinessUnits].sort((a, b) => {
+      const aCode = normalizeBusinessUnitCode(a.business_unit_code);
+      const bCode = normalizeBusinessUnitCode(b.business_unit_code);
+      const aSelected = selectedMappingCodes.includes(aCode) ? 0 : 1;
+      const bSelected = selectedMappingCodes.includes(bCode) ? 0 : 1;
+      if (aSelected !== bSelected) return aSelected - bSelected;
+      return `${a.business_unit_name}`.localeCompare(`${b.business_unit_name}`);
+    });
+    if (!term) return ranked;
+    return ranked.filter((row) => {
+      const code = normalizeBusinessUnitCode(row.business_unit_code);
+      const name = readString(row.business_unit_name).toLowerCase();
+      return code.toLowerCase().includes(term) || name.includes(term);
+    });
+  }, [activeBusinessUnits, mappingSearch, selectedMappingCodes]);
+  const selectedBusinessUnitRows = useMemo(() => {
+    const byCode = new Map(activeBusinessUnits.map((row) => [normalizeBusinessUnitCode(row.business_unit_code), row]));
+    return selectedMappingCodes
+      .map((code) => {
+        const row = byCode.get(code);
+        if (!row) return null;
+        return { code, name: readString(row.business_unit_name) || code };
+      })
+      .filter((row): row is { code: string; name: string } => Boolean(row))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [activeBusinessUnits, selectedMappingCodes]);
+  const savedMappingCodes = useMemo(() => {
+    const safeUserId = readString(selectedMappingUserId);
+    if (!safeUserId) return [];
+    const mapped = businessUnitMappingsByUser.get(safeUserId);
+    const codes = Array.isArray(mapped?.business_unit_codes)
+      ? mapped.business_unit_codes.map((code) => normalizeBusinessUnitCode(String(code))).filter(Boolean)
+      : [];
+    return Array.from(new Set(codes)).sort();
+  }, [selectedMappingUserId, businessUnitMappingsByUser]);
+  const mappingHasChanges = useMemo(() => {
+    if (savedMappingCodes.length !== selectedMappingCodes.length) return true;
+    const selectedSet = new Set(selectedMappingCodes);
+    return savedMappingCodes.some((code) => !selectedSet.has(code));
+  }, [savedMappingCodes, selectedMappingCodes]);
 
   async function loadAdminUserOptions() {
     try {
@@ -214,6 +257,15 @@ export function ManageUsersPage() {
     const safeCode = normalizeBusinessUnitCode(code);
     if (!safeCode) return;
     setSelectedMappingCodes((prev) => (prev.includes(safeCode) ? prev.filter((value) => value !== safeCode) : [...prev, safeCode]));
+  }
+
+  function setAllMappingCodes() {
+    const all = activeBusinessUnits.map((row) => normalizeBusinessUnitCode(row.business_unit_code)).filter(Boolean);
+    setSelectedMappingCodes(Array.from(new Set(all)));
+  }
+
+  function clearAllMappingCodes() {
+    setSelectedMappingCodes([]);
   }
 
   async function saveBusinessUnit() {
@@ -306,6 +358,26 @@ export function ManageUsersPage() {
 
   return (
     <div className="page">
+      <section className="pageHero" aria-label="User Administration">
+        <div className="pageHeroMain">
+          <div className="pageHeroHead">
+            <span className="pageHeroIcon" aria-hidden="true">
+              <SectionIcon />
+            </span>
+            <div>
+              <p className="pageHeroEyebrow">User Administration</p>
+              <h1 className="pageHeroTitle">Access and Business Unit Controls</h1>
+            </div>
+          </div>
+          <p className="pageHeroSub">Manage role permissions, maintain the Business Unit catalog, and map user-level Business Unit access for screening workflows.</p>
+        </div>
+        <div className="pageHeroMeta" aria-hidden="true">
+          <span className="pageHeroPill">{ROLE_OPTIONS.length} Roles</span>
+          <span className="pageHeroPill">{activeBusinessUnits.length} Active Business Units</span>
+          <span className="pageHeroPill">{businessUnitMappings.length} Mapped Users</span>
+        </div>
+      </section>
+
       <div className="card">
         <div className="cardHeader">
           <h2>Role Permissions</h2>
@@ -455,10 +527,10 @@ export function ManageUsersPage() {
           <div className="buAdminPanel buMappingPanel">
             <div className="buPanelHeading">
               <h3>User to Business Unit Mapping</h3>
-              <p>Select a user and assign one or more Business Units.</p>
+              <p>Select a user, pick Business Units, and save. Left side shows selected units, right side shows available units.</p>
             </div>
-            <div className="buMappingUserSelect">
-              <div className="field">
+            <div className="buMappingTop">
+              <div className="field buMappingUserSelect">
                 <label>User (select existing)</label>
                 <select
                   value={selectedMappingUserId}
@@ -472,33 +544,91 @@ export function ManageUsersPage() {
                   ))}
                 </select>
               </div>
+              <div className="field buMappingSearchField">
+                <label>Find Business Unit</label>
+                <input
+                  className="buMappingSearchInput"
+                  value={mappingSearch}
+                  onChange={(e) => setMappingSearch(e.target.value)}
+                  placeholder="Search by BU name or code"
+                  aria-label="Search business units"
+                />
+              </div>
+              <div className="buMappingQuickActions">
+                <button type="button" className="btnGhostSmall" onClick={setAllMappingCodes} disabled={activeBusinessUnits.length === 0}>
+                  Select All
+                </button>
+                <button type="button" className="btnGhostSmall" onClick={clearAllMappingCodes} disabled={selectedMappingCodes.length === 0}>
+                  Clear All
+                </button>
+              </div>
             </div>
 
-            <div className="field buFieldSpacing">
-              <div className="buMappingHeaderRow">
-                <span className="buMappingLabel">Mapped Business Units</span>
+            <div className="buMappingHeaderRow buFieldSpacing">
+              <span className="buMappingLabel">Mapping Overview</span>
+              <div className="buMappingMeta">
                 <span className="buMappingCount">{selectedMappingCodes.length} selected</span>
+                <span className="buMappingCount">{filteredBusinessUnits.length} visible</span>
+                {mappingHasChanges ? <span className="buMappingBadgeChanged">Unsaved changes</span> : <span className="buMappingBadgeSaved">Saved</span>}
               </div>
-              <div className="buCheckboxGrid">
-                {activeBusinessUnits.length === 0 ? (
-                  <div className="emptyRow buEmptyState">No active Business Units available.</div>
-                ) : (
-                  activeBusinessUnits.map((row) => {
-                    const code = normalizeBusinessUnitCode(row.business_unit_code);
-                    const checked = selectedMappingCodes.includes(code);
-                    return (
-                      <label key={code} className="mockModeCheck">
-                        <input type="checkbox" checked={checked} onChange={() => toggleMappingCode(code)} />
-                        <span>{row.business_unit_name} ({code})</span>
-                      </label>
-                    );
-                  })
-                )}
+            </div>
+
+            <div className="buMappingWorkspace">
+              <div className="buMappingSelectedPanel">
+                <div className="buMappingPanelTitle">
+                  <span>Selected for User</span>
+                  <span className="buMappingCount">{selectedBusinessUnitRows.length}</span>
+                </div>
+                <div className="buMappingSelectedChips" aria-live="polite">
+                  {selectedBusinessUnitRows.length === 0 ? (
+                    <div className="buEmptyState">No Business Units selected for this user.</div>
+                  ) : (
+                    selectedBusinessUnitRows.map((row) => (
+                      <button key={row.code} type="button" className="buMappingChip" onClick={() => toggleMappingCode(row.code)} title="Remove from mapping">
+                        <span>{row.name}</span>
+                        <strong>{row.code}</strong>
+                        <span className="buMappingChipX" aria-hidden="true">
+                          ×
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="buMappingAvailablePanel">
+                <div className="buMappingPanelTitle">
+                  <span>Available Business Units</span>
+                  <span className="buMappingCount">{activeBusinessUnits.length}</span>
+                </div>
+                <div className="buCheckboxGrid">
+                  {filteredBusinessUnits.length === 0 ? (
+                    <div className="emptyRow buEmptyState">No active Business Units available.</div>
+                  ) : (
+                    filteredBusinessUnits.map((row) => {
+                      const code = normalizeBusinessUnitCode(row.business_unit_code);
+                      const checked = selectedMappingCodes.includes(code);
+                      return (
+                        <label key={code} className={`buMappingOption ${checked ? "active" : ""}`}>
+                          <input type="checkbox" checked={checked} onChange={() => toggleMappingCode(code)} />
+                          <span className="buMappingOptionText">
+                            <span className="buMappingOptionName">{row.business_unit_name}</span>
+                            <span className="buMappingOptionCode">{code}</span>
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="buActionRow">
-              <button type="button" className="buPrimaryBtn" onClick={() => void saveUserBusinessUnitMapping()} disabled={mappingSaving || businessUnitSaving}>
+              <button
+                type="button"
+                className="buPrimaryBtn"
+                onClick={() => void saveUserBusinessUnitMapping()}
+                disabled={mappingSaving || businessUnitSaving || !mappingHasChanges}
+              >
                 {mappingSaving ? "Saving Mapping..." : "Save User Mapping"}
               </button>
             </div>
@@ -508,3 +638,4 @@ export function ManageUsersPage() {
     </div>
   );
 }
+

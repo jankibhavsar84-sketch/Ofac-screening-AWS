@@ -74,14 +74,35 @@ export function DailyScheduleAdminPage() {
 
   return (
     <div className="page">
+      <section className="pageHero" aria-label="Daily Schedule">
+        <div className="pageHeroMain">
+          <div className="pageHeroHead">
+            <span className="pageHeroIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="3" />
+                <line x1="8" y1="2.5" x2="8" y2="6.5" />
+                <line x1="16" y1="2.5" x2="16" y2="6.5" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            </span>
+            <div>
+              <p className="pageHeroEyebrow">Daily Schedule</p>
+              <h1 className="pageHeroTitle">Recurring Screening Administration</h1>
+            </div>
+          </div>
+          <p className="pageHeroSub">Review active schedules, monitor next-run timing, and remove scheduled batch jobs when business changes require it.</p>
+        </div>
+        <div className="pageHeroMeta">
+          <span className="pageHeroPill">{sorted.length} Active Schedules</span>
+          <button type="button" className="btnGhost" onClick={() => void loadSchedules()} disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
+      </section>
+
       <div className="card">
         <div className="cardHeader">
-          <div className="adminScheduleHeader">
-            <h2>Daily Screening Schedules</h2>
-            <button type="button" className="btnGhost" onClick={() => void loadSchedules()} disabled={loading}>
-              {loading ? "Refreshing..." : "Refresh"}
-            </button>
-          </div>
+          <h2>Configured Daily Screening Schedules</h2>
         </div>
         <div className="cardBody">
           <p className="muted" style={{ marginTop: 0 }}>

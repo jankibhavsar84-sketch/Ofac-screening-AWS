@@ -102,6 +102,26 @@ function Intro() {
 
   return (
     <div className="page introPage">
+      <section className="pageHero" aria-label="Introduction">
+        <div className="pageHeroMain">
+          <div className="pageHeroHead">
+            <span className="pageHeroIcon" aria-hidden="true">
+              <IntroIcon type="flow" />
+            </span>
+            <div>
+              <p className="pageHeroEyebrow">Introduction</p>
+              <h1 className="pageHeroTitle">Screening Platform Overview</h1>
+            </div>
+          </div>
+          <p className="pageHeroSub">Understand screening types, workflow steps, and result statuses before running real-time or queued screening.</p>
+        </div>
+        <div className="pageHeroMeta" aria-hidden="true">
+          <span className="pageHeroPill">4 Screening Types</span>
+          <span className="pageHeroPill">Real-time + Queued</span>
+          <span className="pageHeroPill">Role-based Access</span>
+        </div>
+      </section>
+
       <div className="card">
         <div className="cardHeader">
           <h2>Screening Types</h2>

@@ -24,12 +24,14 @@ from .models import (
 )
 from .queue import SqsQueue
 from .repository import JobRepository
+from .sns_notifier import SnsNotifier
 
 
 class ScreeningService:
-    def __init__(self, repository: JobRepository, queue: SqsQueue) -> None:
+    def __init__(self, repository: JobRepository, queue: SqsQueue, notifier: SnsNotifier | None = None) -> None:
         self.repository = repository
         self.queue = queue
+        self.notifier = notifier
 
     @staticmethod
     def _extract_cognito_user_pool_id(auth_issuer: str) -> str:
@@ -777,6 +779,34 @@ class ScreeningService:
             entity_id=subscription_id,
             details={"schedule_id": schedule_id, "email": email},
         )
+        if self.notifier and self.notifier.enabled:
+            try:
+                sns_result = self.notifier.ensure_email_subscription(schedule_id=schedule_id, email=email)
+                self.repository.add_audit_event(
+                    action="SNS_EMAIL_SUBSCRIPTION_SYNCED",
+                    user_id=user_id,
+                    user_name=user_name,
+                    entity_type="daily_schedule_subscription",
+                    entity_id=subscription_id,
+                    details={
+                        "schedule_id": schedule_id,
+                        "email": email,
+                        "topic_arn": sns_result.get("topic_arn"),
+                        "subscription_arn": sns_result.get("subscription_arn"),
+                        "pending_confirmation": bool(sns_result.get("pending_confirmation")),
+                        "created": bool(sns_result.get("created")),
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                self.repository.add_audit_event(
+                    action="SNS_EMAIL_SUBSCRIPTION_SYNC_FAILED",
+                    user_id=user_id,
+                    user_name=user_name,
+                    entity_type="daily_schedule_subscription",
+                    entity_id=subscription_id,
+                    details={"schedule_id": schedule_id, "email": email, "error": str(exc)},
+                )
+                raise RuntimeError(f"Failed to configure SNS email subscription: {exc}") from exc
         rows = self.repository.list_schedule_subscriptions(schedule_id=schedule_id, user_id=user_id)
         for row in rows:
             if row["subscription_id"] == subscription_id:
@@ -800,6 +830,26 @@ class ScreeningService:
     ) -> bool:
         removed = self.repository.deactivate_schedule_subscription(schedule_id=schedule_id, email=email)
         if removed:
+            if self.notifier and self.notifier.enabled:
+                try:
+                    removed_sns_subs = self.notifier.unsubscribe_email(schedule_id=schedule_id, email=email)
+                    self.repository.add_audit_event(
+                        action="SNS_EMAIL_SUBSCRIPTION_REMOVED",
+                        user_id=user_id,
+                        user_name=user_name,
+                        entity_type="daily_schedule_subscription",
+                        entity_id=schedule_id,
+                        details={"schedule_id": schedule_id, "email": email, "removed_count": int(removed_sns_subs)},
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    self.repository.add_audit_event(
+                        action="SNS_EMAIL_SUBSCRIPTION_REMOVE_FAILED",
+                        user_id=user_id,
+                        user_name=user_name,
+                        entity_type="daily_schedule_subscription",
+                        entity_id=schedule_id,
+                        details={"schedule_id": schedule_id, "email": email, "error": str(exc)},
+                    )
             self.repository.add_audit_event(
                 action="DAILY_SCHEDULE_UNSUBSCRIBED",
                 user_id=user_id,

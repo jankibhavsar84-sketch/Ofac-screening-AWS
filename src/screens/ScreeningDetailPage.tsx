@@ -226,8 +226,8 @@ const ID_TYPE_OPTIONS = [
 const UNIFIED_TEMPLATE = {
   fileName: "Actimize_SSB1_template.xlsx",
   title: "Unified Screening Template",
-  desc: "Includes sample rows for Individual, Organization, and Unknown with Party Type and Gender code guidance.",
-  chips: ["Party Type (I/E/other)", "Gender (M/F/blank)", "alias/aka", "+9 more"],
+  desc: "Includes all supported SSB columns with sample rows for Individual, Organization, and Unknown.",
+  chips: ["Party Type (I/E/other)", "Gender (M/F/blank)", "Address + ID fields", "24 columns"],
 } as const;
 
 function uuid() {
@@ -1919,10 +1919,39 @@ export function ScreeningDetailPage() {
     const next = (idx + delta + available.length) % available.length;
     setMode(available[next]);
   }
+  const roleDisplay = primaryRole ? primaryRole[0].toUpperCase() + primaryRole.slice(1) : "Unknown";
+  const scheduleTimezoneLabel = useMemo(() => {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local";
+    const tzPart = Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+      .formatToParts(new Date())
+      .find((part) => part.type === "timeZoneName")?.value;
+    return tzPart ? `${tzPart} (${zone})` : zone;
+  }, []);
 
   return (
     <div className="page">
-      {/* Tabs row like screenshot */}
+      <section className="pageHero" aria-label="Screening">
+        <div className="pageHeroMain">
+          <div className="pageHeroHead">
+            <span className="pageHeroIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18M3 12h18M3 18h11" />
+              </svg>
+            </span>
+            <div>
+              <p className="pageHeroEyebrow">Screening</p>
+              <h1 className="pageHeroTitle">Entity Screening Workbench</h1>
+            </div>
+          </div>
+          <p className="pageHeroSub">Run single checks in real-time, submit queued batch files, and configure scheduled screening from one workspace.</p>
+        </div>
+        <div className="pageHeroMeta" aria-hidden="true">
+          <span className="pageHeroPill">Role: {roleDisplay}</span>
+          <span className="pageHeroPill">{canDailyScreening ? "Schedule Enabled" : "Schedule Restricted"}</span>
+          <span className="pageHeroPill">{viewerMockOnly ? "Mock-only Single" : "Production Screening"}</span>
+        </div>
+      </section>
+
       <SummaryCards currentUserId={currentUser?.id ?? null} currentUserName={currentUser?.name ?? null} />
       <div className="tabsRow">
         <div className="tabSwitch" role="tablist" aria-label="Screening mode" aria-orientation="horizontal">
@@ -1974,7 +2003,7 @@ export function ScreeningDetailPage() {
           </button>
         </div>
         <div className="muted" style={{ fontSize: 12 }}>
-          Role: {primaryRole ? primaryRole[0].toUpperCase() + primaryRole.slice(1) : "Unknown"}
+          Role: {roleDisplay}
           {viewerMockOnly ? " (mock-only single screening)" : ""}
         </div>
 
@@ -2012,7 +2041,7 @@ export function ScreeningDetailPage() {
                     <option value="">Select Business Unit</option>
                     {businessUnitOptions.map((row) => (
                       <option key={row.code} value={row.code}>
-                        {row.name} ({row.code})
+                        {row.name}
                       </option>
                     ))}
                   </select>
@@ -2392,7 +2421,7 @@ export function ScreeningDetailPage() {
                 <option value="">Select Business Unit</option>
                 {businessUnitOptions.map((row) => (
                   <option key={row.code} value={row.code}>
-                    {row.name} ({row.code})
+                    {row.name}
                   </option>
                 ))}
               </select>
@@ -2519,7 +2548,7 @@ export function ScreeningDetailPage() {
                   <option value="">Select Business Unit</option>
                   {businessUnitOptions.map((row) => (
                     <option key={row.code} value={row.code}>
-                      {row.name} ({row.code})
+                      {row.name}
                     </option>
                   ))}
                 </select>
@@ -2550,7 +2579,9 @@ export function ScreeningDetailPage() {
                 </div>
 
                 <div className="field">
-                  <label>First Run Date/Time <span className="requiredMark">*</span></label>
+                  <label>
+                    First Run Date/Time <span className="requiredMark">*</span> <span className="fieldLabelMeta">({scheduleTimezoneLabel})</span>
+                  </label>
                   <div className="isoDateWrap">
                     <input
                       ref={scheduleRunAtInputRef}
@@ -2597,7 +2628,7 @@ export function ScreeningDetailPage() {
                   placeholder="compliance@company.com, analyst@company.com"
                 />
                 <div className="hintText">
-                  Use comma, semicolon, or new line to enter multiple email addresses. Subscription actions are recorded in Audit Log.
+                  Use comma, semicolon, or new line to enter multiple email addresses. First-time SNS email subscriptions require clicking the confirmation email once before notifications can be delivered. Subscription actions are recorded in Audit Log.
                 </div>
               </div>
 

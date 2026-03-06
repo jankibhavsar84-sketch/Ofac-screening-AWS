@@ -217,67 +217,75 @@ Item status is tracked similarly and rolls up to job snapshot counts.
 
 ## 6. API Design
 
-Base path: `/api/v1`
+Base path: `/api/v1` (except health endpoint).
 
-Cross-cutting behavior:
-- Every API response includes `X-Correlation-ID`.
-- Every `/api/v1/*` request is persisted in `api_access_logs`.
-- 401/403 API outcomes additionally generate audit events (`API_AUTHENTICATION_FAILED`, `API_AUTHORIZATION_FAILED`).
+### 6.1 Cross-Cutting API Behavior
 
-### 6.1 Health
+- AuthN/AuthZ:
+  - `/api/v1/*` uses bearer JWT validation when `AUTH_ENABLED=true`.
+  - Authorization uses role/scopes with permissions (`screening.read`, `screening.write`, `screening.daily`, `screening.admin`, `screening.useradmin`, `screening.single.mock`).
+- Correlation and access audit:
+  - Every API response includes `X-Correlation-ID`.
+  - Every `/api/v1/*` request is written to `api_access_logs` with method, path, status, latency, auth state, and user context.
+  - 401/403 outcomes emit audit events (`API_AUTHENTICATION_FAILED`, `API_AUTHORIZATION_FAILED`).
+- Screening guardrails:
+  - Business Unit is mandatory for screening submissions and is validated against user mapping.
+  - Sync screening allows viewer role only in `mock_screening=true`.
+  - Daily/scheduled operations require compliance/admin permission.
+- Error handling:
+  - Validation/business rule failures return `400`.
+  - Authorization failures return `403`.
+  - Missing entities return `404`.
+  - External screening API failures are persisted to `external_api_errors`.
 
-- `GET /health`
-  - Purpose: service readiness/liveness probe
+### 6.2 Endpoint Catalog
 
-### 6.2 Synchronous Screening
+| Method | Path | Required Permission | Functionality |
+|---|---|---|---|
+| `GET` | `/health` | None | Liveness/readiness response (`{"status":"ok"}`). |
+| `POST` | `/api/v1/screenings/jobs` | `screening.write` or `screening.daily` or `screening.admin` | Creates async screening job from JSON payload (`queries`, screening types, schedule options). If `daily_screening=true`, schedule is created/updated and first execution is deferred to schedule time. |
+| `POST` | `/api/v1/screenings/batch-upload` | `screening.write` or `screening.daily` or `screening.admin` | Uploads batch file + query payload, validates file content rules, optionally stores source in S3, creates job/schedule, supports optional subscription creation. |
+| `GET` | `/api/v1/screenings/jobs/{job_id}` | `screening.read` | Returns job progress counts and terminal responses when complete. |
+| `GET` | `/api/v1/screenings/submissions` | `screening.read` | Returns user-visible submission history for single and batch runs with normalized result status. |
+| `POST` | `/api/v1/screenings/match` | `screening.write` or `screening.single.mock` or `screening.admin` | Performs synchronous screening, persists job/item metadata, returns immediate merged results; logs per-item API call success/failure. |
+| `GET` | `/api/v1/screenings/daily-schedules` | `screening.read` | Lists active schedules with frequency, next run, source file metadata, and business unit. |
+| `DELETE` | `/api/v1/screenings/daily-schedules/{schedule_id}` | `screening.daily` or `screening.admin` | Disables one daily schedule and writes audit event. |
+| `GET` | `/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` | `screening.read` | Lists subscriptions for a schedule (scoped to caller context). |
+| `POST` | `/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` | `screening.read` | Upserts subscription email for schedule notifications. |
+| `DELETE` | `/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` | `screening.read` | Removes subscription by email for the schedule. |
+| `GET` | `/api/v1/business-units` | `screening.read` | Returns active business units mapped to current user. |
+| `GET` | `/api/v1/admin/business-units` | `screening.admin` or `screening.useradmin` | Lists all business units (`include_inactive` supported). |
+| `POST` | `/api/v1/admin/business-units` | `screening.admin` or `screening.useradmin` | Creates new business unit reference row. |
+| `PUT` | `/api/v1/admin/business-units/{business_unit_code}` | `screening.admin` or `screening.useradmin` | Updates business unit code/name and cascades code change to mappings/metadata. |
+| `DELETE` | `/api/v1/admin/business-units/{business_unit_code}` | `screening.admin` or `screening.useradmin` | Deletes business unit and related user mappings. |
+| `GET` | `/api/v1/admin/business-unit-mappings` | `screening.admin` or `screening.useradmin` | Lists user-to-business-unit mappings. |
+| `PUT` | `/api/v1/admin/business-unit-mappings/{user_id}` | `screening.admin` or `screening.useradmin` | Replaces mapping for one user with supplied business unit list. |
+| `GET` | `/api/v1/admin/users` | `screening.admin` or `screening.useradmin` | Lists known users (DB + Cognito user pool enumeration fallback). |
+| `GET` | `/api/v1/audit-events` | `screening.admin` or `screening.useradmin` | Returns audit events with pagination (`limit`, `offset`) and optional `user_id` filter. |
 
-- `POST /screenings/match`
-  - Purpose: immediate screening response for interactive use
-  - Behavior:
-    - For each selected screening type, perform one single-type call
-    - Merge results and return a unified response sorted by score
+### 6.3 Functional Notes By API Area
 
-High-level request fields:
-- entity data (name, attributes, country, entity type)
-- `screening_types[]`
-- `mock_screening: boolean`
-
-High-level response fields:
-- results array with `caption`, `score`, `match`, and hit metadata
-- echo of query used for screening
-
-### 6.3 Batch Screening (Async)
-
-- `POST /screenings/jobs`
-  - Purpose: create a batch job and enqueue item messages
-  - Behavior:
-    - Immediately returns `job_id` and `queued` status
-    - Creates job and items in DB
-    - Enqueues one SQS message per entity item with the selected screening types list
-
-- `GET /screenings/jobs/{job_id}`
-  - Purpose: get progress snapshot and, when terminal, results
-  - Terminal behavior:
-    - When all items are `completed`/`failed`, returns per-item responses for rendering
-
-### 6.4 Daily Screening Management
-
-- `GET /screenings/daily-schedules`
-  - Purpose: list active daily schedules (primarily admin/compliance)
-
-- `DELETE /screenings/daily-schedules/{schedule_id}`
-  - Purpose: disable daily schedule for a batch
-  - Behavior:
-    - Disables schedule immediately
-    - Writes audit event `DAILY_SCHEDULE_DISABLED`
-
-### 6.5 Audit Events
-
-- `GET /audit-events?limit=200&user_id=<optional>`
-  - Purpose: read audit trail
-  - Behavior:
-    - Non-admin should only see their own events (policy-driven)
-    - Admin can query broader scope for support/compliance
+- Screening submission APIs:
+  - Persist job, item, metadata, and audit records.
+  - Async jobs enqueue one SQS message per item and track queue lifecycle audit events.
+  - Sync jobs execute immediately and write per-item external API call audit lifecycle.
+- Batch-upload validation:
+  - `queries_json` must be non-empty object.
+  - `PartyKey` is required, cannot be blank, and must be unique.
+  - Legacy `row_<n>` keys are rejected.
+  - Allowed schema values: person/individual/company/organization/legalentity/unknown.
+  - Gender validation allows `M`, `F`, or blank (plus textual male/female/unknown variants).
+  - At least one non-empty name is required.
+- Scheduling and subscriptions:
+  - Schedule creation does not screen immediately; worker executes at `next_run_at`.
+  - Schedule runs support frequency (`DAILY`, `WEEKLY`, `MONTHLY`) and dedupe against previously screened schedule record hashes.
+  - Completion notifications are generated for subscribed emails and logged.
+- Admin APIs:
+  - Business unit reference table is runtime-managed via API (create/update/delete/list).
+  - User/business-unit mapping determines selectable BU values in screening flows and is enforced on submit.
+- Audit APIs:
+  - `audit_events` is admin-only.
+  - Additional operational telemetry is stored in `api_access_logs` and `external_api_errors` tables for enterprise support/compliance queries.
 
 ## 7. Process Flows
 

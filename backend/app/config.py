@@ -39,6 +39,8 @@ class Settings:
     aws_secret_access_key: str
     aws_s3_upload_bucket: str
     aws_s3_upload_prefix: str
+    aws_sns_notifications_enabled: bool
+    aws_sns_schedule_topic_prefix: str
 
     actimize_base_url: str
     actimize_provider: str
@@ -50,6 +52,7 @@ class Settings:
     actimize_scope: str
     actimize_source_system: str
     actimize_requester_name: str
+    actimize_alert_review_url: str
     actimize_timeout_s: float
     actimize_mock: bool
 
@@ -89,6 +92,9 @@ def load_settings() -> Settings:
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "").strip(),
         aws_s3_upload_bucket=os.getenv("AWS_S3_UPLOAD_BUCKET", "").strip(),
         aws_s3_upload_prefix=os.getenv("AWS_S3_UPLOAD_PREFIX", "screening-input").strip() or "screening-input",
+        aws_sns_notifications_enabled=_to_bool(os.getenv("AWS_SNS_NOTIFICATIONS_ENABLED"), False),
+        aws_sns_schedule_topic_prefix=os.getenv("AWS_SNS_SCHEDULE_TOPIC_PREFIX", "ofac-screening-schedule").strip()
+        or "ofac-screening-schedule",
         actimize_base_url=os.getenv("ACTIMIZE_BASE_URL", "").strip(),
         actimize_provider=os.getenv("ACTIMIZE_PROVIDER", "opensanctions").strip().lower() or "opensanctions",
         actimize_api_key=os.getenv("ACTIMIZE_API_KEY", "").strip(),
@@ -99,6 +105,7 @@ def load_settings() -> Settings:
         actimize_scope=os.getenv("ACTIMIZE_SCOPE", "").strip(),
         actimize_source_system=os.getenv("ACTIMIZE_SOURCE_SYSTEM", "ZIP").strip() or "ZIP",
         actimize_requester_name=os.getenv("ACTIMIZE_REQUESTER_NAME", "SCREENING_SYSTEM").strip() or "SCREENING_SYSTEM",
+        actimize_alert_review_url=os.getenv("ACTIMIZE_ALERT_REVIEW_URL", "").strip(),
         actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 10.0),
         actimize_mock=_to_bool(os.getenv("ACTIMIZE_MOCK"), True),
         screening_tps=_to_int(os.getenv("SCREENING_TPS"), 32),

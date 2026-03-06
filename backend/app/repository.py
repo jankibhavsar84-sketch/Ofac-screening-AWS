@@ -52,6 +52,7 @@ DEFAULT_BUSINESS_UNITS: list[tuple[str, str]] = [
     ("US_PRU_PGIM_RE_APAC", "PGIM Real Estate APAC"),
     ("US_PRU_PGIM_LATAM", "PGIM LATAM"),
 ]
+DEFAULT_FALLBACK_BUSINESS_UNIT_CODE = "US_PRU_OPES"
 
 
 def _is_technical_identifier(value: str | None) -> bool:
@@ -532,6 +533,32 @@ class JobRepository:
     @staticmethod
     def _normalize_business_unit_code(value: str | None) -> str:
         return str(value or "").strip().upper()
+
+    def _get_business_unit_row(self, business_unit_code: str, include_inactive: bool = False) -> dict[str, Any] | None:
+        safe_code = self._normalize_business_unit_code(business_unit_code)
+        if not safe_code:
+            return None
+        with self._connect() as conn:
+            row = self._execute(
+                conn,
+                """
+                SELECT business_unit_code, business_unit_name, is_active, created_at, updated_at
+                FROM business_units
+                WHERE business_unit_code = ?
+                  AND (? = TRUE OR is_active = TRUE)
+                LIMIT 1
+                """,
+                (safe_code, include_inactive),
+            ).fetchone()
+        if not row:
+            return None
+        return {
+            "business_unit_code": str(row["business_unit_code"] or "").strip(),
+            "business_unit_name": str(row["business_unit_name"] or "").strip(),
+            "is_active": _as_bool(row["is_active"]),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
 
     def _seed_default_business_units(self, conn: Any) -> None:
         ts = now_iso()
@@ -1650,16 +1677,36 @@ class JobRepository:
             if isinstance(results, list) and any(bool(r.get("match")) for r in results if isinstance(r, dict)):
                 matched_items += 1
 
+        created_raw = str(snapshot.get("created_at") or "").strip()
+        updated_raw = str(snapshot.get("updated_at") or "").strip()
+        execution_seconds: int | None = None
+        if created_raw and updated_raw:
+            try:
+                created_at = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                updated_at = datetime.fromisoformat(updated_raw.replace("Z", "+00:00"))
+                delta = (updated_at - created_at).total_seconds()
+                execution_seconds = max(int(delta), 0)
+            except Exception:
+                execution_seconds = None
+
+        completed_items = int(snapshot["counts"]["completed"] or 0)
+        failed_items = int(snapshot["counts"]["failed"] or 0)
+        records_screened = completed_items + failed_items
+
         return {
             "job_id": snapshot["job_id"],
             "status": snapshot["status"],
             "total_items": snapshot["total_items"],
-            "completed_items": snapshot["counts"]["completed"],
-            "failed_items": snapshot["counts"]["failed"],
+            "completed_items": completed_items,
+            "failed_items": failed_items,
             "pending_items": snapshot["counts"]["pending"],
             "processing_items": snapshot["counts"]["processing"],
             "matched_items": matched_items,
-            "clear_items": max(int(snapshot["counts"]["completed"]) - matched_items, 0),
+            "clear_items": max(completed_items - matched_items, 0),
+            "records_screened": records_screened,
+            "execution_seconds": execution_seconds,
+            "started_at": created_raw,
+            "completed_at": updated_raw,
         }
 
     def create_schedule_notifications(
@@ -1821,7 +1868,7 @@ class JobRepository:
                     (include_inactive,),
                 ).fetchall()
 
-        return [
+        results = [
             {
                 "business_unit_code": str(row["business_unit_code"] or "").strip(),
                 "business_unit_name": str(row["business_unit_name"] or "").strip(),
@@ -1832,6 +1879,11 @@ class JobRepository:
             for row in rows
             if str(row["business_unit_code"] or "").strip()
         ]
+        if safe_user_id and not results:
+            fallback = self._get_business_unit_row(DEFAULT_FALLBACK_BUSINESS_UNIT_CODE, include_inactive=False)
+            if fallback:
+                return [fallback]
+        return results
 
     def list_user_business_unit_codes(self, user_id: str) -> list[str]:
         safe_user_id = (user_id or "").strip()
@@ -1861,7 +1913,41 @@ class JobRepository:
                 """,
                 (safe_user_id, safe_code),
             ).fetchone()
-        return bool(row)
+            if row:
+                return True
+
+            has_user_mapping = self._execute(
+                conn,
+                """
+                SELECT 1
+                FROM user_business_units ubu
+                JOIN business_units bu
+                  ON bu.business_unit_code = ubu.business_unit_code
+                WHERE ubu.user_id = ?
+                  AND ubu.is_active = TRUE
+                  AND bu.is_active = TRUE
+                LIMIT 1
+                """,
+                (safe_user_id,),
+            ).fetchone()
+            if has_user_mapping:
+                return False
+
+            if safe_code != DEFAULT_FALLBACK_BUSINESS_UNIT_CODE:
+                return False
+
+            fallback = self._execute(
+                conn,
+                """
+                SELECT 1
+                FROM business_units
+                WHERE business_unit_code = ?
+                  AND is_active = TRUE
+                LIMIT 1
+                """,
+                (DEFAULT_FALLBACK_BUSINESS_UNIT_CODE,),
+            ).fetchone()
+        return bool(fallback)
 
     def upsert_business_unit(self, business_unit_code: str, business_unit_name: str) -> dict[str, Any]:
         safe_code = self._normalize_business_unit_code(business_unit_code)

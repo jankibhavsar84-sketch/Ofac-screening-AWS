@@ -11,6 +11,7 @@ from .models import MatchJobRequest
 from .queue import SqsQueue
 from .repository import JobRepository
 from .screening_service import ScreeningService
+from .sns_notifier import SnsNotifier
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("screening-worker")
@@ -32,6 +33,19 @@ class FixedRateLimiter:
         self.next_slot = max(self.next_slot, now) + self.min_interval
 
 
+def _format_execution_time(seconds: int | None) -> str:
+    if seconds is None:
+        return "-"
+    safe = max(int(seconds), 0)
+    minutes, sec = divmod(safe, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours > 0:
+        return f"{hours}h {minutes}m {sec}s"
+    if minutes > 0:
+        return f"{minutes}m {sec}s"
+    return f"{sec}s"
+
+
 def _resolve_external_api_context(exc: Exception) -> tuple[str, str, str, int | None, dict[str, object]]:
     if isinstance(exc, ExternalApiCallError):
         return (
@@ -50,11 +64,94 @@ def _resolve_external_api_context(exc: Exception) -> tuple[str, str, str, int | 
     )
 
 
+def _publish_schedule_notification_via_sns(
+    repository: JobRepository,
+    notifier: SnsNotifier,
+    schedule_id: str,
+    job_id: str,
+) -> None:
+    if not notifier.enabled:
+        return
+
+    schedule = repository.get_daily_schedule(schedule_id) or {}
+    summary = repository.build_job_completion_summary(job_id) or {}
+    batch_name = str(schedule.get("batch_name") or "").strip() or schedule_id
+    records_screened = int(summary.get("records_screened") or summary.get("total_items") or 0)
+    hit_records = int(summary.get("matched_items") or 0)
+    execution_seconds = summary.get("execution_seconds")
+    execution_label = _format_execution_time(execution_seconds if isinstance(execution_seconds, int) else None)
+    started_at = str(summary.get("started_at") or "").strip()
+    completed_at = str(summary.get("completed_at") or "").strip()
+    actimize_link = (settings.actimize_alert_review_url or settings.actimize_base_url or "").strip()
+    subject = f"Scheduled Screening Completed - {batch_name}"[:100]
+    message_lines = [
+        "Your scheduled screening batch has completed.",
+        "",
+        f"Batch Name: {batch_name}",
+        f"Job ID: {job_id}",
+        f"Number of records screened: {records_screened}",
+        f"Number of records with hits: {hit_records}",
+        f"Total execution time: {execution_label}",
+    ]
+    if started_at:
+        message_lines.append(f"Started At (UTC): {started_at}")
+    if completed_at:
+        message_lines.append(f"Completed At (UTC): {completed_at}")
+    message_lines.extend(
+        [
+            "",
+            "Review Alerts in Actimize:",
+            actimize_link or "Not configured. Set ACTIMIZE_ALERT_REVIEW_URL in backend configuration.",
+        ]
+    )
+    message = "\n".join(message_lines)
+
+    try:
+        message_id = notifier.publish_schedule_completion(
+            schedule_id=schedule_id,
+            title=subject,
+            message=message,
+            summary=None,
+        )
+        repository.add_audit_event(
+            action="SNS_NOTIFICATION_PUBLISHED",
+            entity_type="daily_schedule",
+            entity_id=schedule_id,
+            details={
+                "job_id": job_id,
+                "batch_name": batch_name,
+                "message_id": message_id,
+                "records_screened": records_screened,
+                "hit_records": hit_records,
+                "execution_seconds": execution_seconds,
+                "actimize_link": actimize_link,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        repository.add_audit_event(
+            action="SNS_NOTIFICATION_PUBLISH_FAILED",
+            entity_type="daily_schedule",
+            entity_id=schedule_id,
+            details={
+                "job_id": job_id,
+                "batch_name": batch_name,
+                "error": str(exc),
+            },
+        )
+        logger.exception(
+            "failed to publish SNS schedule notification for schedule_id=%s job_id=%s: %s",
+            schedule_id,
+            job_id,
+            exc,
+        )
+
+
 def run() -> None:
     queue = SqsQueue()
     queue.ensure_queue()
     repository = JobRepository(settings.app_db_path, settings.app_db_url)
-    service = ScreeningService(repository=repository, queue=queue)
+    notifier = SnsNotifier()
+    service = ScreeningService(repository=repository, queue=queue, notifier=notifier)
     actimize = ActimizeClient()
     limiter = FixedRateLimiter(settings.screening_tps)
     last_schedule_check = 0.0
@@ -176,6 +273,12 @@ def run() -> None:
                         schedule_id=message.source_schedule_id,
                     )
                     if created_notifications > 0:
+                        _publish_schedule_notification_via_sns(
+                            repository=repository,
+                            notifier=notifier,
+                            schedule_id=message.source_schedule_id,
+                            job_id=message.job_id,
+                        )
                         logger.info(
                             "published %s schedule notifications for job=%s schedule=%s",
                             created_notifications,
@@ -268,6 +371,12 @@ def run() -> None:
                         schedule_id=message.source_schedule_id,
                     )
                     if created_notifications > 0:
+                        _publish_schedule_notification_via_sns(
+                            repository=repository,
+                            notifier=notifier,
+                            schedule_id=message.source_schedule_id,
+                            job_id=message.job_id,
+                        )
                         logger.info(
                             "published %s schedule notifications for failed job=%s schedule=%s",
                             created_notifications,
@@ -279,7 +388,7 @@ def run() -> None:
 
         now_monotonic = time.monotonic()
         if now_monotonic - last_schedule_check >= max(settings.daily_screening_check_interval_s, 5):
-            trigger_due_daily_schedules(repository, service)
+            trigger_due_daily_schedules(repository, service, notifier)
             last_schedule_check = now_monotonic
         if now_monotonic - last_cleanup_run >= max(settings.operational_cleanup_interval_s, 60):
             deleted = repository.purge_old_operational_data(
@@ -297,7 +406,7 @@ def run() -> None:
             last_cleanup_run = now_monotonic
 
 
-def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningService) -> None:
+def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningService, notifier: SnsNotifier) -> None:
     now_utc = datetime.now(timezone.utc)
     due_schedules = repository.list_due_daily_schedules(now_utc.isoformat())
     for schedule in due_schedules:
@@ -347,6 +456,12 @@ def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningSer
                     schedule_id=schedule["schedule_id"],
                 )
                 if notifications > 0:
+                    _publish_schedule_notification_via_sns(
+                        repository=repository,
+                        notifier=notifier,
+                        schedule_id=schedule["schedule_id"],
+                        job_id=accepted.job_id,
+                    )
                     logger.info(
                         "published %s schedule notifications for no-new-records job=%s schedule=%s",
                         notifications,
