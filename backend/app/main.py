@@ -9,7 +9,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from .actimize import ActimizeClient
+from .actimize import ActimizeClient, ExternalApiCallError
 from .auth import AuthPrincipal, principal_has_permission, require_any_scope
 from .config import settings
 from .file_store import S3FileStore
@@ -30,7 +30,6 @@ from .models import (
     ScheduleSubscription,
     UserBusinessUnitMapping,
     UserBusinessUnitUpdateRequest,
-    UserNotification,
 )
 from .queue import SqsQueue
 from .repository import JobRepository
@@ -527,15 +526,6 @@ def list_audit_events(
     return svc.list_audit_events(limit=limit, user_id=user_id, offset=offset)
 
 
-@app.get("/api/v1/notifications", response_model=list[UserNotification])
-def list_user_notifications(
-    limit: int = Query(default=100, ge=1, le=1000),
-    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
-    svc: ScreeningService = Depends(get_service),
-) -> list[UserNotification]:
-    return svc.list_user_notifications(limit=limit, user_id=principal.user_id, email=principal.email)
-
-
 @app.post("/api/v1/screenings/match", response_model=EntityMatchResponse)
 def match_sync(
     payload: MatchJobRequest,
@@ -608,6 +598,37 @@ def match_sync(
             }
             repository.mark_item_completed(job_id=job_id, item_key=item_key, response_payload=responses[item_key])
         except Exception as exc:  # noqa: BLE001
+            if isinstance(exc, ExternalApiCallError):
+                provider = exc.provider
+                operation = exc.operation
+                endpoint = exc.endpoint
+                status_code = exc.status_code
+                api_details = dict(exc.details or {})
+            else:
+                provider = settings.actimize_provider
+                operation = "screen_many_types"
+                endpoint = ""
+                status_code = None
+                api_details = {}
+
+            repository.add_external_api_error(
+                provider=provider,
+                operation=operation,
+                endpoint=endpoint,
+                status_code=status_code,
+                user_id=payload.user_id,
+                user_name=payload.user_name,
+                job_id=job_id,
+                item_key=item_key,
+                error_text=str(exc),
+                details={
+                    "query": request_payload,
+                    "screening_types": payload.screening_types,
+                    "mock_screening": payload.mock_screening,
+                    "business_unit_code": normalized_business_unit_code,
+                    **api_details,
+                },
+            )
             repository.add_audit_event(
                 action="SYNC_SCREENING_ITEM_FAILED",
                 user_id=payload.user_id,

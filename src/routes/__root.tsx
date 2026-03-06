@@ -96,7 +96,7 @@ function RootLayout() {
             ) : null}
             {canViewAuditLogs ? (
               <Link to="/audit-logs" className="navLink" activeProps={{ className: "navLink active" }}>
-                User Audit Logs
+                Audit Log
               </Link>
             ) : null}
           </nav>

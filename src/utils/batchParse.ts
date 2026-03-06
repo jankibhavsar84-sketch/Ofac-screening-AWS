@@ -2,6 +2,9 @@ import * as XLSX from "xlsx";
 
 export type BatchRow = {
   customerType: "Person" | "Entity";
+  customerTypeRaw?: string;
+  partyType?: string;
+  gender?: string;
   firstName?: string;
   middleName?: string;
   lastName?: string;
@@ -22,20 +25,71 @@ export type BatchRow = {
   countryOfBirth?: string;
   dateOfBirth?: string;
   countryOfCitizenship?: string;
+  countries?: string;
+  addresses?: string;
+  idType?: string;
+  idCountry?: string;
 };
 
 function normalizeCustomerType(v: any): "Person" | "Entity" {
   const s = String(v ?? "").trim().toLowerCase();
-  return s === "entity" ? "Entity" : "Person";
+  if (s === "entity" || s === "organization" || s === "company" || s === "e") return "Entity";
+  return "Person";
 }
 
 function getStr(v: any): string {
   return String(v ?? "").trim();
 }
 
-// Case-insensitive getter
-function getCI(map: Record<string, any>, key: string) {
-  return map[key.toLowerCase()];
+function normalizeHeaderKey(value: string): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function getByAliases(map: Record<string, any>, aliases: string[]): string {
+  for (const alias of aliases) {
+    const value = map[normalizeHeaderKey(alias)];
+    const text = getStr(value);
+    if (text) return text;
+  }
+  return "";
+}
+
+function mapParsedRow(map: Record<string, any>): BatchRow {
+  const customerTypeRaw = getByAliases(map, ["customerType"]);
+  return {
+    customerType: normalizeCustomerType(customerTypeRaw || getByAliases(map, ["partyType", "party type", "party_type"])),
+    customerTypeRaw,
+    partyType: getByAliases(map, ["partyType", "party type", "party_type", "partyTypeCode", "party type code"]),
+    gender: getByAliases(map, ["gender", "genderCode", "gender code", "gender_code"]),
+
+    firstName: getByAliases(map, ["firstName", "primaryFirstName", "first name"]),
+    middleName: getByAliases(map, ["middleName", "primaryMiddleName", "middle name"]),
+    lastName: getByAliases(map, ["lastName", "primaryLastName", "last name"]),
+    fullName: getByAliases(map, ["fullName", "primaryFullName", "primary name", "name"]),
+    aliasName: getByAliases(map, ["aliasName", "alias1FullName", "alias", "aka"]),
+
+    addressLine1: getByAliases(map, ["addressLine1", "address1Line1", "address line 1"]),
+    addressLine2: getByAliases(map, ["addressLine2", "address1Line2", "address line 2"]),
+    city: getByAliases(map, ["city", "address1City"]),
+    state: getByAliases(map, ["state", "address1stateProvince", "stateProvince"]),
+    zip: getByAliases(map, ["zip", "zipCode", "address1ZipCode"]),
+    country: getByAliases(map, ["country", "address1Country", "nationalityCountry1", "birthCountry"]),
+    addresses: getByAliases(map, ["addresses"]),
+    countries: getByAliases(map, ["countries"]),
+
+    idType: getByAliases(map, ["idType", "partyId1Type", "id code", "idCode"]),
+    idCode: getByAliases(map, ["idCode", "partyId1Type", "id type"]),
+    idNumber: getByAliases(map, ["idNumber", "partyId1Value", "id value"]),
+    idCountry: getByAliases(map, ["idCountry", "partyId1IDCountry", "id issue country"]),
+    idIssueCountry: getByAliases(map, ["idIssueCountry", "partyId1IDCountry", "id country"]),
+
+    countryOfBirth: getByAliases(map, ["countryOfBirth", "birthCountry"]),
+    dateOfBirth: getByAliases(map, ["dateOfBirth", "DateOfBirth"]),
+    countryOfCitizenship: getByAliases(map, ["countryOfCitizenship", "nationalityCountry1"]),
+  };
 }
 
 export async function parseCsv(file: File): Promise<BatchRow[]> {
@@ -43,41 +97,17 @@ export async function parseCsv(file: File): Promise<BatchRow[]> {
   const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
 
-  const headers = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
-
-  const idx = (name: string) => headers.indexOf(name.toLowerCase());
+  const headers = splitCsvLine(lines[0]).map((h) => normalizeHeaderKey(h));
 
   const rows: BatchRow[] = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = splitCsvLine(lines[i]);
-    const get = (name: string) => {
-      const j = idx(name);
-      return j >= 0 ? cols[j] : "";
-    };
-
-    rows.push({
-      customerType: normalizeCustomerType(get("customerType")),
-      firstName: getStr(get("firstName")),
-      middleName: getStr(get("middleName")),
-      lastName: getStr(get("lastName")),
-      fullName: getStr(get("fullName")),
-      aliasName: getStr(get("aliasName")),
-
-      addressLine1: getStr(get("addressLine1")),
-      addressLine2: getStr(get("addressLine2")),
-      city: getStr(get("city")),
-      state: getStr(get("state")),
-      zip: getStr(get("zip")),
-      country: getStr(get("country")),
-
-      idCode: getStr(get("idCode")),
-      idNumber: getStr(get("idNumber")),
-      idIssueCountry: getStr(get("idIssueCountry")),
-
-      countryOfBirth: getStr(get("countryOfBirth")),
-      dateOfBirth: getStr(get("dateOfBirth")),
-      countryOfCitizenship: getStr(get("countryOfCitizenship")),
+    const map: Record<string, string> = {};
+    headers.forEach((h, idx) => {
+      if (!h) return;
+      map[h] = getStr(cols[idx] ?? "");
     });
+    rows.push(mapParsedRow(map));
   }
 
   return rows;
@@ -92,31 +122,8 @@ export async function parseExcel(file: File): Promise<BatchRow[]> {
   const json = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
 
   const rows: BatchRow[] = json.map((r) => {
-    const map = Object.fromEntries(Object.entries(r).map(([k, v]) => [k.trim().toLowerCase(), v]));
-    return {
-      customerType: normalizeCustomerType(getCI(map, "customerType")),
-
-      firstName: getStr(getCI(map, "firstName")),
-      middleName: getStr(getCI(map, "middleName")),
-      lastName: getStr(getCI(map, "lastName")),
-      fullName: getStr(getCI(map, "fullName")),
-      aliasName: getStr(getCI(map, "aliasName")),
-
-      addressLine1: getStr(getCI(map, "addressLine1")),
-      addressLine2: getStr(getCI(map, "addressLine2")),
-      city: getStr(getCI(map, "city")),
-      state: getStr(getCI(map, "state")),
-      zip: getStr(getCI(map, "zip")),
-      country: getStr(getCI(map, "country")),
-
-      idCode: getStr(getCI(map, "idCode")),
-      idNumber: getStr(getCI(map, "idNumber")),
-      idIssueCountry: getStr(getCI(map, "idIssueCountry")),
-
-      countryOfBirth: getStr(getCI(map, "countryOfBirth")),
-      dateOfBirth: getStr(getCI(map, "dateOfBirth")),
-      countryOfCitizenship: getStr(getCI(map, "countryOfCitizenship")),
-    };
+    const map = Object.fromEntries(Object.entries(r).map(([k, v]) => [normalizeHeaderKey(k), v]));
+    return mapParsedRow(map);
   });
 
   return rows;

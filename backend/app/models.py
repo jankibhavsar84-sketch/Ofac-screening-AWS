@@ -171,19 +171,6 @@ class ScheduleSubscription(BaseModel):
     created_at: str
 
 
-class UserNotification(BaseModel):
-    notification_id: int
-    created_at: str
-    user_id: str | None = None
-    user_name: str | None = None
-    email: str | None = None
-    schedule_id: str | None = None
-    job_id: str | None = None
-    title: str
-    message: str
-    summary: dict[str, Any] = Field(default_factory=dict)
-
-
 class AuditEvent(BaseModel):
     event_id: int
     created_at: str

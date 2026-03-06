@@ -317,40 +317,93 @@ function buildEntityExampleFromNameItem(item: NameItem): EntityExample {
   return { schema, properties: props };
 }
 
+function parseCommaValues(input: unknown): string[] {
+  const value = safeTrim(String(input ?? ""));
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((token) => safeTrim(token))
+    .filter(Boolean);
+}
+
 function parseBatchRows(rows: any[]): {
   queries: Record<string, EntityExample>;
   rowMeta: { key: string; displayName: string; uiType: UiType }[];
+  validationErrors: string[];
 } {
   const queries: Record<string, EntityExample> = {};
   const rowMeta: { key: string; displayName: string; uiType: UiType }[] = [];
+  const validationErrors: string[] = [];
 
   rows.forEach((r, idx) => {
+    const rowNumber = idx + 2; // 1-based + header row
+    const rawPartyType = safeTrim(String(r.partyType || ""));
+    const normalizedPartyType = rawPartyType.toUpperCase();
+    const hasLegacyCustomerType = Boolean(safeTrim(String(r.customerTypeRaw || "")));
     const customerType = r.customerType === "Entity" ? "Entity" : "Person";
-    const uiType: UiType = customerType === "Person" ? "Individual" : "Organization";
+
+    let uiType: UiType;
+    if (normalizedPartyType === "I") uiType = "Individual";
+    else if (normalizedPartyType === "E") uiType = "Organization";
+    else if (rawPartyType) uiType = "Unknown";
+    else if (hasLegacyCustomerType) uiType = customerType === "Entity" ? "Organization" : "Individual";
+    else uiType = "Unknown";
+
+    const rawGender = safeTrim(String(r.gender || ""));
+    const normalizedGender = rawGender.toUpperCase();
+    if (rawGender && normalizedGender !== "M" && normalizedGender !== "F") {
+      validationErrors.push(`Row ${rowNumber}: Gender code must be M, F, or blank.`);
+    }
+
+    const firstName = safeTrim(r.firstName || "");
+    const middleName = safeTrim(r.middleName || "");
+    const lastName = safeTrim(r.lastName || "");
+    const splitName = [firstName, middleName, lastName].filter(Boolean).join(" ");
+    const fullName = safeTrim(r.fullName || "") || (uiType === "Individual" ? splitName : "");
 
     const display =
-      uiType === "Individual"
-        ? [safeTrim(r.firstName || ""), safeTrim(r.lastName || "")].filter(Boolean).join(" ")
-        : safeTrim(r.fullName || "");
+      uiType === "Individual" ? fullName || [firstName, lastName].filter(Boolean).join(" ") : fullName || lastName;
 
     const key = `row_${idx + 1}`;
     rowMeta.push({ key, displayName: display || `(Row ${idx + 1})`, uiType });
 
-    if (uiType === "Individual" && (!safeTrim(r.firstName || "") || !safeTrim(r.lastName || ""))) return;
-    if (uiType !== "Individual" && !safeTrim(r.fullName || "")) return;
+    if (uiType === "Individual" && !fullName && !(firstName && lastName)) {
+      validationErrors.push(`Row ${rowNumber}: Party Type I requires Primary Full Name or First + Last Name.`);
+      return;
+    }
+    if (uiType !== "Individual" && !fullName) {
+      validationErrors.push(`Row ${rowNumber}: Party Type ${normalizedPartyType || "Unknown"} requires Primary Full Name.`);
+      return;
+    }
+
+    const addresses = parseCommaValues(r.addresses || "");
+    if (!addresses.length) {
+      const oneLineAddress = [safeTrim(r.addressLine1 || ""), safeTrim(r.addressLine2 || ""), safeTrim(r.city || ""), safeTrim(r.state || ""), safeTrim(r.zip || "")]
+        .filter(Boolean)
+        .join(", ");
+      if (oneLineAddress) addresses.push(oneLineAddress);
+    }
+
+    const countries = Array.from(
+      new Set(
+        [...parseCommaValues(r.countries || ""), safeTrim(r.country || ""), safeTrim(r.countryOfCitizenship || "")]
+          .map((value) => safeTrim(value))
+          .filter(Boolean)
+      )
+    );
 
     const item: NameItem = {
       id: key,
       uiType,
       nameMode: uiType === "Individual" ? "split" : "full",
-      firstName: safeTrim(r.firstName || ""),
-      lastName: safeTrim(r.lastName || ""),
-      middleName: safeTrim(r.middleName || ""),
-      fullName: safeTrim(r.fullName || ""),
+      firstName,
+      lastName,
+      middleName,
+      fullName,
       aliasName: safeTrim(r.aliasName || ""),
       dateOfBirth: safeTrim(r.dateOfBirth || ""),
-      countries: safeTrim(r.countries || "") ? String(r.countries).split(",").map((x) => safeTrim(x)) : [safeTrim(r.country || "")].filter(Boolean),
-      addresses: safeTrim(r.addresses || "") ? String(r.addresses).split(",").map((x) => safeTrim(x)) : [],
+      countries,
+      addresses,
       ids: [
         {
           idType: safeTrim(r.idType || r.idCode || ""),
@@ -363,7 +416,7 @@ function parseBatchRows(rows: any[]): {
     queries[key] = buildEntityExampleFromNameItem(item);
   });
 
-  return { queries, rowMeta };
+  return { queries, rowMeta, validationErrors };
 }
 
 type EngineStatus = "NO_HIT" | "HIT" | "PROCESSING" | "ERROR";

@@ -527,23 +527,6 @@ textarea:focus-visible,
   font-size:12px;
   color:var(--muted);
 }
-.notificationList{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:10px;
-}
-.notificationItem{
-  border:1px solid var(--border);
-  border-radius:10px;
-  background:var(--app-surface);
-  padding:10px 12px;
-}
-.notificationTitle{
-  font-size:13px;
-  font-weight:700;
-  color:var(--text-strong);
-  margin-bottom:4px;
-}
 @media(max-width:1100px){
   .screeningTypeGrid{
     grid-template-columns:repeat(3, minmax(0, 1fr));
@@ -1614,6 +1597,66 @@ textarea{min-height:90px;resize:vertical}
   cursor:pointer;
 }
 .pagerText{font-size:12px;color:var(--muted)}
+.auditPagerRow{
+  margin-bottom:10px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--app-surface);
+}
+.auditPagerRight{
+  display:flex;
+  align-items:flex-end;
+  justify-content:flex-end;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.auditPagerSizeField{
+  min-width:140px;
+}
+.auditPagerNav{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--card);
+  padding:4px;
+}
+.auditPagerArrow{
+  width:34px;
+  height:34px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--card);
+  color:var(--text-strong);
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.auditPagerArrow:hover:enabled{
+  background:var(--app-surface);
+  border-color:#d8e3f2;
+}
+.auditPagerArrow:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+.auditPagerMeta{
+  min-width:110px;
+  text-align:center;
+  font-size:12px;
+  font-weight:700;
+  color:var(--text-strong);
+}
+.auditPagerArrow svg{
+  display:block;
+}
 .summaryGrid{
   display:grid;
   grid-template-columns:repeat(5, 1fr);
@@ -1622,6 +1665,15 @@ textarea{min-height:90px;resize:vertical}
 }
 @media(max-width:950px){
   .summaryGrid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:850px){
+  .auditPagerRow{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .auditPagerRight{
+    justify-content:space-between;
+  }
 }
 
 .summaryCard{

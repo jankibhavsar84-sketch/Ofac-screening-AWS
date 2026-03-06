@@ -21,7 +21,6 @@ from .models import (
     ScheduleSubscription,
     ScreeningQueueMessage,
     UserBusinessUnitMapping,
-    UserNotification,
 )
 from .queue import SqsQueue
 from .repository import JobRepository
@@ -792,15 +791,6 @@ class ScreeningService:
     def list_schedule_subscriptions(self, schedule_id: str, user_id: str | None = None) -> list[ScheduleSubscription]:
         rows = self.repository.list_schedule_subscriptions(schedule_id=schedule_id, user_id=user_id)
         return [ScheduleSubscription.model_validate(row) for row in rows]
-
-    def list_user_notifications(
-        self,
-        limit: int = 100,
-        user_id: str | None = None,
-        email: str | None = None,
-    ) -> list[UserNotification]:
-        rows = self.repository.list_user_notifications(limit=limit, user_id=user_id, email=email)
-        return [UserNotification.model_validate(row) for row in rows]
 
     def list_business_units_for_user(self, user_id: str) -> list[BusinessUnit]:
         rows = self.repository.list_business_units(user_id=user_id, include_inactive=False)

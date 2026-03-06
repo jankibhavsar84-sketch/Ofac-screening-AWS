@@ -141,6 +141,7 @@ function SectionIcon() {
 }
 
 export function AuditLogsPage() {
+  const pageSizeOptions = [100, 200, 300] as const;
   const auth = useAuth();
   const identity = buildIdentity(auth.user);
   const allowed = hasPermission(identity, "screening.admin");
@@ -152,6 +153,7 @@ export function AuditLogsPage() {
   const [auditErrorsOnly, setAuditErrorsOnly] = useState(false);
   const [auditUserOptions, setAuditUserOptions] = useState<AuditUserOption[]>([]);
   const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize, setAuditPageSize] = useState<(typeof pageSizeOptions)[number]>(100);
 
   const sortedAuditUserOptions = useMemo(
     () => [...auditUserOptions].sort((a, b) => a.displayName.localeCompare(b.displayName)),
@@ -230,7 +232,6 @@ export function AuditLogsPage() {
       return action.includes("FAILED") || Boolean(readErrorFromDetails(details));
     });
   }, [auditEvents, auditErrorsOnly]);
-  const auditPageSize = 10;
   const totalAuditPages = Math.max(1, Math.ceil(filteredAuditEvents.length / auditPageSize));
   const auditPageSafe = Math.min(auditPage, totalAuditPages);
   const auditStartIdx = (auditPageSafe - 1) * auditPageSize;
@@ -259,7 +260,7 @@ export function AuditLogsPage() {
             <span className="userAdminInlineIcon" aria-hidden="true">
               <SectionIcon />
             </span>
-            User Audit Logs
+            Audit Log
           </h2>
         </div>
         <div className="cardBody">
@@ -309,18 +310,57 @@ export function AuditLogsPage() {
 
           {auditError ? <div className="errorBox" role="alert" aria-live="assertive">{auditError}</div> : null}
 
-          <div className="pagerRow" style={{ marginBottom: 10 }}>
+          <div className="auditPagerRow">
             <div className="pagerText">
               Showing {filteredAuditEvents.length === 0 ? 0 : auditStartIdx + 1} to {Math.min(filteredAuditEvents.length, auditStartIdx + auditPageSize)} of {filteredAuditEvents.length} audit events
             </div>
-            <div className="pagerRight">
-              <button className="pagerBtn" disabled={auditPageSafe <= 1} onClick={() => setAuditPage((p) => Math.max(1, p - 1))} type="button">
-                Previous
-              </button>
-              <div className="pagerText">Page {auditPageSafe} of {totalAuditPages}</div>
-              <button className="pagerBtn" disabled={auditPageSafe >= totalAuditPages} onClick={() => setAuditPage((p) => Math.min(totalAuditPages, p + 1))} type="button">
-                Next
-              </button>
+            <div className="auditPagerRight">
+              <div className="field auditPagerSizeField">
+                <label>Records per page</label>
+                <select
+                  value={auditPageSize}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    if (next === 100 || next === 200 || next === 300) {
+                      setAuditPageSize(next);
+                      setAuditPage(1);
+                    }
+                  }}
+                >
+                  {pageSizeOptions.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="auditPagerNav">
+                <button
+                  className="auditPagerArrow"
+                  disabled={auditPageSafe <= 1}
+                  onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                  type="button"
+                  aria-label="Previous page"
+                  title="Previous page"
+                >
+                  <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                    <path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <div className="auditPagerMeta">Page {auditPageSafe} of {totalAuditPages}</div>
+                <button
+                  className="auditPagerArrow"
+                  disabled={auditPageSafe >= totalAuditPages}
+                  onClick={() => setAuditPage((p) => Math.min(totalAuditPages, p + 1))}
+                  type="button"
+                  aria-label="Next page"
+                  title="Next page"
+                >
+                  <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                    <path d="m7.5 4.5 5.5 5.5-5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 

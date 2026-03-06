@@ -74,19 +74,6 @@ export type ScheduleSubscription = {
   created_at: string;
 };
 
-export type UserNotification = {
-  notification_id: number;
-  created_at: string;
-  user_id?: string | null;
-  user_name?: string | null;
-  email?: string | null;
-  schedule_id?: string | null;
-  job_id?: string | null;
-  title: string;
-  message: string;
-  summary?: Record<string, unknown>;
-};
-
 export type AuditEvent = {
   event_id: number;
   created_at: string;
@@ -537,17 +524,6 @@ export async function subscribeToDailySchedule(scheduleId: string, email?: strin
     throw new Error(`Failed to subscribe to schedule: ${await parseApiError(resp)}`);
   }
   return (await resp.json()) as ScheduleSubscription;
-}
-
-export async function listUserNotifications(limit = 50): Promise<UserNotification[]> {
-  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
-  const url = new URL(`${baseUrl}/notifications`, window.location.origin);
-  url.searchParams.set("limit", String(limit));
-  const resp = await fetch(url.toString(), { headers: withAuthHeaders() });
-  if (!resp.ok) {
-    throw new Error(`Failed to load notifications: ${await parseApiError(resp)}`);
-  }
-  return (await resp.json()) as UserNotification[];
 }
 
 export async function listScreeningSubmissions(limit = 200): Promise<SubmissionHistoryEntry[]> {

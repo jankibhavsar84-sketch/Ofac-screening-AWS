@@ -251,6 +251,25 @@ class JobRepository:
                 self._execute(
                     conn,
                     """
+                    CREATE TABLE IF NOT EXISTS external_api_errors (
+                      error_id BIGSERIAL PRIMARY KEY,
+                      created_at TEXT NOT NULL,
+                      provider TEXT NOT NULL,
+                      operation TEXT,
+                      endpoint TEXT,
+                      status_code INTEGER,
+                      user_id TEXT,
+                      user_name TEXT,
+                      job_id TEXT,
+                      item_key TEXT,
+                      error_text TEXT NOT NULL,
+                      details_json TEXT
+                    );
+                    """,
+                )
+                self._execute(
+                    conn,
+                    """
                     CREATE TABLE IF NOT EXISTS schedule_notifications (
                       notification_id BIGSERIAL PRIMARY KEY,
                       created_at TEXT NOT NULL,
@@ -277,6 +296,25 @@ class JobRepository:
                       action TEXT NOT NULL,
                       entity_type TEXT,
                       entity_id TEXT,
+                      details_json TEXT
+                    );
+                    """,
+                )
+                self._execute(
+                    conn,
+                    """
+                    CREATE TABLE IF NOT EXISTS external_api_errors (
+                      error_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      created_at TEXT NOT NULL,
+                      provider TEXT NOT NULL,
+                      operation TEXT,
+                      endpoint TEXT,
+                      status_code INTEGER,
+                      user_id TEXT,
+                      user_name TEXT,
+                      job_id TEXT,
+                      item_key TEXT,
+                      error_text TEXT NOT NULL,
                       details_json TEXT
                     );
                     """,
@@ -366,6 +404,20 @@ class JobRepository:
                 """
                 CREATE INDEX IF NOT EXISTS idx_user_business_units_code
                 ON user_business_units(business_unit_code, is_active);
+                """,
+            )
+            self._execute(
+                conn,
+                """
+                CREATE INDEX IF NOT EXISTS idx_external_api_errors_created_at
+                ON external_api_errors(created_at);
+                """,
+            )
+            self._execute(
+                conn,
+                """
+                CREATE INDEX IF NOT EXISTS idx_external_api_errors_job_item
+                ON external_api_errors(job_id, item_key, created_at);
                 """,
             )
 
@@ -2079,6 +2131,75 @@ class JobRepository:
                     action.strip() or "UNKNOWN",
                     (entity_type or "").strip() or None,
                     (entity_id or "").strip() or None,
+                    json.dumps(details or {}),
+                ),
+            )
+            return int(cur.lastrowid)
+
+    def add_external_api_error(
+        self,
+        provider: str,
+        error_text: str,
+        operation: str | None = None,
+        endpoint: str | None = None,
+        status_code: int | None = None,
+        user_id: str | None = None,
+        user_name: str | None = None,
+        job_id: str | None = None,
+        item_key: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> int:
+        created_at = now_iso()
+        safe_provider = str(provider or "").strip().lower() or "unknown"
+        safe_error = str(error_text or "").strip() or "Unknown external API error"
+        safe_status = int(status_code) if isinstance(status_code, int) else None
+        with self._connect() as conn:
+            if self.is_postgres:
+                cur = self._execute(
+                    conn,
+                    """
+                    INSERT INTO external_api_errors(
+                      created_at, provider, operation, endpoint, status_code,
+                      user_id, user_name, job_id, item_key, error_text, details_json
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    RETURNING error_id
+                    """,
+                    (
+                        created_at,
+                        safe_provider,
+                        (operation or "").strip() or None,
+                        (endpoint or "").strip() or None,
+                        safe_status,
+                        (user_id or "").strip() or None,
+                        (user_name or "").strip() or None,
+                        (job_id or "").strip() or None,
+                        (item_key or "").strip() or None,
+                        safe_error,
+                        json.dumps(details or {}),
+                    ),
+                )
+                row = cur.fetchone()
+                return int(row["error_id"]) if row else 0
+
+            cur = self._execute(
+                conn,
+                """
+                INSERT INTO external_api_errors(
+                  created_at, provider, operation, endpoint, status_code,
+                  user_id, user_name, job_id, item_key, error_text, details_json
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    created_at,
+                    safe_provider,
+                    (operation or "").strip() or None,
+                    (endpoint or "").strip() or None,
+                    safe_status,
+                    (user_id or "").strip() or None,
+                    (user_name or "").strip() or None,
+                    (job_id or "").strip() or None,
+                    (item_key or "").strip() or None,
+                    safe_error,
                     json.dumps(details or {}),
                 ),
             )

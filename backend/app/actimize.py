@@ -12,6 +12,30 @@ import requests
 from .config import settings
 from .models import EntityExample
 
+
+class ExternalApiCallError(RuntimeError):
+    def __init__(
+        self,
+        provider: str,
+        operation: str,
+        endpoint: str,
+        message: str,
+        status_code: int | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        self.provider = str(provider or "").strip().lower() or "unknown"
+        self.operation = str(operation or "").strip() or "unknown"
+        self.endpoint = str(endpoint or "").strip()
+        self.status_code = status_code if isinstance(status_code, int) else None
+        self.details = details or {}
+        base = f"{self.provider} {self.operation} failed"
+        if self.status_code is not None:
+            base = f"{base} ({self.status_code})"
+        if self.endpoint:
+            base = f"{base} at {self.endpoint}"
+        super().__init__(f"{base}: {message}")
+
+
 _ISO2_TO_ISO3: dict[str, str] = {
     "US": "USA",
     "CA": "CAN",
@@ -193,20 +217,43 @@ class ActimizeClient:
         payload: dict[str, Any] = {"queries": {"item_1": screen_query.model_dump(mode="json")}}
         params = {"limit": settings.screening_result_limit}
 
-        response = requests.post(
-            endpoint,
-            headers=headers,
-            params=params,
-            json=payload,
-            timeout=self.timeout_s,
-        )
+        try:
+            response = requests.post(
+                endpoint,
+                headers=headers,
+                params=params,
+                json=payload,
+                timeout=self.timeout_s,
+            )
+        except requests.RequestException as exc:
+            raise ExternalApiCallError(
+                provider="opensanctions",
+                operation="match",
+                endpoint=endpoint,
+                message=str(exc),
+                details={"screening_type": screening_type, "dataset": dataset},
+            ) from exc
         if response.status_code >= 400:
-            raise RuntimeError(f"OpenSanctions API error {response.status_code}: {self._extract_error_detail(response)}")
+            raise ExternalApiCallError(
+                provider="opensanctions",
+                operation="match",
+                endpoint=endpoint,
+                status_code=int(response.status_code),
+                message=self._extract_error_detail(response),
+                details={"screening_type": screening_type, "dataset": dataset},
+            )
 
         try:
             body = response.json()
         except Exception as exc:  # noqa: BLE001
-            raise RuntimeError("OpenSanctions API returned non-JSON response") from exc
+            raise ExternalApiCallError(
+                provider="opensanctions",
+                operation="match",
+                endpoint=endpoint,
+                status_code=int(response.status_code),
+                message="OpenSanctions API returned non-JSON response",
+                details={"screening_type": screening_type, "dataset": dataset},
+            ) from exc
 
         return self._normalize_opensanctions(body, query)
 
@@ -221,19 +268,42 @@ class ActimizeClient:
 
         endpoint = f"{self.base_url}/entity-screenings"
         payload = self._build_entity_screening_request(query, requester_name=requester_name)
-        response = requests.post(
-            endpoint,
-            headers=self._build_headers(),
-            json=payload,
-            timeout=self.timeout_s,
-        )
+        try:
+            response = requests.post(
+                endpoint,
+                headers=self._build_headers(),
+                json=payload,
+                timeout=self.timeout_s,
+            )
+        except requests.RequestException as exc:
+            raise ExternalApiCallError(
+                provider=self.provider,
+                operation="entity-screenings",
+                endpoint=endpoint,
+                message=str(exc),
+                details={"screening_type": screening_type},
+            ) from exc
         if response.status_code >= 400:
-            raise RuntimeError(f"Screening API error {response.status_code}: {self._extract_error_detail(response)}")
+            raise ExternalApiCallError(
+                provider=self.provider,
+                operation="entity-screenings",
+                endpoint=endpoint,
+                status_code=int(response.status_code),
+                message=self._extract_error_detail(response),
+                details={"screening_type": screening_type},
+            )
 
         try:
             body = response.json()
         except Exception as exc:  # noqa: BLE001
-            raise RuntimeError("Screening API returned non-JSON response") from exc
+            raise ExternalApiCallError(
+                provider=self.provider,
+                operation="entity-screenings",
+                endpoint=endpoint,
+                status_code=int(response.status_code),
+                message="Screening API returned non-JSON response",
+                details={"screening_type": screening_type},
+            ) from exc
 
         return self._normalize_prudential(body, query, screening_type)
 
@@ -340,14 +410,34 @@ class ActimizeClient:
         if self.scope:
             payload["scope"] = self.scope
 
-        response = requests.post(self.token_url, data=payload, timeout=self.timeout_s)
+        try:
+            response = requests.post(self.token_url, data=payload, timeout=self.timeout_s)
+        except requests.RequestException as exc:
+            raise ExternalApiCallError(
+                provider=self.provider,
+                operation="oauth_token",
+                endpoint=self.token_url,
+                message=str(exc),
+            ) from exc
         if response.status_code >= 400:
-            raise RuntimeError(f"OAuth token request failed ({response.status_code}): {self._extract_error_detail(response)}")
+            raise ExternalApiCallError(
+                provider=self.provider,
+                operation="oauth_token",
+                endpoint=self.token_url,
+                status_code=int(response.status_code),
+                message=self._extract_error_detail(response),
+            )
 
         try:
             body = response.json() if response.content else {}
         except Exception as exc:  # noqa: BLE001
-            raise RuntimeError("OAuth token endpoint returned non-JSON response") from exc
+            raise ExternalApiCallError(
+                provider=self.provider,
+                operation="oauth_token",
+                endpoint=self.token_url,
+                status_code=int(response.status_code),
+                message="OAuth token endpoint returned non-JSON response",
+            ) from exc
         access_token = str(body.get("access_token") or "").strip()
         if not access_token:
             raise RuntimeError("OAuth token response missing access_token")
@@ -524,11 +614,21 @@ class ActimizeClient:
         message_value = str(body.get("message") or "").strip().upper()
 
         if message_value == "JSON_VALIDATION_FAILED":
-            raise RuntimeError("Screening API input validation failed")
+            raise ExternalApiCallError(
+                provider=self.provider,
+                operation="entity-screenings",
+                endpoint=f"{self.base_url}/entity-screenings",
+                message="Screening API input validation failed",
+            )
 
         is_hit = status_value == "HIT" or message_value in {"PM", "HIT", "MATCH", "POTENTIAL_MATCH"}
         if status_value == "FAILURE" and not is_hit and message_value not in {"NM", "NO_HIT"}:
-            raise RuntimeError(f"Screening API returned FAILURE: {message_value or 'UNKNOWN'}")
+            raise ExternalApiCallError(
+                provider=self.provider,
+                operation="entity-screenings",
+                endpoint=f"{self.base_url}/entity-screenings",
+                message=f"Screening API returned FAILURE: {message_value or 'UNKNOWN'}",
+            )
 
         normalized_results: list[dict[str, Any]] = []
         if is_hit:

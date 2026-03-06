@@ -4,7 +4,7 @@ import logging
 import time
 from datetime import datetime, timezone
 
-from .actimize import ActimizeClient
+from .actimize import ActimizeClient, ExternalApiCallError
 from .config import settings
 from .models import MatchJobRequest
 from .queue import SqsQueue
@@ -91,6 +91,37 @@ def run() -> None:
                     message.job_id,
                     message.item_key,
                     exc,
+                )
+                if isinstance(exc, ExternalApiCallError):
+                    provider = exc.provider
+                    operation = exc.operation
+                    endpoint = exc.endpoint
+                    status_code = exc.status_code
+                    api_details = dict(exc.details or {})
+                else:
+                    provider = settings.actimize_provider
+                    operation = "screen_many_types"
+                    endpoint = ""
+                    status_code = None
+                    api_details = {}
+
+                repository.add_external_api_error(
+                    provider=provider,
+                    operation=operation,
+                    endpoint=endpoint,
+                    status_code=status_code,
+                    user_id=message.user_id,
+                    user_name=message.user_name,
+                    job_id=message.job_id,
+                    item_key=message.item_key,
+                    error_text=str(exc),
+                    details={
+                        "query": message.query.model_dump(mode="json"),
+                        "screening_types": message.screening_types,
+                        "mock_screening": message.mock_screening,
+                        "source_schedule_id": message.source_schedule_id,
+                        **api_details,
+                    },
                 )
                 repository.mark_item_failed(message.job_id, message.item_key, str(exc))
                 repository.add_audit_event(
