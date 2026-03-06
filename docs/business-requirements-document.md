@@ -4,9 +4,9 @@
 OFAC / Watchlist Screening Application
 
 ## Document Version
-- Version: 1.0
-- Date: February 25, 2026
-- Status: Draft for business review
+- Version: 1.1
+- Date: March 6, 2026
+- Status: Updated for enterprise audit controls
 
 ## 1. Business Purpose
 The application shall allow business users to screen individuals and entities against watchlists, receive immediate results for single requests, process large files in batch mode, and maintain a compliant audit trail of all user actions.
@@ -25,6 +25,9 @@ The application shall allow business users to screen individuals and entities ag
 - Daily screening scheduling and selective disablement.
 - User-scoped result visibility.
 - Audit logging of user actions.
+- API access logging with request/response metadata.
+- Correlation ID traceability across API, queue, and worker processing.
+- Operational retention and risk alerting controls for audit/error data.
 
 ### Out of Scope
 - Case management and adjudication workflow after match.
@@ -79,6 +82,18 @@ The application shall allow business users to screen individuals and entities ag
 | BR-AU-001 | The system shall capture each user action relevant to screening and schedule management. | Must | Submit, refresh, schedule create/disable, and screening actions are auditable. |
 | BR-AU-002 | Audit records shall include who, what action, when, and contextual details. | Must | Audit data contains user identity, timestamp, action type, and action context. |
 | BR-AU-003 | Audit records shall be retrievable for review and compliance checks. | Must | Authorized users can list audit history by user and/or recent time period. |
+| BR-AU-004 | The system shall log every backend API request with status code, latency, and correlation identifier. | Must | Each `/api/v1/*` request creates an access-log row including method, path, status, duration, and correlation id. |
+| BR-AU-005 | Authentication and authorization failures shall be auditable. | Must | 401/403 API responses create explicit audit events with endpoint, status, and correlation id. |
+| BR-AU-006 | Asynchronous processing lifecycle shall be auditable end-to-end. | Must | Queue enqueue, dequeue/pickup, and worker processing outcomes are stored in audit logs with correlation id. |
+| BR-AU-007 | External screening API errors shall be stored in a dedicated error repository with context. | Must | Each external API failure stores provider, operation, status code, request context, and related correlation id. |
+| BR-AU-008 | Sensitive request attributes in operational logs shall be masked or redacted. | Must | Access logs do not persist raw secrets/tokens/password-like values. |
+| BR-AU-009 | The platform shall support configurable retention windows for audit/access/error logs. | Must | Worker applies retention policy and records purge actions in audit trail. |
+
+## Component H: Operational Risk Controls
+| ID | Business Requirement | Priority | Acceptance Criteria |
+|---|---|---|---|
+| BR-OR-001 | The platform shall trigger a high-risk audit alert when external API failures exceed threshold within a configurable window. | Must | Alert event is recorded once per provider/operation window when threshold is crossed. |
+| BR-OR-002 | Correlation id shall be propagated from inbound API request through queue message to worker execution events. | Must | A single correlation id can be used to trace one screening request across API, SQS, worker, and failure logs. |
 
 ## Component G: Throughput and Service Levels
 | ID | Business Requirement | Priority | Acceptance Criteria |
@@ -93,6 +108,8 @@ The application shall allow business users to screen individuals and entities ag
 3. 100% of daily schedules can be disabled individually.
 4. 100% of auditable actions are queryable for compliance review.
 5. Single screening responses are returned in real-time user workflow.
+6. 100% of backend API calls generate an access-log record.
+7. 100% of screening external API failures are persisted with context and correlation id.
 
 ## 6. Assumptions
 1. Actimize remains the system of record for screening decision inputs.

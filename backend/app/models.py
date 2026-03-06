@@ -45,6 +45,7 @@ class MatchJobRequest(BaseModel):
     schedule_id: str | None = None
     source_upload_id: str | None = None
     batch_name: str | None = None
+    correlation_id: str | None = None
     user_id: str | None = None
     user_name: str | None = None
 
@@ -109,6 +110,7 @@ class ScreeningQueueMessage(BaseModel):
     mock_screening: bool = False
     user_id: str | None = None
     user_name: str | None = None
+    correlation_id: str | None = None
     source_schedule_id: str | None = None
     source_record_hash: str | None = None
 

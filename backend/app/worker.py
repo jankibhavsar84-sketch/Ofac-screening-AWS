@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from .actimize import ActimizeClient, ExternalApiCallError
 from .config import settings
@@ -31,6 +32,24 @@ class FixedRateLimiter:
         self.next_slot = max(self.next_slot, now) + self.min_interval
 
 
+def _resolve_external_api_context(exc: Exception) -> tuple[str, str, str, int | None, dict[str, object]]:
+    if isinstance(exc, ExternalApiCallError):
+        return (
+            exc.provider,
+            exc.operation,
+            exc.endpoint,
+            exc.status_code,
+            dict(exc.details or {}),
+        )
+    return (
+        settings.actimize_provider,
+        "screen_many_types",
+        "",
+        None,
+        {},
+    )
+
+
 def run() -> None:
     queue = SqsQueue()
     queue.ensure_queue()
@@ -39,6 +58,7 @@ def run() -> None:
     actimize = ActimizeClient()
     limiter = FixedRateLimiter(settings.screening_tps)
     last_schedule_check = 0.0
+    last_cleanup_run = 0.0
 
     logger.info("worker started with max TPS=%s", settings.screening_tps)
 
@@ -49,15 +69,71 @@ def run() -> None:
             receipt_handle = raw.get("ReceiptHandle")
             if not receipt_handle:
                 continue
+            message_id = str(raw.get("MessageId") or "").strip() or receipt_handle
+            repository.add_audit_event(
+                action="SQS_MESSAGE_RECEIVED",
+                entity_type="sqs_message",
+                entity_id=message_id,
+                details={
+                    "queue_name": settings.aws_sqs_queue_name,
+                    "receipt_handle": receipt_handle,
+                },
+            )
 
             try:
                 message = queue.decode(raw)
             except Exception as exc:  # noqa: BLE001
                 logger.exception("invalid message payload: %s", exc)
+                repository.add_audit_event(
+                    action="SQS_MESSAGE_DECODE_FAILED",
+                    entity_type="sqs_message",
+                    entity_id=message_id,
+                    details={
+                        "queue_name": settings.aws_sqs_queue_name,
+                        "receipt_handle": receipt_handle,
+                        "body": raw.get("Body"),
+                        "error": str(exc),
+                    },
+                )
                 queue.delete(receipt_handle)
                 continue
+            correlation_id = str(message.correlation_id or "").strip() or str(uuid4())
+            repository.add_audit_event(
+                action="SQS_MESSAGE_PICKED",
+                user_id=message.user_id,
+                user_name=message.user_name,
+                entity_type="screening_queue_item",
+                entity_id=f"{message.job_id}:{message.item_key}",
+                details={
+                    "queue_name": settings.aws_sqs_queue_name,
+                    "message_id": message_id,
+                    "job_id": message.job_id,
+                    "item_key": message.item_key,
+                    "source_schedule_id": message.source_schedule_id,
+                    "correlation_id": correlation_id,
+                },
+            )
 
             repository.mark_item_processing(message.job_id, message.item_key)
+            request_payload = message.query.model_dump(mode="json")
+            repository.add_audit_event(
+                action="ASYNC_SCREENING_API_CALL_STARTED",
+                user_id=message.user_id,
+                user_name=message.user_name,
+                entity_type="screening_item",
+                entity_id=f"{message.job_id}:{message.item_key}",
+                details={
+                    "job_id": message.job_id,
+                    "item_key": message.item_key,
+                    "provider": settings.actimize_provider,
+                    "operation": "screen_many_types",
+                    "screening_types": message.screening_types,
+                    "mock_screening": message.mock_screening,
+                    "source_schedule_id": message.source_schedule_id,
+                    "correlation_id": correlation_id,
+                    "request": request_payload,
+                },
+            )
 
             try:
                 limiter.wait_turn()
@@ -68,6 +144,27 @@ def run() -> None:
                     requester_name=message.user_name,
                 )
                 repository.mark_item_completed(message.job_id, message.item_key, result)
+                result_items = result.get("results", []) if isinstance(result, dict) else []
+                result_count = len(result_items) if isinstance(result_items, list) else 0
+                repository.add_audit_event(
+                    action="ASYNC_SCREENING_API_CALL_SUCCEEDED",
+                    user_id=message.user_id,
+                    user_name=message.user_name,
+                    entity_type="screening_item",
+                    entity_id=f"{message.job_id}:{message.item_key}",
+                    details={
+                        "job_id": message.job_id,
+                        "item_key": message.item_key,
+                        "provider": settings.actimize_provider,
+                        "operation": "screen_many_types",
+                        "screening_types": message.screening_types,
+                        "mock_screening": message.mock_screening,
+                        "source_schedule_id": message.source_schedule_id,
+                        "correlation_id": correlation_id,
+                        "result_count": result_count,
+                        "result": result,
+                    },
+                )
                 if message.source_schedule_id and message.source_record_hash:
                     repository.mark_schedule_record_screened(
                         schedule_id=message.source_schedule_id,
@@ -92,18 +189,7 @@ def run() -> None:
                     message.item_key,
                     exc,
                 )
-                if isinstance(exc, ExternalApiCallError):
-                    provider = exc.provider
-                    operation = exc.operation
-                    endpoint = exc.endpoint
-                    status_code = exc.status_code
-                    api_details = dict(exc.details or {})
-                else:
-                    provider = settings.actimize_provider
-                    operation = "screen_many_types"
-                    endpoint = ""
-                    status_code = None
-                    api_details = {}
+                provider, operation, endpoint, status_code, api_details = _resolve_external_api_context(exc)
 
                 repository.add_external_api_error(
                     provider=provider,
@@ -116,10 +202,49 @@ def run() -> None:
                     item_key=message.item_key,
                     error_text=str(exc),
                     details={
-                        "query": message.query.model_dump(mode="json"),
+                        "query": request_payload,
                         "screening_types": message.screening_types,
                         "mock_screening": message.mock_screening,
                         "source_schedule_id": message.source_schedule_id,
+                        "correlation_id": correlation_id,
+                        **api_details,
+                    },
+                )
+                alert = repository.maybe_emit_high_risk_external_api_failure_alert(
+                    provider=provider,
+                    operation=operation,
+                    threshold=settings.high_risk_external_api_error_threshold,
+                    window_minutes=settings.high_risk_external_api_error_window_minutes,
+                    correlation_id=correlation_id,
+                )
+                if alert and alert.get("new_alert_created"):
+                    logger.warning(
+                        "high risk external API failure alert: provider=%s operation=%s total=%s window_minutes=%s threshold=%s",
+                        alert.get("provider"),
+                        alert.get("operation"),
+                        alert.get("total_errors"),
+                        alert.get("window_minutes"),
+                        alert.get("threshold"),
+                    )
+                repository.add_audit_event(
+                    action="ASYNC_SCREENING_API_CALL_FAILED",
+                    user_id=message.user_id,
+                    user_name=message.user_name,
+                    entity_type="screening_item",
+                    entity_id=f"{message.job_id}:{message.item_key}",
+                    details={
+                        "job_id": message.job_id,
+                        "item_key": message.item_key,
+                        "provider": provider,
+                        "operation": operation,
+                        "endpoint": endpoint,
+                        "status_code": status_code,
+                        "screening_types": message.screening_types,
+                        "mock_screening": message.mock_screening,
+                        "source_schedule_id": message.source_schedule_id,
+                        "correlation_id": correlation_id,
+                        "request": request_payload,
+                        "error": str(exc),
                         **api_details,
                     },
                 )
@@ -133,6 +258,7 @@ def run() -> None:
                     details={
                         "job_id": message.job_id,
                         "item_key": message.item_key,
+                        "correlation_id": correlation_id,
                         "error": str(exc),
                     },
                 )
@@ -155,6 +281,20 @@ def run() -> None:
         if now_monotonic - last_schedule_check >= max(settings.daily_screening_check_interval_s, 5):
             trigger_due_daily_schedules(repository, service)
             last_schedule_check = now_monotonic
+        if now_monotonic - last_cleanup_run >= max(settings.operational_cleanup_interval_s, 60):
+            deleted = repository.purge_old_operational_data(
+                audit_event_retention_days=settings.audit_event_retention_days,
+                api_access_log_retention_days=settings.api_access_log_retention_days,
+                external_api_error_retention_days=settings.external_api_error_retention_days,
+            )
+            if any(v > 0 for v in deleted.values()):
+                repository.add_audit_event(
+                    action="OPERATIONAL_DATA_PURGED",
+                    entity_type="retention_policy",
+                    details=deleted,
+                )
+                logger.info("operational data cleanup completed: %s", deleted)
+            last_cleanup_run = now_monotonic
 
 
 def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningService) -> None:
@@ -179,6 +319,7 @@ def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningSer
             continue
 
         try:
+            correlation_id = str(uuid4())
             payload = MatchJobRequest(
                 queries=schedule["queries"],
                 screening_types=schedule["screening_types"],
@@ -188,6 +329,7 @@ def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningSer
                 schedule_id=schedule["schedule_id"],
                 source_upload_id=schedule.get("source_upload_id"),
                 batch_name=schedule["batch_name"],
+                correlation_id=correlation_id,
                 user_id=schedule.get("user_id"),
                 user_name=schedule.get("user_name"),
             )
@@ -217,7 +359,7 @@ def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningSer
                 user_name=schedule.get("user_name"),
                 entity_type="daily_schedule",
                 entity_id=schedule["schedule_id"],
-                details={"job_id": accepted.job_id, "batch_name": schedule["batch_name"]},
+                details={"job_id": accepted.job_id, "batch_name": schedule["batch_name"], "correlation_id": correlation_id},
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception(

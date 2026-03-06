@@ -3,14 +3,17 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from time import monotonic
 from typing import Any
+from urllib.parse import parse_qsl
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import Response
 
 from .actimize import ActimizeClient, ExternalApiCallError
-from .auth import AuthPrincipal, principal_has_permission, require_any_scope
+from .auth import AuthPrincipal, clear_audit_principal, get_audit_principal, principal_has_permission, require_any_scope
 from .config import settings
 from .file_store import S3FileStore
 from .models import (
@@ -55,6 +58,187 @@ app.add_middleware(
 @app.on_event("startup")
 def startup() -> None:
     queue.ensure_queue()
+
+
+_SENSITIVE_QUERY_KEYS = {
+    "token",
+    "access_token",
+    "id_token",
+    "authorization",
+    "password",
+    "secret",
+    "client_secret",
+    "email",
+    "subscribe_email",
+    "subscribe_emails",
+}
+
+
+def _is_sensitive_key(key: str) -> bool:
+    normalized = str(key or "").strip().lower()
+    return normalized in _SENSITIVE_QUERY_KEYS or normalized.endswith("_token") or normalized.endswith("_secret")
+
+
+def _redact_value(value: str) -> str:
+    safe = str(value or "").strip()
+    if not safe:
+        return ""
+    if len(safe) <= 2:
+        return "*" * len(safe)
+    return f"{safe[:2]}***"
+
+
+def _sanitize_query_params(raw_query: str) -> dict[str, str]:
+    if not raw_query:
+        return {}
+    redacted: dict[str, str] = {}
+    for key, value in parse_qsl(raw_query, keep_blank_values=True):
+        safe_key = str(key or "").strip()
+        if not safe_key:
+            continue
+        if _is_sensitive_key(safe_key):
+            redacted[safe_key] = _redact_value(value)
+        else:
+            redacted[safe_key] = str(value or "").strip()
+    return redacted
+
+
+def _sanitize_query_string(raw_query: str) -> str | None:
+    params = _sanitize_query_params(raw_query)
+    if not params:
+        return None
+    return "&".join(f"{key}={value}" for key, value in params.items())
+
+
+def _request_correlation_id(request: Request) -> str:
+    from_state = str(getattr(request.state, "correlation_id", "") or "").strip()
+    if from_state:
+        return from_state
+    from_header = str(request.headers.get("x-correlation-id") or "").strip()
+    if from_header:
+        return from_header
+    generated = str(uuid4())
+    request.state.correlation_id = generated
+    return generated
+
+
+def _client_ip(request: Request) -> str | None:
+    forwarded = str(request.headers.get("x-forwarded-for") or "").strip()
+    if forwarded:
+        first = forwarded.split(",")[0].strip()
+        if first:
+            return first
+    if request.client and request.client.host:
+        return request.client.host
+    return None
+
+
+def _extract_response_detail(response: Response | None) -> str | None:
+    if response is None:
+        return None
+    try:
+        body = getattr(response, "body", None)
+        if isinstance(body, (bytes, bytearray)):
+            text = body.decode("utf-8", errors="ignore").strip()
+            return text[:500] if text else None
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
+@app.middleware("http")
+async def audit_api_access(request: Request, call_next: Any) -> Response:
+    clear_audit_principal()
+    incoming_correlation = str(request.headers.get("x-correlation-id") or "").strip()
+    correlation_id = incoming_correlation or str(uuid4())
+    request.state.correlation_id = correlation_id
+    start = monotonic()
+    response: Response | None = None
+    unhandled_error: str | None = None
+    try:
+        response = await call_next(request)
+        response.headers["X-Correlation-ID"] = correlation_id
+        return response
+    except Exception as exc:  # noqa: BLE001
+        unhandled_error = str(exc)
+        raise
+    finally:
+        if request.url.path.startswith("/api/v1/") and settings.audit_access_log_enabled:
+            try:
+                elapsed_ms = int((monotonic() - start) * 1000)
+                status_code = int(response.status_code) if response is not None else 500
+                principal = get_audit_principal()
+                user_id = principal.user_id if principal else None
+                user_name = principal.user_name if principal else None
+                auth_state = "AUTHORIZED"
+                if status_code == 401:
+                    auth_state = "AUTHENTICATION_FAILED"
+                elif status_code == 403:
+                    auth_state = "AUTHORIZATION_FAILED"
+                elif status_code >= 500:
+                    auth_state = "SERVER_ERROR"
+
+                sanitized_query_params = _sanitize_query_params(request.url.query)
+                details: dict[str, Any] = {
+                    "query_params": sanitized_query_params,
+                    "route_name": str(request.scope.get("path") or request.url.path),
+                }
+                if unhandled_error:
+                    details["error"] = unhandled_error
+                response_detail = _extract_response_detail(response)
+                if response_detail and status_code >= 400:
+                    details["response_detail"] = response_detail
+
+                repository.add_api_access_log(
+                    request_method=request.method,
+                    request_path=request.url.path,
+                    query_string=_sanitize_query_string(request.url.query),
+                    status_code=status_code,
+                    duration_ms=elapsed_ms,
+                    correlation_id=correlation_id,
+                    client_ip=_client_ip(request),
+                    user_agent=str(request.headers.get("user-agent") or "").strip() or None,
+                    user_id=user_id,
+                    user_name=user_name,
+                    auth_state=auth_state,
+                    details=details,
+                )
+
+                if status_code == 401:
+                    repository.add_audit_event(
+                        action="API_AUTHENTICATION_FAILED",
+                        user_id=user_id,
+                        user_name=user_name,
+                        entity_type="api_request",
+                        entity_id=request.url.path,
+                        details={
+                            "method": request.method,
+                            "status_code": status_code,
+                            "correlation_id": correlation_id,
+                            "client_ip": _client_ip(request),
+                            "query_params": sanitized_query_params,
+                            "response_detail": response_detail,
+                        },
+                    )
+                elif status_code == 403:
+                    repository.add_audit_event(
+                        action="API_AUTHORIZATION_FAILED",
+                        user_id=user_id,
+                        user_name=user_name,
+                        entity_type="api_request",
+                        entity_id=request.url.path,
+                        details={
+                            "method": request.method,
+                            "status_code": status_code,
+                            "correlation_id": correlation_id,
+                            "client_ip": _client_ip(request),
+                            "query_params": sanitized_query_params,
+                            "response_detail": response_detail,
+                        },
+                    )
+            except Exception:
+                pass
+        clear_audit_principal()
 
 
 def get_service() -> ScreeningService:
@@ -113,6 +297,93 @@ def _normalize_business_unit_code(value: str | None) -> str:
     return str(value or "").strip().upper()
 
 
+def _as_str_values(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(v or "").strip() for v in value if str(v or "").strip()]
+    if isinstance(value, str):
+        safe = value.strip()
+        return [safe] if safe else []
+    return []
+
+
+def _validate_batch_upload_queries(parsed_queries: dict[str, Any]) -> None:
+    allowed_schemas = {"person", "individual", "company", "organization", "legalentity", "unknown"}
+    errors: list[str] = []
+    seen_query_keys: set[str] = set()
+
+    for item_key, raw_query in parsed_queries.items():
+        query_key = str(item_key).strip()
+        if not query_key:
+            errors.append("PartyKey is required and cannot be blank")
+            continue
+
+        normalized_query_key = query_key.upper()
+        if normalized_query_key in seen_query_keys:
+            errors.append(f"Duplicate PartyKey '{query_key}'. PartyKey must be unique within the file")
+            continue
+        seen_query_keys.add(normalized_query_key)
+
+        # Legacy auto row keys indicate upload was not keyed by PartyKey.
+        if re.match(r"^row_\d+$", query_key, flags=re.IGNORECASE):
+            errors.append(f"{query_key}: invalid PartyKey. Upload must include a non-empty PartyKey column")
+            continue
+
+        if not isinstance(raw_query, dict):
+            errors.append(f"{query_key}: query must be an object")
+            continue
+
+        schema = str(raw_query.get("schema") or "").strip().lower()
+        if schema not in allowed_schemas:
+            errors.append(f"{query_key}: unsupported schema '{raw_query.get('schema')}'")
+
+        props = raw_query.get("properties")
+        if not isinstance(props, dict):
+            errors.append(f"{query_key}: properties must be an object")
+            continue
+
+        names = _as_str_values(props.get("name"))
+        if not names:
+            errors.append(f"{query_key}: at least one non-empty name is required")
+
+        raw_genders = (
+            _as_str_values(props.get("genderCode"))
+            + _as_str_values(props.get("gender_code"))
+            + _as_str_values(props.get("gender"))
+        )
+        for raw_gender in raw_genders:
+            normalized = raw_gender.strip().upper()
+            if normalized in {"M", "F", ""}:
+                continue
+            if raw_gender.strip().lower() in {"male", "female", "unknown"}:
+                continue
+            errors.append(f"{query_key}: gender code must be M, F, or blank")
+            break
+
+    if errors:
+        preview = "; ".join(errors[:6])
+        if len(errors) > 6:
+            preview += f"; +{len(errors) - 6} more"
+        raise HTTPException(status_code=400, detail=f"Upload validation failed: {preview}")
+
+
+def _resolve_external_api_context(exc: Exception) -> tuple[str, str, str, int | None, dict[str, Any]]:
+    if isinstance(exc, ExternalApiCallError):
+        return (
+            exc.provider,
+            exc.operation,
+            exc.endpoint,
+            exc.status_code,
+            dict(exc.details or {}),
+        )
+    return (
+        settings.actimize_provider,
+        "screen_many_types",
+        "",
+        None,
+        {},
+    )
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -121,6 +392,7 @@ def health() -> dict[str, str]:
 @app.post("/api/v1/screenings/jobs", response_model=MatchJobAccepted)
 def create_screening_job(
     payload: MatchJobRequest,
+    request: Request,
     principal: AuthPrincipal = Depends(require_any_scope("screening.write", "screening.daily", "screening.admin")),
     svc: ScreeningService = Depends(get_service),
 ) -> MatchJobAccepted:
@@ -128,8 +400,11 @@ def create_screening_job(
         raise HTTPException(status_code=403, detail="Only Compliance/Admin can enable daily screening")
 
     try:
+        correlation_id = _request_correlation_id(request)
         actor_user_name = _preferred_actor_name(principal, payload.user_name)
-        payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": actor_user_name})
+        payload = payload.model_copy(
+            update={"user_id": principal.user_id, "user_name": actor_user_name, "correlation_id": correlation_id}
+        )
         return svc.submit_job(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -137,6 +412,7 @@ def create_screening_job(
 
 @app.post("/api/v1/screenings/batch-upload", response_model=BatchUploadAccepted)
 async def create_batch_job_with_upload(
+    request: Request,
     file: UploadFile = File(...),
     queries_json: str = Form(...),
     screening_types_json: str = Form(default="[]"),
@@ -166,6 +442,7 @@ async def create_batch_job_with_upload(
         raise HTTPException(status_code=400, detail=f"Invalid queries_json: {exc}") from exc
     if not isinstance(parsed_queries, dict) or not parsed_queries:
         raise HTTPException(status_code=400, detail="queries_json must be a non-empty object")
+    _validate_batch_upload_queries(parsed_queries)
 
     try:
         parsed_types = json.loads(screening_types_json)
@@ -195,6 +472,7 @@ async def create_batch_job_with_upload(
             raise HTTPException(status_code=500, detail=f"Failed to upload file to S3: {exc}") from exc
 
     actor_user_name = _preferred_actor_name(principal, user_name)
+    correlation_id = _request_correlation_id(request)
 
     repository.register_batch_file_upload(
         upload_id=upload_id,
@@ -224,6 +502,7 @@ async def create_batch_job_with_upload(
         schedule_id=(schedule_id or "").strip() or None,
         source_upload_id=upload_id,
         batch_name=(batch_name or "").strip() or None,
+        correlation_id=correlation_id,
         user_id=principal.user_id,
         user_name=actor_user_name,
     )
@@ -293,6 +572,7 @@ async def create_batch_job_with_upload(
             "schedule_run_at": payload.schedule_run_at,
             "schedule_id": payload.schedule_id,
             "business_unit_code": payload.business_unit_code,
+            "correlation_id": correlation_id,
         },
     )
 
@@ -529,6 +809,7 @@ def list_audit_events(
 @app.post("/api/v1/screenings/match", response_model=EntityMatchResponse)
 def match_sync(
     payload: MatchJobRequest,
+    request: Request,
     principal: AuthPrincipal = Depends(require_any_scope("screening.write", "screening.single.mock", "screening.admin")),
 ) -> EntityMatchResponse:
     if not payload.queries:
@@ -543,7 +824,10 @@ def match_sync(
         raise HTTPException(status_code=400, detail="Business Unit is required")
     if not repository.user_has_business_unit(principal.user_id, normalized_business_unit_code):
         raise HTTPException(status_code=403, detail="Selected Business Unit is not mapped to this user")
-    payload = payload.model_copy(update={"user_id": principal.user_id, "user_name": actor_user_name})
+    correlation_id = _request_correlation_id(request)
+    payload = payload.model_copy(
+        update={"user_id": principal.user_id, "user_name": actor_user_name, "correlation_id": correlation_id}
+    )
     job_id = str(uuid4())
     repository.create_job(
         job_id=job_id,
@@ -572,6 +856,7 @@ def match_sync(
             "screening_types": payload.screening_types,
             "mock_screening": payload.mock_screening,
             "business_unit_code": normalized_business_unit_code,
+            "correlation_id": correlation_id,
         },
     )
 
@@ -579,6 +864,24 @@ def match_sync(
     for item_key, query in payload.queries.items():
         request_payload = query.model_dump(mode="json")
         repository.add_job_item(job_id=job_id, item_key=item_key, request_payload=request_payload)
+        repository.add_audit_event(
+            action="SYNC_SCREENING_API_CALL_STARTED",
+            user_id=payload.user_id,
+            user_name=payload.user_name,
+            entity_type="sync_screening_item",
+            entity_id=f"{job_id}:{item_key}",
+            details={
+                "job_id": job_id,
+                "item_key": item_key,
+                "provider": settings.actimize_provider,
+                "operation": "screen_many_types",
+                "screening_types": payload.screening_types,
+                "mock_screening": payload.mock_screening,
+                "business_unit_code": normalized_business_unit_code,
+                "correlation_id": correlation_id,
+                "request": request_payload,
+            },
+        )
         try:
             screened = actimize.screen_many_types(
                 query,
@@ -597,19 +900,27 @@ def match_sync(
                 "status": int(screened.get("status", 200) or 200),
             }
             repository.mark_item_completed(job_id=job_id, item_key=item_key, response_payload=responses[item_key])
+            repository.add_audit_event(
+                action="SYNC_SCREENING_API_CALL_SUCCEEDED",
+                user_id=payload.user_id,
+                user_name=payload.user_name,
+                entity_type="sync_screening_item",
+                entity_id=f"{job_id}:{item_key}",
+                details={
+                    "job_id": job_id,
+                    "item_key": item_key,
+                    "provider": settings.actimize_provider,
+                    "operation": "screen_many_types",
+                    "screening_types": payload.screening_types,
+                    "mock_screening": payload.mock_screening,
+                    "business_unit_code": normalized_business_unit_code,
+                    "correlation_id": correlation_id,
+                    "result_count": len(trimmed_results),
+                    "result": responses[item_key],
+                },
+            )
         except Exception as exc:  # noqa: BLE001
-            if isinstance(exc, ExternalApiCallError):
-                provider = exc.provider
-                operation = exc.operation
-                endpoint = exc.endpoint
-                status_code = exc.status_code
-                api_details = dict(exc.details or {})
-            else:
-                provider = settings.actimize_provider
-                operation = "screen_many_types"
-                endpoint = ""
-                status_code = None
-                api_details = {}
+            provider, operation, endpoint, status_code, api_details = _resolve_external_api_context(exc)
 
             repository.add_external_api_error(
                 provider=provider,
@@ -626,6 +937,29 @@ def match_sync(
                     "screening_types": payload.screening_types,
                     "mock_screening": payload.mock_screening,
                     "business_unit_code": normalized_business_unit_code,
+                    "correlation_id": correlation_id,
+                    **api_details,
+                },
+            )
+            repository.add_audit_event(
+                action="SYNC_SCREENING_API_CALL_FAILED",
+                user_id=payload.user_id,
+                user_name=payload.user_name,
+                entity_type="sync_screening_item",
+                entity_id=f"{job_id}:{item_key}",
+                details={
+                    "job_id": job_id,
+                    "item_key": item_key,
+                    "provider": provider,
+                    "operation": operation,
+                    "endpoint": endpoint,
+                    "status_code": status_code,
+                    "screening_types": payload.screening_types,
+                    "mock_screening": payload.mock_screening,
+                    "business_unit_code": normalized_business_unit_code,
+                    "correlation_id": correlation_id,
+                    "request": request_payload,
+                    "error": str(exc),
                     **api_details,
                 },
             )
@@ -635,7 +969,7 @@ def match_sync(
                 user_name=payload.user_name,
                 entity_type="sync_screening_item",
                 entity_id=item_key,
-                details={"job_id": job_id, "item_key": item_key, "error": str(exc)},
+                details={"job_id": job_id, "item_key": item_key, "error": str(exc), "correlation_id": correlation_id},
             )
             repository.mark_item_failed(job_id=job_id, item_key=item_key, error_text=str(exc))
             responses[item_key] = {

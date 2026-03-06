@@ -96,6 +96,8 @@ class ScreeningService:
             or (payload.batch_name and payload.batch_name.strip())
             else "SINGLE"
         )
+        correlation_id = str(payload.correlation_id or "").strip() or str(uuid4())
+        payload = payload.model_copy(update={"correlation_id": correlation_id})
 
         if payload.daily_screening:
             self._validate_business_unit_access(payload.user_id, business_unit_code)
@@ -137,6 +139,7 @@ class ScreeningService:
                     "schedule_run_at": payload.schedule_run_at,
                     "next_run_at": scheduled_next_run_at,
                     "business_unit_code": business_unit_code,
+                    "correlation_id": correlation_id,
                 },
             )
         elif source_schedule_id:
@@ -189,6 +192,7 @@ class ScreeningService:
                     "schedule_run_at": payload.schedule_run_at,
                     "next_run_at": scheduled_next_run_at,
                     "business_unit_code": business_unit_code,
+                    "correlation_id": correlation_id,
                 },
             )
             return MatchJobAccepted(
@@ -246,6 +250,7 @@ class ScreeningService:
                     "total_items": 0,
                     "skipped_existing_records": skipped_existing_records,
                     "business_unit_code": business_unit_code,
+                    "correlation_id": correlation_id,
                 },
             )
             return MatchJobAccepted(
@@ -283,20 +288,69 @@ class ScreeningService:
         for item_key, query_payload in queries_for_job.items():
             query = payload.queries[item_key]
             self.repository.add_job_item(job_id=job_id, item_key=item_key, request_payload=query_payload)
-            self.queue.enqueue(
-                ScreeningQueueMessage(
-                    job_id=job_id,
-                    item_key=item_key,
-                    query=query,
-                    submitted_at=submitted_at,
-                    screening_types=payload.screening_types,
-                    mock_screening=payload.mock_screening,
+            queue_message = ScreeningQueueMessage(
+                job_id=job_id,
+                item_key=item_key,
+                query=query,
+                submitted_at=submitted_at,
+                screening_types=payload.screening_types,
+                mock_screening=payload.mock_screening,
+                user_id=payload.user_id,
+                user_name=payload.user_name,
+                correlation_id=correlation_id,
+                source_schedule_id=source_schedule_id,
+                source_record_hash=record_hashes.get(item_key),
+            )
+            self.repository.add_audit_event(
+                action="SQS_ENQUEUE_STARTED",
+                user_id=payload.user_id,
+                user_name=payload.user_name,
+                entity_type="screening_queue_item",
+                entity_id=f"{job_id}:{item_key}",
+                details={
+                    "job_id": job_id,
+                    "item_key": item_key,
+                    "queue_name": settings.aws_sqs_queue_name,
+                    "source_schedule_id": source_schedule_id,
+                    "screening_types": payload.screening_types,
+                    "mock_screening": payload.mock_screening,
+                    "correlation_id": correlation_id,
+                    "request": query_payload,
+                },
+            )
+            try:
+                self.queue.enqueue(queue_message)
+                self.repository.add_audit_event(
+                    action="SQS_ENQUEUED",
                     user_id=payload.user_id,
                     user_name=payload.user_name,
-                    source_schedule_id=source_schedule_id,
-                    source_record_hash=record_hashes.get(item_key),
+                    entity_type="screening_queue_item",
+                    entity_id=f"{job_id}:{item_key}",
+                    details={
+                        "job_id": job_id,
+                        "item_key": item_key,
+                        "queue_name": settings.aws_sqs_queue_name,
+                        "source_schedule_id": source_schedule_id,
+                        "correlation_id": correlation_id,
+                    },
                 )
-            )
+            except Exception as exc:  # noqa: BLE001
+                self.repository.add_audit_event(
+                    action="SQS_ENQUEUE_FAILED",
+                    user_id=payload.user_id,
+                    user_name=payload.user_name,
+                    entity_type="screening_queue_item",
+                    entity_id=f"{job_id}:{item_key}",
+                    details={
+                        "job_id": job_id,
+                        "item_key": item_key,
+                        "queue_name": settings.aws_sqs_queue_name,
+                        "source_schedule_id": source_schedule_id,
+                        "correlation_id": correlation_id,
+                        "error": str(exc),
+                    },
+                )
+                raise
 
         self.repository.add_audit_event(
             action="SCREENING_JOB_SUBMITTED",
@@ -304,18 +358,19 @@ class ScreeningService:
             user_name=payload.user_name,
             entity_type="screening_job",
             entity_id=job_id,
-                details={
-                    "total_items": len(queries_for_job),
-                    "screening_types": payload.screening_types,
-                    "daily_screening": payload.daily_screening,
-                    "batch_name": payload.batch_name,
-                    "mock_screening": payload.mock_screening,
-                    "source_schedule_id": source_schedule_id,
-                    "source_upload_id": source_upload_id,
-                    "skipped_existing_records": skipped_existing_records,
-                    "business_unit_code": business_unit_code,
-                },
-            )
+            details={
+                "total_items": len(queries_for_job),
+                "screening_types": payload.screening_types,
+                "daily_screening": payload.daily_screening,
+                "batch_name": payload.batch_name,
+                "mock_screening": payload.mock_screening,
+                "source_schedule_id": source_schedule_id,
+                "source_upload_id": source_upload_id,
+                "skipped_existing_records": skipped_existing_records,
+                "business_unit_code": business_unit_code,
+                "correlation_id": correlation_id,
+            },
+        )
 
         return MatchJobAccepted(
             job_id=job_id,
@@ -594,39 +649,6 @@ class ScreeningService:
                         "result": result,
                         "message": message,
                         "details": {"uiType": ui_type, "matches": matches},
-                    }
-                )
-
-            deferred_until = str(row.get("deferred_until") or "").strip()
-            if not batch_items:
-                placeholder_name = (
-                    str(row.get("batch_name") or "").strip()
-                    or str(row.get("file_name") or "").strip()
-                    or str(row.get("upload_file_name") or "").strip()
-                    or "Scheduled Screening"
-                )
-                placeholder_result = "PROCESSING" if deferred_until else "NO_HIT"
-                placeholder_message = (
-                    "Scheduled. Screening will start at the configured run time."
-                    if deferred_until
-                    else "No new records to screen."
-                )
-                has_processing = placeholder_result == "PROCESSING"
-                batch_items.append(
-                    {
-                        "customerType": "Entity",
-                        "displayName": placeholder_name,
-                        "result": placeholder_result,
-                        "message": placeholder_message,
-                        "details": {
-                            "uiType": "Organization",
-                            "matches": {
-                                "results": [],
-                                "total": {"value": 0, "relation": "eq"},
-                                "query": {"schema": "Company", "properties": {"name": [placeholder_name]}},
-                                "status": 202 if placeholder_result == "PROCESSING" else 204,
-                            },
-                        },
                     }
                 )
 

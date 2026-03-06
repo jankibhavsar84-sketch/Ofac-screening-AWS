@@ -226,8 +226,8 @@ const ID_TYPE_OPTIONS = [
 const UNIFIED_TEMPLATE = {
   fileName: "Actimize_SSB1_template.xlsx",
   title: "Unified Screening Template",
-  desc: "Supports Individual, Organization, and Unknown entity types in a single file.",
-  chips: ["entity name", "entity type", "alias/aka", "+8 more"],
+  desc: "Includes sample rows for Individual, Organization, and Unknown with Party Type and Gender code guidance.",
+  chips: ["Party Type (I/E/other)", "Gender (M/F/blank)", "alias/aka", "+9 more"],
 } as const;
 
 function uuid() {
@@ -334,9 +334,23 @@ function parseBatchRows(rows: any[]): {
   const queries: Record<string, EntityExample> = {};
   const rowMeta: { key: string; displayName: string; uiType: UiType }[] = [];
   const validationErrors: string[] = [];
+  const seenPartyKeys = new Set<string>();
 
   rows.forEach((r, idx) => {
     const rowNumber = idx + 2; // 1-based + header row
+    const partyKey = safeTrim(String(r.partyKey || ""));
+    const normalizedPartyKey = partyKey.toUpperCase();
+    const missingPartyKey = !partyKey;
+    const duplicatePartyKey = Boolean(partyKey && seenPartyKeys.has(normalizedPartyKey));
+
+    if (missingPartyKey) {
+      validationErrors.push(`Row ${rowNumber}: PartyKey is required.`);
+    } else if (duplicatePartyKey) {
+      validationErrors.push(`Row ${rowNumber}: Duplicate PartyKey '${partyKey}'. PartyKey must be unique within the file.`);
+    } else {
+      seenPartyKeys.add(normalizedPartyKey);
+    }
+
     const rawPartyType = safeTrim(String(r.partyType || ""));
     const normalizedPartyType = rawPartyType.toUpperCase();
     const hasLegacyCustomerType = Boolean(safeTrim(String(r.customerTypeRaw || "")));
@@ -347,6 +361,8 @@ function parseBatchRows(rows: any[]): {
     else if (normalizedPartyType === "E") uiType = "Organization";
     else if (rawPartyType) uiType = "Unknown";
     else if (hasLegacyCustomerType) uiType = customerType === "Entity" ? "Organization" : "Individual";
+    else if (safeTrim(String(r.firstName || "")) || safeTrim(String(r.lastName || ""))) uiType = "Individual";
+    else if (safeTrim(String(r.fullName || ""))) uiType = "Organization";
     else uiType = "Unknown";
 
     const rawGender = safeTrim(String(r.gender || ""));
@@ -359,20 +375,24 @@ function parseBatchRows(rows: any[]): {
     const middleName = safeTrim(r.middleName || "");
     const lastName = safeTrim(r.lastName || "");
     const splitName = [firstName, middleName, lastName].filter(Boolean).join(" ");
-    const fullName = safeTrim(r.fullName || "") || (uiType === "Individual" ? splitName : "");
+    const explicitFullName = safeTrim(r.fullName || "");
+    const hasSplitFirstLast = Boolean(firstName && lastName);
+    const hasFullName = Boolean(explicitFullName);
+    const fullName = explicitFullName || (uiType === "Individual" ? splitName : "");
 
     const display =
       uiType === "Individual" ? fullName || [firstName, lastName].filter(Boolean).join(" ") : fullName || lastName;
 
-    const key = `row_${idx + 1}`;
+    const key = partyKey || `row_${idx + 1}`;
     rowMeta.push({ key, displayName: display || `(Row ${idx + 1})`, uiType });
+    if (missingPartyKey || duplicatePartyKey) return;
 
-    if (uiType === "Individual" && !fullName && !(firstName && lastName)) {
-      validationErrors.push(`Row ${rowNumber}: Party Type I requires Primary Full Name or First + Last Name.`);
+    if (uiType === "Individual" && !hasFullName && !hasSplitFirstLast) {
+      validationErrors.push(`Row ${rowNumber}: For Individual, provide either Full Name or both First Name and Last Name.`);
       return;
     }
     if (uiType !== "Individual" && !fullName) {
-      validationErrors.push(`Row ${rowNumber}: Party Type ${normalizedPartyType || "Unknown"} requires Primary Full Name.`);
+      validationErrors.push(`Row ${rowNumber}: For Organization or Unknown, Full Name is required.`);
       return;
     }
 
@@ -413,7 +433,7 @@ function parseBatchRows(rows: any[]): {
       ],
     };
 
-    queries[key] = buildEntityExampleFromNameItem(item);
+    queries[partyKey] = buildEntityExampleFromNameItem(item);
   });
 
   return { queries, rowMeta, validationErrors };
@@ -1255,7 +1275,12 @@ export function ScreeningDetailPage() {
 
       if (!rows.length) throw new Error("No rows found in the file.");
 
-      const { queries, rowMeta } = parseBatchRows(rows);
+      const { queries, rowMeta, validationErrors } = parseBatchRows(rows);
+      if (validationErrors.length) {
+        const preview = validationErrors.slice(0, 4).join(" ");
+        const remaining = validationErrors.length > 4 ? ` (+${validationErrors.length - 4} more)` : "";
+        throw new Error(`Upload validation failed. ${preview}${remaining}`);
+      }
 
       if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
 
@@ -1468,7 +1493,12 @@ export function ScreeningDetailPage() {
 
       if (!rows.length) throw new Error("No rows found in the file.");
 
-      const { queries, rowMeta } = parseBatchRows(rows);
+      const { queries, rowMeta, validationErrors } = parseBatchRows(rows);
+      if (validationErrors.length) {
+        const preview = validationErrors.slice(0, 4).join(" ");
+        const remaining = validationErrors.length > 4 ? ` (+${validationErrors.length - 4} more)` : "";
+        throw new Error(`Upload validation failed. ${preview}${remaining}`);
+      }
 
       if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
 

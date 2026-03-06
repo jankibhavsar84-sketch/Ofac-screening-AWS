@@ -61,6 +61,13 @@ class Settings:
     daily_screening_hour: int
     daily_screening_minute: int
     daily_screening_check_interval_s: int
+    audit_access_log_enabled: bool
+    audit_event_retention_days: int
+    api_access_log_retention_days: int
+    external_api_error_retention_days: int
+    operational_cleanup_interval_s: int
+    high_risk_external_api_error_window_minutes: int
+    high_risk_external_api_error_threshold: int
     auth_enabled: bool
     auth_issuer: str
     auth_jwks_url: str
@@ -102,6 +109,13 @@ def load_settings() -> Settings:
         daily_screening_hour=_to_int(os.getenv("DAILY_SCREENING_HOUR"), 0),
         daily_screening_minute=_to_int(os.getenv("DAILY_SCREENING_MINUTE"), 5),
         daily_screening_check_interval_s=_to_int(os.getenv("DAILY_SCREENING_CHECK_INTERVAL_S"), 30),
+        audit_access_log_enabled=_to_bool(os.getenv("AUDIT_ACCESS_LOG_ENABLED"), True),
+        audit_event_retention_days=_to_int(os.getenv("AUDIT_EVENT_RETENTION_DAYS"), 3650),
+        api_access_log_retention_days=_to_int(os.getenv("API_ACCESS_LOG_RETENTION_DAYS"), 365),
+        external_api_error_retention_days=_to_int(os.getenv("EXTERNAL_API_ERROR_RETENTION_DAYS"), 365),
+        operational_cleanup_interval_s=_to_int(os.getenv("OPERATIONAL_CLEANUP_INTERVAL_S"), 3600),
+        high_risk_external_api_error_window_minutes=_to_int(os.getenv("HIGH_RISK_EXTERNAL_API_ERROR_WINDOW_MINUTES"), 15),
+        high_risk_external_api_error_threshold=_to_int(os.getenv("HIGH_RISK_EXTERNAL_API_ERROR_THRESHOLD"), 10),
         auth_enabled=_to_bool(os.getenv("AUTH_ENABLED"), False),
         auth_issuer=os.getenv("AUTH_ISSUER", "").strip(),
         auth_jwks_url=os.getenv("AUTH_JWKS_URL", "").strip(),

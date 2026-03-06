@@ -1,7 +1,7 @@
 # Technical Design Document (TDD): OFAC / Watchlist Screening Platform
 
-**Version:** 1.0  
-**Date:** 2026-02-28  
+**Version:** 1.1  
+**Date:** 2026-03-06  
 **Repo:** `ofac-screening-aws`  
 
 This document describes the technical design for the OFAC / watchlist screening platform deployed on AWS. It includes AWS architecture, API flows, process flows, and component responsibilities.
@@ -14,6 +14,8 @@ The platform supports:
 - **Daily Screening (Scheduled):** selected batches are automatically re-screened daily shortly after midnight Eastern time.
 - **AuthN/AuthZ:** OIDC login (AWS Cognito or enterprise IdP federation) and role-based authorization.
 - **Audit Trail:** all key user/system actions are recorded for traceability.
+- **API Access Logging:** every `/api/v1/*` request is logged with status, latency, auth state, and correlation id.
+- **Operational Controls:** log retention and high-risk external API failure alerting.
 
 ## 2. AWS Architecture (Deployed View)
 
@@ -118,6 +120,10 @@ Backend validates JWT signature using JWKS and checks:
 - audience compatibility for Cognito access tokens:
   - accept app client id in `aud` OR `client_id` OR `azp`
 
+Auth audit behavior:
+- API 401/403 outcomes are written to `audit_events` and `api_access_logs`.
+- Identity-provider login attempts (hosted by Cognito/enterprise IdP) remain in IdP-native audit logs; this app records API-layer authentication outcomes.
+
 ## 4. Component Responsibilities
 
 ### 4.1 Frontend (SPA + Nginx reverse proxy)
@@ -142,15 +148,19 @@ Responsibilities:
 - Provide job progress endpoints for polling.
 - Manage daily schedule definitions (list/disable).
 - Write audit events for key actions and failures.
+- Run middleware-based API access logging (method/path/status/latency/user/auth state).
+- Generate and return request correlation id (`X-Correlation-ID`) and propagate to downstream screening flows.
 
 ### 4.3 Worker (SQS Consumer + Daily Scheduler Loop)
 
 Responsibilities:
 - Poll SQS messages and process screening items.
-- Enforce the screening engine constraint of **one screening type per call** by executing one call per screening type.
+- Enforce screening throughput and execute screening calls for selected types.
 - Enforce throughput constraint via fixed-rate limiter (`32 TPS`).
 - Persist item results (completed/failed) into the database.
 - Periodically check due daily schedules and trigger new batch jobs.
+- Apply retention policy cleanup for audit/access/error stores.
+- Emit high-risk audit alerts when external API failures exceed configured threshold/window.
 
 ### 4.4 Screening Engine Adapter (Actimize Watchlist Adapter)
 
@@ -167,6 +177,8 @@ Responsibilities:
 - Persist job metadata, per-item status transitions, request payloads, and response payloads.
 - Persist daily schedules and next-run calculations.
 - Persist audit events for compliance and troubleshooting.
+- Persist API access logs (`api_access_logs`) for request/response traceability.
+- Persist external API failures (`external_api_errors`) with provider/operation context.
 
 ## 5. Data Model (Business Objects)
 
@@ -194,9 +206,23 @@ Responsibilities:
 
 Item status is tracked similarly and rolls up to job snapshot counts.
 
+### 5.4 Audit and Access Objects
+
+- `audit_events`
+  - Business and system action trail (screening submit, queue lifecycle, schedule actions, auth failures, alert events).
+- `api_access_logs`
+  - One row per `/api/v1/*` request including method, path, status, duration, user context, auth state, and correlation id.
+- `external_api_errors`
+  - Error repository for upstream screening API failures with provider, endpoint, status code, and request context.
+
 ## 6. API Design
 
 Base path: `/api/v1`
+
+Cross-cutting behavior:
+- Every API response includes `X-Correlation-ID`.
+- Every `/api/v1/*` request is persisted in `api_access_logs`.
+- 401/403 API outcomes additionally generate audit events (`API_AUTHENTICATION_FAILED`, `API_AUTHORIZATION_FAILED`).
 
 ### 6.1 Health
 
@@ -351,6 +377,27 @@ stateDiagram-v2
   processing --> failed: all items done and all failed
 ```
 
+### 7.6 Correlation and Access Audit Flow
+
+```mermaid
+sequenceDiagram
+  participant UI as Frontend
+  participant API as FastAPI Middleware
+  participant DB as PostgreSQL
+  participant Q as SQS
+  participant WK as Worker
+  participant EXT as External Screening API
+
+  UI->>API: /api/v1/* request (optional X-Correlation-ID)
+  API->>API: assign/propagate correlation id
+  API->>DB: insert api_access_logs row
+  API->>Q: enqueue message with correlation id
+  WK->>Q: pick message
+  WK->>EXT: screening request
+  EXT-->>WK: response/error
+  WK->>DB: audit_events + external_api_errors (with correlation id)
+```
+
 ## 8. Operational Design
 
 ### 8.1 Throughput and Rate Limiting
@@ -368,8 +415,21 @@ stateDiagram-v2
 
 - Application logs shipped to CloudWatch via ECS log driver.
 - Audit events provide a business-level trail, separate from system logs.
+- API access logs provide request-level traceability with latency and auth state.
+- Correlation id is propagated to queue/worker/external error records for end-to-end troubleshooting.
 
-### 8.4 Cost Controls (Dev)
+### 8.4 Data Retention and Risk Alerting
+
+- Worker executes periodic retention cleanup for:
+  - `audit_events`
+  - `api_access_logs`
+  - `external_api_errors`
+- Retention windows are configurable with environment variables.
+- High-risk alerting rule:
+  - If external API failures exceed configured threshold inside configured time window, worker records `HIGH_RISK_EXTERNAL_API_FAILURE_ALERT` in `audit_events`.
+- Access-log query parameters are redacted for sensitive key types (token/secret/password/email-like fields).
+
+### 8.5 Cost Controls (Dev)
 
 - Keep worker desired count at `0` when not testing batch/daily.
 - Use small Fargate tasks (256/512) for dev.
@@ -399,4 +459,10 @@ Key values:
 - `AWS_SQS_QUEUE_NAME`
 - `AUTH_ENABLED`, `AUTH_ISSUER`, `AUTH_JWKS_URL`, `AUTH_AUDIENCE`
 - `SCREENING_TPS`
-
+- `AUDIT_ACCESS_LOG_ENABLED` (default `true`)
+- `AUDIT_EVENT_RETENTION_DAYS` (default `3650`)
+- `API_ACCESS_LOG_RETENTION_DAYS` (default `365`)
+- `EXTERNAL_API_ERROR_RETENTION_DAYS` (default `365`)
+- `OPERATIONAL_CLEANUP_INTERVAL_S` (default `3600`)
+- `HIGH_RISK_EXTERNAL_API_ERROR_WINDOW_MINUTES` (default `15`)
+- `HIGH_RISK_EXTERNAL_API_ERROR_THRESHOLD` (default `10`)

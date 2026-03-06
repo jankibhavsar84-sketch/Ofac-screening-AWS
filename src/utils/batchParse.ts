@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 
 export type BatchRow = {
+  partyKey?: string;
   customerType: "Person" | "Entity";
   customerTypeRaw?: string;
   partyType?: string;
@@ -60,6 +61,7 @@ function getByAliases(map: Record<string, any>, aliases: string[]): string {
 function mapParsedRow(map: Record<string, any>): BatchRow {
   const customerTypeRaw = getByAliases(map, ["customerType"]);
   return {
+    partyKey: getByAliases(map, ["partyKey", "party_key", "party key"]),
     customerType: normalizeCustomerType(customerTypeRaw || getByAliases(map, ["partyType", "party type", "party_type"])),
     customerTypeRaw,
     partyType: getByAliases(map, ["partyType", "party type", "party_type", "partyTypeCode", "party type code"]),

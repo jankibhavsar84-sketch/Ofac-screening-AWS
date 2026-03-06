@@ -251,6 +251,27 @@ class JobRepository:
                 self._execute(
                     conn,
                     """
+                    CREATE TABLE IF NOT EXISTS api_access_logs (
+                      access_id BIGSERIAL PRIMARY KEY,
+                      created_at TEXT NOT NULL,
+                      correlation_id TEXT,
+                      request_method TEXT NOT NULL,
+                      request_path TEXT NOT NULL,
+                      query_string TEXT,
+                      status_code INTEGER NOT NULL,
+                      duration_ms INTEGER NOT NULL,
+                      client_ip TEXT,
+                      user_agent TEXT,
+                      user_id TEXT,
+                      user_name TEXT,
+                      auth_state TEXT,
+                      details_json TEXT
+                    );
+                    """,
+                )
+                self._execute(
+                    conn,
+                    """
                     CREATE TABLE IF NOT EXISTS external_api_errors (
                       error_id BIGSERIAL PRIMARY KEY,
                       created_at TEXT NOT NULL,
@@ -296,6 +317,27 @@ class JobRepository:
                       action TEXT NOT NULL,
                       entity_type TEXT,
                       entity_id TEXT,
+                      details_json TEXT
+                    );
+                    """,
+                )
+                self._execute(
+                    conn,
+                    """
+                    CREATE TABLE IF NOT EXISTS api_access_logs (
+                      access_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      created_at TEXT NOT NULL,
+                      correlation_id TEXT,
+                      request_method TEXT NOT NULL,
+                      request_path TEXT NOT NULL,
+                      query_string TEXT,
+                      status_code INTEGER NOT NULL,
+                      duration_ms INTEGER NOT NULL,
+                      client_ip TEXT,
+                      user_agent TEXT,
+                      user_id TEXT,
+                      user_name TEXT,
+                      auth_state TEXT,
                       details_json TEXT
                     );
                     """,
@@ -418,6 +460,34 @@ class JobRepository:
                 """
                 CREATE INDEX IF NOT EXISTS idx_external_api_errors_job_item
                 ON external_api_errors(job_id, item_key, created_at);
+                """,
+            )
+            self._execute(
+                conn,
+                """
+                CREATE INDEX IF NOT EXISTS idx_api_access_logs_created_at
+                ON api_access_logs(created_at);
+                """,
+            )
+            self._execute(
+                conn,
+                """
+                CREATE INDEX IF NOT EXISTS idx_api_access_logs_correlation
+                ON api_access_logs(correlation_id, created_at);
+                """,
+            )
+            self._execute(
+                conn,
+                """
+                CREATE INDEX IF NOT EXISTS idx_api_access_logs_user
+                ON api_access_logs(user_id, created_at);
+                """,
+            )
+            self._execute(
+                conn,
+                """
+                CREATE INDEX IF NOT EXISTS idx_api_access_logs_path
+                ON api_access_logs(request_path, created_at);
                 """,
             )
 
@@ -2058,6 +2128,8 @@ class JobRepository:
                   UNION ALL
                   SELECT user_id, user_name FROM batch_file_uploads WHERE TRIM(COALESCE(user_id, '')) <> ''
                   UNION ALL
+                  SELECT user_id, user_name FROM api_access_logs WHERE TRIM(COALESCE(user_id, '')) <> ''
+                  UNION ALL
                   SELECT user_id, user_name FROM audit_events WHERE TRIM(COALESCE(user_id, '')) <> ''
                 ) known_users
                 """,
@@ -2204,6 +2276,240 @@ class JobRepository:
                 ),
             )
             return int(cur.lastrowid)
+
+    def add_api_access_log(
+        self,
+        request_method: str,
+        request_path: str,
+        status_code: int,
+        duration_ms: int,
+        correlation_id: str | None = None,
+        query_string: str | None = None,
+        client_ip: str | None = None,
+        user_agent: str | None = None,
+        user_id: str | None = None,
+        user_name: str | None = None,
+        auth_state: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> int:
+        created_at = now_iso()
+        safe_status = int(status_code) if isinstance(status_code, int) else 0
+        safe_duration = max(int(duration_ms), 0)
+        with self._connect() as conn:
+            if self.is_postgres:
+                cur = self._execute(
+                    conn,
+                    """
+                    INSERT INTO api_access_logs(
+                      created_at, correlation_id, request_method, request_path, query_string,
+                      status_code, duration_ms, client_ip, user_agent, user_id, user_name, auth_state, details_json
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    RETURNING access_id
+                    """,
+                    (
+                        created_at,
+                        (correlation_id or "").strip() or None,
+                        str(request_method or "").strip().upper() or "GET",
+                        str(request_path or "").strip() or "/",
+                        (query_string or "").strip() or None,
+                        safe_status,
+                        safe_duration,
+                        (client_ip or "").strip() or None,
+                        (user_agent or "").strip() or None,
+                        (user_id or "").strip() or None,
+                        (user_name or "").strip() or None,
+                        (auth_state or "").strip() or None,
+                        json.dumps(details or {}),
+                    ),
+                )
+                row = cur.fetchone()
+                return int(row["access_id"]) if row else 0
+
+            cur = self._execute(
+                conn,
+                """
+                INSERT INTO api_access_logs(
+                  created_at, correlation_id, request_method, request_path, query_string,
+                  status_code, duration_ms, client_ip, user_agent, user_id, user_name, auth_state, details_json
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    created_at,
+                    (correlation_id or "").strip() or None,
+                    str(request_method or "").strip().upper() or "GET",
+                    str(request_path or "").strip() or "/",
+                    (query_string or "").strip() or None,
+                    safe_status,
+                    safe_duration,
+                    (client_ip or "").strip() or None,
+                    (user_agent or "").strip() or None,
+                    (user_id or "").strip() or None,
+                    (user_name or "").strip() or None,
+                    (auth_state or "").strip() or None,
+                    json.dumps(details or {}),
+                ),
+            )
+            return int(cur.lastrowid)
+
+    def purge_old_operational_data(
+        self,
+        audit_event_retention_days: int | None = None,
+        api_access_log_retention_days: int | None = None,
+        external_api_error_retention_days: int | None = None,
+    ) -> dict[str, int]:
+        deleted = {"audit_events": 0, "api_access_logs": 0, "external_api_errors": 0}
+        now_utc = datetime.now(timezone.utc)
+
+        with self._connect() as conn:
+            if isinstance(audit_event_retention_days, int) and audit_event_retention_days > 0:
+                cutoff = (now_utc - timedelta(days=audit_event_retention_days)).isoformat()
+                cur = self._execute(
+                    conn,
+                    """
+                    DELETE FROM audit_events
+                    WHERE created_at < ?
+                    """,
+                    (cutoff,),
+                )
+                deleted["audit_events"] = max(int(cur.rowcount or 0), 0)
+
+            if isinstance(api_access_log_retention_days, int) and api_access_log_retention_days > 0:
+                cutoff = (now_utc - timedelta(days=api_access_log_retention_days)).isoformat()
+                cur = self._execute(
+                    conn,
+                    """
+                    DELETE FROM api_access_logs
+                    WHERE created_at < ?
+                    """,
+                    (cutoff,),
+                )
+                deleted["api_access_logs"] = max(int(cur.rowcount or 0), 0)
+
+            if isinstance(external_api_error_retention_days, int) and external_api_error_retention_days > 0:
+                cutoff = (now_utc - timedelta(days=external_api_error_retention_days)).isoformat()
+                cur = self._execute(
+                    conn,
+                    """
+                    DELETE FROM external_api_errors
+                    WHERE created_at < ?
+                    """,
+                    (cutoff,),
+                )
+                deleted["external_api_errors"] = max(int(cur.rowcount or 0), 0)
+
+        return deleted
+
+    def maybe_emit_high_risk_external_api_failure_alert(
+        self,
+        provider: str,
+        operation: str | None = None,
+        threshold: int = 10,
+        window_minutes: int = 15,
+        correlation_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        safe_threshold = max(int(threshold or 0), 1)
+        safe_window = max(int(window_minutes or 0), 1)
+        safe_provider = str(provider or "").strip().lower() or "unknown"
+        safe_operation = str(operation or "").strip() or None
+        window_start = (datetime.now(timezone.utc) - timedelta(minutes=safe_window)).isoformat()
+
+        with self._connect() as conn:
+            if safe_operation:
+                count_row = self._execute(
+                    conn,
+                    """
+                    SELECT COUNT(*) AS total
+                    FROM external_api_errors
+                    WHERE provider = ?
+                      AND operation = ?
+                      AND created_at >= ?
+                    """,
+                    (safe_provider, safe_operation, window_start),
+                ).fetchone()
+            else:
+                count_row = self._execute(
+                    conn,
+                    """
+                    SELECT COUNT(*) AS total
+                    FROM external_api_errors
+                    WHERE provider = ?
+                      AND created_at >= ?
+                    """,
+                    (safe_provider, window_start),
+                ).fetchone()
+            total_errors = 0
+            if count_row is not None:
+                try:
+                    total_errors = int(count_row["total"] or 0)
+                except Exception:  # pragma: no cover - defensive fallback
+                    total_errors = int(dict(count_row).get("total", 0))
+            if total_errors < safe_threshold:
+                return None
+
+            provider_pattern = f'%\"provider\": \"{safe_provider}\"%'
+            if safe_operation:
+                operation_pattern = f'%\"operation\": \"{safe_operation}\"%'
+                existing = self._execute(
+                    conn,
+                    """
+                    SELECT event_id
+                    FROM audit_events
+                    WHERE action = 'HIGH_RISK_EXTERNAL_API_FAILURE_ALERT'
+                      AND created_at >= ?
+                      AND details_json LIKE ?
+                      AND details_json LIKE ?
+                    ORDER BY event_id DESC
+                    LIMIT 1
+                    """,
+                    (window_start, provider_pattern, operation_pattern),
+                ).fetchone()
+            else:
+                existing = self._execute(
+                    conn,
+                    """
+                    SELECT event_id
+                    FROM audit_events
+                    WHERE action = 'HIGH_RISK_EXTERNAL_API_FAILURE_ALERT'
+                      AND created_at >= ?
+                      AND details_json LIKE ?
+                    ORDER BY event_id DESC
+                    LIMIT 1
+                    """,
+                    (window_start, provider_pattern),
+                ).fetchone()
+
+            if existing:
+                return {
+                    "provider": safe_provider,
+                    "operation": safe_operation,
+                    "window_minutes": safe_window,
+                    "threshold": safe_threshold,
+                    "total_errors": total_errors,
+                    "new_alert_created": False,
+                }
+
+        self.add_audit_event(
+            action="HIGH_RISK_EXTERNAL_API_FAILURE_ALERT",
+            entity_type="external_api_errors",
+            entity_id=safe_provider,
+            details={
+                "provider": safe_provider,
+                "operation": safe_operation,
+                "window_minutes": safe_window,
+                "threshold": safe_threshold,
+                "total_errors": total_errors,
+                "correlation_id": (correlation_id or "").strip() or None,
+            },
+        )
+
+        return {
+            "provider": safe_provider,
+            "operation": safe_operation,
+            "window_minutes": safe_window,
+            "threshold": safe_threshold,
+            "total_errors": total_errors,
+            "new_alert_created": True,
+        }
 
     def list_audit_events(self, limit: int = 200, user_id: str | None = None, offset: int = 0) -> list[dict[str, Any]]:
         safe_limit = min(max(int(limit), 1), 1000)

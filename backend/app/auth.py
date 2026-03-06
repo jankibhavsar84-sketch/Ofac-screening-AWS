@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextvars import ContextVar
 from dataclasses import dataclass
 import re
 from typing import Any, Callable
@@ -53,6 +54,17 @@ class AuthPrincipal:
     scopes: set[str]
     roles: set[str]
     claims: dict[str, Any]
+
+
+_audit_principal_ctx: ContextVar[AuthPrincipal | None] = ContextVar("audit_principal", default=None)
+
+
+def get_audit_principal() -> AuthPrincipal | None:
+    return _audit_principal_ctx.get()
+
+
+def clear_audit_principal() -> None:
+    _audit_principal_ctx.set(None)
 
 
 def _split_scope(value: Any) -> set[str]:
@@ -258,8 +270,10 @@ def _claims_to_principal(payload: dict[str, Any]) -> AuthPrincipal:
 def get_current_principal(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
 ) -> AuthPrincipal:
+    clear_audit_principal()
+
     if not settings.auth_enabled:
-        return AuthPrincipal(
+        principal = AuthPrincipal(
             user_id="local-dev-user",
             user_name="Local Dev User",
             email="",
@@ -274,6 +288,8 @@ def get_current_principal(
             roles={"admin"},
             claims={},
         )
+        _audit_principal_ctx.set(principal)
+        return principal
 
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(
@@ -300,7 +316,9 @@ def get_current_principal(
             detail=f"Token validation failed: {exc}",
         ) from exc
 
-    return _claims_to_principal(payload)
+    principal = _claims_to_principal(payload)
+    _audit_principal_ctx.set(principal)
+    return principal
 
 
 def require_any_scope(*required_scopes: str) -> Callable[[AuthPrincipal], AuthPrincipal]:
