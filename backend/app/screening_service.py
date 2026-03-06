@@ -832,15 +832,30 @@ class ScreeningService:
         if removed:
             if self.notifier and self.notifier.enabled:
                 try:
-                    removed_sns_subs = self.notifier.unsubscribe_email(schedule_id=schedule_id, email=email)
-                    self.repository.add_audit_event(
-                        action="SNS_EMAIL_SUBSCRIPTION_REMOVED",
-                        user_id=user_id,
-                        user_name=user_name,
-                        entity_type="daily_schedule_subscription",
-                        entity_id=schedule_id,
-                        details={"schedule_id": schedule_id, "email": email, "removed_count": int(removed_sns_subs)},
-                    )
+                    remaining_active = self.repository.count_active_schedule_subscriptions_for_email(email)
+                    if remaining_active == 0:
+                        removed_sns_subs = self.notifier.unsubscribe_email(schedule_id=schedule_id, email=email)
+                        self.repository.add_audit_event(
+                            action="SNS_EMAIL_SUBSCRIPTION_REMOVED",
+                            user_id=user_id,
+                            user_name=user_name,
+                            entity_type="daily_schedule_subscription",
+                            entity_id=schedule_id,
+                            details={"schedule_id": schedule_id, "email": email, "removed_count": int(removed_sns_subs)},
+                        )
+                    else:
+                        self.repository.add_audit_event(
+                            action="SNS_EMAIL_SUBSCRIPTION_RETAINED",
+                            user_id=user_id,
+                            user_name=user_name,
+                            entity_type="daily_schedule_subscription",
+                            entity_id=schedule_id,
+                            details={
+                                "schedule_id": schedule_id,
+                                "email": email,
+                                "remaining_active_subscriptions": remaining_active,
+                            },
+                        )
                 except Exception as exc:  # noqa: BLE001
                     self.repository.add_audit_event(
                         action="SNS_EMAIL_SUBSCRIPTION_REMOVE_FAILED",

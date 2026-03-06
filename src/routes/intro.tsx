@@ -4,6 +4,17 @@ export const Route = createFileRoute("/intro")({
   component: Intro,
 });
 
+type AppRole = "Admin" | "Compliance Officer" | "Analyst" | "Viewer";
+
+const ROLE_OPTIONS: AppRole[] = ["Admin", "Compliance Officer", "Analyst", "Viewer"];
+
+const roleDescriptions: Record<AppRole, string> = {
+  Admin: "Single, batch, daily scheduling, and User Administration access",
+  "Compliance Officer": "Single and batch screening, including daily schedule enable/disable",
+  Analyst: "Single and batch screening (no daily scheduling)",
+  Viewer: "Single screening in mock mode only",
+};
+
 function IntroIcon({
   type,
 }: {
@@ -68,6 +79,39 @@ function IntroIcon({
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M4 6h16M4 12h16M4 18h10" />
+    </svg>
+  );
+}
+
+function RoleIcon({ role }: { role: AppRole }) {
+  if (role === "Admin") {
+    return (
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z" />
+      </svg>
+    );
+  }
+  if (role === "Compliance Officer") {
+    return (
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z" />
+      </svg>
+    );
+  }
+  if (role === "Analyst") {
+    return (
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <line x1="4" y1="20" x2="20" y2="20" />
+        <line x1="7" y1="17" x2="7" y2="10" />
+        <line x1="12" y1="17" x2="12" y2="6" />
+        <line x1="17" y1="17" x2="17" y2="13" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+      <circle cx="12" cy="12" r="2.5" />
     </svg>
   );
 }
@@ -140,6 +184,25 @@ function Intro() {
           </div>
           <div className="muted" style={{ marginTop: 10 }}>
             Select one or more screening types at request time based on your compliance objective.
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 18 }}>
+        <div className="cardHeader">
+          <h2>Role Permissions</h2>
+        </div>
+        <div className="cardBody">
+          <div className="rolePermissionGrid">
+            {ROLE_OPTIONS.map((role) => (
+              <div key={role} className={`rolePermissionCard rolePermissionCard--${role.replace(/\s+/g, "").toLowerCase()}`}>
+                <div className="rolePermissionHead">
+                  <RoleIcon role={role} />
+                  <span>{role}</span>
+                </div>
+                <div className="rolePermissionDesc">{roleDescriptions[role]}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

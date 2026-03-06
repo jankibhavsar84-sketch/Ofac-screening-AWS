@@ -11,7 +11,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "backend",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260306142651",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260306162726",
                                      "essential":  true,
                                      "command":  [
                                                      "uvicorn",
@@ -115,6 +115,3 @@
                                  }
                              ]
 }
-
-
-

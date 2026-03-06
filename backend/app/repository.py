@@ -1634,6 +1634,24 @@ class JobRepository:
             for row in rows
         ]
 
+    def count_active_schedule_subscriptions_for_email(self, email: str) -> int:
+        safe_email = (email or "").strip().lower()
+        if not safe_email:
+            return 0
+
+        with self._connect() as conn:
+            row = self._execute(
+                conn,
+                """
+                SELECT COUNT(*) AS total
+                FROM schedule_subscriptions
+                WHERE email = ?
+                  AND is_active = TRUE
+                """,
+                (safe_email,),
+            ).fetchone()
+        return int(row["total"] or 0) if row else 0
+
     def claim_job_notification(self, job_id: str, schedule_id: str) -> bool:
         safe_job_id = (job_id or "").strip()
         safe_schedule_id = (schedule_id or "").strip()

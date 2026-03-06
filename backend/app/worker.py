@@ -74,6 +74,23 @@ def _publish_schedule_notification_via_sns(
         return
 
     schedule = repository.get_daily_schedule(schedule_id) or {}
+    subscription_rows = repository.list_schedule_subscriptions(schedule_id=schedule_id)
+    recipient_emails = sorted(
+        {
+            str(row.get("email") or "").strip().lower()
+            for row in subscription_rows
+            if str(row.get("email") or "").strip()
+        }
+    )
+    if not recipient_emails:
+        repository.add_audit_event(
+            action="SNS_NOTIFICATION_SKIPPED_NO_RECIPIENTS",
+            entity_type="daily_schedule",
+            entity_id=schedule_id,
+            details={"job_id": job_id},
+        )
+        return
+
     summary = repository.build_job_completion_summary(job_id) or {}
     batch_name = str(schedule.get("batch_name") or "").strip() or schedule_id
     records_screened = int(summary.get("records_screened") or summary.get("total_items") or 0)
@@ -106,44 +123,78 @@ def _publish_schedule_notification_via_sns(
     )
     message = "\n".join(message_lines)
 
-    try:
-        message_id = notifier.publish_schedule_completion(
-            schedule_id=schedule_id,
-            title=subject,
-            message=message,
-            summary=None,
-        )
-        repository.add_audit_event(
-            action="SNS_NOTIFICATION_PUBLISHED",
-            entity_type="daily_schedule",
-            entity_id=schedule_id,
-            details={
-                "job_id": job_id,
-                "batch_name": batch_name,
-                "message_id": message_id,
-                "records_screened": records_screened,
-                "hit_records": hit_records,
-                "execution_seconds": execution_seconds,
-                "actimize_link": actimize_link,
-            },
-        )
-    except Exception as exc:  # noqa: BLE001
-        repository.add_audit_event(
-            action="SNS_NOTIFICATION_PUBLISH_FAILED",
-            entity_type="daily_schedule",
-            entity_id=schedule_id,
-            details={
-                "job_id": job_id,
-                "batch_name": batch_name,
-                "error": str(exc),
-            },
-        )
-        logger.exception(
-            "failed to publish SNS schedule notification for schedule_id=%s job_id=%s: %s",
-            schedule_id,
-            job_id,
-            exc,
-        )
+    failed_emails: list[str] = []
+    for email in recipient_emails:
+        try:
+            sync_result = notifier.ensure_email_subscription(schedule_id=schedule_id, email=email)
+            if bool(sync_result.get("pending_confirmation")):
+                repository.add_audit_event(
+                    action="SNS_NOTIFICATION_SKIPPED_PENDING_CONFIRMATION",
+                    entity_type="daily_schedule",
+                    entity_id=schedule_id,
+                    details={
+                        "job_id": job_id,
+                        "batch_name": batch_name,
+                        "email": email,
+                        "topic_arn": sync_result.get("topic_arn"),
+                    },
+                )
+                continue
+            message_id = notifier.publish_schedule_completion(
+                schedule_id=schedule_id,
+                title=subject,
+                message=message,
+                summary=None,
+                email=email,
+            )
+            repository.add_audit_event(
+                action="SNS_NOTIFICATION_PUBLISHED",
+                entity_type="daily_schedule",
+                entity_id=schedule_id,
+                details={
+                    "job_id": job_id,
+                    "batch_name": batch_name,
+                    "email": email,
+                    "message_id": message_id,
+                    "records_screened": records_screened,
+                    "hit_records": hit_records,
+                    "execution_seconds": execution_seconds,
+                    "actimize_link": actimize_link,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            failed_emails.append(email)
+            repository.add_audit_event(
+                action="SNS_NOTIFICATION_PUBLISH_FAILED",
+                entity_type="daily_schedule",
+                entity_id=schedule_id,
+                details={
+                    "job_id": job_id,
+                    "batch_name": batch_name,
+                    "email": email,
+                    "error": str(exc),
+                },
+            )
+            logger.exception(
+                "failed to publish SNS schedule notification for schedule_id=%s job_id=%s email=%s: %s",
+                schedule_id,
+                job_id,
+                email,
+                exc,
+            )
+
+    repository.add_audit_event(
+        action="SNS_NOTIFICATION_BATCH_COMPLETED",
+        entity_type="daily_schedule",
+        entity_id=schedule_id,
+        details={
+            "job_id": job_id,
+            "batch_name": batch_name,
+            "recipient_count": len(recipient_emails),
+            "failed_count": len(failed_emails),
+            "failed_emails": failed_emails,
+        },
+    )
 
 
 def run() -> None:
