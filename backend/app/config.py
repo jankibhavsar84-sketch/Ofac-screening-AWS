@@ -127,7 +127,7 @@ def load_settings() -> Settings:
         actimize_requester_name=os.getenv("ACTIMIZE_REQUESTER_NAME", "SCREENING_SYSTEM").strip() or "SCREENING_SYSTEM",
         actimize_alert_review_url=os.getenv("ACTIMIZE_ALERT_REVIEW_URL", "").strip(),
         actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 10.0),
-        actimize_mock=_to_bool(os.getenv("ACTIMIZE_MOCK"), True),
+        actimize_mock=_to_bool(os.getenv("ACTIMIZE_MOCK"), False),
         screening_tps=_to_int(os.getenv("SCREENING_TPS"), 32),
         screening_poll_interval_ms=_to_int(os.getenv("SCREENING_POLL_INTERVAL_MS"), 750),
         screening_sync_timeout_s=_to_int(os.getenv("SCREENING_SYNC_TIMEOUT_S"), 60),

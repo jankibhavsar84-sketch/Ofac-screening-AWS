@@ -16,7 +16,7 @@ class ScoredEntity(BaseModel):
     id: str
     caption: str
     schema: str
-    score: float
+    score: float | None = None
     match: bool
     datasets: list[str] = Field(default_factory=list)
     properties: dict[str, Any] = Field(default_factory=dict)

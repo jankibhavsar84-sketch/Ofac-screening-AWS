@@ -169,7 +169,6 @@ class ActimizeClient:
         self.source_system = _sanitize_source_system(settings.actimize_source_system)
         self.default_requester_name = settings.actimize_requester_name.strip() or "SCREENING_SYSTEM"
         self.timeout_s = settings.actimize_timeout_s
-        self.mock = settings.actimize_mock
         self._cached_access_token = ""
         self._cached_access_token_expires_at = 0.0
 
@@ -180,8 +179,6 @@ class ActimizeClient:
         mock_screening: bool = False,
         requester_name: str | None = None,
     ) -> dict[str, Any]:
-        if self.mock:
-            return self._mock_response(query, screening_type)
         return self._screen_via_prudential_api(query, screening_type=screening_type, requester_name=requester_name)
 
     def _screen_via_prudential_api(
@@ -191,7 +188,7 @@ class ActimizeClient:
         requester_name: str | None = None,
     ) -> dict[str, Any]:
         if not self.base_url:
-            raise RuntimeError("ACTIMIZE_BASE_URL is required when ACTIMIZE_MOCK=false")
+            raise RuntimeError("ACTIMIZE_BASE_URL is required")
 
         endpoint = f"{self.base_url}/entity-screenings"
         payload = self._build_entity_screening_request(query, requester_name=requester_name)
@@ -294,14 +291,7 @@ class ActimizeClient:
 
                 existing = merged.get(key)
                 if existing is None:
-                    copy_candidate = dict(candidate)
-                    properties = copy_candidate.get("properties")
-                    if not isinstance(properties, dict):
-                        properties = {}
-                    properties = dict(properties)
-                    properties["screeningType"] = [screening_type]
-                    copy_candidate["properties"] = properties
-                    merged[key] = copy_candidate
+                    merged[key] = dict(candidate)
                     continue
 
                 existing["score"] = max(float(existing.get("score", 0.0) or 0.0), float(candidate.get("score", 0.0) or 0.0))
@@ -310,13 +300,6 @@ class ActimizeClient:
                 datasets = existing.get("datasets") if isinstance(existing.get("datasets"), list) else []
                 next_datasets = candidate.get("datasets") if isinstance(candidate.get("datasets"), list) else []
                 existing["datasets"] = sorted(set([str(x) for x in datasets + next_datasets]))
-
-                properties = existing.get("properties")
-                if not isinstance(properties, dict):
-                    properties = {}
-                screening = properties.get("screeningType") if isinstance(properties.get("screeningType"), list) else []
-                properties["screeningType"] = sorted(set([str(x) for x in screening + [screening_type]]))
-                existing["properties"] = properties
 
         merged_results = sorted(merged.values(), key=lambda item: float(item.get("score", 0.0) or 0.0), reverse=True)
         return {
@@ -594,12 +577,9 @@ class ActimizeClient:
                     "id": party_key,
                     "caption": f"{display_name} (Potential Match)",
                     "schema": str(query.schema),
-                    "score": 0.99,
                     "match": True,
-                    "datasets": ["prudential_sanctions_screening"],
                     "properties": {
                         "name": [display_name],
-                        "screeningType": [screening_type or "Sanction"],
                         "engineMessage": [message_value or "PM"],
                         "partyKey": [party_key],
                     },
@@ -609,36 +589,6 @@ class ActimizeClient:
         return {
             "results": normalized_results,
             "total": {"value": len(normalized_results), "relation": "eq"},
-            "query": query.model_dump(mode="json"),
-            "status": 200,
-        }
-
-    def _mock_response(self, query: EntityExample, screening_type: str | None = None) -> dict[str, Any]:
-        name = _extract_name(query)
-        seed = f"{name.lower()}::{(screening_type or '').lower()}"
-        digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()
-        marker = int(digest[:2], 16)
-        hit = marker < 52  # ~20% synthetic hit rate for demos
-
-        if not hit:
-            results: list[dict[str, Any]] = []
-        else:
-            score = round(0.70 + ((marker % 30) / 100), 4)
-            results = [
-                {
-                    "id": f"ACTIMIZE-{digest[:8]}",
-                    "caption": f"{name} (Watchlist Candidate)",
-                    "schema": query.schema,
-                    "score": score,
-                    "match": True,
-                    "datasets": ["actimize_watchlist"],
-                    "properties": {"name": [name], "screeningType": [screening_type or "Sanction"]},
-                }
-            ]
-
-        return {
-            "results": results,
-            "total": {"value": len(results), "relation": "eq"},
             "query": query.model_dump(mode="json"),
             "status": 200,
         }

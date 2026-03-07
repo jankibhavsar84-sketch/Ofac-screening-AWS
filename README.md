@@ -151,7 +151,7 @@ Backend/Worker (`backend/.env.example`):
 
 - `APP_DB_URL` optional. If set to a `postgresql://...` URL, backend/worker use PostgreSQL instead of SQLite (`APP_DB_PATH`).
 - `SCREENING_TPS=32` for Actimize single-request throughput
-- `ACTIMIZE_MOCK=true` for local simulation
+- `ACTIMIZE_MOCK` is ignored; backend always calls Actimize
 - `ACTIMIZE_PROVIDER=prudential` (default and only supported provider)
 - Set `ACTIMIZE_BASE_URL=<.../financial-governance/sanctions-screening/v1>`
 - Auth options for real engine:

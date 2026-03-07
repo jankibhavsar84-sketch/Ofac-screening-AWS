@@ -467,7 +467,7 @@ function modeBadge(mode: ResultMode) {
 }
 
 function formatMatchingScore(score: number | null) {
-  if (typeof score !== "number" || Number.isNaN(score)) return "\u2014";
+  if (typeof score !== "number" || Number.isNaN(score)) return "";
   return `${(score * 100).toFixed(2)}%`;
 }
 
@@ -539,13 +539,7 @@ function extractHitTag(result: any): string {
   const categories = asStringList(props?.category).concat(asStringList(props?.categories));
   if (categories.length) return `Category: ${Array.from(new Set(categories)).join(", ")}`;
 
-  const screeningTypes = asStringList(props?.screeningType).concat(asStringList(props?.screeningTypes));
-  if (screeningTypes.length) return `Category: ${Array.from(new Set(screeningTypes)).join(", ")}`;
-
-  const datasets = asStringList(result?.datasets);
-  if (datasets.length) return `Category: ${Array.from(new Set(datasets)).join(", ")}`;
-
-  return "\u2014";
+  return "";
 }
 
 function getResultCandidatesFromRaw(raw: any): any[] {
@@ -2874,17 +2868,19 @@ export function ScreeningDetailPage() {
                 {hitEntityDialog.hits.length === 0 ? (
                   <strong>No OFAC hit entity found.</strong>
                 ) : (
-                  <div className="hitEntityList">
-                    {hitEntityDialog.hits.map((hit, idx) => (
-                      <div className="hitEntityItem" key={`${hit.name}_${idx}`}>
-                        <span className="hitEntityName">{hit.name}</span>
-                        <span className="muted">{formatMatchingScore(hit.matchingScore)}</span>
-                        <span className="muted">{hit.keywordOrCategory}</span>
+                      <div className="hitEntityList">
+                        {hitEntityDialog.hits.map((hit, idx) => (
+                          <div className="hitEntityItem" key={`${hit.name}_${idx}`}>
+                            <span className="hitEntityName">{hit.name}</span>
+                            {hit.matchingScore != null ? (
+                              <span className="muted">{formatMatchingScore(hit.matchingScore)}</span>
+                            ) : null}
+                            {hit.keywordOrCategory ? <span className="muted">{hit.keywordOrCategory}</span> : null}
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
             </div>
           </div>
         </div>

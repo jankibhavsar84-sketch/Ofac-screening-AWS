@@ -11,7 +11,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "worker",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260307133418",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260307141522",
                                      "essential":  true,
                                      "command":  [
                                                      "python",
