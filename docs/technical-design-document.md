@@ -169,7 +169,7 @@ Responsibilities:
 - Normalize results into a stable structure for UI consumption.
 - Support mock screening for demos/dev environments.
 
-Note: In this repo, the adapter can be configured to call a third-party matching API (for example OpenSanctions) while preserving the “single-type per request” behavior required by Actimize-style engines.
+Note: In this repo, the adapter is configured for the Actimize/Kong sanctions API and preserves the "single-type per request" behavior required by Actimize-style engines.
 
 ### 4.5 Data Store (PostgreSQL)
 
@@ -474,3 +474,4 @@ Key values:
 - `OPERATIONAL_CLEANUP_INTERVAL_S` (default `3600`)
 - `HIGH_RISK_EXTERNAL_API_ERROR_WINDOW_MINUTES` (default `15`)
 - `HIGH_RISK_EXTERNAL_API_ERROR_THRESHOLD` (default `10`)
+

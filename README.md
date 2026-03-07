@@ -107,7 +107,7 @@ PDF version of these diagrams: `docs/architecture-api-flow.pdf`
 
 ## Key Paths
 
-- Frontend API client: `src/api/openSanctions.ts`
+- Frontend API client: `src/api/screeningApi.ts`
 - FastAPI app: `backend/app/main.py`
 - SQS worker: `backend/app/worker.py`
 - Actimize adapter: `backend/app/actimize.py`
@@ -152,8 +152,8 @@ Backend/Worker (`backend/.env.example`):
 - `APP_DB_URL` optional. If set to a `postgresql://...` URL, backend/worker use PostgreSQL instead of SQLite (`APP_DB_PATH`).
 - `SCREENING_TPS=32` for Actimize single-request throughput
 - `ACTIMIZE_MOCK=true` for local simulation
-- `ACTIMIZE_PROVIDER=opensanctions` (default; current active path)
-- For Prudential sanctions API, set `ACTIMIZE_PROVIDER=prudential` and `ACTIMIZE_BASE_URL=<.../financial-governance/sanctions-screening/v1>`
+- `ACTIMIZE_PROVIDER=prudential` (default and only supported provider)
+- Set `ACTIMIZE_BASE_URL=<.../financial-governance/sanctions-screening/v1>`
 - Auth options for real engine:
   - Option A: static bearer token via `ACTIMIZE_BEARER_TOKEN`
   - Option B: Microsoft Entra client credentials via `ACTIMIZE_TOKEN_URL`, `ACTIMIZE_CLIENT_ID`, `ACTIMIZE_CLIENT_SECRET`, and optional `ACTIMIZE_SCOPE`

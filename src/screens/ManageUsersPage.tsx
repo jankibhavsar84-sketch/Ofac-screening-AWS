@@ -11,7 +11,7 @@ import {
   updateBusinessUnitMapping,
   type BusinessUnit,
   type UserBusinessUnitMapping,
-} from "../api/openSanctions";
+} from "../api/screeningApi";
 
 type AuditUserOption = {
   userId: string;

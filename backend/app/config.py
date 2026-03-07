@@ -103,7 +103,7 @@ def load_settings() -> Settings:
         aws_sns_schedule_topic_prefix=os.getenv("AWS_SNS_SCHEDULE_TOPIC_PREFIX", "ofac-screening-schedule").strip()
         or "ofac-screening-schedule",
         actimize_base_url=os.getenv("ACTIMIZE_BASE_URL", "").strip(),
-        actimize_provider=os.getenv("ACTIMIZE_PROVIDER", "opensanctions").strip().lower() or "opensanctions",
+        actimize_provider=os.getenv("ACTIMIZE_PROVIDER", "prudential").strip().lower() or "prudential",
         actimize_api_key=os.getenv("ACTIMIZE_API_KEY", "").strip(),
         actimize_bearer_token=os.getenv("ACTIMIZE_BEARER_TOKEN", "").strip(),
         actimize_token_url=os.getenv("ACTIMIZE_TOKEN_URL", "").strip(),

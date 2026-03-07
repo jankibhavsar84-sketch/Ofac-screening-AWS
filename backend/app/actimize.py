@@ -133,14 +133,6 @@ def _to_party_type(schema_name: str | None) -> str:
     return "U"
 
 
-def _query_for_provider(query: EntityExample) -> EntityExample:
-    normalized_schema = str(query.schema or "").strip().lower()
-    if normalized_schema != "unknown":
-        return query
-    props = query.properties if isinstance(query.properties, dict) else {}
-    return EntityExample(schema="Company", properties=dict(props))
-
-
 def _to_iso3(country: str) -> str:
     safe = str(country or "").strip().upper()
     if not safe:
@@ -157,23 +149,10 @@ def _sanitize_source_system(value: str | None) -> str:
     return safe or "ZIP"
 
 
-def _map_screening_type_to_dataset(screening_type: str | None) -> str:
-    normalized = str(screening_type or "").strip().lower()
-    if normalized == "pep":
-        return "peps"
-    if normalized == "ame":
-        return "default"
-    if normalized == "fincen 314(a)":
-        return "sanctions"
-    if normalized == "global sanction":
-        return "sanctions"
-    return "sanctions"
-
-
 class ActimizeClient:
     def __init__(self) -> None:
         self.base_url = settings.actimize_base_url.rstrip("/")
-        self.provider = settings.actimize_provider.strip().lower() or "opensanctions"
+        self.provider = settings.actimize_provider.strip().lower() or "prudential"
         self.api_key = settings.actimize_api_key
         self.bearer_token = settings.actimize_bearer_token
         self.token_url = settings.actimize_token_url
@@ -203,68 +182,7 @@ class ActimizeClient:
     ) -> dict[str, Any]:
         if self.mock:
             return self._mock_response(query, screening_type)
-
-        if self.provider in {"prudential", "sanctions_api", "sanction-screening"}:
-            return self._screen_via_prudential_api(query, screening_type=screening_type, requester_name=requester_name)
-        return self._screen_via_opensanctions(query, screening_type=screening_type)
-
-    def _screen_via_opensanctions(
-        self,
-        query: EntityExample,
-        screening_type: str | None = None,
-    ) -> dict[str, Any]:
-        base_url = self.base_url or "https://api.opensanctions.org"
-        dataset = _map_screening_type_to_dataset(screening_type)
-        endpoint = f"{base_url.rstrip('/')}/match/{dataset}"
-
-        headers = {"Content-Type": "application/json"}
-        auth = self._build_auth_header()
-        if auth:
-            headers["Authorization"] = auth
-
-        screen_query = _query_for_provider(query)
-        payload: dict[str, Any] = {"queries": {"item_1": screen_query.model_dump(mode="json")}}
-        params = {"limit": settings.screening_result_limit}
-
-        try:
-            response = requests.post(
-                endpoint,
-                headers=headers,
-                params=params,
-                json=payload,
-                timeout=self.timeout_s,
-            )
-        except requests.RequestException as exc:
-            raise ExternalApiCallError(
-                provider="opensanctions",
-                operation="match",
-                endpoint=endpoint,
-                message=str(exc),
-                details={"screening_type": screening_type, "dataset": dataset},
-            ) from exc
-        if response.status_code >= 400:
-            raise ExternalApiCallError(
-                provider="opensanctions",
-                operation="match",
-                endpoint=endpoint,
-                status_code=int(response.status_code),
-                message=self._extract_error_detail(response),
-                details={"screening_type": screening_type, "dataset": dataset},
-            )
-
-        try:
-            body = response.json()
-        except Exception as exc:  # noqa: BLE001
-            raise ExternalApiCallError(
-                provider="opensanctions",
-                operation="match",
-                endpoint=endpoint,
-                status_code=int(response.status_code),
-                message="OpenSanctions API returned non-JSON response",
-                details={"screening_type": screening_type, "dataset": dataset},
-            ) from exc
-
-        return self._normalize_opensanctions(body, query)
+        return self._screen_via_prudential_api(query, screening_type=screening_type, requester_name=requester_name)
 
     def _screen_via_prudential_api(
         self,
@@ -313,6 +231,33 @@ class ActimizeClient:
                 message="Screening API returned non-JSON response",
                 details={"screening_type": screening_type},
             ) from exc
+
+        logical_status_code: int | None = None
+        if isinstance(body, dict) and "status_code" in body and "body" in body:
+            raw_status = str(body.get("status_code") or "").strip()
+            try:
+                logical_status_code = int(raw_status) if raw_status else None
+            except ValueError:
+                logical_status_code = None
+
+            nested_body = body.get("body")
+            if isinstance(nested_body, str):
+                try:
+                    nested_body = json.loads(nested_body)
+                except Exception:
+                    nested_body = {"message": nested_body}
+            if isinstance(nested_body, dict):
+                body = nested_body
+
+        if logical_status_code is not None and logical_status_code >= 400:
+            raise ExternalApiCallError(
+                provider=self.provider,
+                operation="entity-screenings",
+                endpoint=endpoint,
+                status_code=logical_status_code,
+                message=self._extract_error_detail_from_payload(body),
+                details={"screening_type": screening_type},
+            )
 
         return self._normalize_prudential(body, query, screening_type)
 
@@ -607,7 +552,10 @@ class ActimizeClient:
         except Exception:  # noqa: BLE001
             raw = response.text.strip()
             return raw[:500] if raw else response.reason
+        return self._extract_error_detail_from_payload(body)
 
+    @staticmethod
+    def _extract_error_detail_from_payload(body: Any) -> str:
         if isinstance(body, dict):
             for key in ("message", "detail", "userMessage", "code"):
                 value = body.get(key)
@@ -615,54 +563,6 @@ class ActimizeClient:
                     return str(value)
             return str(body)[:500]
         return str(body)[:500]
-
-    def _normalize_opensanctions(self, body: dict[str, Any], query: EntityExample) -> dict[str, Any]:
-        raw_results: list[Any] = []
-        response_query = query.model_dump(mode="json")
-        response_status = int(body.get("status", 200) or 200)
-
-        responses = body.get("responses")
-        if isinstance(responses, dict) and responses:
-            first = next(iter(responses.values()))
-            if isinstance(first, dict):
-                first_results = first.get("results")
-                if isinstance(first_results, list):
-                    raw_results = first_results
-                first_query = first.get("query")
-                if isinstance(first_query, dict):
-                    response_query = first_query
-                response_status = int(first.get("status", response_status) or response_status)
-        else:
-            maybe_results = body.get("results")
-            if isinstance(maybe_results, list):
-                raw_results = maybe_results
-            else:
-                maybe_hits = body.get("hits", [])
-                raw_results = maybe_hits if isinstance(maybe_hits, list) else []
-
-        normalized_results = []
-        for idx, candidate in enumerate(raw_results):
-            if not isinstance(candidate, dict):
-                continue
-            score = float(candidate.get("score", 0.0) or 0.0)
-            normalized_results.append(
-                {
-                    "id": str(candidate.get("id", f"ACT-{idx + 1}")),
-                    "caption": str(candidate.get("caption") or candidate.get("name") or "Unknown"),
-                    "schema": str(candidate.get("schema") or query.schema),
-                    "score": score,
-                    "match": bool(candidate.get("match", score >= 0.7)),
-                    "datasets": candidate.get("datasets") if isinstance(candidate.get("datasets"), list) else [],
-                    "properties": candidate.get("properties") if isinstance(candidate.get("properties"), dict) else {},
-                }
-            )
-
-        return {
-            "results": normalized_results,
-            "total": {"value": len(normalized_results), "relation": "eq"},
-            "query": response_query,
-            "status": response_status,
-        }
 
     def _normalize_prudential(self, body: dict[str, Any], query: EntityExample, screening_type: str | None = None) -> dict[str, Any]:
         status_value = str(body.get("status") or "").strip().upper()

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { buildIdentity, hasPermission } from "../auth/claims";
-import { listAuditEvents, type AuditEvent } from "../api/openSanctions";
+import { listAuditEvents, type AuditEvent } from "../api/screeningApi";
 
 type AuditUserOption = {
   userId: string;

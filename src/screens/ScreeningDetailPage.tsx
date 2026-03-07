@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { useAuth } from "react-oidc-context";
 import { z } from "zod";
@@ -13,7 +13,7 @@ import {
   type BusinessUnit,
   type EntityExample,
   type EntityMatches,
-} from "../api/openSanctions";
+} from "../api/screeningApi";
 import { buildIdentity, getPrimaryRole, hasPermission } from "../auth/claims";
 import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutoSuggest";
@@ -267,7 +267,7 @@ function uiTypeToSchema(ui: UiType): EntityExample["schema"] {
   if (ui === "Individual") return "Person";
   if (ui === "Organization") return "Company";
   if (ui === "Unknown") return "Unknown";
-  // These are supported in OpenSanctions entity models; if your API rejects, we can switch to "Company"
+  // These values are supported by the screening payload mapper; if your API rejects, switch to "Company"
   if (ui === "Vessel") return "Vessel";
   return "Aircraft";
 }

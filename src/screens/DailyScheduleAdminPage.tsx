@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { buildIdentity, hasPermission } from "../auth/claims";
-import { listDailySchedules, removeDailySchedule, type DailySchedule } from "../api/openSanctions";
+import { listDailySchedules, removeDailySchedule, type DailySchedule } from "../api/screeningApi";
 
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return "-";

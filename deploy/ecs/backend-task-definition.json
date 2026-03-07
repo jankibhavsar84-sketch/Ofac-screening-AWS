@@ -11,7 +11,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "backend",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260306173917",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260307133418",
                                      "essential":  true,
                                      "command":  [
                                                      "uvicorn",
@@ -73,7 +73,7 @@
                                                          },
                                                          {
                                                              "name":  "ACTIMIZE_BASE_URL",
-                                                             "value":  "https://api-dev.pruvpcaws066.pruaws.prudential.com/financial-governance/sanctions-screening/v1"
+                                                             "value":  "https://us-dev.apis.prudential.com/financial-governance/sanctions-screening/v1"
                                                          },
                                                          {
                                                              "name":  "ACTIMIZE_ALERT_REVIEW_URL",
@@ -109,7 +109,7 @@
                                                          },
                                                          {
                                                              "name":  "ACTIMIZE_TOKEN_URL",
-                                                             "value":  "https://api-dev.pruvpcaws159.pruaws.prudential.com/utility/identity-management/v2/0auth2/token"
+                                                             "value":  "https://us-dev.apis.prudential.com/utility/identity-management/v2/oauth2/token"
                                                          },
                                                          {
                                                              "name":  "ACTIMIZE_CLIENT_ID",
