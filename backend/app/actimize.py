@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
@@ -7,6 +8,7 @@ import time
 from typing import Any
 from uuid import uuid4
 
+import jwt
 import requests
 
 from .config import settings
@@ -177,6 +179,13 @@ class ActimizeClient:
         self.token_url = settings.actimize_token_url
         self.client_id = settings.actimize_client_id
         self.client_secret = settings.actimize_client_secret
+        self.client_assertion_type = settings.actimize_client_assertion_type
+        self.client_assertion_algorithm = settings.actimize_client_assertion_algorithm
+        self.client_assertion_audience = settings.actimize_client_assertion_audience
+        self.client_assertion_kid = settings.actimize_client_assertion_kid
+        self.client_assertion_private_key = settings.actimize_client_assertion_private_key
+        self.client_assertion_private_key_b64 = settings.actimize_client_assertion_private_key_b64
+        self.client_assertion_private_key_path = settings.actimize_client_assertion_private_key_path
         self.scope = settings.actimize_scope
         self.source_system = _sanitize_source_system(settings.actimize_source_system)
         self.default_requester_name = settings.actimize_requester_name.strip() or "SCREENING_SYSTEM"
@@ -395,18 +404,26 @@ class ActimizeClient:
         return ""
 
     def _load_access_token(self) -> str:
-        if not self.token_url or not self.client_id or not self.client_secret:
+        if not self.token_url or not self.client_id:
             return ""
 
         now = time.time()
         if self._cached_access_token and now < self._cached_access_token_expires_at:
             return self._cached_access_token
 
+        client_assertion = self._build_client_assertion()
+        if not client_assertion and not self.client_secret:
+            return ""
+
         payload = {
             "grant_type": "client_credentials",
             "client_id": self.client_id,
-            "client_secret": self.client_secret,
         }
+        if client_assertion:
+            payload["client_assertion_type"] = self.client_assertion_type
+            payload["client_assertion"] = client_assertion
+        elif self.client_secret:
+            payload["client_secret"] = self.client_secret
         if self.scope:
             payload["scope"] = self.scope
 
@@ -446,6 +463,44 @@ class ActimizeClient:
         self._cached_access_token = access_token
         self._cached_access_token_expires_at = time.time() + max(expires_in - 60, 30)
         return access_token
+
+    def _build_client_assertion(self) -> str:
+        private_key = self._resolve_client_assertion_private_key()
+        if not private_key:
+            return ""
+
+        now = int(time.time())
+        audience = self.client_assertion_audience.strip() or self.token_url
+        claims: dict[str, Any] = {
+            "iss": self.client_id,
+            "sub": self.client_id,
+            "aud": audience,
+            "iat": now,
+            "exp": now + 120,
+            "jti": str(uuid4()),
+        }
+        headers: dict[str, str] = {"typ": "JWT"}
+        if self.client_assertion_kid:
+            headers["kid"] = self.client_assertion_kid
+
+        token = jwt.encode(
+            claims,
+            private_key,
+            algorithm=self.client_assertion_algorithm,
+            headers=headers,
+        )
+        return str(token)
+
+    def _resolve_client_assertion_private_key(self) -> str:
+        if self.client_assertion_private_key:
+            return self.client_assertion_private_key
+        if self.client_assertion_private_key_b64:
+            raw = base64.b64decode(self.client_assertion_private_key_b64.encode("utf-8"))
+            return raw.decode("utf-8")
+        if self.client_assertion_private_key_path:
+            with open(self.client_assertion_private_key_path, "r", encoding="utf-8") as handle:
+                return handle.read()
+        return ""
 
     def _build_entity_screening_request(
         self,

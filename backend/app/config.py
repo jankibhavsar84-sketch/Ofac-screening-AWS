@@ -49,6 +49,13 @@ class Settings:
     actimize_token_url: str
     actimize_client_id: str
     actimize_client_secret: str
+    actimize_client_assertion_type: str
+    actimize_client_assertion_algorithm: str
+    actimize_client_assertion_audience: str
+    actimize_client_assertion_kid: str
+    actimize_client_assertion_private_key: str
+    actimize_client_assertion_private_key_b64: str
+    actimize_client_assertion_private_key_path: str
     actimize_scope: str
     actimize_source_system: str
     actimize_requester_name: str
@@ -102,6 +109,19 @@ def load_settings() -> Settings:
         actimize_token_url=os.getenv("ACTIMIZE_TOKEN_URL", "").strip(),
         actimize_client_id=os.getenv("ACTIMIZE_CLIENT_ID", "").strip(),
         actimize_client_secret=os.getenv("ACTIMIZE_CLIENT_SECRET", "").strip(),
+        actimize_client_assertion_type=(
+            os.getenv(
+                "ACTIMIZE_CLIENT_ASSERTION_TYPE",
+                "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            ).strip()
+            or "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+        ),
+        actimize_client_assertion_algorithm=os.getenv("ACTIMIZE_CLIENT_ASSERTION_ALGORITHM", "RS256").strip() or "RS256",
+        actimize_client_assertion_audience=os.getenv("ACTIMIZE_CLIENT_ASSERTION_AUDIENCE", "").strip(),
+        actimize_client_assertion_kid=os.getenv("ACTIMIZE_CLIENT_ASSERTION_KID", "").strip(),
+        actimize_client_assertion_private_key=os.getenv("ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY", "").strip(),
+        actimize_client_assertion_private_key_b64=os.getenv("ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64", "").strip(),
+        actimize_client_assertion_private_key_path=os.getenv("ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH", "").strip(),
         actimize_scope=os.getenv("ACTIMIZE_SCOPE", "").strip(),
         actimize_source_system=os.getenv("ACTIMIZE_SOURCE_SYSTEM", "ZIP").strip() or "ZIP",
         actimize_requester_name=os.getenv("ACTIMIZE_REQUESTER_NAME", "SCREENING_SYSTEM").strip() or "SCREENING_SYSTEM",
