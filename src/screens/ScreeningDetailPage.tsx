@@ -633,9 +633,20 @@ function downloadUnifiedTemplate() {
   a.remove();
 }
 
-function RefreshIcon() {
+function RefreshIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <polyline points="23 4 23 10 17 10" />
       <polyline points="1 20 1 14 7 14" />
       <path d="M3.5 9A9 9 0 0 1 19.3 5.7L23 10" />
@@ -695,6 +706,9 @@ export function ScreeningDetailPage() {
 
   const [submissions, setSubmissions] = useRecoilState(submissionsState);
   const [, setLatest] = useRecoilState(latestResultState);
+  const [resultsRefreshing, setResultsRefreshing] = useState(false);
+  const [resultsRefreshError, setResultsRefreshError] = useState<string | null>(null);
+  const [resultsLastRefreshedAt, setResultsLastRefreshedAt] = useState<Date | null>(null);
   const currentUser = useMemo(
     () =>
       identity
@@ -769,6 +783,8 @@ export function ScreeningDetailPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const scheduleRunAtInputRef = useRef<HTMLInputElement | null>(null);
   const hitDialogCloseBtnRef = useRef<HTMLButtonElement | null>(null);
+  const MAX_UPLOAD_MB = 25;
+  const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
   function openScheduleRunAtPicker() {
     const picker = scheduleRunAtInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
@@ -783,6 +799,15 @@ export function ScreeningDetailPage() {
 
   function openFilePicker() {
     fileInputRef.current?.click();
+  }
+
+  function validateUploadFile(file: File | null, setError: (value: string | null) => void): file is File {
+    if (!file) return false;
+    if (file.size <= MAX_UPLOAD_BYTES) return true;
+
+    const mb = file.size / (1024 * 1024);
+    setError(`File is too large (${mb.toFixed(2)} MB). Max supported size is ${MAX_UPLOAD_MB} MB.`);
+    return false;
   }
 
   function handleDropzoneKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -888,14 +913,19 @@ export function ScreeningDetailPage() {
   }
 
   function refreshResults() {
+    if (resultsRefreshing) return;
     void (async () => {
+      setResultsRefreshing(true);
+      setResultsRefreshError(null);
       try {
         const historyRows = await listScreeningSubmissions(500);
         const reconciled = await reconcileDailyScheduleFlags(historyRows as Submission[]);
         setSubmissions(reconciled);
-      } catch {
-        // ignore refresh errors
+        setResultsLastRefreshedAt(new Date());
+      } catch (err: any) {
+        setResultsRefreshError(err?.message ?? "Failed to refresh screening results.");
       } finally {
+        setResultsRefreshing(false);
         setPage(1);
       }
     })();
@@ -2440,7 +2470,7 @@ export function ScreeningDetailPage() {
                 e.preventDefault();
                 setDragOver(false);
                 const f = e.dataTransfer.files?.[0] ?? null;
-                if (!f) return;
+                if (!validateUploadFile(f, setBatchError)) return;
                 setBatchFile(f);
                 setBatchFileName(f.name);
                 setBatchError(null);
@@ -2462,6 +2492,7 @@ export function ScreeningDetailPage() {
                 )}
               </div>
               <div className="dropSub">Supports CSV and Excel files</div>
+              <div className="dropSub">Max file size: {MAX_UPLOAD_MB} MB</div>
 
               <input
                 ref={fileInputRef}
@@ -2470,7 +2501,7 @@ export function ScreeningDetailPage() {
                 style={{ display: "none" }}
                 onChange={(e) => {
                   const f = e.target.files?.[0] ?? null;
-                  if (!f) return;
+                  if (!validateUploadFile(f, setBatchError)) return;
                   setBatchFile(f);
                   setBatchFileName(f.name);
                   setBatchError(null);
@@ -2639,7 +2670,7 @@ export function ScreeningDetailPage() {
                   e.preventDefault();
                   setDragOver(false);
                   const f = e.dataTransfer.files?.[0] ?? null;
-                  if (!f) return;
+                  if (!validateUploadFile(f, setScheduleError)) return;
                   setScheduleFile(f);
                   setScheduleFileName(f.name);
                   setScheduleError(null);
@@ -2661,6 +2692,7 @@ export function ScreeningDetailPage() {
                   )}
                 </div>
                 <div className="dropSub">Supports CSV and Excel files</div>
+                <div className="dropSub">Max file size: {MAX_UPLOAD_MB} MB</div>
 
                 <input
                   ref={fileInputRef}
@@ -2669,7 +2701,7 @@ export function ScreeningDetailPage() {
                   style={{ display: "none" }}
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;
-                    if (!f) return;
+                    if (!validateUploadFile(f, setScheduleError)) return;
                     setScheduleFile(f);
                     setScheduleFileName(f.name);
                     setScheduleError(null);
@@ -2701,11 +2733,13 @@ export function ScreeningDetailPage() {
             <button
               type="button"
               className="iconBtn"
-              title="Refresh screening results"
-              aria-label="Refresh screening results"
+              title={resultsRefreshing ? "Refreshing screening results..." : "Refresh screening results"}
+              aria-label={resultsRefreshing ? "Refreshing screening results" : "Refresh screening results"}
               onClick={refreshResults}
+              disabled={resultsRefreshing}
+              aria-busy={resultsRefreshing}
             >
-              <RefreshIcon />
+              <RefreshIcon className={resultsRefreshing ? "iconSpin" : undefined} />
             </button>
             <button
               type="button"
@@ -2721,6 +2755,21 @@ export function ScreeningDetailPage() {
               </span>
             </button>
           </div>
+
+          {resultsRefreshError ? (
+            <div className="errorBox" role="alert" aria-live="assertive" style={{ marginTop: 10 }}>
+              {resultsRefreshError}
+            </div>
+          ) : null}
+          {resultsRefreshing ? (
+            <div className="muted" style={{ marginTop: 10 }} aria-live="polite">
+              Refreshing results...
+            </div>
+          ) : resultsLastRefreshedAt ? (
+            <div className="muted" style={{ marginTop: 10 }} aria-live="polite">
+              Last refreshed: {resultsLastRefreshedAt.toLocaleString()}
+            </div>
+          ) : null}
 
           <div className="resultsFilters">
             <div className="searchBox">

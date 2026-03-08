@@ -532,6 +532,7 @@ export async function listScreeningSubmissions(limit = 200): Promise<SubmissionH
   url.searchParams.set("limit", String(limit));
   const resp = await fetch(url.toString(), {
     headers: withAuthHeaders(),
+    cache: "no-store",
   });
   if (!resp.ok) {
     throw new Error(`Failed to load screening submissions: ${await parseApiError(resp)}`);
