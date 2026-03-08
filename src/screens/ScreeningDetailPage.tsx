@@ -811,7 +811,8 @@ export function ScreeningDetailPage() {
   // for reliability/performance.
   const MAX_UPLOAD_VALIDATION_MB = 25;
   const MAX_UPLOAD_DISPLAY_MB = 5;
-  const MAX_UPLOAD_BYTES = MAX_UPLOAD_VALIDATION_MB * 1024 * 1024;
+  // Enforce the user-facing limit in the UI, even though the backend can handle larger uploads.
+  const MAX_UPLOAD_BYTES = MAX_UPLOAD_DISPLAY_MB * 1024 * 1024;
 
   function openScheduleRunAtPicker() {
     const picker = scheduleRunAtInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
@@ -834,7 +835,7 @@ export function ScreeningDetailPage() {
 
     const mb = file.size / (1024 * 1024);
     setError(
-      `This file is ${mb.toFixed(2)} MB, which exceeds the maximum supported upload size (${MAX_UPLOAD_VALIDATION_MB} MB). ` +
+      `This file is ${mb.toFixed(2)} MB, which exceeds the maximum allowed upload size (${MAX_UPLOAD_DISPLAY_MB} MB). ` +
         `Please split the file into smaller batches and try again.`
     );
     return false;
