@@ -28,3 +28,7 @@ __pycache__/
 
 *storybook.log
 storybook-static
+
+# MS Office temporary/lock files
+~$*.doc
+~$*.docx

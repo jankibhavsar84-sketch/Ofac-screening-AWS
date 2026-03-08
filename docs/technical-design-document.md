@@ -1,7 +1,7 @@
 # Technical Design Document (TDD): OFAC / Watchlist Screening Platform
 
-**Version:** 1.1  
-**Date:** 2026-03-06  
+**Version:** 1.2  
+**Date:** 2026-03-08  
 **Repo:** `ofac-screening-aws`  
 
 This document describes the technical design for the OFAC / watchlist screening platform deployed on AWS. It includes AWS architecture, API flows, process flows, and component responsibilities.
@@ -11,6 +11,7 @@ This document describes the technical design for the OFAC / watchlist screening 
 The platform supports:
 - **Single Screening (Sync):** user submits a single entity and receives an immediate response.
 - **Batch Screening (Async):** user uploads a batch; the platform returns immediately with a job id; a worker processes in background.
+- **Large Batch Dispatch (Async):** for very large immediate batch uploads, backend stores `queries.json` in S3 and enqueues a `JOB_DISPATCH` SQS message so the worker can expand/enqueue per-record tasks without hitting CloudFront origin timeouts.
 - **Daily Screening (Scheduled):** selected batches are automatically re-screened daily shortly after midnight Eastern time.
 - **AuthN/AuthZ:** OIDC login (AWS Cognito or enterprise IdP federation) and role-based authorization.
 - **Audit Trail:** all key user/system actions are recorded for traceability.
@@ -31,7 +32,7 @@ flowchart LR
     CF[CloudFront Distribution<br/>HTTPS]
     ALB[Application Load Balancer<br/>HTTP origin from CloudFront]
 
-    subgraph VPC[VPC]
+  subgraph VPC[VPC]
       subgraph ECS[ECS Cluster: Screening]
         FE[Frontend Service<br/>Fargate Task<br/>Nginx + SPA]
         BE[Backend Service<br/>Fargate Task<br/>FastAPI]
@@ -45,6 +46,8 @@ flowchart LR
     end
 
     COG[AWS Cognito User Pool<br/>OIDC]
+    S3[(S3 Bucket<br/>Batch Upload Storage)]
+    SNS[SNS<br/>Schedule Notifications]
   end
 
   U -->|HTTPS| CF
@@ -58,10 +61,13 @@ flowchart LR
   BE -->|enqueue| Q
   BE -->|read/write| DB
   BE -->|emit logs| CW
+  BE -->|upload source + queries.json| S3
 
   WK -->|poll| Q
   WK -->|read/write| DB
   WK -->|emit logs| CW
+  WK -->|download queries.json (JOB_DISPATCH)| S3
+  WK -->|publish completion| SNS
 
   U -->|OIDC Auth Code + PKCE| COG
   U -->|Bearer access token| FE
@@ -89,6 +95,11 @@ flowchart LR
 - **Cognito**
   - User login and token issuance (or federation from enterprise IdP).
   - Group membership in tokens maps to app roles/permissions.
+- **S3 (optional, required for large batch dispatch)**
+  - Stores batch upload source files (XLSX) and `queries.json` when enabled.
+  - Large immediate uploads use S3-backed `JOB_DISPATCH` expansion to avoid CloudFront timeouts.
+- **SNS (optional)**
+  - Publishes scheduled screening completion notifications to subscribed email recipients (implementation uses per-recipient SNS topics to avoid repeated email confirmation prompts when schedules change).
 - **CloudWatch Logs**
   - Central log streams per ECS service for support and troubleshooting.
 
@@ -145,6 +156,7 @@ Responsibilities:
 - Validate and accept screening requests.
 - Provide synchronous screening endpoint for immediate results.
 - Create batch jobs and enqueue SQS messages for async processing.
+- For immediate large batch uploads, create the job quickly and enqueue a single `JOB_DISPATCH` message; the worker expands into per-record `SCREEN_ITEM` tasks using `queries.json` stored in S3.
 - Provide job progress endpoints for polling.
 - Manage daily schedule definitions (list/disable).
 - Write audit events for key actions and failures.
@@ -155,6 +167,7 @@ Responsibilities:
 
 Responsibilities:
 - Poll SQS messages and process screening items.
+- Handle `JOB_DISPATCH` messages for large immediate batch uploads by downloading `queries.json` from S3, creating job items in bulk, and enqueuing per-record `SCREEN_ITEM` tasks using `SendMessageBatch` (10 at a time).
 - Enforce screening throughput and execute screening calls for selected types.
 - Enforce throughput constraint via fixed-rate limiter (`32 TPS`).
 - Persist item results (completed/failed) into the database.
@@ -244,7 +257,7 @@ Base path: `/api/v1` (except health endpoint).
 |---|---|---|---|
 | `GET` | `/health` | None | Liveness/readiness response (`{"status":"ok"}`). |
 | `POST` | `/api/v1/screenings/jobs` | `screening.write` or `screening.daily` or `screening.admin` | Creates async screening job from JSON payload (`queries`, screening types, schedule options). If `daily_screening=true`, schedule is created/updated and first execution is deferred to schedule time. |
-| `POST` | `/api/v1/screenings/batch-upload` | `screening.write` or `screening.daily` or `screening.admin` | Uploads batch file + query payload, validates file content rules, optionally stores source in S3, creates job/schedule, supports optional subscription creation. |
+| `POST` | `/api/v1/screenings/batch-upload` | `screening.write` or `screening.daily` or `screening.admin` | Uploads batch file + query payload, validates file content rules, optionally stores source in S3. For scheduled/daily runs, creates job/schedule. For immediate large runs, requires S3 upload enabled and enqueues a `JOB_DISPATCH` message so the worker can expand/enqueue per-record tasks without request timeouts. Supports optional subscription creation for schedules. |
 | `GET` | `/api/v1/screenings/jobs/{job_id}` | `screening.read` | Returns job progress counts and terminal responses when complete. |
 | `GET` | `/api/v1/screenings/submissions` | `screening.read` | Returns user-visible submission history for single and batch runs with normalized result status. |
 | `POST` | `/api/v1/screenings/match` | `screening.write` or `screening.single.mock` or `screening.admin` | Performs synchronous screening, persists job/item metadata, returns immediate merged results; logs per-item API call success/failure. |
@@ -267,7 +280,7 @@ Base path: `/api/v1` (except health endpoint).
 
 - Screening submission APIs:
   - Persist job, item, metadata, and audit records.
-  - Async jobs enqueue one SQS message per item and track queue lifecycle audit events.
+  - Async jobs enqueue either per-item `SCREEN_ITEM` work (JSON submit) or a single `JOB_DISPATCH` work item (large batch upload) which expands into per-item work in the worker.
   - Sync jobs execute immediately and write per-item external API call audit lifecycle.
 - Batch-upload validation:
   - `queries_json` must be non-empty object.
@@ -286,6 +299,62 @@ Base path: `/api/v1` (except health endpoint).
 - Audit APIs:
   - `audit_events` is admin-only.
   - Additional operational telemetry is stored in `api_access_logs` and `external_api_errors` tables for enterprise support/compliance queries.
+
+### 6.4 Canonical Schemas (Selected)
+
+#### `MatchJobRequest` (`POST /api/v1/screenings/jobs`)
+
+```json
+{
+  "queries": {
+    "P001": {
+      "schema": "person",
+      "properties": {
+        "partyKey": "P001",
+        "name": ["Jane Doe"],
+        "birthDate": "1980-01-01",
+        "gender": "F"
+      }
+    }
+  },
+  "screening_types": ["Sanction", "PEP"],
+  "mock_screening": false,
+  "business_unit_code": "AML",
+  "daily_screening": false,
+  "schedule_frequency": "DAILY",
+  "schedule_run_at": null,
+  "schedule_id": null,
+  "batch_name": "Example Batch"
+}
+```
+
+#### `MatchJobAccepted` (`202` from `POST /api/v1/screenings/jobs`)
+
+```json
+{
+  "job_id": "6a2bb3b7-6a2f-4c6b-9f4a-3c82e7c4f2ad",
+  "status": "QUEUED",
+  "submitted_at": "2026-03-08T21:12:33.123456+00:00",
+  "total_items": 1,
+  "business_unit_code": "AML",
+  "daily_schedule_id": null,
+  "screened_item_keys": []
+}
+```
+
+#### `Batch Upload` (`POST /api/v1/screenings/batch-upload` multipart)
+
+- `file`: uploaded XLSX (required)
+- `queries_json`: JSON string containing `{ "<PartyKey>": { "schema": "...", "properties": {...} }, ... }` (required)
+- `screening_types_json`: JSON string array (default `[]`)
+- `business_unit_code`: string (required)
+- Optional scheduling: `daily_screening`, `schedule_frequency`, `schedule_run_at`, `schedule_id`
+- Optional behavior: `mock_screening`, `batch_name`, `subscribe_results`, `subscribe_email`, `subscribe_emails`
+
+#### `ScreeningQueueMessage` (SQS body)
+
+- `message_type="SCREEN_ITEM"` (default): carries one record (`item_key` + `query`).
+- `message_type="JOB_DISPATCH"`: control message used by large batch uploads (must omit `query`; may omit `item_key`); worker downloads `queries.json` from S3 and expands into `SCREEN_ITEM` messages.
 
 ## 7. Process Flows
 
@@ -327,7 +396,7 @@ sequenceDiagram
   API-->>UI: response (merged hits)
 ```
 
-### 7.3 Batch Screening (Async)
+### 7.3 Batch Screening (Async - JSON Submit)
 
 ```mermaid
 sequenceDiagram
@@ -356,6 +425,30 @@ sequenceDiagram
 
   UI->>API: GET /api/v1/screenings/jobs/{job_id} (poll)
   API-->>UI: progress + results when terminal
+```
+
+### 7.3.1 Batch Upload (Async - Large Batch Dispatch)
+
+```mermaid
+sequenceDiagram
+  participant UI as Frontend
+  participant API as FastAPI
+  participant DB as PostgreSQL
+  participant S3 as S3 Upload Bucket
+  participant Q as SQS
+  participant WK as Worker
+
+  UI->>API: POST /api/v1/screenings/batch-upload (multipart: file + queries_json)
+  API->>S3: upload source file + queries.json
+  API->>DB: register batch upload + create job (queued)
+  API->>Q: enqueue JOB_DISPATCH (job_id + upload_id)
+  API-->>UI: 202 {job_id, status=queued}
+
+  WK->>Q: receive JOB_DISPATCH
+  WK->>S3: download queries.json
+  WK->>DB: bulk insert job_items
+  WK->>Q: enqueue SCREEN_ITEM messages in batches (SendMessageBatch)
+  WK->>Q: delete JOB_DISPATCH
 ```
 
 ### 7.4 Daily Screening Trigger (Worker Scheduler)
@@ -475,3 +568,68 @@ Key values:
 - `HIGH_RISK_EXTERNAL_API_ERROR_WINDOW_MINUTES` (default `15`)
 - `HIGH_RISK_EXTERNAL_API_ERROR_THRESHOLD` (default `10`)
 
+## 11. Appendix: Batch File -> Actimize Request Mapping
+
+This section documents how fields from the uploaded batch file (CSV/XLSX) map into:
+1) the backend `queries_json` payload (`EntityExample` objects) and
+2) the Actimize `POST /entity-screenings` JSON payload.
+
+### 11.1 Batch File Format and Header Rules
+
+- Supported uploads: `.csv`, `.xlsx`, `.xls`.
+- Excel parsing uses the **first worksheet** only (e.g., the template sheet named `Template`).
+- Column header matching is **case-insensitive** and tolerant of separators:
+  - headers are normalized by lowercasing and removing non-alphanumeric characters
+  - example: `Party Key`, `party_key`, and `PartyKey` all map to the same field.
+- Reference template: `public/Actimize_SSB1_template.xlsx`.
+
+### 11.2 Column Mapping to `queries_json` (`EntityExample`)
+
+Batch rows are parsed in the frontend (`src/utils/batchParse.ts`) and converted into `queries_json` (`src/screens/ScreeningDetailPage.tsx`).
+The backend treats the `PartyKey` as the canonical record identifier and ensures it is propagated into the downstream screening request.
+
+| Batch File Column (template) | Parsed Field | `queries_json` (`EntityExample`) | Notes |
+|---|---|---|---|
+| `PartyKey` | `partyKey` | **Object key**: `queries["<PartyKey>"]` | Required and must be unique within the file; backend also injects this into `properties.partyKey` for traceability. |
+| `PartyType` (`I`/`E`) | `partyType` | `schema` | `I` -> `schema="Person"`; `E` -> `schema="Company"`. If missing, UI infers from `CustomerType` and/or available name fields. |
+| `CustomerType` (`Person`/`Entity`) | `customerType` | `schema` | Used as a fallback when `PartyType` is missing. |
+| `PrimaryFirstName` | `firstName` | `properties.name[]` | Individual only: combined with middle/last to form a primary name string. |
+| `PrimaryMiddleName` | `middleName` | `properties.name[]` | Included in the combined primary name string when present. |
+| `PrimaryLastName` | `lastName` | `properties.name[]` | Individual only: required (with First Name) if `PrimaryFullName` is not provided. |
+| `PrimaryFullName` | `fullName` | `properties.name[]` | Required for Organization/Unknown; for Individual it can be used instead of split names. |
+| `Alias1FullName` | `aliasName` | `properties.alias[]` | Optional; sent as a single alias entry. |
+| `DateOfBirth` | `dateOfBirth` | `properties.birthDate[]` | Individual only. Accepted as `YYYY-MM-DD`, `YYYY/MM/DD`, `DD/MM/YYYY`, `DD-MM-YYYY`, or `YYYY` (year-only). |
+| `Gender` | `gender` | *(not mapped)* | Validated as `M`, `F`, or blank, but **not currently forwarded** to `queries_json` or Actimize payload. |
+| `Addresses` | `addresses` | `properties.address[]` | Optional comma-separated list of full-address lines. If blank, UI derives a one-line address from `Address1*` fields. |
+| `Address1Line1` | `addressLine1` | `properties.address[]` | Used only when `Addresses` is blank (part of derived one-line address). |
+| `Address1Line2` | `addressLine2` | `properties.address[]` | Used only when `Addresses` is blank (part of derived one-line address). |
+| `Address1City` | `city` | `properties.address[]` | Used only when `Addresses` is blank (part of derived one-line address). |
+| `Address1StateProvince` | `state` | `properties.address[]` | Used only when `Addresses` is blank (part of derived one-line address). |
+| `Address1ZipCode` | `zip` | `properties.address[]` | Used only when `Addresses` is blank (part of derived one-line address). |
+| `Countries` | `countries` | `properties.nationality[]` or `properties.country[]` | Optional comma-separated list. Prefer ISO2 country codes (e.g., `US`, `IN`). |
+| `Address1Country` | `country` | `properties.nationality[]` or `properties.country[]` | Used as a fallback country when `Countries` is blank. |
+| `NationalityCountry1` | `countryOfCitizenship` | `properties.nationality[]` or `properties.country[]` | Added to the country set; UI uses nationality for persons and country for organizations. |
+| `CountryOfBirth` | `countryOfBirth` | *(not mapped)* | Parsed but **not currently forwarded** to `queries_json` or Actimize payload. |
+| `PartyId1Value` | `idNumber` | `properties.idNumber[]` (Person) or `properties.registrationNumber[]` (Company) | Optional. Only the ID value is forwarded. |
+| `PartyId1Type` | `idType` | *(not mapped)* | Parsed but **not currently forwarded**; Actimize adapter uses a default (`PASSPORT` for persons, `TIN` for entities). |
+| `PartyId1IDCountry` | `idCountry` | *(not mapped)* | Parsed but **not currently forwarded**; Actimize adapter uses the first mapped country (if available). |
+| `Notes` | *(none)* | *(not mapped)* | Ignored. |
+
+### 11.3 Mapping from `queries_json` (`EntityExample`) to Actimize `POST /entity-screenings`
+
+Actimize screening is performed by the backend adapter (`backend/app/actimize.py`) which posts to:
+
+- `POST ${ACTIMIZE_BASE_URL}/entity-screenings`
+
+The JSON payload is derived from `EntityExample` roughly as follows:
+
+| `EntityExample` Field | Actimize JSON Field | Notes |
+|---|---|---|
+| `properties.partyKey` (or derived) | `partyKey` | Backend ensures `partyKey` is present for batch items; otherwise a deterministic hash-based key is generated. |
+| `schema` | `partyType` | `Person`/`Individual` -> `I`; `Company`/`Organization`/`Unknown` -> `E`. |
+| `properties.name[0]` | `names.fullName` | For `partyType="I"`, `firstName`/`lastName` are derived by splitting the full name if not explicitly provided. |
+| `properties.alias[]` (+ additional names) | `aliases[]` | Up to 10 unique aliases; for persons, alias `firstName`/`lastName` are also derived by splitting. |
+| `properties.nationality[]` / `properties.country[]` | `nationalities[]` | Converted to ISO3 (supports ISO2 or ISO3 input); up to 5 entries. |
+| `properties.address[]` | `addresses[]` | Mapped as `street1` plus default `country` (first mapped nationality/country); up to 5 entries. |
+| `properties.idNumber[]` / `properties.registrationNumber[]` | `ids[]` | Sent as `{idType, idValue, idCountry}` with defaults and first mapped country; up to 5 entries. |
+| `properties.birthDate[]` | `dateOfBirth` or `yearOfBirth` | Dates normalize to `DD/MM/YYYY` when possible; year-only populates `yearOfBirth`. |
