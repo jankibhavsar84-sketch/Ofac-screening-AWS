@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { useAuth } from "react-oidc-context";
 import { z } from "zod";
@@ -577,6 +577,29 @@ function getHitMatchesFromRaw(raw: any): HitMatch[] {
     });
 }
 
+function extractEngineErrorFromRaw(raw: any): { status: number | null; errorText: string } | null {
+  const candidates: any[] = [
+    raw?.matches,
+    raw?.item?.details?.matches,
+    raw?.details?.matches,
+    raw?.m?.matches,
+    raw?.matches?.matches,
+  ].filter(Boolean);
+
+  for (const m of candidates) {
+    const status = typeof m?.status === "number" ? m.status : null;
+    const errorText = safeTrim(String(m?.error_text ?? m?.errorText ?? m?.error ?? ""));
+    if ((status != null && status >= 400) || errorText) {
+      return { status, errorText: errorText || "Screening failed for this record." };
+    }
+  }
+
+  const msg = safeTrim(String(raw?.item?.message ?? raw?.message ?? ""));
+  if (msg) return { status: null, errorText: msg };
+
+  return null;
+}
+
 function ViewIcon() {
   return (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -768,6 +791,7 @@ export function ScreeningDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [businessUnitsError, setBusinessUnitsError] = useState<string | null>(null);
+  const [businessUnitsLoading, setBusinessUnitsLoading] = useState(false);
   const selectedEntityType: UiType = names[0]?.uiType ?? "Individual";
   const primaryName = names[0];
   const aliasNames = names.slice(1);
@@ -783,8 +807,11 @@ export function ScreeningDetailPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const scheduleRunAtInputRef = useRef<HTMLInputElement | null>(null);
   const hitDialogCloseBtnRef = useRef<HTMLButtonElement | null>(null);
-  const MAX_UPLOAD_MB = 25;
-  const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+  // NOTE: The system supports up to ~25 MB, but we guide users to keep uploads smaller
+  // for reliability/performance.
+  const MAX_UPLOAD_VALIDATION_MB = 25;
+  const MAX_UPLOAD_DISPLAY_MB = 5;
+  const MAX_UPLOAD_BYTES = MAX_UPLOAD_VALIDATION_MB * 1024 * 1024;
 
   function openScheduleRunAtPicker() {
     const picker = scheduleRunAtInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
@@ -806,7 +833,10 @@ export function ScreeningDetailPage() {
     if (file.size <= MAX_UPLOAD_BYTES) return true;
 
     const mb = file.size / (1024 * 1024);
-    setError(`File is too large (${mb.toFixed(2)} MB). Max supported size is ${MAX_UPLOAD_MB} MB.`);
+    setError(
+      `This file is ${mb.toFixed(2)} MB, which exceeds the maximum supported upload size (${MAX_UPLOAD_VALIDATION_MB} MB). ` +
+        `Please split the file into smaller batches and try again.`
+    );
     return false;
   }
 
@@ -841,19 +871,24 @@ export function ScreeningDetailPage() {
     [businessUnits]
   );
 
-  useEffect(() => {
+  const reloadBusinessUnits = useCallback(async () => {
     if (!currentUser) return;
-    void (async () => {
-      try {
-        setBusinessUnitsError(null);
-        const rows = await listMyBusinessUnits();
-        setBusinessUnits(Array.isArray(rows) ? rows : []);
-      } catch (err: any) {
-        setBusinessUnits([]);
-        setBusinessUnitsError(err?.message ?? "Failed to load Business Units.");
-      }
-    })();
-  }, [currentUser?.id]);
+    setBusinessUnitsLoading(true);
+    setBusinessUnitsError(null);
+    try {
+      const rows = await listMyBusinessUnits();
+      setBusinessUnits(Array.isArray(rows) ? rows : []);
+    } catch (err: any) {
+      setBusinessUnits([]);
+      setBusinessUnitsError(err?.message ?? "Failed to load Business Units.");
+    } finally {
+      setBusinessUnitsLoading(false);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    void reloadBusinessUnits();
+  }, [reloadBusinessUnits]);
 
   useEffect(() => {
     const validCodes = new Set(businessUnitOptions.map((row) => row.code));
@@ -1893,13 +1928,16 @@ export function ScreeningDetailPage() {
   const [hitEntityDialog, setHitEntityDialog] = useState<{
     sourceEntity: string;
     hits: HitMatch[];
+    error: { status: number | null; text: string } | null;
   } | null>(null);
 
   function openHitEntity(row: ResultRow) {
     const hits = getHitMatchesFromRaw(row.raw);
+    const error = extractEngineErrorFromRaw(row.raw);
     setHitEntityDialog({
       sourceEntity: row.entity,
       hits,
+      error: error ? { status: error.status, text: error.errorText } : null,
     });
   }
 
@@ -2063,6 +2101,7 @@ export function ScreeningDetailPage() {
                     value={singleBusinessUnitCode}
                     onChange={(e) => setSingleBusinessUnitCode(e.target.value)}
                     required
+                    disabled={businessUnitsLoading}
                   >
                     <option value="">Select Business Unit</option>
                     {businessUnitOptions.map((row) => (
@@ -2074,10 +2113,24 @@ export function ScreeningDetailPage() {
                 </div>
               </div>
 
-              {businessUnitsError ? <div className="errorBox" role="alert" aria-live="assertive">{businessUnitsError}</div> : null}
-              {!businessUnitOptions.length && !businessUnitsError ? (
+              {businessUnitsLoading ? (
+                <div className="infoBox" role="status" aria-live="polite">
+                  Loading Business Units…
+                </div>
+              ) : null}
+              {businessUnitsError ? (
+                <div className="errorBox" role="alert" aria-live="assertive">
+                  {businessUnitsError}
+                  <div style={{ marginTop: 8 }}>
+                    <button type="button" className="btnGhostSmall" onClick={reloadBusinessUnits} disabled={businessUnitsLoading}>
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              {!businessUnitsLoading && currentUser && !businessUnitOptions.length && !businessUnitsError ? (
                 <div className="errorBox" role="alert" aria-live="polite">
-                  No Business Unit is mapped to your user. Please contact an administrator.
+                  No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
                 </div>
               ) : null}
 
@@ -2443,6 +2496,7 @@ export function ScreeningDetailPage() {
                 required
                 value={batchBusinessUnitCode}
                 onChange={(e) => setBatchBusinessUnitCode(e.target.value)}
+                disabled={businessUnitsLoading}
               >
                 <option value="">Select Business Unit</option>
                 {businessUnitOptions.map((row) => (
@@ -2492,7 +2546,9 @@ export function ScreeningDetailPage() {
                 )}
               </div>
               <div className="dropSub">Supports CSV and Excel files</div>
-              <div className="dropSub">Max file size: {MAX_UPLOAD_MB} MB</div>
+              <div className="dropSub">
+                <strong>Max File Size: {MAX_UPLOAD_DISPLAY_MB} MB</strong> <span className="muted">(system limit: {MAX_UPLOAD_VALIDATION_MB} MB)</span>
+              </div>
 
               <input
                 ref={fileInputRef}
@@ -2501,19 +2557,34 @@ export function ScreeningDetailPage() {
                 style={{ display: "none" }}
                 onChange={(e) => {
                   const f = e.target.files?.[0] ?? null;
-                  if (!validateUploadFile(f, setBatchError)) return;
-                  setBatchFile(f);
-                  setBatchFileName(f.name);
-                  setBatchError(null);
+                  if (validateUploadFile(f, setBatchError)) {
+                    setBatchFile(f);
+                    setBatchFileName(f.name);
+                    setBatchError(null);
+                  }
                   e.currentTarget.value = "";
                 }}
               />
             </div>
 
-            {businessUnitsError ? <div className="errorBox" role="alert" aria-live="assertive">{businessUnitsError}</div> : null}
-            {!businessUnitOptions.length && !businessUnitsError ? (
+            {businessUnitsLoading ? (
+              <div className="infoBox" role="status" aria-live="polite">
+                Loading Business Units…
+              </div>
+            ) : null}
+            {businessUnitsError ? (
+              <div className="errorBox" role="alert" aria-live="assertive">
+                {businessUnitsError}
+                <div style={{ marginTop: 8 }}>
+                  <button type="button" className="btnGhostSmall" onClick={reloadBusinessUnits} disabled={businessUnitsLoading}>
+                    Retry
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {!businessUnitsLoading && currentUser && !businessUnitOptions.length && !businessUnitsError ? (
               <div className="errorBox" role="alert" aria-live="polite">
-                No Business Unit is mapped to your user. Please contact an administrator.
+                No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
               </div>
             ) : null}
             {batchError ? <div className="errorBox" role="alert" aria-live="assertive">{batchError}</div> : null}
@@ -2571,6 +2642,7 @@ export function ScreeningDetailPage() {
                   required
                   value={scheduleBusinessUnitCode}
                   onChange={(e) => setScheduleBusinessUnitCode(e.target.value)}
+                  disabled={businessUnitsLoading}
                 >
                   <option value="">Select Business Unit</option>
                   {businessUnitOptions.map((row) => (
@@ -2692,7 +2764,9 @@ export function ScreeningDetailPage() {
                   )}
                 </div>
                 <div className="dropSub">Supports CSV and Excel files</div>
-                <div className="dropSub">Max file size: {MAX_UPLOAD_MB} MB</div>
+                <div className="dropSub">
+                  <strong>Max File Size: {MAX_UPLOAD_DISPLAY_MB} MB</strong> <span className="muted">(system limit: {MAX_UPLOAD_VALIDATION_MB} MB)</span>
+                </div>
 
                 <input
                   ref={fileInputRef}
@@ -2701,19 +2775,34 @@ export function ScreeningDetailPage() {
                   style={{ display: "none" }}
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;
-                    if (!validateUploadFile(f, setScheduleError)) return;
-                    setScheduleFile(f);
-                    setScheduleFileName(f.name);
-                    setScheduleError(null);
+                    if (validateUploadFile(f, setScheduleError)) {
+                      setScheduleFile(f);
+                      setScheduleFileName(f.name);
+                      setScheduleError(null);
+                    }
                     e.currentTarget.value = "";
                   }}
                 />
               </div>
 
-              {businessUnitsError ? <div className="errorBox" role="alert" aria-live="assertive">{businessUnitsError}</div> : null}
-              {!businessUnitOptions.length && !businessUnitsError ? (
+              {businessUnitsLoading ? (
+                <div className="infoBox" role="status" aria-live="polite">
+                  Loading Business Units…
+                </div>
+              ) : null}
+              {businessUnitsError ? (
+                <div className="errorBox" role="alert" aria-live="assertive">
+                  {businessUnitsError}
+                  <div style={{ marginTop: 8 }}>
+                    <button type="button" className="btnGhostSmall" onClick={reloadBusinessUnits} disabled={businessUnitsLoading}>
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              {!businessUnitsLoading && currentUser && !businessUnitOptions.length && !businessUnitsError ? (
                 <div className="errorBox" role="alert" aria-live="polite">
-                  No Business Unit is mapped to your user. Please contact an administrator.
+                  No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
                 </div>
               ) : null}
               {scheduleError ? <div className="errorBox" role="alert" aria-live="assertive">{scheduleError}</div> : null}
@@ -2917,7 +3006,12 @@ export function ScreeningDetailPage() {
               </div>
               <div className="hitEntityRow">
                 <span className="muted">Hit Entities</span>
-                {hitEntityDialog.hits.length === 0 ? (
+                {hitEntityDialog.error ? (
+                  <div className="errorBox" role="alert" aria-live="polite" style={{ marginTop: 0 }}>
+                    Screening failed{hitEntityDialog.error.status != null ? ` (HTTP ${hitEntityDialog.error.status})` : ""}:{" "}
+                    {hitEntityDialog.error.text}
+                  </div>
+                ) : hitEntityDialog.hits.length === 0 ? (
                   <strong>No OFAC hit entity found.</strong>
                 ) : (
                       <div className="hitEntityList">

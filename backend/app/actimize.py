@@ -478,12 +478,19 @@ class ActimizeClient:
         requester_name: str | None = None,
     ) -> dict[str, Any]:
         props = query.properties if isinstance(query.properties, dict) else {}
+        explicit_party_key = _first_non_empty(
+            _as_list(props.get("partyKey"))
+            + _as_list(props.get("party_key"))
+            + _as_list(props.get("PartyKey"))
+            + _as_list(props.get("party key"))
+        )
+        party_key = explicit_party_key or self._build_party_key(query)
         party_type = _to_party_type(query.schema)
         names = _as_list(props.get("name"))
         primary_name = _first_non_empty(names) or "Unknown"
 
         payload: dict[str, Any] = {
-            "partyKey": self._build_party_key(query),
+            "partyKey": party_key,
             "partyType": party_type,
             "names": {},
             "sourceSystem": self.source_system,
@@ -613,7 +620,9 @@ class ActimizeClient:
 
         normalized_results: list[dict[str, Any]] = []
         if is_hit:
-            party_key = str(body.get("partyKey") or self._build_party_key(query))
+            props = query.properties if isinstance(query.properties, dict) else {}
+            explicit_party_key = _first_non_empty(_as_list(props.get("partyKey")) + _as_list(props.get("party_key")))
+            party_key = str(body.get("partyKey") or explicit_party_key or self._build_party_key(query))
             display_name = _extract_name(query)
             normalized_results.append(
                 {

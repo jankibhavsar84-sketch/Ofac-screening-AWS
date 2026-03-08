@@ -35,6 +35,29 @@ class SqsQueue:
         queue_url = self.ensure_queue()
         self.client.send_message(QueueUrl=queue_url, MessageBody=message.model_dump_json())
 
+    def enqueue_batch(self, messages: list[ScreeningQueueMessage]) -> None:
+        if not messages:
+            return
+        queue_url = self.ensure_queue()
+        # SQS SendMessageBatch supports up to 10 messages per request.
+        entries = [
+            {"Id": str(i), "MessageBody": msg.model_dump_json()}
+            for i, msg in enumerate(messages[:10])
+        ]
+        resp = self.client.send_message_batch(QueueUrl=queue_url, Entries=entries)
+        failed = resp.get("Failed") or []
+        if failed:
+            first = failed[0]
+            raise RuntimeError(f"SQS batch enqueue failed: {first}")
+
+    def change_visibility(self, receipt_handle: str, timeout_seconds: int) -> None:
+        queue_url = self.ensure_queue()
+        self.client.change_message_visibility(
+            QueueUrl=queue_url,
+            ReceiptHandle=receipt_handle,
+            VisibilityTimeout=max(int(timeout_seconds), 0),
+        )
+
     def receive(self, max_messages: int = 10, wait_time_seconds: int = 20) -> list[dict[str, Any]]:
         queue_url = self.ensure_queue()
         response = self.client.receive_message(

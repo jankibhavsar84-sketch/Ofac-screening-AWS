@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
 import logging
 import time
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import boto3
+
 from .actimize import ActimizeClient, ExternalApiCallError
 from .config import settings
-from .models import MatchJobRequest
+from .models import EntityExample, MatchJobRequest, ScreeningQueueMessage
 from .queue import SqsQueue
 from .repository import JobRepository
 from .screening_service import ScreeningService
@@ -15,6 +18,235 @@ from .sns_notifier import SnsNotifier
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("screening-worker")
+
+def _s3_client() -> object:
+    client_kwargs: dict[str, object] = {
+        "service_name": "s3",
+        "region_name": settings.aws_region,
+    }
+    if settings.aws_access_key_id and settings.aws_secret_access_key:
+        client_kwargs["aws_access_key_id"] = settings.aws_access_key_id
+        client_kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
+    if settings.aws_endpoint_url:
+        client_kwargs["endpoint_url"] = settings.aws_endpoint_url
+    return boto3.client(**client_kwargs)
+
+
+def _download_s3_text(s3: object, bucket: str, key: str) -> str:
+    obj = s3.get_object(Bucket=bucket, Key=key)  # type: ignore[attr-defined]
+    body = obj["Body"].read()  # type: ignore[index]
+    if isinstance(body, bytes):
+        return body.decode("utf-8", errors="replace")
+    return str(body)
+
+
+def _handle_job_dispatch(
+    *,
+    repository: JobRepository,
+    queue: SqsQueue,
+    message: ScreeningQueueMessage,
+    receipt_handle: str,
+) -> None:
+    # Large batch dispatch can take longer than the default 60s visibility timeout.
+    queue.change_visibility(receipt_handle, timeout_seconds=3600)
+
+    job_id = str(message.job_id or "").strip()
+    upload_id = str(message.source_upload_id or "").strip()
+    if not job_id or not upload_id:
+        repository.add_audit_event(
+            action="BATCH_DISPATCH_FAILED",
+            user_id=message.user_id,
+            user_name=message.user_name,
+            entity_type="screening_job",
+            entity_id=job_id or "unknown_job",
+            details={"error": "Missing job_id or source_upload_id"},
+        )
+        return
+
+    upload = repository.get_batch_file_upload(upload_id)
+    if not upload:
+        repository.add_audit_event(
+            action="BATCH_DISPATCH_FAILED",
+            user_id=message.user_id,
+            user_name=message.user_name,
+            entity_type="batch_file_upload",
+            entity_id=upload_id,
+            details={"job_id": job_id, "error": "Batch upload record not found"},
+        )
+        repository.mark_job_failed(job_id, "Batch upload record not found")
+        return
+
+    bucket = str(upload.get("queries_s3_bucket") or "").strip()
+    key = str(upload.get("queries_s3_key") or "").strip()
+    if not bucket or not key:
+        repository.add_audit_event(
+            action="BATCH_DISPATCH_FAILED",
+            user_id=message.user_id,
+            user_name=message.user_name,
+            entity_type="batch_file_upload",
+            entity_id=upload_id,
+            details={"job_id": job_id, "error": "queries.json was not stored in S3 for this upload"},
+        )
+        repository.mark_job_failed(job_id, "queries.json was not stored for this upload")
+        return
+
+    s3 = _s3_client()
+    try:
+        raw = _download_s3_text(s3, bucket, key)
+        parsed = json.loads(raw)
+    except Exception as exc:  # noqa: BLE001
+        repository.add_audit_event(
+            action="BATCH_DISPATCH_FAILED",
+            user_id=message.user_id,
+            user_name=message.user_name,
+            entity_type="batch_file_upload",
+            entity_id=upload_id,
+            details={"job_id": job_id, "error": f"Failed to load/parse queries.json: {exc}"},
+        )
+        repository.mark_job_failed(job_id, f"Failed to parse queries.json: {exc}")
+        return
+
+    if not isinstance(parsed, dict) or not parsed:
+        repository.mark_job_failed(job_id, "queries.json must be a non-empty object")
+        return
+
+    expected_total = len(parsed)
+    repository.update_job_total_items(job_id, expected_total)
+    repository.upsert_job_metadata(job_id=job_id, query_count=expected_total)
+    repository.add_audit_event(
+        action="BATCH_DISPATCH_STARTED",
+        user_id=message.user_id,
+        user_name=message.user_name,
+        entity_type="screening_job",
+        entity_id=job_id,
+        details={
+            "job_id": job_id,
+            "source_upload_id": upload_id,
+            "total_items": total,
+            "queue_name": settings.aws_sqs_queue_name,
+        },
+    )
+
+    submitted_at = str(message.submitted_at or "").strip() or datetime.now(timezone.utc).isoformat()
+    correlation_id = str(message.correlation_id or "").strip() or str(uuid4())
+
+    # Expand and enqueue in chunks to keep memory bounded.
+    batch: list[tuple[str, dict[str, object], EntityExample]] = []
+    dispatched_items = 0
+    for item_key, raw_query in parsed.items():
+        safe_key = str(item_key or "").strip()
+        if not safe_key:
+            continue
+        if not isinstance(raw_query, dict):
+            continue
+        try:
+            query = EntityExample.model_validate(raw_query)
+        except Exception as exc:  # noqa: BLE001
+            # Record-level validation errors should not block the whole batch.
+            repository.add_audit_event(
+                action="BATCH_DISPATCH_ITEM_INVALID",
+                user_id=message.user_id,
+                user_name=message.user_name,
+                entity_type="screening_job_item",
+                entity_id=f"{job_id}:{safe_key}",
+                details={"job_id": job_id, "item_key": safe_key, "error": str(exc)},
+            )
+            continue
+        request_payload = query.model_dump(mode="json")
+        batch.append((safe_key, request_payload, query))
+        dispatched_items += 1
+        if len(batch) >= 500:
+            _flush_dispatch_batch(
+                repository=repository,
+                queue=queue,
+                job_id=job_id,
+                submitted_at=submitted_at,
+                correlation_id=correlation_id,
+                message=message,
+                items=batch,
+            )
+            batch = []
+
+    if batch:
+        _flush_dispatch_batch(
+            repository=repository,
+            queue=queue,
+            job_id=job_id,
+            submitted_at=submitted_at,
+            correlation_id=correlation_id,
+            message=message,
+            items=batch,
+        )
+
+    if dispatched_items != expected_total:
+        repository.update_job_total_items(job_id, dispatched_items)
+        repository.upsert_job_metadata(job_id=job_id, query_count=dispatched_items)
+
+    repository.add_audit_event(
+        action="BATCH_DISPATCH_COMPLETED",
+        user_id=message.user_id,
+        user_name=message.user_name,
+        entity_type="screening_job",
+        entity_id=job_id,
+        details={"job_id": job_id, "source_upload_id": upload_id, "total_items": dispatched_items},
+    )
+
+
+def _flush_dispatch_batch(
+    *,
+    repository: JobRepository,
+    queue: SqsQueue,
+    job_id: str,
+    submitted_at: str,
+    correlation_id: str,
+    message: ScreeningQueueMessage,
+    items: list[tuple[str, dict[str, object], EntityExample]],
+) -> None:
+    next_items: list[tuple[str, dict[str, object], EntityExample]] = []
+    bulk_payloads: list[tuple[str, dict[str, object]]] = []
+    for item_key, payload, query in items:
+        props = query.properties if isinstance(query.properties, dict) else {}
+        has_party_key = bool(str(props.get("partyKey") or "").strip() or str(props.get("party_key") or "").strip())
+        if item_key and not has_party_key:
+            next_props = dict(props)
+            next_props["partyKey"] = item_key
+            query = query.model_copy(update={"properties": next_props})
+
+            payload_props = payload.get("properties") if isinstance(payload.get("properties"), dict) else {}
+            payload_props = dict(payload_props)
+            payload_props["partyKey"] = item_key
+            payload = dict(payload)
+            payload["properties"] = payload_props
+
+        next_items.append((item_key, payload, query))
+        bulk_payloads.append((item_key, payload))
+
+    repository.add_job_items_bulk(job_id, bulk_payloads)
+
+    # Enqueue per-item screening tasks to allow parallelism across workers.
+    pending: list[ScreeningQueueMessage] = []
+    for item_key, _payload, query in next_items:
+        pending.append(
+            ScreeningQueueMessage(
+                message_type="SCREEN_ITEM",
+                job_id=job_id,
+                item_key=item_key,
+                query=query,
+                submitted_at=submitted_at,
+                screening_types=list(message.screening_types or []),
+                mock_screening=bool(message.mock_screening),
+                user_id=message.user_id,
+                user_name=message.user_name,
+                correlation_id=correlation_id,
+                source_schedule_id=message.source_schedule_id,
+                source_upload_id=message.source_upload_id,
+            )
+        )
+        if len(pending) == 10:
+            queue.enqueue_batch(pending)
+            pending = []
+    if pending:
+        queue.enqueue_batch(pending)
 
 
 class FixedRateLimiter:
@@ -245,6 +477,47 @@ def run() -> None:
                 )
                 queue.delete(receipt_handle)
                 continue
+
+            if str(message.message_type or "").strip().upper() == "JOB_DISPATCH":
+                repository.add_audit_event(
+                    action="BATCH_DISPATCH_MESSAGE_PICKED",
+                    user_id=message.user_id,
+                    user_name=message.user_name,
+                    entity_type="screening_job",
+                    entity_id=message.job_id,
+                    details={
+                        "job_id": message.job_id,
+                        "source_upload_id": message.source_upload_id,
+                        "queue_name": settings.aws_sqs_queue_name,
+                        "message_id": message_id,
+                    },
+                )
+                try:
+                    _handle_job_dispatch(
+                        repository=repository,
+                        queue=queue,
+                        message=message,
+                        receipt_handle=receipt_handle,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.exception("batch dispatch failed: %s", exc)
+                    repository.add_audit_event(
+                        action="BATCH_DISPATCH_FAILED",
+                        user_id=message.user_id,
+                        user_name=message.user_name,
+                        entity_type="screening_job",
+                        entity_id=message.job_id,
+                        details={
+                            "job_id": message.job_id,
+                            "source_upload_id": message.source_upload_id,
+                            "error": str(exc),
+                        },
+                    )
+                    repository.mark_job_failed(message.job_id, str(exc))
+                finally:
+                    queue.delete(receipt_handle)
+                continue
+
             correlation_id = str(message.correlation_id or "").strip() or str(uuid4())
             repository.add_audit_event(
                 action="SQS_MESSAGE_PICKED",

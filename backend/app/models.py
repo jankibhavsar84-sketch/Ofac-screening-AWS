@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class EntityExample(BaseModel):
@@ -27,6 +27,7 @@ class EntityMatches(BaseModel):
     total: dict[str, Any]
     query: EntityExample
     status: int = 200
+    error_text: str | None = None
 
 
 class EntityMatchResponse(BaseModel):
@@ -102,9 +103,14 @@ class DailyScheduleInfo(BaseModel):
 
 
 class ScreeningQueueMessage(BaseModel):
+    # Backwards-compatible with older queue messages that didn't include message_type.
+    # message_type="SCREEN_ITEM" is a standard per-record screening task.
+    # message_type="JOB_DISPATCH" is a lightweight control message that expands/enqueues
+    # per-record tasks in the worker (used to avoid API timeouts on large batches).
+    message_type: str = "SCREEN_ITEM"
     job_id: str
-    item_key: str
-    query: EntityExample
+    item_key: str | None = None
+    query: EntityExample | None = None
     submitted_at: str
     screening_types: list[str] = Field(default_factory=list)
     mock_screening: bool = False
@@ -113,6 +119,25 @@ class ScreeningQueueMessage(BaseModel):
     correlation_id: str | None = None
     source_schedule_id: str | None = None
     source_record_hash: str | None = None
+    source_upload_id: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_shape(self) -> "ScreeningQueueMessage":
+        safe_type = str(self.message_type or "").strip().upper() or "SCREEN_ITEM"
+        self.message_type = safe_type
+
+        if safe_type == "JOB_DISPATCH":
+            # JOB_DISPATCH messages must not carry a query payload and may omit item_key.
+            self.item_key = (self.item_key or "").strip() or None
+            self.query = None
+            return self
+
+        # Default: SCREEN_ITEM
+        if not (self.item_key or "").strip():
+            raise ValueError("item_key is required for SCREEN_ITEM messages")
+        if self.query is None:
+            raise ValueError("query is required for SCREEN_ITEM messages")
+        return self
 
 
 class BatchUploadAccepted(BaseModel):

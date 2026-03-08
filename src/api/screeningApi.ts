@@ -35,6 +35,7 @@ export type EntityMatches = {
   total: { value: number; relation?: string };
   query: EntityExample;
   status?: number;
+  error_text?: string | null;
 };
 
 export type EntityMatchResponse = {
@@ -179,7 +180,18 @@ async function parseApiError(resp: Response): Promise<string> {
     // ignore json parse errors
   }
 
-  return `${resp.status}: ${raw}`;
+  const contentType = (resp.headers.get("content-type") ?? "").toLowerCase();
+  const looksLikeHtml = contentType.includes("text/html") || /^\s*</.test(raw);
+  if (looksLikeHtml) {
+    if (resp.status === 504) {
+      return "504: Gateway Timeout. Please retry in a moment (your upload may still be processing).";
+    }
+    return `${resp.status}: ${resp.statusText || "Request failed"}`;
+  }
+
+  const trimmed = raw.trim();
+  const truncated = trimmed.length > 800 ? `${trimmed.slice(0, 800)}…` : trimmed;
+  return `${resp.status}: ${truncated}`;
 }
 
 function withAuthHeaders(headers: Record<string, string> = {}): Record<string, string> {
@@ -393,6 +405,7 @@ export async function listMyBusinessUnits(): Promise<BusinessUnit[]> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
   const resp = await fetch(`${baseUrl}/business-units`, {
     headers: withAuthHeaders(),
+    cache: "no-store",
   });
   if (!resp.ok) {
     throw new Error(`Failed to load business units: ${await parseApiError(resp)}`);

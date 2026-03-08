@@ -289,6 +289,25 @@ class ScreeningService:
 
         for item_key, query_payload in queries_for_job.items():
             query = payload.queries[item_key]
+
+            # Preserve uploaded PartyKey in the request that is sent to Actimize.
+            # Frontend keys batch uploads by PartyKey and we want that same key to
+            # be used as the external "partyKey" for traceability.
+            safe_item_key = str(item_key or "").strip()
+            props = query.properties if isinstance(query.properties, dict) else {}
+            has_party_key = bool(str(props.get("partyKey") or "").strip() or str(props.get("party_key") or "").strip())
+            if safe_item_key and not has_party_key:
+                next_props = dict(props)
+                next_props["partyKey"] = safe_item_key
+                query = query.model_copy(update={"properties": next_props})
+                if isinstance(query_payload, dict):
+                    next_payload = dict(query_payload)
+                    next_payload_props = next_payload.get("properties") if isinstance(next_payload.get("properties"), dict) else {}
+                    next_payload_props = dict(next_payload_props)
+                    next_payload_props["partyKey"] = safe_item_key
+                    next_payload["properties"] = next_payload_props
+                    query_payload = next_payload
+
             self.repository.add_job_item(job_id=job_id, item_key=item_key, request_payload=query_payload)
             queue_message = ScreeningQueueMessage(
                 job_id=job_id,
@@ -416,7 +435,14 @@ class ScreeningService:
             processing_items=snapshot["counts"]["processing"],
         )
 
-        is_terminal = progress.pending_items == 0 and progress.processing_items == 0
+        # Some jobs (e.g., large batch uploads) may be created before per-item records exist.
+        # In that case, treat missing job_items as pending work rather than a terminal job.
+        accounted = progress.completed_items + progress.failed_items + progress.pending_items + progress.processing_items
+        inferred_pending = max(0, progress.total_items - (progress.completed_items + progress.failed_items + progress.processing_items))
+        if progress.pending_items == 0 and inferred_pending > 0 and accounted < progress.total_items:
+            progress.pending_items = inferred_pending
+
+        is_terminal = (progress.completed_items + progress.failed_items) >= progress.total_items and progress.processing_items == 0
         if is_terminal:
             responses: dict[str, EntityMatches] = {}
             for item in snapshot["items"]:
@@ -431,10 +457,14 @@ class ScreeningService:
                             "total": {"value": 0, "relation": "eq"},
                             "query": item["request"],
                             "status": 500,
+                            "error_text": str(item.get("error_text") or "").strip() or None,
                         }
                     )
 
-            progress.status = JobStatus.completed if (progress.completed_items > 0 or progress.total_items == 0) else JobStatus.failed
+            if status == JobStatus.failed:
+                progress.status = JobStatus.failed
+            else:
+                progress.status = JobStatus.completed if (progress.completed_items > 0 or progress.total_items == 0) else JobStatus.failed
             progress.responses = responses
             progress.limit = settings.screening_result_limit
 
@@ -563,6 +593,7 @@ class ScreeningService:
                             "total": {"value": 0, "relation": "eq"},
                             "query": request_payload,
                             "status": 500,
+                            "error_text": str(item.get("error_text") or "").strip() or None,
                         }
                     else:
                         matches = response_payload
@@ -627,6 +658,7 @@ class ScreeningService:
                         "total": {"value": 0, "relation": "eq"},
                         "query": request_payload,
                         "status": 500,
+                        "error_text": str(item.get("error_text") or "").strip() or None,
                     }
                     has_error = True
                 else:

@@ -31,6 +31,7 @@ from .models import (
     MatchJobAccepted,
     MatchJobProgress,
     MatchJobRequest,
+    ScreeningQueueMessage,
     ScheduleSubscription,
     UserBusinessUnitMapping,
     UserBusinessUnitUpdateRequest,
@@ -488,6 +489,7 @@ async def create_batch_job_with_upload(
     upload_id = str(uuid4())
     file_hash = hashlib.sha256(body).hexdigest()
     s3_info: dict[str, str] = {}
+    queries_s3_info: dict[str, str] = {}
     if file_store.is_enabled():
         try:
             s3_info = file_store.upload_source_file(
@@ -496,6 +498,13 @@ async def create_batch_job_with_upload(
                 original_filename=file.filename,
                 body=body,
                 content_type=file.content_type,
+            )
+            queries_s3_info = file_store.upload_source_file(
+                job_id=upload_id,
+                user_id=principal.user_id,
+                original_filename="queries.json",
+                body=queries_json.encode("utf-8"),
+                content_type="application/json",
             )
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=500, detail=f"Failed to upload file to S3: {exc}") from exc
@@ -513,33 +522,85 @@ async def create_batch_job_with_upload(
         s3_bucket=s3_info.get("bucket"),
         s3_key=s3_info.get("key"),
         s3_uri=s3_info.get("s3_uri"),
+        queries_s3_bucket=queries_s3_info.get("bucket"),
+        queries_s3_key=queries_s3_info.get("key"),
+        queries_s3_uri=queries_s3_info.get("s3_uri"),
         schedule_id=(schedule_id or "").strip() or None,
     )
 
-    queries: dict[str, EntityExample] = {}
-    for item_key, value in parsed_queries.items():
-        queries[str(item_key)] = EntityExample.model_validate(value)
+    # Scheduled/daily batch jobs should not execute immediately; preserve existing behavior.
+    if daily_screening or (schedule_id or "").strip():
+        queries: dict[str, EntityExample] = {}
+        for item_key, value in parsed_queries.items():
+            queries[str(item_key)] = EntityExample.model_validate(value)
 
-    payload = MatchJobRequest(
-        queries=queries,
-        screening_types=screening_types,
-        mock_screening=bool(mock_screening),
-        business_unit_code=_normalize_business_unit_code(business_unit_code),
-        daily_screening=bool(daily_screening),
-        schedule_frequency=schedule_frequency,
-        schedule_run_at=(schedule_run_at or "").strip() or None,
-        schedule_id=(schedule_id or "").strip() or None,
-        source_upload_id=upload_id,
-        batch_name=(batch_name or "").strip() or None,
-        correlation_id=correlation_id,
-        user_id=principal.user_id,
-        user_name=actor_user_name,
-    )
+        payload = MatchJobRequest(
+            queries=queries,
+            screening_types=screening_types,
+            mock_screening=bool(mock_screening),
+            business_unit_code=_normalize_business_unit_code(business_unit_code),
+            daily_screening=bool(daily_screening),
+            schedule_frequency=schedule_frequency,
+            schedule_run_at=(schedule_run_at or "").strip() or None,
+            schedule_id=(schedule_id or "").strip() or None,
+            source_upload_id=upload_id,
+            batch_name=(batch_name or "").strip() or None,
+            correlation_id=correlation_id,
+            user_id=principal.user_id,
+            user_name=actor_user_name,
+        )
 
-    try:
-        accepted = svc.submit_job(payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        try:
+            accepted = svc.submit_job(payload)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        repository.attach_upload_to_job(upload_id=upload_id, job_id=accepted.job_id)
+    else:
+        # Immediate batch jobs can be very large (10k+ records). Creating job_items and enqueuing
+        # one SQS message per record can exceed CloudFront's 60s origin timeout. Instead, create
+        # the job quickly and let the worker expand/enqueue per-record tasks.
+        safe_bu = _normalize_business_unit_code(business_unit_code)
+        if not repository.user_has_business_unit(principal.user_id, safe_bu):
+            raise HTTPException(status_code=400, detail="Selected Business Unit is not mapped to this user")
+
+        if not file_store.is_enabled() or not queries_s3_info.get("bucket") or not queries_s3_info.get("key"):
+            raise HTTPException(
+                status_code=500,
+                detail="Batch dispatch requires S3 storage to be enabled (AWS_S3_UPLOAD_BUCKET).",
+            )
+
+        job_id = str(uuid4())
+        submitted_at = repository.create_job(
+            job_id=job_id,
+            total_items=len(parsed_queries),
+            status=JobStatus.queued,
+            source_upload_id=upload_id,
+            user_id=principal.user_id,
+            user_name=actor_user_name,
+        )
+        accepted = MatchJobAccepted(
+            job_id=job_id,
+            status=JobStatus.queued,
+            submitted_at=submitted_at,
+            total_items=len(parsed_queries),
+            business_unit_code=safe_bu or None,
+            daily_schedule_id=None,
+            screened_item_keys=[],
+        )
+
+        repository.attach_upload_to_job(upload_id=upload_id, job_id=accepted.job_id)
+        dispatch = ScreeningQueueMessage(
+            message_type="JOB_DISPATCH",
+            job_id=job_id,
+            submitted_at=submitted_at,
+            screening_types=screening_types,
+            mock_screening=bool(mock_screening),
+            user_id=principal.user_id,
+            user_name=actor_user_name,
+            correlation_id=correlation_id,
+            source_upload_id=upload_id,
+        )
+        queue.enqueue(dispatch)
 
     deferred_until: str | None = None
     if accepted.daily_schedule_id:
@@ -555,12 +616,10 @@ async def create_batch_job_with_upload(
         daily_screening=bool(daily_screening),
         schedule_frequency=schedule_frequency if daily_screening else None,
         daily_schedule_id=accepted.daily_schedule_id,
-        query_count=len(queries),
+        query_count=len(parsed_queries),
         deferred_until=deferred_until if (accepted.total_items == 0 and daily_screening and accepted.daily_schedule_id) else None,
-        business_unit_code=payload.business_unit_code,
+        business_unit_code=_normalize_business_unit_code(business_unit_code),
     )
-
-    repository.attach_upload_to_job(upload_id=upload_id, job_id=accepted.job_id)
     if accepted.daily_schedule_id:
         repository.attach_upload_to_schedule(
             schedule_id=accepted.daily_schedule_id,
@@ -595,12 +654,13 @@ async def create_batch_job_with_upload(
             "file_name": file.filename,
             "record_count": len(parsed_queries),
             "s3_uri": s3_info.get("s3_uri"),
+            "queries_s3_uri": queries_s3_info.get("s3_uri"),
             "job_id": accepted.job_id,
             "daily_schedule_id": accepted.daily_schedule_id,
-            "schedule_frequency": payload.schedule_frequency,
-            "schedule_run_at": payload.schedule_run_at,
-            "schedule_id": payload.schedule_id,
-            "business_unit_code": payload.business_unit_code,
+            "schedule_frequency": schedule_frequency,
+            "schedule_run_at": schedule_run_at,
+            "schedule_id": schedule_id,
+            "business_unit_code": _normalize_business_unit_code(business_unit_code),
             "correlation_id": correlation_id,
         },
     )
@@ -616,7 +676,7 @@ async def create_batch_job_with_upload(
         source_upload_id=upload_id,
         file_name=file.filename,
         s3_uri=s3_info.get("s3_uri"),
-        schedule_frequency=payload.schedule_frequency if payload.daily_screening else None,
+        schedule_frequency=schedule_frequency if daily_screening else None,
     )
 
 

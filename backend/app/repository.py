@@ -187,6 +187,9 @@ class JobRepository:
                   s3_bucket TEXT,
                   s3_key TEXT,
                   s3_uri TEXT,
+                  queries_s3_bucket TEXT,
+                  queries_s3_key TEXT,
+                  queries_s3_uri TEXT,
                   file_hash TEXT,
                   record_count INTEGER NOT NULL DEFAULT 0,
                   created_at TEXT NOT NULL,
@@ -516,6 +519,10 @@ class JobRepository:
             self._ensure_column(conn, "daily_schedules", "source_file_name", "TEXT")
             self._ensure_column(conn, "daily_schedules", "source_s3_uri", "TEXT")
             self._ensure_column(conn, "daily_schedules", "business_unit_code", "TEXT")
+
+            self._ensure_column(conn, "batch_file_uploads", "queries_s3_bucket", "TEXT")
+            self._ensure_column(conn, "batch_file_uploads", "queries_s3_key", "TEXT")
+            self._ensure_column(conn, "batch_file_uploads", "queries_s3_uri", "TEXT")
 
             self._seed_default_business_units(conn)
 
@@ -1451,6 +1458,9 @@ class JobRepository:
         s3_bucket: str | None = None,
         s3_key: str | None = None,
         s3_uri: str | None = None,
+        queries_s3_bucket: str | None = None,
+        queries_s3_key: str | None = None,
+        queries_s3_uri: str | None = None,
         schedule_id: str | None = None,
         job_id: str | None = None,
     ) -> str:
@@ -1461,8 +1471,8 @@ class JobRepository:
                 """
                 INSERT INTO batch_file_uploads(
                   upload_id, schedule_id, job_id, user_id, user_name, file_name, s3_bucket, s3_key,
-                  s3_uri, file_hash, record_count, created_at, is_active
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+                  s3_uri, queries_s3_bucket, queries_s3_key, queries_s3_uri, file_hash, record_count, created_at, is_active
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
                 """,
                 (
                     upload_id,
@@ -1474,12 +1484,100 @@ class JobRepository:
                     (s3_bucket or "").strip() or None,
                     (s3_key or "").strip() or None,
                     (s3_uri or "").strip() or None,
+                    (queries_s3_bucket or "").strip() or None,
+                    (queries_s3_key or "").strip() or None,
+                    (queries_s3_uri or "").strip() or None,
                     (file_hash or "").strip() or None,
                     max(int(record_count), 0),
                     created_at,
                 ),
             )
         return upload_id
+
+    def get_batch_file_upload(self, upload_id: str) -> dict[str, Any] | None:
+        safe_upload_id = (upload_id or "").strip()
+        if not safe_upload_id:
+            return None
+        with self._connect() as conn:
+            row = self._execute(
+                conn,
+                """
+                SELECT
+                  upload_id, schedule_id, job_id, user_id, user_name, file_name,
+                  s3_bucket, s3_key, s3_uri,
+                  queries_s3_bucket, queries_s3_key, queries_s3_uri,
+                  file_hash, record_count, created_at, is_active
+                FROM batch_file_uploads
+                WHERE upload_id = ?
+                LIMIT 1
+                """,
+                (safe_upload_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def update_job_total_items(self, job_id: str, total_items: int) -> None:
+        safe_job_id = (job_id or "").strip()
+        if not safe_job_id:
+            return
+        with self._connect() as conn:
+            self._execute(
+                conn,
+                "UPDATE jobs SET total_items = ?, updated_at = ? WHERE job_id = ?",
+                (max(int(total_items), 0), now_iso(), safe_job_id),
+            )
+
+    def mark_job_failed(self, job_id: str, error_text: str) -> None:
+        safe_job_id = (job_id or "").strip()
+        if not safe_job_id:
+            return
+        # Persist a terminal job-level failure without needing to create per-item rows.
+        # Set total_items=0 to avoid "pending inferred" counts on the UI.
+        with self._connect() as conn:
+            self._execute(
+                conn,
+                "UPDATE jobs SET status = ?, total_items = 0, updated_at = ? WHERE job_id = ?",
+                (JobStatus.failed.value, now_iso(), safe_job_id),
+            )
+            self.add_audit_event(
+                action="SCREENING_JOB_FAILED",
+                entity_type="screening_job",
+                entity_id=safe_job_id,
+                details={"error": (error_text or "")[:2000]},
+            )
+
+    def add_job_items_bulk(self, job_id: str, items: list[tuple[str, dict[str, Any]]]) -> None:
+        safe_job_id = (job_id or "").strip()
+        if not safe_job_id or not items:
+            return
+        ts = now_iso()
+        if self.is_postgres:
+            query = """
+                INSERT INTO job_items(job_id, item_key, request_json, response_json, status, error_text, updated_at)
+                VALUES(%s, %s, %s, NULL, %s, NULL, %s)
+                ON CONFLICT (job_id, item_key) DO NOTHING
+                """
+        else:
+            query = """
+                INSERT OR IGNORE INTO job_items(job_id, item_key, request_json, response_json, status, error_text, updated_at)
+                VALUES(?, ?, ?, NULL, ?, NULL, ?)
+                """
+
+        params = [
+            (
+                safe_job_id,
+                (item_key or "").strip(),
+                json.dumps(request_payload),
+                JobStatus.queued.value,
+                ts,
+            )
+            for item_key, request_payload in items
+            if (item_key or "").strip()
+        ]
+        if not params:
+            return
+        with self._connect() as conn:
+            cur = conn.cursor()
+            cur.executemany(self._sql(query), params)
 
     def attach_upload_to_job(self, upload_id: str, job_id: str) -> bool:
         with self._connect() as conn:
