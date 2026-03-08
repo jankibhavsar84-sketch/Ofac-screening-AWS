@@ -8,8 +8,9 @@ from typing import Any
 from urllib.parse import parse_qsl
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.responses import Response
 
 from .actimize import ActimizeClient, ExternalApiCallError
@@ -415,28 +416,54 @@ def create_screening_job(
 @app.post("/api/v1/screenings/batch-upload", response_model=BatchUploadAccepted)
 async def create_batch_job_with_upload(
     request: Request,
-    file: UploadFile = File(...),
-    queries_json: str = Form(...),
-    screening_types_json: str = Form(default="[]"),
-    batch_name: str = Form(default=""),
-    daily_screening: bool = Form(default=False),
-    schedule_frequency: str = Form(default="DAILY"),
-    schedule_run_at: str | None = Form(default=None),
-    schedule_id: str | None = Form(default=None),
-    mock_screening: bool = Form(default=False),
-    subscribe_results: bool = Form(default=False),
-    subscribe_email: str | None = Form(default=None),
-    subscribe_emails: str | None = Form(default=None),
-    business_unit_code: str = Form(...),
-    user_name: str | None = Form(default=None),
     principal: AuthPrincipal = Depends(require_any_scope("screening.write", "screening.daily", "screening.admin")),
     svc: ScreeningService = Depends(get_service),
 ) -> BatchUploadAccepted:
+    # FastAPI/Starlette defaults to a 1MB multipart max part size, which breaks batch uploads
+    # once either the XLSX file or a JSON form field exceeds that size.
+    form = await request.form(max_part_size=settings.multipart_max_part_size_bytes)
+
+    def _form_str(key: str, default: str | None = None) -> str | None:
+        value = form.get(key)
+        if value is None:
+            return default
+        if isinstance(value, str):
+            safe = value.strip()
+            return safe if safe else default
+        return str(value).strip() or default
+
+    def _form_bool(key: str, default: bool = False) -> bool:
+        raw = _form_str(key, None)
+        if raw is None:
+            return default
+        return raw.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+    def _form_required_str(key: str) -> str:
+        value = _form_str(key, None)
+        if not value:
+            raise HTTPException(status_code=400, detail=f"{key} is required")
+        return value
+
+    file = form.get("file")
+    if not isinstance(file, StarletteUploadFile) or not str(getattr(file, "filename", "") or "").strip():
+        raise HTTPException(status_code=400, detail="file is required")
+
+    queries_json = _form_required_str("queries_json")
+    screening_types_json = _form_str("screening_types_json", "[]") or "[]"
+    batch_name = _form_str("batch_name", "") or ""
+    daily_screening = _form_bool("daily_screening", False)
+    schedule_frequency = _form_str("schedule_frequency", "DAILY") or "DAILY"
+    schedule_run_at = _form_str("schedule_run_at", None)
+    schedule_id = _form_str("schedule_id", None)
+    mock_screening = _form_bool("mock_screening", False)
+    subscribe_results = _form_bool("subscribe_results", False)
+    subscribe_email = _form_str("subscribe_email", None)
+    subscribe_emails = _form_str("subscribe_emails", None)
+    business_unit_code = _form_required_str("business_unit_code")
+    user_name = _form_str("user_name", None)
+
     if (daily_screening or (schedule_id or "").strip()) and not principal_has_permission(principal, "screening.daily", "screening.admin"):
         raise HTTPException(status_code=403, detail="Only Compliance/Admin can enable scheduled screening")
-
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="file is required")
 
     try:
         parsed_queries = json.loads(queries_json)

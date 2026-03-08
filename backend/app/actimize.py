@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 import time
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
@@ -82,6 +83,47 @@ def _as_list(value: Any) -> list[str]:
         safe = value.strip()
         return [safe] if safe else []
     return []
+
+
+def _normalize_prudential_dob(value: str) -> tuple[str | None, str | None]:
+    """
+    Prudential entity-screenings expects DOB as DD/MM/YYYY (not ISO).
+
+    Returns (dateOfBirth, yearOfBirth).
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return None, None
+
+    if re.match(r"^\\d{4}$", raw):
+        return None, raw
+
+    # ISO (or Excel date string) -> DD/MM/YYYY
+    if re.match(r"^\\d{4}[-/]\\d{2}[-/]\\d{2}$", raw):
+        normalized = raw.replace("/", "-")
+        try:
+            dt = datetime.strptime(normalized, "%Y-%m-%d").date()
+        except ValueError:
+            return None, None
+        return dt.strftime("%d/%m/%Y"), None
+
+    # Already in expected format.
+    if re.match(r"^\\d{2}/\\d{2}/\\d{4}$", raw):
+        try:
+            datetime.strptime(raw, "%d/%m/%Y")
+        except ValueError:
+            return None, None
+        return raw, None
+
+    # Common variant: DD-MM-YYYY
+    if re.match(r"^\\d{2}-\\d{2}-\\d{4}$", raw):
+        try:
+            dt = datetime.strptime(raw, "%d-%m-%Y").date()
+        except ValueError:
+            return None, None
+        return dt.strftime("%d/%m/%Y"), None
+
+    return None, None
 
 
 def _first_non_empty(values: list[str]) -> str:
@@ -516,10 +558,11 @@ class ActimizeClient:
 
         dob = _first_non_empty(_as_list(props.get("birthDate")) + _as_list(props.get("dateOfBirth")))
         if dob:
-            if re.match(r"^\d{4}-\d{2}-\d{2}$", dob):
-                payload["dateOfBirth"] = dob
-            elif re.match(r"^\d{4}$", dob):
-                payload["yearOfBirth"] = dob
+            dob_date, dob_year = _normalize_prudential_dob(dob)
+            if dob_date:
+                payload["dateOfBirth"] = dob_date
+            elif dob_year:
+                payload["yearOfBirth"] = dob_year
 
         return payload
 

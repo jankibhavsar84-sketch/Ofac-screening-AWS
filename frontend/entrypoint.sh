@@ -17,6 +17,7 @@ json_escape() {
 : "${VITE_OIDC_SCOPE:=openid profile email}"
 : "${VITE_OIDC_IDLE_TIMEOUT_MS:=900000}"
 : "${VITE_OIDC_CLEAR_SESSION_ON_CLOSE:=true}"
+: "${NGINX_CLIENT_MAX_BODY_SIZE:=25m}"
 
 cat >/usr/share/nginx/html/app-config.js <<EOF
 window.__APP_CONFIG__ = {
@@ -42,6 +43,7 @@ server {
   index index.html;
 
   location /api/ {
+    client_max_body_size ${NGINX_CLIENT_MAX_BODY_SIZE};
     resolver 169.254.169.253 ipv6=off valid=10s;
     set \$backend_upstream ${BACKEND_UPSTREAM};
     proxy_pass \$backend_upstream;
@@ -59,4 +61,3 @@ server {
 EOF
 
 exec nginx -g 'daemon off;'
-

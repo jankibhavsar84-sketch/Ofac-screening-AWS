@@ -572,7 +572,7 @@ class ScreeningService:
                     meta.append({"key": item_key, "uiType": ui_type, "displayName": display_name})
                     responses[item_key] = matches
 
-                overall = "PROCESSING" if any_processing else "HIT" if any_hit else "ERROR" if any_error else "NO_HIT"
+                overall = "PROCESSING" if any_processing else "HIT" if any_hit else "FAILED" if any_error else "NO_HIT"
                 submissions.append(
                     {
                         "id": job_id,
@@ -620,7 +620,7 @@ class ScreeningService:
                     }
                     has_processing = True
                 elif status == JobStatus.failed.value or response_payload is None:
-                    result = "ERROR"
+                    result = "FAILED"
                     message = str(item.get("error_text") or "Screening failed for this row")
                     matches = {
                         "results": [],
@@ -654,7 +654,7 @@ class ScreeningService:
                     }
                 )
 
-            overall = "PROCESSING" if has_processing else "HIT" if has_hit else "ERROR" if has_error else "NO_HIT"
+            overall = "PROCESSING" if has_processing else "HIT" if has_hit else "FAILED" if has_error else "NO_HIT"
             file_name = (
                 str(row.get("file_name") or "").strip()
                 or str(row.get("upload_file_name") or "").strip()

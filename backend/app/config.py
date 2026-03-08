@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 
 
@@ -24,6 +25,31 @@ def _to_float(value: str, default: float) -> float:
         return default
 
 
+def _to_bytes(value: str | None, default: int) -> int:
+    raw = str(value or "").strip().lower()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        pass
+
+    m = re.match(r"^(?P<n>\\d+)(?P<unit>[kmg]b?|b)?$", raw)
+    if not m:
+        return default
+    n = int(m.group("n"))
+    unit = (m.group("unit") or "b").lower()
+    if unit in {"b"}:
+        return n
+    if unit in {"k", "kb"}:
+        return n * 1024
+    if unit in {"m", "mb"}:
+        return n * 1024 * 1024
+    if unit in {"g", "gb"}:
+        return n * 1024 * 1024 * 1024
+    return default
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str
@@ -31,6 +57,7 @@ class Settings:
     app_db_path: str
     app_db_url: str
     cors_allow_origins: str
+    multipart_max_part_size_bytes: int
 
     aws_region: str
     aws_sqs_queue_name: str
@@ -92,6 +119,7 @@ def load_settings() -> Settings:
         app_db_path=os.getenv("APP_DB_PATH", "/tmp/screening.db"),
         app_db_url=os.getenv("APP_DB_URL", "").strip(),
         cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*"),
+        multipart_max_part_size_bytes=_to_bytes(os.getenv("MULTIPART_MAX_PART_SIZE", "25m"), 25 * 1024 * 1024),
         aws_region=os.getenv("AWS_REGION", "us-east-1"),
         aws_sqs_queue_name=os.getenv("AWS_SQS_QUEUE_NAME", "screening-requests"),
         aws_endpoint_url=os.getenv("AWS_ENDPOINT_URL", "").strip(),

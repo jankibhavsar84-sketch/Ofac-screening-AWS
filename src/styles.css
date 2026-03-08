@@ -1796,6 +1796,7 @@ textarea{min-height:90px;resize:vertical}
 .statusClear{background:var(--clear-bg);color:var(--clear-fg);border-color:#bcebd2}
 .statusPotential{background:var(--pot-bg);color:var(--pot-fg);border-color:#ffe0a6}
 .statusPending{background:var(--pend-bg);color:var(--pend-fg);border-color:#fecaca}
+.statusFailed{background:var(--pend-bg);color:var(--pend-fg);border-color:#fca5a5}
 .statusMatch{background:var(--match-bg);color:var(--match-fg);border-color:#c7d2fe}
 
 .riskWrap{display:flex;align-items:center;gap:10px}
@@ -2034,6 +2035,12 @@ textarea{min-height:90px;resize:vertical}
 }
 .summaryCard--pending .summaryIconBubble{
   color:#4b607f;
+}
+.summaryCard--failed{
+  border-left-color:#ef4444;
+}
+.summaryCard--failed .summaryIconBubble{
+  color:#b91c1c;
 }
 
 .introPage{

@@ -41,7 +41,7 @@ type NameItem =
       ids: IdDoc[];
     };
 
-type StatusFilter = "All Statuses" | "Clear" | "Potential Match" | "Pending" | "Match";
+type StatusFilter = "All Statuses" | "Clear" | "Potential Match" | "Pending" | "Failed" | "Match";
 type TypeFilter = "All Types" | UiType;
 type SelectOption<T extends string> = { value: T; label: string; icon?: React.ReactNode };
 
@@ -439,15 +439,16 @@ function parseBatchRows(rows: any[]): {
   return { queries, rowMeta, validationErrors };
 }
 
-type EngineStatus = "NO_HIT" | "HIT" | "PROCESSING" | "ERROR";
-type UiStatus = "Clear" | "Potential Match" | "Pending" | "Match";
+type EngineStatus = "NO_HIT" | "HIT" | "PROCESSING" | "FAILED" | "ERROR";
+type UiStatus = "Clear" | "Potential Match" | "Pending" | "Failed" | "Match";
 type ResultMode = "SINGLE" | "BATCH";
 
 function engineToUiStatus(s: EngineStatus, manualMatch?: boolean): UiStatus {
   if (manualMatch) return "Match";
   if (s === "NO_HIT") return "Clear";
   if (s === "HIT") return "Potential Match";
-  return "Pending";
+  if (s === "PROCESSING") return "Pending";
+  return "Failed";
 }
 
 function classifyEngine(results: { match: boolean }[]): EngineStatus {
@@ -458,6 +459,7 @@ function badge(status: UiStatus) {
   if (status === "Clear") return <span className="statusPill statusClear">Clear</span>;
   if (status === "Potential Match") return <span className="statusPill statusPotential">Potential Match</span>;
   if (status === "Pending") return <span className="statusPill statusPending">Pending</span>;
+  if (status === "Failed") return <span className="statusPill statusFailed">Failed</span>;
   return <span className="statusPill statusMatch">Match</span>;
 }
 
@@ -2747,6 +2749,7 @@ export function ScreeningDetailPage() {
               <option>Clear</option>
               <option>Potential Match</option>
               <option>Pending</option>
+              <option>Failed</option>
               <option>Match</option>
             </select>
 
@@ -2920,7 +2923,7 @@ function TemplateCard(props: {
   );
 }
 
-type SummaryTone = "total" | "clear" | "potential" | "match" | "pending";
+type SummaryTone = "total" | "clear" | "potential" | "match" | "pending" | "failed";
 
 function SummaryCardIcon({ tone }: { tone: SummaryTone }) {
   if (tone === "total") {
@@ -2957,6 +2960,15 @@ function SummaryCardIcon({ tone }: { tone: SummaryTone }) {
       </svg>
     );
   }
+  if (tone === "failed") {
+    return (
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <line x1="9" y1="9" x2="15" y2="15" />
+        <line x1="15" y1="9" x2="9" y2="15" />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="9" />
@@ -2975,17 +2987,19 @@ function SummaryCards({ currentUserId, currentUserName }: { currentUserId: strin
     let clear = 0;
     let potential = 0;
     let pending = 0;
+    let failed = 0;
     let match = 0;
 
-    const bump = (status: "Clear" | "Potential Match" | "Pending" | "Match") => {
+    const bump = (status: "Clear" | "Potential Match" | "Pending" | "Failed" | "Match") => {
       total += 1;
       if (status === "Clear") clear += 1;
       if (status === "Potential Match") potential += 1;
       if (status === "Pending") pending += 1;
+      if (status === "Failed") failed += 1;
       if (status === "Match") match += 1;
     };
 
-    if (!currentUserId || !currentUserName) return { total, clear, potential, match, pending };
+    if (!currentUserId || !currentUserName) return { total, clear, potential, pending, failed, match };
 
     submissions.forEach((s: any) => {
       if (!isSubmissionOwnedByCurrentUser(s, { id: currentUserId, name: currentUserName })) return;
@@ -2997,7 +3011,8 @@ function SummaryCards({ currentUserId, currentUserName }: { currentUserId: strin
           const resp = s.details.responses[m.key];
           const manual = Boolean(resp?.manualMatch === true);
           const engine: any = resp ? (resp.results?.some((r: any) => r.match) ? "HIT" : "NO_HIT") : "ERROR";
-          const ui = manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : "Pending";
+          const ui =
+            manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : engine === "PROCESSING" ? "Pending" : "Failed";
           bump(ui);
         });
         return;
@@ -3008,7 +3023,8 @@ function SummaryCards({ currentUserId, currentUserName }: { currentUserId: strin
         s.items.forEach((it: any) => {
           const manual = Boolean(it.manualMatch === true);
           const engine: any = it.result;
-          const ui = manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : "Pending";
+          const ui =
+            manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : engine === "PROCESSING" ? "Pending" : "Failed";
           bump(ui);
         });
         return;
@@ -3018,12 +3034,13 @@ function SummaryCards({ currentUserId, currentUserName }: { currentUserId: strin
       if (s.mode === "SINGLE") {
         const manual = Boolean(s.manualMatch === true);
         const engine: any = s.result;
-        const ui = manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : "Pending";
+        const ui =
+          manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : engine === "PROCESSING" ? "Pending" : "Failed";
         bump(ui);
       }
     });
 
-    return { total, clear, potential, match, pending };
+    return { total, clear, potential, pending, failed, match };
   }, [submissions, currentUserId]);
 
   const items: { tone: SummaryTone; label: string; value: number }[] = [
@@ -3032,6 +3049,7 @@ function SummaryCards({ currentUserId, currentUserName }: { currentUserId: strin
     { tone: "potential", label: "POTENTIAL MATCHES", value: counts.potential },
     { tone: "match", label: "MATCHES", value: counts.match },
     { tone: "pending", label: "PENDING", value: counts.pending },
+    { tone: "failed", label: "FAILED", value: counts.failed },
   ];
 
   return (
