@@ -39,6 +39,9 @@ type NameItem =
       countries: string[];
       addresses: string[];
       ids: IdDoc[];
+      birthLocation?: string;
+      gender?: string;
+      title?: string;
     };
 
 type StatusFilter = "All Statuses" | "Clear" | "Potential Match" | "Pending" | "Failed" | "Match";
@@ -317,12 +320,27 @@ function buildEntityExampleFromNameItem(item: NameItem): EntityExample {
   const addr = (item.addresses || []).map(safeTrim).filter(Boolean);
   if (addr.length) props.address = addr;
 
-  // IDs (multi) -> put idNumber list
-  const idNumbers = (item.ids || []).map((x) => safeTrim(x.idNumber)).filter(Boolean);
+  // IDs (multi)
+  const normalizedIds = (item.ids || [])
+    .map((value) => ({
+      idType: safeTrim(value.idType || ""),
+      idValue: safeTrim(value.idNumber || ""),
+      idCountry: safeTrim(value.idCountry || ""),
+    }))
+    .filter((value) => Boolean(value.idValue));
+  const idNumbers = normalizedIds.map((value) => value.idValue);
   if (idNumbers.length) {
     if (schema === "Person") props.idNumber = idNumbers;
     else props.registrationNumber = idNumbers;
+    props.ids = normalizedIds;
   }
+
+  const birthLocation = safeTrim(String(item.birthLocation || ""));
+  if (birthLocation) props.birthLocation = [birthLocation];
+  const gender = safeTrim(String(item.gender || ""));
+  if (gender) props.gender = [gender];
+  const title = safeTrim(String(item.title || ""));
+  if (title) props.title = [title];
 
   return { schema, properties: props };
 }
@@ -506,6 +524,9 @@ function parseBatchRows(rows: any[]): {
       countries,
       addresses,
       ids,
+      birthLocation: safeTrim(r.birthLocation || r.birthCountry || ""),
+      gender: rawGender,
+      title: safeTrim(r.title || ""),
     };
 
     queries[partyKey] = buildEntityExampleFromNameItem(item);

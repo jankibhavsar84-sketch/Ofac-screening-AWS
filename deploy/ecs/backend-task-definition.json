@@ -11,7 +11,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "backend",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260309090158",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260309170947",
                                      "essential":  true,
                                      "command":  [
                                                      "uvicorn",
@@ -114,6 +114,10 @@
                                                          {
                                                              "name":  "ACTIMIZE_PROVIDER",
                                                              "value":  "prudential"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_SOURCE_SYSTEM",
+                                                             "value":  "AMLP"
                                                          },
                                                          {
                                                              "name":  "ACTIMIZE_TOKEN_URL",

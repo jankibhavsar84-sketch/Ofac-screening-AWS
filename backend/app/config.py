@@ -156,7 +156,7 @@ def load_settings() -> Settings:
         actimize_client_assertion_private_key_b64=os.getenv("ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64", "").strip(),
         actimize_client_assertion_private_key_path=os.getenv("ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH", "").strip(),
         actimize_scope=os.getenv("ACTIMIZE_SCOPE", "").strip(),
-        actimize_source_system=os.getenv("ACTIMIZE_SOURCE_SYSTEM", "ZIP").strip() or "ZIP",
+        actimize_source_system=os.getenv("ACTIMIZE_SOURCE_SYSTEM", "AMLP").strip() or "AMLP",
         actimize_requester_name=os.getenv("ACTIMIZE_REQUESTER_NAME", "SCREENING_SYSTEM").strip() or "SCREENING_SYSTEM",
         actimize_alert_review_url=os.getenv("ACTIMIZE_ALERT_REVIEW_URL", "").strip(),
         actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 10.0),

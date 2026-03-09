@@ -605,17 +605,41 @@ class ActimizeClient:
                 payload_addresses.append(address_entry)
             payload["addresses"] = payload_addresses
 
-        id_numbers = _as_list(props.get("idNumber")) + _as_list(props.get("registrationNumber"))
-        unique_ids = _dedupe(id_numbers)
-        if unique_ids:
-            id_country = countries[0] if countries else ""
-            payload_ids: list[dict[str, str]] = []
-            default_id_type = "PASSPORT" if party_type == "I" else "TIN"
-            for id_value in unique_ids[:5]:
-                id_entry: dict[str, str] = {"idType": default_id_type, "idValue": id_value}
+        payload_ids: list[dict[str, str]] = []
+        default_id_type = "PASSPORT" if party_type == "I" else "TIN"
+        default_id_country = countries[0] if countries else ""
+        raw_ids = props.get("ids")
+        if isinstance(raw_ids, list):
+            for raw_id in raw_ids[:5]:
+                if not isinstance(raw_id, dict):
+                    continue
+                id_value = _first_non_empty(
+                    _as_list(raw_id.get("idValue"))
+                    + _as_list(raw_id.get("idNumber"))
+                )
+                if not id_value:
+                    continue
+                id_type = _first_non_empty(_as_list(raw_id.get("idType"))) or default_id_type
+                raw_country = _first_non_empty(
+                    _as_list(raw_id.get("idCountry"))
+                    + _as_list(raw_id.get("idIssueCountry"))
+                )
+                id_country = _to_iso3(raw_country) or raw_country or default_id_country
+                id_entry: dict[str, str] = {"idType": id_type, "idValue": id_value}
                 if id_country:
                     id_entry["idCountry"] = id_country
                 payload_ids.append(id_entry)
+
+        if not payload_ids:
+            id_numbers = _as_list(props.get("idNumber")) + _as_list(props.get("registrationNumber"))
+            unique_ids = _dedupe(id_numbers)
+            for id_value in unique_ids[:5]:
+                id_entry: dict[str, str] = {"idType": default_id_type, "idValue": id_value}
+                if default_id_country:
+                    id_entry["idCountry"] = default_id_country
+                payload_ids.append(id_entry)
+
+        if payload_ids:
             payload["ids"] = payload_ids
 
         dob = _first_non_empty(_as_list(props.get("birthDate")) + _as_list(props.get("dateOfBirth")))
@@ -625,6 +649,23 @@ class ActimizeClient:
                 payload["dateOfBirth"] = dob_date
             elif dob_year:
                 payload["yearOfBirth"] = dob_year
+
+        birth_location = _first_non_empty(
+            _as_list(props.get("birthLocation"))
+            + _as_list(props.get("countryOfBirth"))
+            + _as_list(props.get("birthCountry"))
+            + _as_list(props.get("BirthLocation"))
+        )
+        if birth_location:
+            payload["countryofBirth"] = _to_iso3(birth_location) or birth_location
+
+        gender = _first_non_empty(_as_list(props.get("gender")) + _as_list(props.get("Gender")))
+        if gender:
+            payload["gender"] = str(gender).strip().upper()
+
+        title = _first_non_empty(_as_list(props.get("title")) + _as_list(props.get("Title")))
+        if title:
+            payload["title"] = title
 
         return payload
 
