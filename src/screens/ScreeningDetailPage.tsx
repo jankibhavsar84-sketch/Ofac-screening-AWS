@@ -43,6 +43,8 @@ type NameItem =
 
 type StatusFilter = "All Statuses" | "Clear" | "Potential Match" | "Pending" | "Failed" | "Match";
 type TypeFilter = "All Types" | UiType;
+type ResultSortKey = "entity" | "mode" | "type" | "country" | "status" | "score" | "submittedAt";
+type ResultSortDirection = "asc" | "desc";
 type SelectOption<T extends string> = { value: T; label: string; icon?: React.ReactNode };
 
 function FormSelect<T extends string>({
@@ -234,8 +236,8 @@ const ID_TYPE_OPTIONS = [
 const UNIFIED_TEMPLATE = {
   fileName: "Actimize_SSB1_template.xlsx",
   title: "Unified Screening Template",
-  desc: "Includes all supported SSB columns with sample rows for Individual, Organization, and Unknown.",
-  chips: ["Party Type (I/E/other)", "Gender (M/F/blank)", "Address + ID fields", "24 columns"],
+  desc: "Includes the full Actimize Batch/Schedule column set required for upload.",
+  chips: ["Primary + 3 aliases", "3 IDs + 3 addresses", "Birth/Nationality/Gender", "68 columns"],
 } as const;
 
 function uuid() {
@@ -334,9 +336,28 @@ function parseCommaValues(input: unknown): string[] {
     .filter(Boolean);
 }
 
+function buildStructuredName(first: string, middle: string, last: string, maiden: string, fullName: string): string {
+  const split = [safeTrim(first), safeTrim(middle), safeTrim(last), safeTrim(maiden)].filter(Boolean).join(" ");
+  return safeTrim(fullName) || split;
+}
+
+function buildAddressLine(
+  line1: unknown,
+  line2: unknown,
+  city: unknown,
+  stateProvince: unknown,
+  zipCode: unknown,
+  country: unknown
+): string {
+  return [line1, line2, city, stateProvince, zipCode, country]
+    .map((v) => safeTrim(String(v ?? "")))
+    .filter(Boolean)
+    .join(", ");
+}
+
 function parseBatchRows(rows: any[]): {
   queries: Record<string, EntityExample>;
-  rowMeta: { key: string; displayName: string; uiType: UiType }[];
+  rowMeta: { key: string; displayName: string; uiType: UiType }[]; 
   validationErrors: string[];
 } {
   const queries: Record<string, EntityExample> = {};
@@ -379,11 +400,12 @@ function parseBatchRows(rows: any[]): {
       validationErrors.push(`Row ${rowNumber}: Gender code must be M, F, or blank.`);
     }
 
-    const firstName = safeTrim(r.firstName || "");
-    const middleName = safeTrim(r.middleName || "");
-    const lastName = safeTrim(r.lastName || "");
+    const firstName = safeTrim(r.primaryFirstName || r.firstName || "");
+    const middleName = safeTrim(r.primaryMiddleName || r.middleName || "");
+    const lastName = safeTrim(r.primaryLastName || r.lastName || "");
+    const maidenName = safeTrim(r.primaryMaidenName || "");
     const splitName = [firstName, middleName, lastName].filter(Boolean).join(" ");
-    const explicitFullName = safeTrim(r.fullName || "");
+    const explicitFullName = buildStructuredName(firstName, middleName, lastName, maidenName, safeTrim(r.primaryFullName || r.fullName || ""));
     const hasSplitFirstLast = Boolean(firstName && lastName);
     const hasFullName = Boolean(explicitFullName);
     const fullName = explicitFullName || (uiType === "Individual" ? splitName : "");
@@ -405,6 +427,17 @@ function parseBatchRows(rows: any[]): {
     }
 
     const addresses = parseCommaValues(r.addresses || "");
+    const addressCandidates = [
+      buildAddressLine(r.address1Line1, r.address1Line2, r.address1City, r.address1stateProvince, r.address1ZipCode, r.address1Country),
+      buildAddressLine(r.address2Line1, r.address2Line2, r.address2City, r.address2stateProvince, r.address2ZipCode, r.address2Country),
+      buildAddressLine(r.address3Line1, r.address3Line2, r.address3City, r.address3stateProvince, r.address3ZipCode, r.address3Country),
+      buildAddressLine(r.addressLine1, r.addressLine2, r.city, r.state, r.zip, r.country),
+    ]
+      .map((value) => safeTrim(value))
+      .filter(Boolean);
+    addressCandidates.forEach((value) => {
+      if (!addresses.includes(value)) addresses.push(value);
+    });
     if (!addresses.length) {
       const oneLineAddress = [safeTrim(r.addressLine1 || ""), safeTrim(r.addressLine2 || ""), safeTrim(r.city || ""), safeTrim(r.state || ""), safeTrim(r.zip || "")]
         .filter(Boolean)
@@ -414,11 +447,51 @@ function parseBatchRows(rows: any[]): {
 
     const countries = Array.from(
       new Set(
-        [...parseCommaValues(r.countries || ""), safeTrim(r.country || ""), safeTrim(r.countryOfCitizenship || "")]
+        [
+          ...parseCommaValues(r.countries || ""),
+          safeTrim(r.country || ""),
+          safeTrim(r.countryOfCitizenship || ""),
+          safeTrim(r.address1Country || ""),
+          safeTrim(r.address2Country || ""),
+          safeTrim(r.address3Country || ""),
+          safeTrim(r.birthCountry || ""),
+          safeTrim(r.nationalityCountry1 || ""),
+          safeTrim(r.nationalityCountry2 || ""),
+          safeTrim(r.nationalityCountry3 || ""),
+        ]
           .map((value) => safeTrim(value))
           .filter(Boolean)
       )
     );
+
+    const alias1 = buildStructuredName(
+      safeTrim(r.alias1FirstName || ""),
+      safeTrim(r.alias1MiddleName || ""),
+      safeTrim(r.alias1LastName || ""),
+      safeTrim(r.alias1MaidenName || ""),
+      safeTrim(r.alias1FullName || "")
+    );
+    const alias2 = buildStructuredName(
+      safeTrim(r.alias2FirstName || ""),
+      safeTrim(r.alias2MiddleName || ""),
+      safeTrim(r.alias2LastName || ""),
+      safeTrim(r.alias2MaidenName || ""),
+      safeTrim(r.alias2FullName || "")
+    );
+    const alias3 = buildStructuredName(
+      safeTrim(r.alias3FirstName || ""),
+      safeTrim(r.alias3MiddleName || ""),
+      safeTrim(r.alias3LastName || ""),
+      safeTrim(r.alias3MaidenName || ""),
+      safeTrim(r.alias3FullName || "")
+    );
+    const mergedAlias = [safeTrim(r.aliasName || ""), alias1, alias2, alias3].filter(Boolean).join(", ");
+
+    const ids = [
+      { idType: safeTrim(r.partyId1Type || r.idType || r.idCode || ""), idNumber: safeTrim(r.partyId1Value || r.idNumber || ""), idCountry: safeTrim(r.partyId1IDCountry || r.idCountry || r.idIssueCountry || "") },
+      { idType: safeTrim(r.partyId2Type || ""), idNumber: safeTrim(r.partyId2Value || ""), idCountry: safeTrim(r.partyId2IDCountry || "") },
+      { idType: safeTrim(r.partyId3Type || ""), idNumber: safeTrim(r.partyId3Value || ""), idCountry: safeTrim(r.partyId3IDCountry || "") },
+    ].filter((doc) => Boolean(doc.idNumber));
 
     const item: NameItem = {
       id: key,
@@ -428,17 +501,11 @@ function parseBatchRows(rows: any[]): {
       lastName,
       middleName,
       fullName,
-      aliasName: safeTrim(r.aliasName || ""),
-      dateOfBirth: safeTrim(r.dateOfBirth || ""),
+      aliasName: mergedAlias,
+      dateOfBirth: safeTrim(r.dateOfBirth || r.yearOfBirth || ""),
       countries,
       addresses,
-      ids: [
-        {
-          idType: safeTrim(r.idType || r.idCode || ""),
-          idNumber: safeTrim(r.idNumber || ""),
-          idCountry: safeTrim(r.idCountry || r.idIssueCountry || ""),
-        },
-      ],
+      ids,
     };
 
     queries[partyKey] = buildEntityExampleFromNameItem(item);
@@ -480,6 +547,14 @@ function formatMatchingScore(score: number | null) {
   if (typeof score !== "number" || Number.isNaN(score)) return "";
   return `${(score * 100).toFixed(2)}%`;
 }
+
+const STATUS_SORT_RANK: Record<UiStatus, number> = {
+  Clear: 1,
+  "Potential Match": 2,
+  Match: 3,
+  Pending: 4,
+  Failed: 5,
+};
 
 type HitMatch = {
   name: string;
@@ -808,6 +883,8 @@ export function ScreeningDetailPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All Statuses");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("All Types");
+  const [resultSortKey, setResultSortKey] = useState<ResultSortKey>("submittedAt");
+  const [resultSortDirection, setResultSortDirection] = useState<ResultSortDirection>("desc");
   const [page, setPage] = useState(1);
 
   // dropzone
@@ -1743,6 +1820,7 @@ export function ScreeningDetailPage() {
     uiStatus: UiStatus;
     matchingScore: number | null;
     date: string;
+    submittedAt: string;
     batchSubmissionId: string | null;
     dailyScheduleId: string | null;
     dailyScheduleActive: boolean;
@@ -1754,8 +1832,8 @@ export function ScreeningDetailPage() {
     const rows: ResultRow[] = [];
 
     submissions.forEach((s: Submission) => {
-      if (!isSubmissionOwnedByCurrentUser(s as any, currentUser)) return;
       const created = formatSubmittedDateTime((s as any).createdAt);
+      const submittedAtRaw = safeTrim(String((s as any).createdAt || ""));
 
       // SINGLE: our new single submission stores details.meta + responses
       if (s.mode === "SINGLE" && (s as any).details?.meta && (s as any).details?.responses) {
@@ -1782,6 +1860,7 @@ export function ScreeningDetailPage() {
             uiStatus: ui,
             matchingScore,
             date: created,
+            submittedAt: submittedAtRaw,
             batchSubmissionId: null,
             dailyScheduleId: null,
             dailyScheduleActive: false,
@@ -1809,6 +1888,7 @@ export function ScreeningDetailPage() {
           uiStatus: ui,
           matchingScore: topMatchingScore((s as any)?.details?.results),
           date: created,
+          submittedAt: submittedAtRaw,
           batchSubmissionId: null,
           dailyScheduleId: null,
           dailyScheduleActive: false,
@@ -1835,6 +1915,7 @@ export function ScreeningDetailPage() {
             uiStatus: ui,
             matchingScore: topMatchingScore(it?.details?.matches?.results),
             date: created,
+            submittedAt: submittedAtRaw,
             batchSubmissionId: s.id,
             dailyScheduleId: typeof (s as any).dailyScheduleId === "string" ? (s as any).dailyScheduleId : null,
             dailyScheduleActive: Boolean((s as any).dailyScheduleActive === true),
@@ -1858,14 +1939,37 @@ export function ScreeningDetailPage() {
       // All statuses
       if (statusFilter !== "All Statuses" && r.uiStatus !== statusFilter) return false;
 
-      // Search across entity + raw JSON (any field in screening & results)
+      // Search on core visible fields to keep filtering fast.
       if (!q) return true;
-
-      const blob = JSON.stringify(r.raw ?? {});
-      const hay = `${r.entity} ${r.mode} ${r.type} ${r.country} ${r.uiStatus} ${r.date} ${blob}`.toLowerCase();
+      const hay = `${r.entity} ${r.mode} ${r.type} ${r.country} ${r.uiStatus} ${r.date}`.toLowerCase();
       return hay.includes(q);
     });
   }, [flattened, search, statusFilter, typeFilter]);
+
+  const sorted = useMemo(() => {
+    const rows = [...filtered];
+    rows.sort((a, b) => {
+      if (resultSortKey === "score") {
+        const aScore = typeof a.matchingScore === "number" ? a.matchingScore : -1;
+        const bScore = typeof b.matchingScore === "number" ? b.matchingScore : -1;
+        return aScore - bScore;
+      }
+      if (resultSortKey === "status") {
+        return STATUS_SORT_RANK[a.uiStatus] - STATUS_SORT_RANK[b.uiStatus];
+      }
+      if (resultSortKey === "submittedAt") {
+        const aTime = Date.parse(a.submittedAt || "") || 0;
+        const bTime = Date.parse(b.submittedAt || "") || 0;
+        return aTime - bTime;
+      }
+      if (resultSortKey === "entity") return a.entity.localeCompare(b.entity);
+      if (resultSortKey === "mode") return a.mode.localeCompare(b.mode);
+      if (resultSortKey === "type") return a.type.localeCompare(b.type);
+      return (a.country || "").localeCompare(b.country || "");
+    });
+    if (resultSortDirection === "desc") rows.reverse();
+    return rows;
+  }, [filtered, resultSortDirection, resultSortKey]);
 
   function exportFilteredResultsCsv() {
     if (!filtered.length) return;
@@ -1930,15 +2034,29 @@ export function ScreeningDetailPage() {
 
   // ---------- Pagination (10) ----------
   const pageSize = 10;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const pageSafe = Math.min(page, totalPages);
   const startIdx = (pageSafe - 1) * pageSize;
-  const pageRows = filtered.slice(startIdx, startIdx + pageSize);
+  const pageRows = sorted.slice(startIdx, startIdx + pageSize);
   const [hitEntityDialog, setHitEntityDialog] = useState<{
     sourceEntity: string;
     hits: HitMatch[];
     error: { status: number | null; text: string } | null;
   } | null>(null);
+
+  function sortIndicator(key: ResultSortKey): string {
+    if (resultSortKey !== key) return "\u21C5";
+    return resultSortDirection === "asc" ? "\u25B2" : "\u25BC";
+  }
+
+  function toggleResultSort(key: ResultSortKey): void {
+    if (resultSortKey === key) {
+      setResultSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setResultSortKey(key);
+    setResultSortDirection(key === "submittedAt" || key === "score" ? "desc" : "asc");
+  }
 
   function openHitEntity(row: ResultRow) {
     const hits = getHitMatchesFromRaw(row.raw);
@@ -2924,13 +3042,41 @@ export function ScreeningDetailPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th scope="col" style={{ width: 220 }}>Entity</th>
-                  <th scope="col" style={{ width: 120 }}>Mode</th>
-                  <th scope="col" style={{ width: 120 }}>Type</th>
-                  <th scope="col" style={{ width: 120 }}>Country</th>
-                  <th scope="col" style={{ width: 140 }}>Status</th>
-                  <th scope="col" style={{ width: 140 }}>Matching Score</th>
-                  <th scope="col" style={{ width: 190 }}>Submitted Date/Time</th>
+                  <th scope="col" style={{ width: 220 }}>
+                    <button type="button" className="linkBtn" onClick={() => toggleResultSort("entity")}>
+                      Entity {sortIndicator("entity")}
+                    </button>
+                  </th>
+                  <th scope="col" style={{ width: 120 }}>
+                    <button type="button" className="linkBtn" onClick={() => toggleResultSort("mode")}>
+                      Mode {sortIndicator("mode")}
+                    </button>
+                  </th>
+                  <th scope="col" style={{ width: 120 }}>
+                    <button type="button" className="linkBtn" onClick={() => toggleResultSort("type")}>
+                      Type {sortIndicator("type")}
+                    </button>
+                  </th>
+                  <th scope="col" style={{ width: 120 }}>
+                    <button type="button" className="linkBtn" onClick={() => toggleResultSort("country")}>
+                      Country {sortIndicator("country")}
+                    </button>
+                  </th>
+                  <th scope="col" style={{ width: 140 }}>
+                    <button type="button" className="linkBtn" onClick={() => toggleResultSort("status")}>
+                      Screening Result {sortIndicator("status")}
+                    </button>
+                  </th>
+                  <th scope="col" style={{ width: 140 }}>
+                    <button type="button" className="linkBtn" onClick={() => toggleResultSort("score")}>
+                      Matching Score {sortIndicator("score")}
+                    </button>
+                  </th>
+                  <th scope="col" style={{ width: 190 }}>
+                    <button type="button" className="linkBtn" onClick={() => toggleResultSort("submittedAt")}>
+                      Submitted Date/Time {sortIndicator("submittedAt")}
+                    </button>
+                  </th>
                   <th scope="col" style={{ width: 230 }}>Actions</th>
                 </tr>
               </thead>

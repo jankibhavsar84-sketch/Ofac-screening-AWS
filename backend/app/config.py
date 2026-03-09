@@ -68,6 +68,8 @@ class Settings:
     aws_s3_upload_prefix: str
     aws_sns_notifications_enabled: bool
     aws_sns_schedule_topic_prefix: str
+    aws_notification_delivery_mode: str
+    aws_ses_sender_email: str
 
     actimize_base_url: str
     actimize_provider: str
@@ -131,6 +133,8 @@ def load_settings() -> Settings:
         aws_sns_notifications_enabled=_to_bool(os.getenv("AWS_SNS_NOTIFICATIONS_ENABLED"), False),
         aws_sns_schedule_topic_prefix=os.getenv("AWS_SNS_SCHEDULE_TOPIC_PREFIX", "ofac-screening-schedule").strip()
         or "ofac-screening-schedule",
+        aws_notification_delivery_mode=os.getenv("AWS_NOTIFICATION_DELIVERY_MODE", "SES").strip().upper() or "SES",
+        aws_ses_sender_email=os.getenv("AWS_SES_SENDER_EMAIL", "").strip(),
         actimize_base_url=os.getenv("ACTIMIZE_BASE_URL", "").strip(),
         actimize_provider=os.getenv("ACTIMIZE_PROVIDER", "prudential").strip().lower() or "prudential",
         actimize_api_key=os.getenv("ACTIMIZE_API_KEY", "").strip(),

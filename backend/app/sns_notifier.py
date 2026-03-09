@@ -14,8 +14,9 @@ class SnsNotifier:
     def __init__(self) -> None:
         self.enabled = bool(settings.aws_sns_notifications_enabled)
         self.topic_prefix = self._sanitize_topic_prefix(settings.aws_sns_schedule_topic_prefix)
+        self.delivery_mode = str(settings.aws_notification_delivery_mode or "SES").strip().upper() or "SES"
+        self.ses_sender_email = str(settings.aws_ses_sender_email or "").strip()
         client_kwargs: dict[str, Any] = {
-            "service_name": "sns",
             "region_name": settings.aws_region,
         }
         # Prefer ECS task-role credentials unless explicit keys are provided.
@@ -24,7 +25,12 @@ class SnsNotifier:
             client_kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
         if settings.aws_endpoint_url:
             client_kwargs["endpoint_url"] = settings.aws_endpoint_url
-        self.client = boto3.client(**client_kwargs)
+        self.sns_client = boto3.client(service_name="sns", **client_kwargs)
+        self.ses_client = boto3.client(service_name="sesv2", **client_kwargs)
+
+    @property
+    def _use_ses(self) -> bool:
+        return self.delivery_mode == "SES" and bool(self.ses_sender_email)
 
     @staticmethod
     def _sanitize_topic_prefix(raw: str | None) -> str:
@@ -48,29 +54,35 @@ class SnsNotifier:
         return name[:256]
 
     def ensure_schedule_topic(self, schedule_id: str) -> str:
+        if self._use_ses:
+            return ""
         name = self._topic_name_for_schedule(schedule_id)
-        created = self.client.create_topic(Name=name)
+        created = self.sns_client.create_topic(Name=name)
         topic_arn = str(created.get("TopicArn") or "").strip()
         if not topic_arn:
             raise RuntimeError(f"Failed to create SNS topic for schedule {schedule_id}")
         return topic_arn
 
     def ensure_email_topic(self, email: str) -> str:
+        if self._use_ses:
+            return ""
         name = self._topic_name_for_email(email)
-        created = self.client.create_topic(Name=name)
+        created = self.sns_client.create_topic(Name=name)
         topic_arn = str(created.get("TopicArn") or "").strip()
         if not topic_arn:
             raise RuntimeError(f"Failed to create SNS topic for email {email}")
         return topic_arn
 
     def _iter_topic_subscriptions(self, topic_arn: str) -> list[dict[str, Any]]:
+        if self._use_ses or not topic_arn:
+            return []
         token: str | None = None
         subscriptions: list[dict[str, Any]] = []
         while True:
             kwargs: dict[str, Any] = {"TopicArn": topic_arn}
             if token:
                 kwargs["NextToken"] = token
-            page = self.client.list_subscriptions_by_topic(**kwargs)
+            page = self.sns_client.list_subscriptions_by_topic(**kwargs)
             subscriptions.extend(page.get("Subscriptions", []) or [])
             token = page.get("NextToken")
             if not token:
@@ -81,6 +93,13 @@ class SnsNotifier:
         safe_email = str(email or "").strip().lower()
         if not safe_email:
             raise ValueError("email is required")
+        if self._use_ses:
+            return {
+                "topic_arn": None,
+                "subscription_arn": None,
+                "pending_confirmation": False,
+                "created": False,
+            }
 
         # Email subscriptions are keyed by recipient (not schedule) so users do not
         # receive a fresh SNS confirmation request every time a new schedule is created.
@@ -109,7 +128,7 @@ class SnsNotifier:
                 "created": False,
             }
 
-        response = self.client.subscribe(
+        response = self.sns_client.subscribe(
             TopicArn=topic_arn,
             Protocol="email",
             Endpoint=safe_email,
@@ -128,6 +147,8 @@ class SnsNotifier:
         safe_email = str(email or "").strip().lower()
         if not safe_email:
             return 0
+        if self._use_ses:
+            return 0
         topic_arn = self.ensure_email_topic(safe_email)
         removed = 0
         for sub in self._iter_topic_subscriptions(topic_arn):
@@ -138,7 +159,7 @@ class SnsNotifier:
             sub_arn = str(sub.get("SubscriptionArn") or "").strip()
             if not sub_arn or sub_arn == "PendingConfirmation":
                 continue
-            self.client.unsubscribe(SubscriptionArn=sub_arn)
+            self.sns_client.unsubscribe(SubscriptionArn=sub_arn)
             removed += 1
         return removed
 
@@ -150,7 +171,6 @@ class SnsNotifier:
         summary: dict[str, Any] | None = None,
         email: str | None = None,
     ) -> str:
-        topic_arn = self.ensure_email_topic(email) if email else self.ensure_schedule_topic(schedule_id)
         safe_subject = str(title or "").strip() or "Scheduled screening completed"
         safe_subject = safe_subject[:100]
         base_message = str(message or "").strip()
@@ -158,7 +178,24 @@ class SnsNotifier:
         if isinstance(summary, dict) and summary:
             details = f"\n\nSummary:\n{json.dumps(summary, indent=2, sort_keys=True)}"
         final_message = f"{base_message}{details}".strip()
-        response = self.client.publish(
+        if self._use_ses and email:
+            response = self.ses_client.send_email(
+                FromEmailAddress=self.ses_sender_email,
+                Destination={"ToAddresses": [str(email).strip()]},
+                Content={
+                    "Simple": {
+                        "Subject": {"Data": safe_subject, "Charset": "UTF-8"},
+                        "Body": {"Text": {"Data": final_message, "Charset": "UTF-8"}},
+                    }
+                },
+            )
+            message_id = str(response.get("MessageId") or "").strip()
+            if not message_id:
+                raise RuntimeError("SES send_email returned no MessageId")
+            return message_id
+
+        topic_arn = self.ensure_email_topic(email) if email else self.ensure_schedule_topic(schedule_id)
+        response = self.sns_client.publish(
             TopicArn=topic_arn,
             Subject=safe_subject,
             Message=final_message,

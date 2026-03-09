@@ -11,7 +11,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "backend",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260308192606",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260309090158",
                                      "essential":  true,
                                      "command":  [
                                                      "uvicorn",
@@ -102,6 +102,14 @@
                                                          {
                                                              "name":  "AWS_SNS_SCHEDULE_TOPIC_PREFIX",
                                                              "value":  "ofac-screening-schedule"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_NOTIFICATION_DELIVERY_MODE",
+                                                             "value":  "SES"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_SES_SENDER_EMAIL",
+                                                             "value":  "no-reply@prudential.com"
                                                          },
                                                          {
                                                              "name":  "ACTIMIZE_PROVIDER",

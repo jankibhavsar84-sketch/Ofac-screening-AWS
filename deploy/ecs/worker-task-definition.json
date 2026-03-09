@@ -11,7 +11,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "worker",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260308211030",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260309134404",
                                      "essential":  true,
                                      "command":  [
                                                      "python",
@@ -37,7 +37,7 @@
                                                          },
                                                          {
                                                              "name":  "SCREENING_TPS",
-                                                             "value":  "10"
+                                                             "value":  "26"
                                                          },
                                                          {
                                                              "name":  "SCREENING_PARALLEL_MESSAGES",
@@ -90,6 +90,14 @@
                                                          {
                                                              "name":  "AWS_SNS_SCHEDULE_TOPIC_PREFIX",
                                                              "value":  "ofac-screening-schedule"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_NOTIFICATION_DELIVERY_MODE",
+                                                             "value":  "SES"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_SES_SENDER_EMAIL",
+                                                             "value":  "no-reply@prudential.com"
                                                          },
                                                          {
                                                              "name":  "ACTIMIZE_PROVIDER",

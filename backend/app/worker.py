@@ -125,7 +125,7 @@ def _handle_job_dispatch(
         details={
             "job_id": job_id,
             "source_upload_id": upload_id,
-            "total_items": total,
+            "total_items": expected_total,
             "queue_name": settings.aws_sqs_queue_name,
         },
     )

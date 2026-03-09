@@ -1761,6 +1761,15 @@ textarea{min-height:90px;resize:vertical}
   background:var(--app-surface);
   border-bottom:1px solid var(--border);
 }
+.linkBtn{
+  border:none;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  font-weight:700;
+  padding:0;
+  cursor:pointer;
+}
 .table tbody td{
   padding:12px;
   border-bottom:1px solid var(--border);

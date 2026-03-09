@@ -20,6 +20,15 @@
         "sns:Unsubscribe"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "SesEmailDeliveryAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+      ],
+      "Resource": "*"
     }
   ]
 }

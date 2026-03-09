@@ -16,6 +16,8 @@ import requests
 from .config import settings
 from .models import EntityExample
 
+ACTIMIZE_POST_MAX_ATTEMPTS = 3
+
 
 class ExternalApiCallError(RuntimeError):
     def __init__(
@@ -236,21 +238,12 @@ class ActimizeClient:
 
         endpoint = f"{self.base_url}/entity-screenings"
         payload = self._build_entity_screening_request(query, requester_name=requester_name)
-        try:
-            response = requests.post(
-                endpoint,
-                headers=self._build_headers(),
-                json=payload,
-                timeout=self.timeout_s,
-            )
-        except requests.RequestException as exc:
-            raise ExternalApiCallError(
-                provider=self.provider,
-                operation="entity-screenings",
-                endpoint=endpoint,
-                message=str(exc),
-                details={"screening_type": screening_type},
-            ) from exc
+        response = self._post_entity_screening_with_retry(
+            endpoint=endpoint,
+            headers=self._build_headers(),
+            payload=payload,
+            screening_type=screening_type,
+        )
         if response.status_code >= 400:
             raise ExternalApiCallError(
                 provider=self.provider,
@@ -301,6 +294,61 @@ class ActimizeClient:
             )
 
         return self._normalize_prudential(body, query, screening_type)
+
+    def _post_entity_screening_with_retry(
+        self,
+        endpoint: str,
+        headers: dict[str, str],
+        payload: dict[str, Any],
+        screening_type: str | None,
+    ) -> requests.Response:
+        last_request_error: requests.RequestException | None = None
+        last_response: requests.Response | None = None
+
+        for attempt in range(1, ACTIMIZE_POST_MAX_ATTEMPTS + 1):
+            try:
+                response = requests.post(
+                    endpoint,
+                    headers=headers,
+                    json=payload,
+                    timeout=self.timeout_s,
+                )
+            except requests.RequestException as exc:
+                last_request_error = exc
+                if attempt < ACTIMIZE_POST_MAX_ATTEMPTS:
+                    time.sleep(min(0.5 * (2 ** (attempt - 1)), 2.0))
+                    continue
+                raise ExternalApiCallError(
+                    provider=self.provider,
+                    operation="entity-screenings",
+                    endpoint=endpoint,
+                    message=str(exc),
+                    details={"screening_type": screening_type, "attempts": attempt},
+                ) from exc
+
+            last_response = response
+            if response.status_code in {429, 500, 502, 503, 504} and attempt < ACTIMIZE_POST_MAX_ATTEMPTS:
+                time.sleep(min(0.5 * (2 ** (attempt - 1)), 2.0))
+                continue
+            return response
+
+        if last_response is not None:
+            return last_response
+        if last_request_error is not None:
+            raise ExternalApiCallError(
+                provider=self.provider,
+                operation="entity-screenings",
+                endpoint=endpoint,
+                message=str(last_request_error),
+                details={"screening_type": screening_type, "attempts": ACTIMIZE_POST_MAX_ATTEMPTS},
+            ) from last_request_error
+        raise ExternalApiCallError(
+            provider=self.provider,
+            operation="entity-screenings",
+            endpoint=endpoint,
+            message="Unknown retry failure",
+            details={"screening_type": screening_type, "attempts": ACTIMIZE_POST_MAX_ATTEMPTS},
+        )
 
     def screen_many_types(
         self,
