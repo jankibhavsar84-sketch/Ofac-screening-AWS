@@ -124,6 +124,14 @@ function safeTrim(v: string) {
   return (v ?? "").trim();
 }
 
+function formatSubmittedDateTime(value: unknown): string {
+  const raw = safeTrim(String(value ?? ""));
+  if (!raw) return "\u2014";
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return raw;
+  return parsed.toLocaleString();
+}
+
 function isSubmissionOwnedByCurrentUser(
   submission: { createdByUserId?: unknown; createdByUserName?: unknown } | null | undefined,
   currentUser: { id: string; name: string } | null
@@ -1747,7 +1755,7 @@ export function ScreeningDetailPage() {
 
     submissions.forEach((s: Submission) => {
       if (!isSubmissionOwnedByCurrentUser(s as any, currentUser)) return;
-      const created = new Date((s as any).createdAt).toLocaleDateString();
+      const created = formatSubmittedDateTime((s as any).createdAt);
 
       // SINGLE: our new single submission stores details.meta + responses
       if (s.mode === "SINGLE" && (s as any).details?.meta && (s as any).details?.responses) {
@@ -1869,7 +1877,7 @@ export function ScreeningDetailPage() {
       "Country",
       "Status",
       "Matching Score",
-      "Date",
+      "Submitted Date/Time",
       "Screening Types",
       "Daily Screening",
       "Batch Name",
@@ -2922,7 +2930,7 @@ export function ScreeningDetailPage() {
                   <th scope="col" style={{ width: 120 }}>Country</th>
                   <th scope="col" style={{ width: 140 }}>Status</th>
                   <th scope="col" style={{ width: 140 }}>Matching Score</th>
-                  <th scope="col" style={{ width: 120 }}>Date</th>
+                  <th scope="col" style={{ width: 190 }}>Submitted Date/Time</th>
                   <th scope="col" style={{ width: 230 }}>Actions</th>
                 </tr>
               </thead>
