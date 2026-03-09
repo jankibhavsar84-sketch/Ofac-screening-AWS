@@ -278,6 +278,20 @@ def _format_execution_time(seconds: int | None) -> str:
     return f"{sec}s"
 
 
+def _derive_completion_outcome(summary: dict[str, object]) -> str:
+    total_items = int(summary.get("total_items") or 0)
+    completed_items = int(summary.get("completed_items") or 0)
+    failed_items = int(summary.get("failed_items") or 0)
+
+    if total_items <= 0:
+        return "Fully Completed"
+    if failed_items <= 0:
+        return "Fully Completed"
+    if completed_items <= 0 and failed_items >= total_items:
+        return "Fully Failed"
+    return "Partially Completed"
+
+
 def _resolve_external_api_context(exc: Exception) -> tuple[str, str, str, int | None, dict[str, object]]:
     if isinstance(exc, ExternalApiCallError):
         return (
@@ -325,20 +339,25 @@ def _publish_schedule_notification_via_sns(
 
     summary = repository.build_job_completion_summary(job_id) or {}
     batch_name = str(schedule.get("batch_name") or "").strip() or schedule_id
+    completion_outcome = _derive_completion_outcome(summary)
     records_screened = int(summary.get("records_screened") or summary.get("total_items") or 0)
+    completed_items = int(summary.get("completed_items") or 0)
+    failed_items = int(summary.get("failed_items") or 0)
     hit_records = int(summary.get("matched_items") or 0)
     execution_seconds = summary.get("execution_seconds")
     execution_label = _format_execution_time(execution_seconds if isinstance(execution_seconds, int) else None)
     started_at = str(summary.get("started_at") or "").strip()
     completed_at = str(summary.get("completed_at") or "").strip()
     actimize_link = (settings.actimize_alert_review_url or settings.actimize_base_url or "").strip()
-    subject = f"Scheduled Screening Completed - {batch_name}"[:100]
+    subject = f"Scheduled Screening {completion_outcome} - {batch_name}"[:100]
     message_lines = [
-        "Your scheduled screening batch has completed.",
+        f"Your scheduled screening batch is {completion_outcome}.",
         "",
         f"Batch Name: {batch_name}",
         f"Job ID: {job_id}",
         f"Number of records screened: {records_screened}",
+        f"Successfully screened records: {completed_items}",
+        f"Failed records: {failed_items}",
         f"Number of records with hits: {hit_records}",
         f"Total execution time: {execution_label}",
     ]
@@ -359,19 +378,6 @@ def _publish_schedule_notification_via_sns(
     for email in recipient_emails:
         try:
             sync_result = notifier.ensure_email_subscription(schedule_id=schedule_id, email=email)
-            if bool(sync_result.get("pending_confirmation")):
-                repository.add_audit_event(
-                    action="SNS_NOTIFICATION_SKIPPED_PENDING_CONFIRMATION",
-                    entity_type="daily_schedule",
-                    entity_id=schedule_id,
-                    details={
-                        "job_id": job_id,
-                        "batch_name": batch_name,
-                        "email": email,
-                        "topic_arn": sync_result.get("topic_arn"),
-                    },
-                )
-                continue
             message_id = notifier.publish_schedule_completion(
                 schedule_id=schedule_id,
                 title=subject,
@@ -390,8 +396,12 @@ def _publish_schedule_notification_via_sns(
                     "message_id": message_id,
                     "records_screened": records_screened,
                     "hit_records": hit_records,
+                    "completion_outcome": completion_outcome,
                     "execution_seconds": execution_seconds,
                     "actimize_link": actimize_link,
+                    "topic_arn": sync_result.get("topic_arn"),
+                    "subscription_arn": sync_result.get("subscription_arn"),
+                    "pending_confirmation": bool(sync_result.get("pending_confirmation")),
                 },
             )
         except Exception as exc:  # noqa: BLE001

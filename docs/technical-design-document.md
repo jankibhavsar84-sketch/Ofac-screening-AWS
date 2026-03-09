@@ -548,25 +548,85 @@ sequenceDiagram
 
 ### 10.1 Frontend (container env)
 
-Key values:
-- `BACKEND_UPSTREAM` (example: `http://backend.screening.internal:8000`)
-- `VITE_SCREENING_API_BASE_URL` (default: `/api/v1`)
-- `VITE_AUTH_ENABLED` / OIDC settings
+Frontend settings are provided as container env vars and written at startup into `app-config.js` (see `frontend/entrypoint.sh`).
+
+| Parameter | Default Value | Explanation |
+|---|---:|---|
+| `BACKEND_UPSTREAM` | `http://backend.screening.internal:8000` | Backend origin that Nginx proxies to for `/api/*` (typically the ECS service-discovery name). |
+| `NGINX_CLIENT_MAX_BODY_SIZE` | `25m` | Max upload size for `/api/` reverse-proxy requests (must accommodate batch XLSX + `queries_json`). |
+| `VITE_SCREENING_API_BASE_URL` | `/api/v1` | Base path used by the SPA for API requests (Nginx proxies `/api/*` to backend). |
+| `VITE_SCREENING_POLL_INTERVAL_MS` | `750` | UI polling interval for job progress (`GET /api/v1/screenings/jobs/{job_id}`). |
+| `VITE_SCREENING_JOB_TIMEOUT_MS` | `90000` | UI timeout for long-running job polling flows before surfacing a timeout to the user. |
+| `VITE_AUTH_ENABLED` | `false` | Enables OIDC login + bearer token attachment to API calls. |
+| `VITE_OIDC_AUTHORITY` | *(empty)* | OIDC issuer/authority URL (required when `VITE_AUTH_ENABLED=true`). |
+| `VITE_OIDC_CLIENT_ID` | *(empty)* | OIDC client id (required when `VITE_AUTH_ENABLED=true`). |
+| `VITE_OIDC_REDIRECT_URI` | *(empty)* | OIDC redirect URI. If blank, frontend code falls back to `${window.location.origin}/`. |
+| `VITE_OIDC_POST_LOGOUT_REDIRECT_URI` | *(empty)* | Optional post-logout redirect. If blank, frontend falls back to the redirect URI. |
+| `VITE_OIDC_SCOPE` | `openid profile email` | Requested scopes (add `roles` / group scope if your IdP requires it). |
+| `VITE_OIDC_IDLE_TIMEOUT_MS` | `900000` | Frontend session idle timeout (ms). |
+| `VITE_OIDC_CLEAR_SESSION_ON_CLOSE` | `true` | If `true`, clears stored auth/session state when the browser tab is closed. |
 
 ### 10.2 Backend/Worker (container env)
 
-Key values:
-- `APP_DB_URL` (PostgreSQL connection string)
-- `AWS_SQS_QUEUE_NAME`
-- `AUTH_ENABLED`, `AUTH_ISSUER`, `AUTH_JWKS_URL`, `AUTH_AUDIENCE`
-- `SCREENING_TPS`
-- `AUDIT_ACCESS_LOG_ENABLED` (default `true`)
-- `AUDIT_EVENT_RETENTION_DAYS` (default `3650`)
-- `API_ACCESS_LOG_RETENTION_DAYS` (default `365`)
-- `EXTERNAL_API_ERROR_RETENTION_DAYS` (default `365`)
-- `OPERATIONAL_CLEANUP_INTERVAL_S` (default `3600`)
-- `HIGH_RISK_EXTERNAL_API_ERROR_WINDOW_MINUTES` (default `15`)
-- `HIGH_RISK_EXTERNAL_API_ERROR_THRESHOLD` (default `10`)
+Backend and worker share the same settings (see `backend/app/config.py` and `backend/.env.example`).
+
+| Parameter | Default Value | Explanation |
+|---|---:|---|
+| `APP_NAME` | `OFAC Screening Enterprise API` | Used by FastAPI for service metadata/log labeling. |
+| `APP_VERSION` | `1.0.0` | Used by FastAPI for service metadata. |
+| `APP_DB_PATH` | `/tmp/screening.db` | SQLite path (used when `APP_DB_URL` is not configured). |
+| `APP_DB_URL` | *(empty)* | PostgreSQL connection string. Set in AWS deployments (recommended). |
+| `CORS_ALLOW_ORIGINS` | `*` | CORS allow-list for API responses. Tighten in production. |
+| `MULTIPART_MAX_PART_SIZE` | `25m` | Max multipart part size accepted by the backend for `/screenings/batch-upload`. |
+| `AWS_REGION` | `us-east-1` | AWS region for SQS/S3/SNS clients. |
+| `AWS_SQS_QUEUE_NAME` | `screening-requests` | Queue used for async screening. |
+| `AWS_ENDPOINT_URL` | *(empty)* | Optional override for localstack/dev. |
+| `AWS_ACCESS_KEY_ID` | *(empty)* | Optional static credentials (prefer ECS task role in AWS). |
+| `AWS_SECRET_ACCESS_KEY` | *(empty)* | Optional static credentials (prefer ECS task role in AWS). |
+| `AWS_S3_UPLOAD_BUCKET` | *(empty)* | Enables S3 storage for uploads. Required for large batch `JOB_DISPATCH` flow. |
+| `AWS_S3_UPLOAD_PREFIX` | `screening-input` | Key prefix for S3 uploads (source files and `queries.json`). |
+| `AWS_SNS_NOTIFICATIONS_ENABLED` | `false` | Enables SNS notifications for scheduled screening completion. |
+| `AWS_SNS_SCHEDULE_TOPIC_PREFIX` | `ofac-screening-schedule` | Prefix used for SNS topics created for schedule/email notifications. |
+| `ACTIMIZE_MOCK` | `false` | If `true`, returns deterministic mock responses instead of calling Actimize. |
+| `ACTIMIZE_BASE_URL` | *(empty)* | Base URL for Actimize screening API (required when not mocking). |
+| `ACTIMIZE_PROVIDER` | `prudential` | Provider label used in audit/error telemetry. |
+| `ACTIMIZE_API_KEY` | *(empty)* | Optional API key auth (sent via headers when configured). |
+| `ACTIMIZE_BEARER_TOKEN` | *(empty)* | Optional static bearer token auth (sent via headers when configured). |
+| `ACTIMIZE_TOKEN_URL` | *(empty)* | OAuth token endpoint for client-credentials (when using dynamic bearer tokens). |
+| `ACTIMIZE_CLIENT_ID` | *(empty)* | OAuth client id (required if `ACTIMIZE_TOKEN_URL` is set). |
+| `ACTIMIZE_CLIENT_SECRET` | *(empty)* | OAuth client secret (optional if using client assertion). |
+| `ACTIMIZE_CLIENT_ASSERTION_TYPE` | `urn:ietf:params:oauth:client-assertion-type:jwt-bearer` | OAuth client assertion type when using JWT client assertion. |
+| `ACTIMIZE_CLIENT_ASSERTION_ALGORITHM` | `RS256` | JWT signing algorithm for client assertion. |
+| `ACTIMIZE_CLIENT_ASSERTION_AUDIENCE` | *(empty)* | JWT audience; defaults to `ACTIMIZE_TOKEN_URL` when unset. |
+| `ACTIMIZE_CLIENT_ASSERTION_KID` | *(empty)* | Optional JWT header `kid` for key selection. |
+| `ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY` | *(empty)* | PEM private key for client assertion (inline). |
+| `ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64` | *(empty)* | PEM private key for client assertion (base64-encoded). |
+| `ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH` | *(empty)* | PEM private key for client assertion (file path). |
+| `ACTIMIZE_SCOPE` | *(empty)* | Optional OAuth scope string for token request. |
+| `ACTIMIZE_SOURCE_SYSTEM` | `ZIP` | Sent in Actimize payload as `sourceSystem` and used when deriving fallback `partyKey`. |
+| `ACTIMIZE_REQUESTER_NAME` | `SCREENING_SYSTEM` | Default requester name sent in Actimize payload when user name is not provided. |
+| `ACTIMIZE_ALERT_REVIEW_URL` | *(empty)* | Optional URL included in scheduled completion notifications for where to review alerts. |
+| `ACTIMIZE_TIMEOUT_S` | `10.0` | HTTP timeout (seconds) for Actimize requests. |
+| `SCREENING_TPS` | `32` | Worker outbound throughput cap (TPS). |
+| `SCREENING_POLL_INTERVAL_MS` | `750` | Intended poll interval (ms) used by clients/UX; backend uses it for any internal timing where applicable. |
+| `SCREENING_SYNC_TIMEOUT_S` | `60` | Timeout budget (seconds) for synchronous screening request flows. |
+| `SCREENING_RESULT_LIMIT` | `5` | Default max number of matches returned per item. |
+| `DAILY_SCREENING_TIMEZONE` | `America/New_York` | Timezone for schedule calculations. |
+| `DAILY_SCREENING_HOUR` | `0` | Hour-of-day for default daily schedule run time (local to `DAILY_SCREENING_TIMEZONE`). |
+| `DAILY_SCREENING_MINUTE` | `5` | Minute-of-hour for default daily schedule run time. |
+| `DAILY_SCREENING_CHECK_INTERVAL_S` | `30` | How often the worker checks for due schedules. |
+| `AUDIT_ACCESS_LOG_ENABLED` | `true` | Enables middleware access logging into `api_access_logs`. |
+| `AUDIT_EVENT_RETENTION_DAYS` | `3650` | Retention window for `audit_events` cleanup. |
+| `API_ACCESS_LOG_RETENTION_DAYS` | `365` | Retention window for `api_access_logs` cleanup. |
+| `EXTERNAL_API_ERROR_RETENTION_DAYS` | `365` | Retention window for `external_api_errors` cleanup. |
+| `OPERATIONAL_CLEANUP_INTERVAL_S` | `3600` | How often the worker purges old operational data. |
+| `HIGH_RISK_EXTERNAL_API_ERROR_WINDOW_MINUTES` | `15` | Rolling window for high-risk external API failure detection. |
+| `HIGH_RISK_EXTERNAL_API_ERROR_THRESHOLD` | `10` | Threshold count inside the window that triggers high-risk alert audit events. |
+| `AUTH_ENABLED` | `false` | Enables JWT validation + permission enforcement for `/api/v1/*`. |
+| `AUTH_ISSUER` | *(empty)* | JWT issuer URL. Required when `AUTH_ENABLED=true`. |
+| `AUTH_JWKS_URL` | *(empty)* | JWKS URL for signature verification. Required when `AUTH_ENABLED=true`. |
+| `AUTH_AUDIENCE` | *(empty)* | JWT audience/app-client id (required for Cognito access tokens). |
+| `AUTH_ALGORITHMS` | `RS256` | Allowed JWT signing algorithms. |
 
 ## 11. Appendix: Batch File -> Actimize Request Mapping
 

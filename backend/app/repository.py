@@ -1874,11 +1874,21 @@ class JobRepository:
 
         schedule = self.get_daily_schedule(schedule_id)
         batch_name = (schedule or {}).get("batch_name") or schedule_id
-        title = f"Scheduled screening completed: {batch_name}"
+        total_items = int(summary.get("total_items") or 0)
+        completed_items = int(summary.get("completed_items") or 0)
+        failed_items = int(summary.get("failed_items") or 0)
+        if total_items <= 0 or failed_items <= 0:
+            completion_outcome = "Fully Completed"
+        elif completed_items <= 0 and failed_items >= total_items:
+            completion_outcome = "Fully Failed"
+        else:
+            completion_outcome = "Partially Completed"
+        title = f"Scheduled screening {completion_outcome}: {batch_name}"
         message = (
-            f"Job {job_id} completed. "
+            f"Job {job_id} is {completion_outcome}. "
             f"Total {summary['total_items']}, matches {summary['matched_items']}, "
-            f"clear {summary['clear_items']}, failed {summary['failed_items']}."
+            f"clear {summary['clear_items']}, failed {summary['failed_items']}, "
+            f"completed {summary['completed_items']}."
         )
         return self.create_schedule_notifications(schedule_id, job_id, title, message, summary)
 
