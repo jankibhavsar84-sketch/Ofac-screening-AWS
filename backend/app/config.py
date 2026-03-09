@@ -91,6 +91,7 @@ class Settings:
     actimize_mock: bool
 
     screening_tps: int
+    screening_parallel_messages: int
     screening_poll_interval_ms: int
     screening_sync_timeout_s: int
     screening_result_limit: int
@@ -157,6 +158,7 @@ def load_settings() -> Settings:
         actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 10.0),
         actimize_mock=_to_bool(os.getenv("ACTIMIZE_MOCK"), False),
         screening_tps=_to_int(os.getenv("SCREENING_TPS"), 32),
+        screening_parallel_messages=_to_int(os.getenv("SCREENING_PARALLEL_MESSAGES"), 1),
         screening_poll_interval_ms=_to_int(os.getenv("SCREENING_POLL_INTERVAL_MS"), 750),
         screening_sync_timeout_s=_to_int(os.getenv("SCREENING_SYNC_TIMEOUT_S"), 60),
         screening_result_limit=_to_int(os.getenv("SCREENING_RESULT_LIMIT"), 5),

@@ -6,13 +6,13 @@ This repository has been upgraded to an enterprise-style architecture:
 - Backend API: FastAPI
 - Queue: AWS SQS (LocalStack in local Docker setup)
 - Screening engine: Actimize Watchlist adapter (single-request model)
-- Throughput control: Worker-side throttle at 32 TPS
+- Throughput control: worker-side TPS throttle plus configurable parallel message processing.
 
 ## Architecture
 
 1. Single-screen flow: frontend calls FastAPI sync endpoint for immediate Actimize response.
 2. Batch flow: frontend submits job to FastAPI; API persists job + items and enqueues one SQS message per entity.
-3. Worker consumes SQS, screens each entity with Actimize (or mock mode), and enforces `32 TPS`.
+3. Worker consumes SQS, screens each entity with Actimize (or mock mode), and enforces configurable TPS + parallelism.
 4. Worker stores normalized batch results back in SQLite.
 5. Frontend polls batch job status and renders results when complete.
 6. Users can select one or many screening types (`Sanction`, `PEP`, `AME`, `Fincen 314(a)`, `Global Sanction`) in both single and batch modes.
@@ -35,7 +35,7 @@ flowchart LR
   BE -->|read/write| DB[(RDS PostgreSQL<br/>jobs, items, schedules, audit)]
   BE -->|single sync screen| ACT[Actimize Watchlist Engine]
 
-  W[Worker Service<br/>ECS/Fargate Container<br/>Rate limit: 32 TPS] -->|poll| Q
+  W[Worker Service<br/>ECS/Fargate Container<br/>Configurable TPS + parallelism] -->|poll| Q
   W -->|read/write| DB
   W -->|screen requests| ACT
 
@@ -73,7 +73,7 @@ sequenceDiagram
   WK->>SQ: receive message
   WK->>DB: mark item PROCESSING
   loop For each selected screening type
-    WK->>AX: single-type screening call (32 TPS global cap)
+    WK->>AX: single-type screening call (global TPS cap)
     AX-->>WK: result
   end
   WK->>DB: mark item COMPLETED/FAILED
@@ -150,7 +150,8 @@ Frontend runtime config in container:
 Backend/Worker (`backend/.env.example`):
 
 - `APP_DB_URL` optional. If set to a `postgresql://...` URL, backend/worker use PostgreSQL instead of SQLite (`APP_DB_PATH`).
-- `SCREENING_TPS=32` for Actimize single-request throughput
+- `SCREENING_TPS=32` caps outbound screening API request rate
+- `SCREENING_PARALLEL_MESSAGES=1` controls how many SQS messages the worker processes concurrently
 - `ACTIMIZE_MOCK` is ignored; backend always calls Actimize
 - `ACTIMIZE_PROVIDER=prudential` (default and only supported provider)
 - Set `ACTIMIZE_BASE_URL=<.../financial-governance/sanctions-screening/v1>`

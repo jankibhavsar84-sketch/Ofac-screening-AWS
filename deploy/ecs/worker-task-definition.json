@@ -40,6 +40,10 @@
                                                              "value":  "26"
                                                          },
                                                          {
+                                                             "name":  "SCREENING_PARALLEL_MESSAGES",
+                                                             "value":  "26"
+                                                         },
+                                                         {
                                                              "name":  "DAILY_SCREENING_TIMEZONE",
                                                              "value":  "America/New_York"
                                                          },

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import logging
+from threading import Lock
 import time
 from datetime import datetime, timezone
+from typing import Any
 from uuid import uuid4
 
 import boto3
@@ -254,15 +257,17 @@ class FixedRateLimiter:
         self.max_tps = max(max_tps, 1)
         self.min_interval = 1.0 / self.max_tps
         self.next_slot = 0.0
+        self._lock = Lock()
 
     def wait_turn(self) -> None:
-        now = time.monotonic()
-        if self.next_slot == 0.0:
-            self.next_slot = now
-        if now < self.next_slot:
-            time.sleep(self.next_slot - now)
+        with self._lock:
             now = time.monotonic()
-        self.next_slot = max(self.next_slot, now) + self.min_interval
+            if self.next_slot == 0.0:
+                self.next_slot = now
+            if now < self.next_slot:
+                time.sleep(self.next_slot - now)
+                now = time.monotonic()
+            self.next_slot = max(self.next_slot, now) + self.min_interval
 
 
 def _format_execution_time(seconds: int | None) -> str:
@@ -439,6 +444,295 @@ def _publish_schedule_notification_via_sns(
     )
 
 
+def _receive_message_batch(queue: SqsQueue, max_messages: int) -> list[dict[str, Any]]:
+    target = max(int(max_messages), 1)
+    received: list[dict[str, Any]] = []
+    while len(received) < target:
+        to_fetch = min(10, target - len(received))
+        wait_time = 20 if not received else 0
+        chunk = queue.receive(max_messages=to_fetch, wait_time_seconds=wait_time)
+        if not chunk:
+            break
+        received.extend(chunk)
+        if len(chunk) < to_fetch:
+            break
+    return received
+
+
+def _process_received_message(
+    *,
+    raw: dict[str, Any],
+    queue: SqsQueue,
+    repository: JobRepository,
+    notifier: SnsNotifier,
+    actimize: ActimizeClient,
+    limiter: FixedRateLimiter,
+) -> None:
+    receipt_handle = raw.get("ReceiptHandle")
+    if not receipt_handle:
+        return
+    message_id = str(raw.get("MessageId") or "").strip() or str(receipt_handle)
+    repository.add_audit_event(
+        action="SQS_MESSAGE_RECEIVED",
+        entity_type="sqs_message",
+        entity_id=message_id,
+        details={
+            "queue_name": settings.aws_sqs_queue_name,
+            "receipt_handle": receipt_handle,
+        },
+    )
+
+    try:
+        message = queue.decode(raw)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("invalid message payload: %s", exc)
+        repository.add_audit_event(
+            action="SQS_MESSAGE_DECODE_FAILED",
+            entity_type="sqs_message",
+            entity_id=message_id,
+            details={
+                "queue_name": settings.aws_sqs_queue_name,
+                "receipt_handle": receipt_handle,
+                "body": raw.get("Body"),
+                "error": str(exc),
+            },
+        )
+        queue.delete(str(receipt_handle))
+        return
+
+    if str(message.message_type or "").strip().upper() == "JOB_DISPATCH":
+        repository.add_audit_event(
+            action="BATCH_DISPATCH_MESSAGE_PICKED",
+            user_id=message.user_id,
+            user_name=message.user_name,
+            entity_type="screening_job",
+            entity_id=message.job_id,
+            details={
+                "job_id": message.job_id,
+                "source_upload_id": message.source_upload_id,
+                "queue_name": settings.aws_sqs_queue_name,
+                "message_id": message_id,
+            },
+        )
+        try:
+            _handle_job_dispatch(
+                repository=repository,
+                queue=queue,
+                message=message,
+                receipt_handle=str(receipt_handle),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("batch dispatch failed: %s", exc)
+            repository.add_audit_event(
+                action="BATCH_DISPATCH_FAILED",
+                user_id=message.user_id,
+                user_name=message.user_name,
+                entity_type="screening_job",
+                entity_id=message.job_id,
+                details={
+                    "job_id": message.job_id,
+                    "source_upload_id": message.source_upload_id,
+                    "error": str(exc),
+                },
+            )
+            repository.mark_job_failed(message.job_id, str(exc))
+        finally:
+            queue.delete(str(receipt_handle))
+        return
+
+    correlation_id = str(message.correlation_id or "").strip() or str(uuid4())
+    repository.add_audit_event(
+        action="SQS_MESSAGE_PICKED",
+        user_id=message.user_id,
+        user_name=message.user_name,
+        entity_type="screening_queue_item",
+        entity_id=f"{message.job_id}:{message.item_key}",
+        details={
+            "queue_name": settings.aws_sqs_queue_name,
+            "message_id": message_id,
+            "job_id": message.job_id,
+            "item_key": message.item_key,
+            "source_schedule_id": message.source_schedule_id,
+            "correlation_id": correlation_id,
+        },
+    )
+
+    repository.mark_item_processing(message.job_id, message.item_key)
+    request_payload = message.query.model_dump(mode="json")
+    repository.add_audit_event(
+        action="ASYNC_SCREENING_API_CALL_STARTED",
+        user_id=message.user_id,
+        user_name=message.user_name,
+        entity_type="screening_item",
+        entity_id=f"{message.job_id}:{message.item_key}",
+        details={
+            "job_id": message.job_id,
+            "item_key": message.item_key,
+            "provider": settings.actimize_provider,
+            "operation": "screen_many_types",
+            "screening_types": message.screening_types,
+            "mock_screening": message.mock_screening,
+            "source_schedule_id": message.source_schedule_id,
+            "correlation_id": correlation_id,
+            "request": request_payload,
+        },
+    )
+
+    try:
+        limiter.wait_turn()
+        result = actimize.screen_many_types(
+            message.query,
+            message.screening_types,
+            message.mock_screening,
+            requester_name=message.user_name,
+        )
+        repository.mark_item_completed(message.job_id, message.item_key, result)
+        result_items = result.get("results", []) if isinstance(result, dict) else []
+        result_count = len(result_items) if isinstance(result_items, list) else 0
+        repository.add_audit_event(
+            action="ASYNC_SCREENING_API_CALL_SUCCEEDED",
+            user_id=message.user_id,
+            user_name=message.user_name,
+            entity_type="screening_item",
+            entity_id=f"{message.job_id}:{message.item_key}",
+            details={
+                "job_id": message.job_id,
+                "item_key": message.item_key,
+                "provider": settings.actimize_provider,
+                "operation": "screen_many_types",
+                "screening_types": message.screening_types,
+                "mock_screening": message.mock_screening,
+                "source_schedule_id": message.source_schedule_id,
+                "correlation_id": correlation_id,
+                "result_count": result_count,
+                "result": result,
+            },
+        )
+        if message.source_schedule_id and message.source_record_hash:
+            repository.mark_schedule_record_screened(
+                schedule_id=message.source_schedule_id,
+                record_hash=message.source_record_hash,
+                job_id=message.job_id,
+            )
+            created_notifications = repository.maybe_publish_schedule_job_notification(
+                job_id=message.job_id,
+                schedule_id=message.source_schedule_id,
+            )
+            if created_notifications > 0:
+                _publish_schedule_notification_via_sns(
+                    repository=repository,
+                    notifier=notifier,
+                    schedule_id=message.source_schedule_id,
+                    job_id=message.job_id,
+                )
+                logger.info(
+                    "published %s schedule notifications for job=%s schedule=%s",
+                    created_notifications,
+                    message.job_id,
+                    message.source_schedule_id,
+                )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "screening failed for job=%s key=%s: %s",
+            message.job_id,
+            message.item_key,
+            exc,
+        )
+        provider, operation, endpoint, status_code, api_details = _resolve_external_api_context(exc)
+
+        repository.add_external_api_error(
+            provider=provider,
+            operation=operation,
+            endpoint=endpoint,
+            status_code=status_code,
+            user_id=message.user_id,
+            user_name=message.user_name,
+            job_id=message.job_id,
+            item_key=message.item_key,
+            error_text=str(exc),
+            details={
+                "query": request_payload,
+                "screening_types": message.screening_types,
+                "mock_screening": message.mock_screening,
+                "source_schedule_id": message.source_schedule_id,
+                "correlation_id": correlation_id,
+                **api_details,
+            },
+        )
+        alert = repository.maybe_emit_high_risk_external_api_failure_alert(
+            provider=provider,
+            operation=operation,
+            threshold=settings.high_risk_external_api_error_threshold,
+            window_minutes=settings.high_risk_external_api_error_window_minutes,
+            correlation_id=correlation_id,
+        )
+        if alert and alert.get("new_alert_created"):
+            logger.warning(
+                "high risk external API failure alert: provider=%s operation=%s total=%s window_minutes=%s threshold=%s",
+                alert.get("provider"),
+                alert.get("operation"),
+                alert.get("total_errors"),
+                alert.get("window_minutes"),
+                alert.get("threshold"),
+            )
+        repository.add_audit_event(
+            action="ASYNC_SCREENING_API_CALL_FAILED",
+            user_id=message.user_id,
+            user_name=message.user_name,
+            entity_type="screening_item",
+            entity_id=f"{message.job_id}:{message.item_key}",
+            details={
+                "job_id": message.job_id,
+                "item_key": message.item_key,
+                "provider": provider,
+                "operation": operation,
+                "endpoint": endpoint,
+                "status_code": status_code,
+                "screening_types": message.screening_types,
+                "mock_screening": message.mock_screening,
+                "source_schedule_id": message.source_schedule_id,
+                "correlation_id": correlation_id,
+                "request": request_payload,
+                "error": str(exc),
+                **api_details,
+            },
+        )
+        repository.mark_item_failed(message.job_id, message.item_key, str(exc))
+        repository.add_audit_event(
+            action="ASYNC_SCREENING_ITEM_FAILED",
+            user_id=message.user_id,
+            user_name=message.user_name,
+            entity_type="screening_item",
+            entity_id=f"{message.job_id}:{message.item_key}",
+            details={
+                "job_id": message.job_id,
+                "item_key": message.item_key,
+                "correlation_id": correlation_id,
+                "error": str(exc),
+            },
+        )
+        if message.source_schedule_id:
+            created_notifications = repository.maybe_publish_schedule_job_notification(
+                job_id=message.job_id,
+                schedule_id=message.source_schedule_id,
+            )
+            if created_notifications > 0:
+                _publish_schedule_notification_via_sns(
+                    repository=repository,
+                    notifier=notifier,
+                    schedule_id=message.source_schedule_id,
+                    job_id=message.job_id,
+                )
+                logger.info(
+                    "published %s schedule notifications for failed job=%s schedule=%s",
+                    created_notifications,
+                    message.job_id,
+                    message.source_schedule_id,
+                )
+    finally:
+        queue.delete(str(receipt_handle))
+
+
 def run() -> None:
     queue = SqsQueue()
     queue.ensure_queue()
@@ -450,294 +744,53 @@ def run() -> None:
     last_schedule_check = 0.0
     last_cleanup_run = 0.0
 
-    logger.info("worker started with max TPS=%s", settings.screening_tps)
+    max_parallel_messages = max(settings.screening_parallel_messages, 1)
+    logger.info(
+        "worker started with max TPS=%s max parallel messages=%s",
+        settings.screening_tps,
+        max_parallel_messages,
+    )
 
-    while True:
-        messages = queue.receive(max_messages=10, wait_time_seconds=20)
-
-        for raw in messages:
-            receipt_handle = raw.get("ReceiptHandle")
-            if not receipt_handle:
-                continue
-            message_id = str(raw.get("MessageId") or "").strip() or receipt_handle
-            repository.add_audit_event(
-                action="SQS_MESSAGE_RECEIVED",
-                entity_type="sqs_message",
-                entity_id=message_id,
-                details={
-                    "queue_name": settings.aws_sqs_queue_name,
-                    "receipt_handle": receipt_handle,
-                },
-            )
-
-            try:
-                message = queue.decode(raw)
-            except Exception as exc:  # noqa: BLE001
-                logger.exception("invalid message payload: %s", exc)
-                repository.add_audit_event(
-                    action="SQS_MESSAGE_DECODE_FAILED",
-                    entity_type="sqs_message",
-                    entity_id=message_id,
-                    details={
-                        "queue_name": settings.aws_sqs_queue_name,
-                        "receipt_handle": receipt_handle,
-                        "body": raw.get("Body"),
-                        "error": str(exc),
-                    },
-                )
-                queue.delete(receipt_handle)
-                continue
-
-            if str(message.message_type or "").strip().upper() == "JOB_DISPATCH":
-                repository.add_audit_event(
-                    action="BATCH_DISPATCH_MESSAGE_PICKED",
-                    user_id=message.user_id,
-                    user_name=message.user_name,
-                    entity_type="screening_job",
-                    entity_id=message.job_id,
-                    details={
-                        "job_id": message.job_id,
-                        "source_upload_id": message.source_upload_id,
-                        "queue_name": settings.aws_sqs_queue_name,
-                        "message_id": message_id,
-                    },
-                )
-                try:
-                    _handle_job_dispatch(
-                        repository=repository,
+    with ThreadPoolExecutor(max_workers=max_parallel_messages) as executor:
+        while True:
+            messages = _receive_message_batch(queue, max_parallel_messages)
+            if messages:
+                futures = [
+                    executor.submit(
+                        _process_received_message,
+                        raw=raw,
                         queue=queue,
-                        message=message,
-                        receipt_handle=receipt_handle,
+                        repository=repository,
+                        notifier=notifier,
+                        actimize=actimize,
+                        limiter=limiter,
                     )
-                except Exception as exc:  # noqa: BLE001
-                    logger.exception("batch dispatch failed: %s", exc)
+                    for raw in messages
+                ]
+                for future in as_completed(futures):
+                    try:
+                        future.result()
+                    except Exception as exc:  # noqa: BLE001
+                        logger.exception("unexpected worker message failure: %s", exc)
+
+            now_monotonic = time.monotonic()
+            if now_monotonic - last_schedule_check >= max(settings.daily_screening_check_interval_s, 5):
+                trigger_due_daily_schedules(repository, service, notifier)
+                last_schedule_check = now_monotonic
+            if now_monotonic - last_cleanup_run >= max(settings.operational_cleanup_interval_s, 60):
+                deleted = repository.purge_old_operational_data(
+                    audit_event_retention_days=settings.audit_event_retention_days,
+                    api_access_log_retention_days=settings.api_access_log_retention_days,
+                    external_api_error_retention_days=settings.external_api_error_retention_days,
+                )
+                if any(v > 0 for v in deleted.values()):
                     repository.add_audit_event(
-                        action="BATCH_DISPATCH_FAILED",
-                        user_id=message.user_id,
-                        user_name=message.user_name,
-                        entity_type="screening_job",
-                        entity_id=message.job_id,
-                        details={
-                            "job_id": message.job_id,
-                            "source_upload_id": message.source_upload_id,
-                            "error": str(exc),
-                        },
+                        action="OPERATIONAL_DATA_PURGED",
+                        entity_type="retention_policy",
+                        details=deleted,
                     )
-                    repository.mark_job_failed(message.job_id, str(exc))
-                finally:
-                    queue.delete(receipt_handle)
-                continue
-
-            correlation_id = str(message.correlation_id or "").strip() or str(uuid4())
-            repository.add_audit_event(
-                action="SQS_MESSAGE_PICKED",
-                user_id=message.user_id,
-                user_name=message.user_name,
-                entity_type="screening_queue_item",
-                entity_id=f"{message.job_id}:{message.item_key}",
-                details={
-                    "queue_name": settings.aws_sqs_queue_name,
-                    "message_id": message_id,
-                    "job_id": message.job_id,
-                    "item_key": message.item_key,
-                    "source_schedule_id": message.source_schedule_id,
-                    "correlation_id": correlation_id,
-                },
-            )
-
-            repository.mark_item_processing(message.job_id, message.item_key)
-            request_payload = message.query.model_dump(mode="json")
-            repository.add_audit_event(
-                action="ASYNC_SCREENING_API_CALL_STARTED",
-                user_id=message.user_id,
-                user_name=message.user_name,
-                entity_type="screening_item",
-                entity_id=f"{message.job_id}:{message.item_key}",
-                details={
-                    "job_id": message.job_id,
-                    "item_key": message.item_key,
-                    "provider": settings.actimize_provider,
-                    "operation": "screen_many_types",
-                    "screening_types": message.screening_types,
-                    "mock_screening": message.mock_screening,
-                    "source_schedule_id": message.source_schedule_id,
-                    "correlation_id": correlation_id,
-                    "request": request_payload,
-                },
-            )
-
-            try:
-                limiter.wait_turn()
-                result = actimize.screen_many_types(
-                    message.query,
-                    message.screening_types,
-                    message.mock_screening,
-                    requester_name=message.user_name,
-                )
-                repository.mark_item_completed(message.job_id, message.item_key, result)
-                result_items = result.get("results", []) if isinstance(result, dict) else []
-                result_count = len(result_items) if isinstance(result_items, list) else 0
-                repository.add_audit_event(
-                    action="ASYNC_SCREENING_API_CALL_SUCCEEDED",
-                    user_id=message.user_id,
-                    user_name=message.user_name,
-                    entity_type="screening_item",
-                    entity_id=f"{message.job_id}:{message.item_key}",
-                    details={
-                        "job_id": message.job_id,
-                        "item_key": message.item_key,
-                        "provider": settings.actimize_provider,
-                        "operation": "screen_many_types",
-                        "screening_types": message.screening_types,
-                        "mock_screening": message.mock_screening,
-                        "source_schedule_id": message.source_schedule_id,
-                        "correlation_id": correlation_id,
-                        "result_count": result_count,
-                        "result": result,
-                    },
-                )
-                if message.source_schedule_id and message.source_record_hash:
-                    repository.mark_schedule_record_screened(
-                        schedule_id=message.source_schedule_id,
-                        record_hash=message.source_record_hash,
-                        job_id=message.job_id,
-                    )
-                    created_notifications = repository.maybe_publish_schedule_job_notification(
-                        job_id=message.job_id,
-                        schedule_id=message.source_schedule_id,
-                    )
-                    if created_notifications > 0:
-                        _publish_schedule_notification_via_sns(
-                            repository=repository,
-                            notifier=notifier,
-                            schedule_id=message.source_schedule_id,
-                            job_id=message.job_id,
-                        )
-                        logger.info(
-                            "published %s schedule notifications for job=%s schedule=%s",
-                            created_notifications,
-                            message.job_id,
-                            message.source_schedule_id,
-                        )
-            except Exception as exc:  # noqa: BLE001
-                logger.exception(
-                    "screening failed for job=%s key=%s: %s",
-                    message.job_id,
-                    message.item_key,
-                    exc,
-                )
-                provider, operation, endpoint, status_code, api_details = _resolve_external_api_context(exc)
-
-                repository.add_external_api_error(
-                    provider=provider,
-                    operation=operation,
-                    endpoint=endpoint,
-                    status_code=status_code,
-                    user_id=message.user_id,
-                    user_name=message.user_name,
-                    job_id=message.job_id,
-                    item_key=message.item_key,
-                    error_text=str(exc),
-                    details={
-                        "query": request_payload,
-                        "screening_types": message.screening_types,
-                        "mock_screening": message.mock_screening,
-                        "source_schedule_id": message.source_schedule_id,
-                        "correlation_id": correlation_id,
-                        **api_details,
-                    },
-                )
-                alert = repository.maybe_emit_high_risk_external_api_failure_alert(
-                    provider=provider,
-                    operation=operation,
-                    threshold=settings.high_risk_external_api_error_threshold,
-                    window_minutes=settings.high_risk_external_api_error_window_minutes,
-                    correlation_id=correlation_id,
-                )
-                if alert and alert.get("new_alert_created"):
-                    logger.warning(
-                        "high risk external API failure alert: provider=%s operation=%s total=%s window_minutes=%s threshold=%s",
-                        alert.get("provider"),
-                        alert.get("operation"),
-                        alert.get("total_errors"),
-                        alert.get("window_minutes"),
-                        alert.get("threshold"),
-                    )
-                repository.add_audit_event(
-                    action="ASYNC_SCREENING_API_CALL_FAILED",
-                    user_id=message.user_id,
-                    user_name=message.user_name,
-                    entity_type="screening_item",
-                    entity_id=f"{message.job_id}:{message.item_key}",
-                    details={
-                        "job_id": message.job_id,
-                        "item_key": message.item_key,
-                        "provider": provider,
-                        "operation": operation,
-                        "endpoint": endpoint,
-                        "status_code": status_code,
-                        "screening_types": message.screening_types,
-                        "mock_screening": message.mock_screening,
-                        "source_schedule_id": message.source_schedule_id,
-                        "correlation_id": correlation_id,
-                        "request": request_payload,
-                        "error": str(exc),
-                        **api_details,
-                    },
-                )
-                repository.mark_item_failed(message.job_id, message.item_key, str(exc))
-                repository.add_audit_event(
-                    action="ASYNC_SCREENING_ITEM_FAILED",
-                    user_id=message.user_id,
-                    user_name=message.user_name,
-                    entity_type="screening_item",
-                    entity_id=f"{message.job_id}:{message.item_key}",
-                    details={
-                        "job_id": message.job_id,
-                        "item_key": message.item_key,
-                        "correlation_id": correlation_id,
-                        "error": str(exc),
-                    },
-                )
-                if message.source_schedule_id:
-                    created_notifications = repository.maybe_publish_schedule_job_notification(
-                        job_id=message.job_id,
-                        schedule_id=message.source_schedule_id,
-                    )
-                    if created_notifications > 0:
-                        _publish_schedule_notification_via_sns(
-                            repository=repository,
-                            notifier=notifier,
-                            schedule_id=message.source_schedule_id,
-                            job_id=message.job_id,
-                        )
-                        logger.info(
-                            "published %s schedule notifications for failed job=%s schedule=%s",
-                            created_notifications,
-                            message.job_id,
-                            message.source_schedule_id,
-                        )
-            finally:
-                queue.delete(receipt_handle)
-
-        now_monotonic = time.monotonic()
-        if now_monotonic - last_schedule_check >= max(settings.daily_screening_check_interval_s, 5):
-            trigger_due_daily_schedules(repository, service, notifier)
-            last_schedule_check = now_monotonic
-        if now_monotonic - last_cleanup_run >= max(settings.operational_cleanup_interval_s, 60):
-            deleted = repository.purge_old_operational_data(
-                audit_event_retention_days=settings.audit_event_retention_days,
-                api_access_log_retention_days=settings.api_access_log_retention_days,
-                external_api_error_retention_days=settings.external_api_error_retention_days,
-            )
-            if any(v > 0 for v in deleted.values()):
-                repository.add_audit_event(
-                    action="OPERATIONAL_DATA_PURGED",
-                    entity_type="retention_policy",
-                    details=deleted,
-                )
-                logger.info("operational data cleanup completed: %s", deleted)
-            last_cleanup_run = now_monotonic
+                    logger.info("operational data cleanup completed: %s", deleted)
+                last_cleanup_run = now_monotonic
 
 
 def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningService, notifier: SnsNotifier) -> None:

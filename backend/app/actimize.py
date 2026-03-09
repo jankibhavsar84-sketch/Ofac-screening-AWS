@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import re
+from threading import Lock
 import time
 from datetime import datetime
 from typing import Any
@@ -213,6 +214,7 @@ class ActimizeClient:
         self.timeout_s = settings.actimize_timeout_s
         self._cached_access_token = ""
         self._cached_access_token_expires_at = 0.0
+        self._token_lock = Lock()
 
     def screen_single(
         self,
@@ -381,58 +383,63 @@ class ActimizeClient:
         if self._cached_access_token and now < self._cached_access_token_expires_at:
             return self._cached_access_token
 
-        client_assertion = self._build_client_assertion()
-        if not client_assertion and not self.client_secret:
-            return ""
+        with self._token_lock:
+            now = time.time()
+            if self._cached_access_token and now < self._cached_access_token_expires_at:
+                return self._cached_access_token
 
-        payload = {
-            "grant_type": "client_credentials",
-            "client_id": self.client_id,
-        }
-        if client_assertion:
-            payload["client_assertion_type"] = self.client_assertion_type
-            payload["client_assertion"] = client_assertion
-        elif self.client_secret:
-            payload["client_secret"] = self.client_secret
-        if self.scope:
-            payload["scope"] = self.scope
+            client_assertion = self._build_client_assertion()
+            if not client_assertion and not self.client_secret:
+                return ""
 
-        try:
-            response = requests.post(self.token_url, data=payload, timeout=self.timeout_s)
-        except requests.RequestException as exc:
-            raise ExternalApiCallError(
-                provider=self.provider,
-                operation="oauth_token",
-                endpoint=self.token_url,
-                message=str(exc),
-            ) from exc
-        if response.status_code >= 400:
-            raise ExternalApiCallError(
-                provider=self.provider,
-                operation="oauth_token",
-                endpoint=self.token_url,
-                status_code=int(response.status_code),
-                message=self._extract_error_detail(response),
-            )
+            payload = {
+                "grant_type": "client_credentials",
+                "client_id": self.client_id,
+            }
+            if client_assertion:
+                payload["client_assertion_type"] = self.client_assertion_type
+                payload["client_assertion"] = client_assertion
+            elif self.client_secret:
+                payload["client_secret"] = self.client_secret
+            if self.scope:
+                payload["scope"] = self.scope
 
-        try:
-            body = response.json() if response.content else {}
-        except Exception as exc:  # noqa: BLE001
-            raise ExternalApiCallError(
-                provider=self.provider,
-                operation="oauth_token",
-                endpoint=self.token_url,
-                status_code=int(response.status_code),
-                message="OAuth token endpoint returned non-JSON response",
-            ) from exc
-        access_token = str(body.get("access_token") or "").strip()
-        if not access_token:
-            raise RuntimeError("OAuth token response missing access_token")
+            try:
+                response = requests.post(self.token_url, data=payload, timeout=self.timeout_s)
+            except requests.RequestException as exc:
+                raise ExternalApiCallError(
+                    provider=self.provider,
+                    operation="oauth_token",
+                    endpoint=self.token_url,
+                    message=str(exc),
+                ) from exc
+            if response.status_code >= 400:
+                raise ExternalApiCallError(
+                    provider=self.provider,
+                    operation="oauth_token",
+                    endpoint=self.token_url,
+                    status_code=int(response.status_code),
+                    message=self._extract_error_detail(response),
+                )
 
-        expires_in = int(body.get("expires_in") or 300)
-        self._cached_access_token = access_token
-        self._cached_access_token_expires_at = time.time() + max(expires_in - 60, 30)
-        return access_token
+            try:
+                body = response.json() if response.content else {}
+            except Exception as exc:  # noqa: BLE001
+                raise ExternalApiCallError(
+                    provider=self.provider,
+                    operation="oauth_token",
+                    endpoint=self.token_url,
+                    status_code=int(response.status_code),
+                    message="OAuth token endpoint returned non-JSON response",
+                ) from exc
+            access_token = str(body.get("access_token") or "").strip()
+            if not access_token:
+                raise RuntimeError("OAuth token response missing access_token")
+
+            expires_in = int(body.get("expires_in") or 300)
+            self._cached_access_token = access_token
+            self._cached_access_token_expires_at = time.time() + max(expires_in - 60, 30)
+            return access_token
 
     def _build_client_assertion(self) -> str:
         private_key = self._resolve_client_assertion_private_key()
