@@ -237,7 +237,7 @@ const UNIFIED_TEMPLATE = {
   fileName: "Actimize_SSB1_template.xlsx",
   title: "Unified Screening Template",
   desc: "Includes the full Actimize Batch/Schedule column set required for upload.",
-  chips: ["Primary + 3 aliases", "3 IDs + 3 addresses", "Birth/Nationality/Gender", "68 columns"],
+  chips: ["Primary + 3 aliases", "3 IDs + 3 addresses", "Birth/Nationality/Gender", "62 columns"],
 } as const;
 
 function uuid() {
