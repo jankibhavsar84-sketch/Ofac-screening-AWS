@@ -11,7 +11,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "worker",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260308192606",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260308211030",
                                      "essential":  true,
                                      "command":  [
                                                      "python",
@@ -37,7 +37,7 @@
                                                          },
                                                          {
                                                              "name":  "SCREENING_TPS",
-                                                             "value":  "26"
+                                                             "value":  "10"
                                                          },
                                                          {
                                                              "name":  "SCREENING_PARALLEL_MESSAGES",
