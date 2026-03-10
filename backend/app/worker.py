@@ -315,6 +315,27 @@ def _resolve_external_api_context(exc: Exception) -> tuple[str, str, str, int | 
     )
 
 
+def _resolve_requester_name(message: ScreeningQueueMessage, repository: JobRepository) -> str | None:
+    candidate = str(message.user_name or "").strip()
+    if candidate:
+        return candidate
+
+    job_id = str(message.job_id or "").strip()
+    if job_id:
+        snapshot = repository.get_job_snapshot(job_id)
+        if isinstance(snapshot, dict):
+            snapshot_name = str(snapshot.get("user_name") or "").strip()
+            if snapshot_name:
+                return snapshot_name
+
+    user_id_candidate = str(message.user_id or "").strip()
+    if user_id_candidate:
+        return user_id_candidate
+
+    fallback = settings.actimize_requester_name.strip()
+    return fallback or None
+
+
 def _publish_schedule_notification_via_sns(
     repository: JobRepository,
     notifier: SnsNotifier,
@@ -499,6 +520,10 @@ def _process_received_message(
         )
         queue.delete(str(receipt_handle))
         return
+
+    resolved_requester_name = _resolve_requester_name(message, repository)
+    if resolved_requester_name != str(message.user_name or "").strip():
+        message = message.model_copy(update={"user_name": resolved_requester_name})
 
     if str(message.message_type or "").strip().upper() == "JOB_DISPATCH":
         repository.add_audit_event(

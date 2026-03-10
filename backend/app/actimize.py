@@ -539,7 +539,7 @@ class ActimizeClient:
             + _as_list(props.get("PartyKey"))
             + _as_list(props.get("party key"))
         )
-        party_key = explicit_party_key or self._build_party_key(query)
+        party_key = self._normalize_party_key(explicit_party_key or self._build_party_key(query))
         party_type = _to_party_type(query.schema)
         names = _as_list(props.get("name"))
         primary_name = _first_non_empty(names) or "Unknown"
@@ -669,11 +669,21 @@ class ActimizeClient:
 
         return payload
 
+    @staticmethod
+    def _normalize_party_key(party_key: str) -> str:
+        safe_key = str(party_key or "").strip()
+        if not safe_key:
+            return safe_key
+        prefix = "AMLP_"
+        if safe_key.upper().startswith(prefix):
+            return f"{prefix}{safe_key[len(prefix):]}"
+        return f"{prefix}{safe_key}"
+
     def _build_party_key(self, query: EntityExample) -> str:
         normalized = query.model_dump(mode="json")
         canonical = json.dumps(normalized, sort_keys=True, separators=(",", ":"))
         digest = hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:16].upper()
-        return f"{self.source_system}_{digest}"
+        return self._normalize_party_key(f"{self.source_system}_{digest}")
 
     def _extract_error_detail(self, response: requests.Response) -> str:
         try:
@@ -718,7 +728,9 @@ class ActimizeClient:
         if is_hit:
             props = query.properties if isinstance(query.properties, dict) else {}
             explicit_party_key = _first_non_empty(_as_list(props.get("partyKey")) + _as_list(props.get("party_key")))
-            party_key = str(body.get("partyKey") or explicit_party_key or self._build_party_key(query))
+            party_key = self._normalize_party_key(
+                str(body.get("partyKey") or explicit_party_key or self._build_party_key(query))
+            )
             display_name = _extract_name(query)
             normalized_results.append(
                 {

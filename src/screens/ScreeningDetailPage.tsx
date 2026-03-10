@@ -637,6 +637,49 @@ function extractCountryFromRaw(raw: any): string {
   return "";
 }
 
+function extractPartyKeyFromQuery(query: any): string {
+  const props = query?.properties;
+  if (!props || typeof props !== "object") return "";
+
+  const values = [
+    ...asStringList((props as any).partyKey),
+    ...asStringList((props as any).party_key),
+    ...asStringList((props as any)["party key"]),
+    ...asStringList((props as any).PartyKey),
+  ].map((value) => safeTrim(value));
+  return values.find(Boolean) || "";
+}
+
+function extractPartyKeyFromRaw(raw: any): string {
+  const fromQuery =
+    extractPartyKeyFromQuery(raw?.matches?.query) ||
+    extractPartyKeyFromQuery(raw?.item?.details?.matches?.query) ||
+    extractPartyKeyFromQuery(raw?.details?.query) ||
+    extractPartyKeyFromQuery(raw?.item?.details?.query);
+
+  if (fromQuery) return fromQuery;
+
+  const results = getResultCandidatesFromRaw(raw);
+  for (const result of results) {
+    const props = result?.properties;
+    if (props && typeof props === "object") {
+      const fromProps = [
+        ...asStringList((props as any).partyKey),
+        ...asStringList((props as any).party_key),
+        ...asStringList((props as any)["party key"]),
+      ]
+        .map((value) => safeTrim(value))
+        .find(Boolean);
+      if (fromProps) return fromProps;
+    }
+
+    const fromId = safeTrim(String(result?.id ?? ""));
+    if (fromId) return fromId;
+  }
+
+  return "";
+}
+
 function extractHitTag(result: any): string {
   const props = result?.properties;
   const keywords = asStringList(props?.keyword).concat(asStringList(props?.keywords));
@@ -699,7 +742,12 @@ function extractEngineErrorFromRaw(raw: any): { status: number | null; errorText
   }
 
   const msg = safeTrim(String(raw?.item?.message ?? raw?.message ?? ""));
-  if (msg) return { status: null, errorText: msg };
+  if (!msg) return null;
+
+  const resultHint = safeTrim(String(raw?.item?.result ?? raw?.submission?.result ?? "")).toUpperCase();
+  const isFailureResult = resultHint === "FAILED" || resultHint === "ERROR";
+  const isFailureMessage = /(fail|error|timeout|exception)/i.test(msg);
+  if (isFailureResult || isFailureMessage) return { status: null, errorText: msg };
 
   return null;
 }
@@ -1833,6 +1881,7 @@ export function ScreeningDetailPage() {
   type ResultRow = {
     id: string;
     entity: string;
+    partyKey: string;
     mode: ResultMode;
     type: UiType;
     country: string;
@@ -1873,6 +1922,7 @@ export function ScreeningDetailPage() {
           rows.push({
             id: `${s.id}_${m.key}`,
             entity: m.displayName,
+            partyKey: extractPartyKeyFromRaw({ submission: s, m, matches }) || safeTrim(String(m.key || "")),
             mode: "SINGLE",
             type: m.uiType,
             country: extractCountryFromQuery(matches?.query),
@@ -1901,6 +1951,7 @@ export function ScreeningDetailPage() {
         rows.push({
           id: s.id,
           entity: (s as any).displayName,
+          partyKey: extractPartyKeyFromRaw(s),
           mode: "SINGLE",
           type: uiType,
           country: extractCountryFromRaw(s),
@@ -1928,6 +1979,7 @@ export function ScreeningDetailPage() {
           rows.push({
             id: `${s.id}_${idx}`,
             entity: it.displayName,
+            partyKey: extractPartyKeyFromRaw({ submission: s, item: it }),
             mode: "BATCH",
             type: uiType,
             country: extractCountryFromQuery(it?.details?.matches?.query),
@@ -1962,7 +2014,7 @@ export function ScreeningDetailPage() {
 
       // Search on core visible fields to keep filtering fast.
       if (!q) return true;
-      const hay = `${r.entity} ${r.mode} ${r.type} ${r.country} ${r.uiStatus} ${r.date}`.toLowerCase();
+      const hay = `${r.entity} ${r.partyKey} ${r.mode} ${r.type} ${r.country} ${r.uiStatus} ${r.date}`.toLowerCase();
       return hay.includes(q);
     });
   }, [flattened, search, statusFilter, typeFilter]);
@@ -1997,6 +2049,7 @@ export function ScreeningDetailPage() {
 
     const headers = [
       "Entity",
+      "Party Key",
       "Mode",
       "Type",
       "Country",
@@ -2028,6 +2081,7 @@ export function ScreeningDetailPage() {
 
       return [
         row.entity,
+        row.partyKey,
         row.mode === "SINGLE" ? "Single" : "Batch",
         row.type,
         row.country || "",
@@ -3069,6 +3123,9 @@ export function ScreeningDetailPage() {
                     </button>
                   </th>
                   <th scope="col" style={{ width: 120 }}>
+                    Party Key
+                  </th>
+                  <th scope="col" style={{ width: 120 }}>
                     <button type="button" className="linkBtn" onClick={() => toggleResultSort("mode")}>
                       Mode {sortIndicator("mode")}
                     </button>
@@ -3104,7 +3161,7 @@ export function ScreeningDetailPage() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="emptyRow">
+                    <td colSpan={9} className="emptyRow">
                       No results found.
                     </td>
                   </tr>
@@ -3118,6 +3175,7 @@ export function ScreeningDetailPage() {
                           </span>
                           <span>{r.entity}</span>
                         </td>
+                        <td className="muted">{r.partyKey || "\u2014"}</td>
                         <td>{modeBadge(r.mode)}</td>
                         <td className="muted">{r.type}</td>
                         <td className="muted">{r.country || "\u2014"}</td>
