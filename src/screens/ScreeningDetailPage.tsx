@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import { useAuth } from "react-oidc-context";
 import { z } from "zod";
 import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
@@ -137,26 +137,6 @@ function formatSubmittedDateTime(value: unknown): string {
   return parsed.toLocaleString();
 }
 
-function isSubmissionOwnedByCurrentUser(
-  submission: { createdByUserId?: unknown; createdByUserName?: unknown } | null | undefined,
-  currentUser: { id: string; name: string } | null
-): boolean {
-  if (!currentUser) return false;
-
-  const ownerId = safeTrim(String(submission?.createdByUserId ?? ""));
-  if (ownerId) {
-    return ownerId === currentUser.id;
-  }
-
-  const ownerName = safeTrim(String(submission?.createdByUserName ?? ""));
-  if (ownerName) {
-    return ownerName.toLowerCase() === safeTrim(currentUser.name).toLowerCase();
-  }
-
-  // Legacy local rows without ownership metadata: keep visible in this browser.
-  return true;
-}
-
 function toLocalDateTimeInputValue(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -193,6 +173,15 @@ function parseSubscriptionEmails(value: string): string[] {
       out.push(email);
     });
   return out;
+}
+
+function toFriendlyBusinessUnitError(error: unknown): string {
+  const text = safeTrim(String((error as any)?.message ?? ""));
+  if (!text) return "Failed to load Business Units.";
+  if (text.includes("502") || text.includes("503") || text.includes("504")) {
+    return "Business Unit service is temporarily unavailable. Please retry in a moment.";
+  }
+  return text;
 }
 
 function uiTypeIcon(type: UiType): string {
@@ -884,6 +873,8 @@ export function ScreeningDetailPage() {
   const [resultsRefreshing, setResultsRefreshing] = useState(false);
   const [resultsRefreshError, setResultsRefreshError] = useState<string | null>(null);
   const [resultsLastRefreshedAt, setResultsLastRefreshedAt] = useState<Date | null>(null);
+  const submissionsRefreshInFlightRef = useRef(false);
+  const businessUnitsRequestSeqRef = useRef(0);
   const currentUser = useMemo(
     () =>
       identity
@@ -1027,19 +1018,24 @@ export function ScreeningDetailPage() {
   );
 
   const reloadBusinessUnits = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser?.id) return;
+    const requestSeq = businessUnitsRequestSeqRef.current + 1;
+    businessUnitsRequestSeqRef.current = requestSeq;
     setBusinessUnitsLoading(true);
     setBusinessUnitsError(null);
     try {
       const rows = await listMyBusinessUnits();
+      if (requestSeq !== businessUnitsRequestSeqRef.current) return;
       setBusinessUnits(Array.isArray(rows) ? rows : []);
-    } catch (err: any) {
-      setBusinessUnits([]);
-      setBusinessUnitsError(err?.message ?? "Failed to load Business Units.");
+    } catch (error: unknown) {
+      if (requestSeq !== businessUnitsRequestSeqRef.current) return;
+      setBusinessUnitsError(toFriendlyBusinessUnitError(error));
     } finally {
-      setBusinessUnitsLoading(false);
+      if (requestSeq === businessUnitsRequestSeqRef.current) {
+        setBusinessUnitsLoading(false);
+      }
     }
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     void reloadBusinessUnits();
@@ -1054,18 +1050,44 @@ export function ScreeningDetailPage() {
     if (!validCodes.has(scheduleBusinessUnitCode)) setScheduleBusinessUnitCode(firstCode);
   }, [businessUnitOptions, singleBusinessUnitCode, batchBusinessUnitCode, scheduleBusinessUnitCode]);
 
-  useEffect(() => {
-    if (!currentUser) return;
-    void (async () => {
+  const loadSubmissionHistory = useCallback(
+    async ({ silent, updateTimestamp, resetPage }: { silent: boolean; updateTimestamp: boolean; resetPage: boolean }) => {
+      if (!currentUser?.id) return;
+      if (submissionsRefreshInFlightRef.current) return;
+
+      submissionsRefreshInFlightRef.current = true;
+      if (!silent) {
+        setResultsRefreshing(true);
+        setResultsRefreshError(null);
+      }
       try {
         const historyRows = await listScreeningSubmissions(500);
         const reconciled = await reconcileDailyScheduleFlags(historyRows as Submission[]);
         setSubmissions(reconciled);
-      } catch {
-        // ignore background load errors
+        if (updateTimestamp) {
+          setResultsLastRefreshedAt(new Date());
+        }
+        if (resetPage) {
+          setPage(1);
+        }
+      } catch (err: any) {
+        if (!silent) {
+          setResultsRefreshError(err?.message ?? "Failed to refresh screening results.");
+        }
+      } finally {
+        submissionsRefreshInFlightRef.current = false;
+        if (!silent) {
+          setResultsRefreshing(false);
+        }
       }
-    })();
-  }, [currentUser]);
+    },
+    [currentUser?.id, setSubmissions]
+  );
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    void loadSubmissionHistory({ silent: true, updateTimestamp: false, resetPage: false });
+  }, [currentUser?.id, loadSubmissionHistory]);
 
   function toggleScreeningType(
     value: ScreeningType,
@@ -1103,22 +1125,7 @@ export function ScreeningDetailPage() {
   }
 
   function refreshResults() {
-    if (resultsRefreshing) return;
-    void (async () => {
-      setResultsRefreshing(true);
-      setResultsRefreshError(null);
-      try {
-        const historyRows = await listScreeningSubmissions(500);
-        const reconciled = await reconcileDailyScheduleFlags(historyRows as Submission[]);
-        setSubmissions(reconciled);
-        setResultsLastRefreshedAt(new Date());
-      } catch (err: any) {
-        setResultsRefreshError(err?.message ?? "Failed to refresh screening results.");
-      } finally {
-        setResultsRefreshing(false);
-        setPage(1);
-      }
-    })();
+    void loadSubmissionHistory({ silent: false, updateTimestamp: true, resetPage: true });
   }
 
   const singleSchema = useMemo(() => {
@@ -1622,7 +1629,8 @@ export function ScreeningDetailPage() {
 
             setSubmissions((prev) =>
               prev.map((s) =>
-                s.mode === "BATCH" && s.id === entry.id
+                s.mode === "BATCH" &&
+                (s.id === entry.id || s.id === accepted.job_id || safeTrim(String((s as any).jobId || "")) === accepted.job_id)
                   ? ({ ...s, overallResult: overall, items: resolvedItems } as BatchSubmission)
                   : s
               )
@@ -1631,7 +1639,12 @@ export function ScreeningDetailPage() {
             const failureText = safeTrim(String(err?.message ?? "Batch screening failed."));
             setSubmissions((prev) =>
               prev.map((s) => {
-                if (s.mode !== "BATCH" || s.id !== entry.id) return s;
+                if (
+                  s.mode !== "BATCH" ||
+                  (s.id !== entry.id && s.id !== accepted.job_id && safeTrim(String((s as any).jobId || "")) !== accepted.job_id)
+                ) {
+                  return s;
+                }
                 const failedItems = s.items.map((it) =>
                   it.result === "PROCESSING"
                     ? { ...it, result: "ERROR", message: failureText || "Batch screening failed." }
@@ -1844,14 +1857,22 @@ export function ScreeningDetailPage() {
 
             setSubmissions((prev) =>
               prev.map((s) =>
-                s.mode === "BATCH" && s.id === entry.id ? ({ ...s, overallResult: overall, items: resolvedItems } as BatchSubmission) : s
+                s.mode === "BATCH" &&
+                (s.id === entry.id || s.id === accepted.job_id || safeTrim(String((s as any).jobId || "")) === accepted.job_id)
+                  ? ({ ...s, overallResult: overall, items: resolvedItems } as BatchSubmission)
+                  : s
               )
             );
           } catch (err: any) {
             const failureText = safeTrim(String(err?.message ?? "Scheduled screening failed."));
             setSubmissions((prev) =>
               prev.map((s) => {
-                if (s.mode !== "BATCH" || s.id !== entry.id) return s;
+                if (
+                  s.mode !== "BATCH" ||
+                  (s.id !== entry.id && s.id !== accepted.job_id && safeTrim(String((s as any).jobId || "")) !== accepted.job_id)
+                ) {
+                  return s;
+                }
                 const failedItems = s.items.map((it) =>
                   it.result === "PROCESSING" ? { ...it, result: "ERROR", message: failureText || "Scheduled screening failed." } : it
                 );
@@ -2000,6 +2021,36 @@ export function ScreeningDetailPage() {
 
     return rows;
   }, [submissions, currentUser]);
+
+  const hasPendingResults = useMemo(() => flattened.some((row) => row.uiStatus === "Pending"), [flattened]);
+
+  useEffect(() => {
+    if (!currentUser?.id || !hasPendingResults) return;
+    const timerId = window.setInterval(() => {
+      void loadSubmissionHistory({ silent: true, updateTimestamp: false, resetPage: false });
+    }, 15000);
+    return () => window.clearInterval(timerId);
+  }, [currentUser?.id, hasPendingResults, loadSubmissionHistory]);
+
+  const summaryCounts = useMemo(() => {
+    let total = 0;
+    let clear = 0;
+    let potential = 0;
+    let pending = 0;
+    let failed = 0;
+    let match = 0;
+
+    flattened.forEach((row) => {
+      total += 1;
+      if (row.uiStatus === "Clear") clear += 1;
+      if (row.uiStatus === "Potential Match") potential += 1;
+      if (row.uiStatus === "Pending") pending += 1;
+      if (row.uiStatus === "Failed") failed += 1;
+      if (row.uiStatus === "Match") match += 1;
+    });
+
+    return { total, clear, potential, pending, failed, match };
+  }, [flattened]);
 
   // ---------- Filters ----------
   const filtered = useMemo(() => {
@@ -2218,7 +2269,7 @@ export function ScreeningDetailPage() {
         </div>
       </section>
 
-      <SummaryCards currentUserId={currentUser?.id ?? null} currentUserName={currentUser?.name ?? null} />
+      <SummaryCards counts={summaryCounts} />
       <div className="tabsRow">
         <div className="tabSwitch" role="tablist" aria-label="Screening mode" aria-orientation="horizontal">
           <button
@@ -3355,71 +3406,7 @@ function SummaryCardIcon({ tone }: { tone: SummaryTone }) {
   );
 }
 
-function SummaryCards({ currentUserId, currentUserName }: { currentUserId: string | null; currentUserName: string | null }) {
-  const submissions = useRecoilValue(submissionsState);
-
-  // Count "result rows" the same way your table does (SINGLE multi + BATCH items + legacy)
-  const counts = useMemo(() => {
-    let total = 0;
-    let clear = 0;
-    let potential = 0;
-    let pending = 0;
-    let failed = 0;
-    let match = 0;
-
-    const bump = (status: "Clear" | "Potential Match" | "Pending" | "Failed" | "Match") => {
-      total += 1;
-      if (status === "Clear") clear += 1;
-      if (status === "Potential Match") potential += 1;
-      if (status === "Pending") pending += 1;
-      if (status === "Failed") failed += 1;
-      if (status === "Match") match += 1;
-    };
-
-    if (!currentUserId || !currentUserName) return { total, clear, potential, pending, failed, match };
-
-    submissions.forEach((s: any) => {
-      if (!isSubmissionOwnedByCurrentUser(s, { id: currentUserId, name: currentUserName })) return;
-
-      // New SINGLE multi
-      if (s.mode === "SINGLE" && s.details?.meta && s.details?.responses) {
-        const meta = s.details.meta as { key: string }[];
-        meta.forEach((m) => {
-          const resp = s.details.responses[m.key];
-          const manual = Boolean(resp?.manualMatch === true);
-          const engine: any = resp ? (resp.results?.some((r: any) => r.match) ? "HIT" : "NO_HIT") : "ERROR";
-          const ui =
-            manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : engine === "PROCESSING" ? "Pending" : "Failed";
-          bump(ui);
-        });
-        return;
-      }
-
-      // BATCH
-      if (s.mode === "BATCH" && Array.isArray(s.items)) {
-        s.items.forEach((it: any) => {
-          const manual = Boolean(it.manualMatch === true);
-          const engine: any = it.result;
-          const ui =
-            manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : engine === "PROCESSING" ? "Pending" : "Failed";
-          bump(ui);
-        });
-        return;
-      }
-
-      // Legacy SINGLE
-      if (s.mode === "SINGLE") {
-        const manual = Boolean(s.manualMatch === true);
-        const engine: any = s.result;
-        const ui =
-          manual ? "Match" : engine === "NO_HIT" ? "Clear" : engine === "HIT" ? "Potential Match" : engine === "PROCESSING" ? "Pending" : "Failed";
-        bump(ui);
-      }
-    });
-
-    return { total, clear, potential, pending, failed, match };
-  }, [submissions, currentUserId]);
-
+function SummaryCards({ counts }: { counts: { total: number; clear: number; potential: number; pending: number; failed: number; match: number } }) {
   const items: { tone: SummaryTone; label: string; value: number }[] = [
     { tone: "total", label: "TOTAL SCREENINGS", value: counts.total },
     { tone: "clear", label: "CLEAR", value: counts.clear },

@@ -403,14 +403,42 @@ export async function listDailySchedules(): Promise<DailySchedule[]> {
 
 export async function listMyBusinessUnits(): Promise<BusinessUnit[]> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
-  const resp = await fetch(`${baseUrl}/business-units`, {
-    headers: withAuthHeaders(),
-    cache: "no-store",
-  });
-  if (!resp.ok) {
-    throw new Error(`Failed to load business units: ${await parseApiError(resp)}`);
+  const transientStatuses = new Set([429, 500, 502, 503, 504]);
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+    try {
+      const resp = await fetch(`${baseUrl}/business-units`, {
+        headers: withAuthHeaders(),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (resp.ok) {
+        return (await resp.json()) as BusinessUnit[];
+      }
+
+      const parsedError = await parseApiError(resp);
+      const isRetryable = transientStatuses.has(resp.status);
+      if (attempt < maxAttempts && isRetryable) {
+        await sleep(300 * attempt);
+        continue;
+      }
+      throw new Error(`Failed to load business units: ${parsedError}`);
+    } catch (error: any) {
+      const isAbort = error?.name === "AbortError";
+      if (attempt < maxAttempts && isAbort) {
+        await sleep(300 * attempt);
+        continue;
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   }
-  return (await resp.json()) as BusinessUnit[];
+
+  throw new Error("Failed to load business units: Request failed");
 }
 
 export async function listAdminBusinessUnits(includeInactive = true): Promise<BusinessUnit[]> {
