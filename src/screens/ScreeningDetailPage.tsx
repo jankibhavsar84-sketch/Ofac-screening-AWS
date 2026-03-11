@@ -2187,7 +2187,7 @@ export function ScreeningDetailPage() {
 
   function openHitEntity(row: ResultRow) {
     const hits = getHitMatchesFromRaw(row.raw);
-    const error = extractEngineErrorFromRaw(row.raw);
+    const error = row.uiStatus === "Failed" ? extractEngineErrorFromRaw(row.raw) : null;
     setHitEntityDialog({
       sourceEntity: row.entity,
       hits,
