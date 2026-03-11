@@ -215,14 +215,9 @@ const SCHEDULE_FREQUENCY_OPTIONS: { value: ScheduleFrequency; label: string; hin
 ];
 
 const ID_TYPE_OPTIONS = [
-  "Passport",
-  "National ID",
-  "Driver's License",
-  "Tax ID/EIN",
-  "Company Registration Number",
-  "Business License",
-  "IATA Number",
-  "Other",
+  "PASSPORT",
+  "TIN",
+  "SSN",
 ] as const;
 
 const UNIFIED_TEMPLATE = {
@@ -900,7 +895,7 @@ export function ScreeningDetailPage() {
       dateOfBirth: "",
       countries: [""],
       addresses: [""],
-      ids: [{ idType: "Passport", idNumber: "", idCountry: "" }],
+      ids: [{ idType: "PASSPORT", idNumber: "", idCountry: "" }],
     },
   ]);
 
@@ -1189,7 +1184,7 @@ export function ScreeningDetailPage() {
           dateOfBirth: "",
           countries: [""],
           addresses: [""],
-          ids: [{ idType: "Passport", idNumber: "", idCountry: "" }],
+          ids: [{ idType: "PASSPORT", idNumber: "", idCountry: "" }],
         },
       ]);
       setNotes("");
@@ -1252,7 +1247,7 @@ export function ScreeningDetailPage() {
           dateOfBirth: "",
           countries: [""],
           addresses: [""],
-          ids: [{ idType: "Passport", idNumber: "", idCountry: "" }],
+          ids: [{ idType: "PASSPORT", idNumber: "", idCountry: "" }],
         },
       ];
     });
@@ -1290,7 +1285,7 @@ export function ScreeningDetailPage() {
 
   function addIdDoc(id: string) {
     setNames((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, ids: [...n.ids, { idType: "Passport", idNumber: "", idCountry: "" }] } : n))
+      prev.map((n) => (n.id === id ? { ...n, ids: [...n.ids, { idType: "PASSPORT", idNumber: "", idCountry: "" }] } : n))
     );
   }
 
