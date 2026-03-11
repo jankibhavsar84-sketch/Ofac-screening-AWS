@@ -3226,9 +3226,11 @@ export function ScreeningDetailPage() {
                           <span className="entityIcon" aria-hidden="true">
                             {uiTypeIcon(r.type)}
                           </span>
-                          <span>{r.entity}</span>
+                          <span className="entityValue" title={r.entity}>{r.entity}</span>
                         </td>
-                        <td className="muted">{r.partyKey || "\u2014"}</td>
+                        <td className="muted partyKeyCell">
+                          <span className="partyKeyValue" title={r.partyKey || ""}>{r.partyKey || "\u2014"}</span>
+                        </td>
                         <td>{modeBadge(r.mode)}</td>
                         <td className="muted">{r.type}</td>
                         <td className="muted">{r.country || "\u2014"}</td>

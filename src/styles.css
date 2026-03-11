@@ -1778,10 +1778,28 @@ textarea{min-height:90px;resize:vertical}
 .emptyRow{padding:20px;color:var(--muted)}
 
 .entityCell{display:flex;align-items:center;gap:10px}
+.entityValue{
+  display:inline-block;
+  max-width:220px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
 .entityIcon{
   width:26px;height:26px;border-radius:8px;
   display:inline-flex;align-items:center;justify-content:center;
   background:var(--app-surface);
+}
+.partyKeyCell{
+  white-space:nowrap;
+}
+.partyKeyValue{
+  display:inline-block;
+  max-width:120px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  vertical-align:middle;
 }
 
 .muted{color:var(--muted)}
