@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowListCognitoUsersForAdminMapping",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:ListUsers"
+      ],
+      "Resource": "arn:aws:cognito-idp:us-east-2:279930135954:userpool/us-east-2_ptvmAe35M"
+    }
+  ]
+}

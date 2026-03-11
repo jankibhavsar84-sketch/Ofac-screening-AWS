@@ -144,7 +144,8 @@ export function ManageUsersPage() {
           if (!userId) continue;
           const displayName = readString(row.display_name) || userId;
           const existing = merged.get(userId);
-          if (!existing || existing === userId) {
+          const shouldUpgradeWithEmail = displayName.includes("@") && !readString(existing).includes("@");
+          if (!existing || existing === userId || shouldUpgradeWithEmail) {
             merged.set(userId, displayName || userId);
           }
         }

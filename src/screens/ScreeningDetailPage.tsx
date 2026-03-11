@@ -2168,6 +2168,7 @@ export function ScreeningDetailPage() {
     sourceEntity: string;
     hits: HitMatch[];
     error: { status: number | null; text: string } | null;
+    pending: boolean;
   } | null>(null);
 
   function sortIndicator(key: ResultSortKey): string {
@@ -2191,6 +2192,7 @@ export function ScreeningDetailPage() {
       sourceEntity: row.entity,
       hits,
       error: error ? { status: error.status, text: error.errorText } : null,
+      pending: row.uiStatus === "Pending",
     });
   }
 
@@ -3239,7 +3241,7 @@ export function ScreeningDetailPage() {
                               <button
                                 type="button"
                                 className="iconBtn"
-                                title="View hit entity"
+                                title={r.uiStatus === "Pending" ? "Screening is in progress" : "View hit entity"}
                                 aria-label={`View hit entity for ${r.entity}`}
                                 onClick={() => openHitEntity(r)}
                               >
@@ -3291,7 +3293,11 @@ export function ScreeningDetailPage() {
               </div>
               <div className="hitEntityRow">
                 <span className="muted">Hit Entities</span>
-                {hitEntityDialog.error ? (
+                {hitEntityDialog.pending ? (
+                  <div className="infoBox" role="status" aria-live="polite" style={{ marginTop: 0 }}>
+                    Screening is still in progress. Please refresh to view hit entities after processing completes.
+                  </div>
+                ) : hitEntityDialog.error ? (
                   <div className="errorBox" role="alert" aria-live="polite" style={{ marginTop: 0 }}>
                     Screening failed{hitEntityDialog.error.status != null ? ` (HTTP ${hitEntityDialog.error.status})` : ""}:{" "}
                     {hitEntityDialog.error.text}

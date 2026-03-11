@@ -69,7 +69,14 @@ class ScreeningService:
                 user_id = attrs.get("sub") or str(item.get("Username") or "").strip()
                 if not user_id:
                     continue
-                display_name = attrs.get("name") or attrs.get("email") or attrs.get("preferred_username") or str(item.get("Username") or "").strip() or user_id
+                email = attrs.get("email", "").strip()
+                preferred = attrs.get("preferred_username", "").strip()
+                full_name = attrs.get("name", "").strip()
+                username = str(item.get("Username") or "").strip()
+                if full_name and email and full_name.lower() != email.lower():
+                    display_name = f"{full_name} ({email})"
+                else:
+                    display_name = full_name or email or preferred or username or user_id
                 users.append({"user_id": user_id, "display_name": display_name})
             token = page.get("PaginationToken")
             if not token:
