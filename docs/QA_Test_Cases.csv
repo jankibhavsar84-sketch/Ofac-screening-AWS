@@ -1,0 +1,153 @@
+Test case description,Step to test,Expected result,Final Result
+AUTH-001 - Sign-in page appears for unauthenticated user,Set VITE_AUTH_ENABLED=true; clear browser session; open the application root URL.,User sees the Sign in required screen and cannot access screening forms until login.,Not Executed
+AUTH-002 - Successful OIDC login loads application shell,Login with a valid OIDC user from the identity provider.,"Application loads with top navigation, user identity details, and screening workspace.",Not Executed
+AUTH-003 - Sign out button ends active session,Login; click Sign Out from header.,Session is removed and user is redirected to signed-out flow.,Not Executed
+AUTH-004 - Signed-out page supports re-login,"After sign-out, click Sign In Again on signed-out page.",User is redirected to identity provider login and can authenticate again.,Not Executed
+AUTH-005 - Idle timeout auto logout,Set VITE_OIDC_IDLE_TIMEOUT_MS to a short value; login; remain idle beyond timeout.,User is automatically logged out and redirected to signed-out experience.,Not Executed
+AUTH-006 - Authentication error screen can retry,Force auth callback failure or invalid auth state; open app.,Authentication Error card is shown and Retry Sign In starts sign-in redirect.,Not Executed
+AUTH-007 - Missing bearer token returns 401,Call any /api/v1 endpoint without Authorization header when AUTH_ENABLED=true.,API returns HTTP 401 and request is denied.,Not Executed
+AUTH-008 - Invalid bearer token returns 401,Call any /api/v1 endpoint with malformed or expired bearer token.,API returns HTTP 401 with token validation error detail.,Not Executed
+AUTH-009 - Audience mismatch token is rejected,"Use token whose aud, client_id, and azp do not match AUTH_AUDIENCE.",API returns HTTP 401 and does not execute protected action.,Not Executed
+AUTH-010 - Auth disabled mode grants local admin principal,Set AUTH_ENABLED=false and VITE_AUTH_ENABLED=false; open app and call APIs.,App loads without OIDC challenge; protected APIs are accessible as local dev admin principal.,Not Executed
+RBAC-001 - Viewer can access single screening in mock mode,Login as viewer-role user and open Screening tab.,Single screening form is available with mock-only behavior.,Not Executed
+RBAC-002 - Viewer cannot run non-mock single screening,Login as viewer; attempt to disable mock option and submit.,UI prevents non-mock submit and shows viewer mock-only restriction.,Not Executed
+RBAC-003 - Viewer cannot access batch screening actions,Login as viewer and inspect tabs and controls.,Batch tab is disabled or inaccessible for viewer.,Not Executed
+RBAC-004 - Viewer cannot access scheduled screening actions,Login as viewer and inspect schedule tab.,Schedule tab is disabled or inaccessible for viewer.,Not Executed
+RBAC-005 - Analyst can run single screening with mock off,Login as analyst; submit single screening with mock unchecked.,Request is accepted and returns screening response.,Not Executed
+RBAC-006 - Analyst can run batch screening,Login as analyst; submit valid batch file.,Batch job is accepted and appears in results.,Not Executed
+RBAC-007 - Analyst cannot remove daily schedules,Login as analyst; call DELETE /api/v1/screenings/daily-schedules/{id}.,API returns HTTP 403 insufficient scope.,Not Executed
+RBAC-008 - Compliance can configure scheduled screening,Login as compliance; submit schedule from Schedule tab.,Schedule is created and daily_schedule_id is returned.,Not Executed
+RBAC-009 - Compliance cannot access user administration,Login as compliance; open /manage-users route.,Access Denied message is shown for user administration.,Not Executed
+RBAC-010 - Useradmin can access user administration,Login as useradmin role; open /manage-users route.,User administration page loads with BU and mapping controls.,Not Executed
+RBAC-011 - Useradmin cannot access audit logs page,Login as useradmin role; open /audit-logs route.,Access Denied message is shown for audit log page.,Not Executed
+RBAC-012 - Admin can access all admin areas,"Login as admin; open User Administration, Daily Schedule, and Audit Log routes.",All admin/compliance pages are accessible and functional.,Not Executed
+BU-001 - User mapped business units load in screening page,Login with mapped user; open Screening page.,Business Unit dropdown is populated with active mapped units.,Not Executed
+BU-002 - Business unit defaults to first available option,Login with multiple mapped units; load Screening page fresh.,"Single, Batch, and Schedule forms auto-select a valid BU option.",Not Executed
+BU-003 - No mapped BU shows blocking warning,Login with user not mapped to active BUs; open Screening page.,Warning indicates no mapped BU and screening submission is blocked.,Not Executed
+BU-004 - Single screening requires business unit,Clear BU selection in Single tab and submit.,Validation error states Business Unit is required.,Not Executed
+BU-005 - Batch screening requires business unit,Clear BU selection in Batch tab and submit.,Validation error states Business Unit is required.,Not Executed
+BU-006 - Scheduled screening requires business unit,Clear BU selection in Schedule tab and submit.,Validation error states Business Unit is required.,Not Executed
+BU-007 - Single API rejects BU not mapped to user,Call POST /api/v1/screenings/match with business_unit_code not mapped to caller.,API returns HTTP 403 Selected Business Unit is not mapped to this user.,Not Executed
+BU-008 - Batch upload rejects BU not mapped to user,Call batch upload with business_unit_code not mapped to caller.,API returns HTTP 400 and does not create executable batch job.,Not Executed
+BU-009 - Business unit code normalization is uppercase,Submit lowercase business_unit_code in API payload.,Stored metadata and response expose normalized uppercase BU code.,Not Executed
+BU-010 - Fallback BU applies only when user has no mappings,Use user with zero mappings and submit default fallback BU; then use user with mappings and same BU.,Fallback BU works only for unmapped user; mapped user is validated strictly.,Not Executed
+SNG-001 - Single screening success for Individual split name,Enter first and last name for Individual; select at least one screening type; submit.,Result row is created with Single mode and clear or potential match status.,Not Executed
+SNG-002 - Single screening success for Individual full name only,Enter only full name for Individual and submit.,Submission succeeds and response is returned.,Not Executed
+SNG-003 - Single screening success for Organization,Set entity type Organization; provide full name; submit.,Submission succeeds and row appears in results.,Not Executed
+SNG-004 - Single screening success for Vessel,Set entity type Vessel; provide full name; submit.,Submission succeeds with Vessel entity type reflected in results.,Not Executed
+SNG-005 - Validation blocks Individual without required name,"For Individual, leave full name empty and do not provide first+last; submit.",Validation message indicates required naming rule for Individual.,Not Executed
+SNG-006 - Validation blocks non-Individual without full name,"Set entity type Organization, Unknown, Vessel, or Aircraft with empty full name; submit.",Validation message indicates Name is required.,Not Executed
+SNG-007 - DOB format validation,Enter invalid DOB format for Individual and submit.,Validation error indicates DOB must be valid YYYY-MM-DD.,Not Executed
+SNG-008 - DOB future date validation,Enter a future DOB for Individual and submit.,Validation error indicates DOB cannot be in the future.,Not Executed
+SNG-009 - DOB older than 100 years validation,Enter DOB older than 100 years and submit.,Validation error indicates DOB cannot be more than 100 years old.,Not Executed
+SNG-010 - Single requires at least one screening type,Deselect all screening types in Single tab and submit.,Validation error indicates at least one screening type is required.,Not Executed
+SNG-011 - Alias entries are merged into submitted query,Add multiple aliases using plus action and submit single screening.,Submitted query contains merged alias/name variants; screening executes once.,Not Executed
+SNG-012 - Unsupported alias types do not allow extra name blocks,Set entity type Vessel or Aircraft and attempt to add alias/name blocks.,Additional alias/name rows are not added for unsupported entity types.,Not Executed
+SNG-013 - Multiple screening types execute in one single submit,Select several screening types and submit one single request.,Response includes results for selected types within one business response.,Not Executed
+SNG-014 - Single screening API failure is shown as failed row,Force upstream screening failure for single screening.,Result row is marked Failed and hit detail dialog shows failure text.,Not Executed
+SNG-015 - Viewer mock-only restriction enforced at submit,Login as viewer and submit with mock disabled through manipulated request.,Request is blocked with 403 or UI error for viewer non-mock attempt.,Not Executed
+BAT-001 - Batch upload accepts valid CSV template,"In Batch tab, upload valid CSV with unique PartyKey and required names; submit.",Batch job accepted with job_id and placeholder rows shown as processing.,Not Executed
+BAT-002 - Batch upload accepts valid XLSX template,Upload valid XLSX template file in Batch tab and submit.,Batch job accepted and visible in Screening Results.,Not Executed
+BAT-003 - Batch upload rejects unsupported file extension,Attempt upload of non-CSV/XLS/XLSX file and submit.,UI shows Only CSV or Excel files are allowed.,Not Executed
+BAT-004 - Batch upload requires a file selection,Keep file empty and click Run Batch Screening.,UI shows Please drop or select a CSV or XLSX file.,Not Executed
+BAT-005 - Batch upload UI blocks oversized file above limit,Upload file larger than configured UI cap and submit.,UI blocks submission and shows max upload size message.,Not Executed
+BAT-006 - Batch upload rejects empty data file,Upload file with headers but no data rows and submit.,UI shows No rows found in the file.,Not Executed
+BAT-007 - Batch validation enforces PartyKey presence,Upload file where one or more rows have blank PartyKey.,Validation error lists row numbers with PartyKey required.,Not Executed
+BAT-008 - Batch validation enforces PartyKey uniqueness,Upload file containing duplicate PartyKey values.,Validation error indicates duplicate PartyKey in file.,Not Executed
+BAT-009 - Batch validation enforces allowed gender code,"Upload row with gender value not M, F, or blank.",Validation error indicates gender code rule.,Not Executed
+BAT-010 - Batch validation enforces Individual naming rule,Upload Individual row missing both full name and first+last.,Validation error indicates Individual name requirement.,Not Executed
+BAT-011 - Batch validation enforces Organization naming rule,Upload Organization or Unknown row with blank full name.,Validation error indicates full name required for non-Individual.,Not Executed
+BAT-012 - Batch submit requires Batch Name,Leave Batch Name empty and submit valid file.,UI shows Batch Name is required.,Not Executed
+BAT-013 - Batch submit requires at least one screening type,Deselect all screening types and submit valid file.,UI shows Select at least one screening type.,Not Executed
+BAT-014 - Batch completion refresh updates item-level outcomes,Submit valid batch and wait until job terminal state.,"Items transition from Processing to Hit, No Hit, or Error and overall result is updated.",Not Executed
+BAT-015 - Batch timeout or failure marks pending rows as error,Simulate long-running job timeout or processing failure.,Previously Processing rows are marked Error with failure message.,Not Executed
+BAT-016 - Immediate large batch path requires S3 dispatch storage,Disable AWS_S3_UPLOAD_BUCKET and submit immediate batch upload.,API returns server error indicating dispatch requires S3 storage.,Not Executed
+SCH-001 - Scheduled screening creation succeeds for compliance role,Login as compliance or admin; complete Schedule tab required fields; submit.,"Schedule is created, response includes daily_schedule_id, and results entry is added.",Not Executed
+SCH-002 - Scheduled screening blocked for non-compliance role,Login as analyst or viewer and attempt scheduled submit.,UI or API blocks action with permission error.,Not Executed
+SCH-003 - Schedule Name is mandatory,Leave Schedule Name blank and submit schedule.,Validation error indicates Schedule Name is required.,Not Executed
+SCH-004 - Schedule requires at least one screening type,Deselect all screening types in Schedule tab and submit.,Validation error indicates at least one screening type is required.,Not Executed
+SCH-005 - Schedule requires Business Unit,Leave Schedule BU empty and submit.,Validation error indicates Business Unit is required.,Not Executed
+SCH-006 - Schedule requires first run date and time,Clear first run date/time and submit.,Validation error indicates run date/time is required.,Not Executed
+SCH-007 - Schedule run date invalid format is rejected,Enter invalid date/time value and submit schedule.,Validation error indicates run date/time is invalid.,Not Executed
+SCH-008 - Schedule requires CSV or XLSX file,Submit schedule without file.,Validation error indicates file is required.,Not Executed
+SCH-009 - Schedule subscription emails parse and deduplicate,"Enter repeated emails using comma, semicolon, and newline separators; submit.",Only unique normalized emails are subscribed.,Not Executed
+SCH-010 - Daily frequency schedule uses configured cadence,Create schedule with DAILY frequency and valid start.,Next run is calculated and schedule remains active.,Not Executed
+SCH-011 - Weekly frequency schedule uses 7-day cadence,Create schedule with WEEKLY frequency and inspect next_run_at progression.,Next run advances weekly in configured timezone.,Not Executed
+SCH-012 - Monthly frequency schedule handles month boundaries,Create MONTHLY schedule near end of month and trigger next cycle.,Next run adjusts correctly for shorter months.,Not Executed
+SCH-013 - Deferred schedule start message shown when total_items=0,Create schedule that is accepted with total_items=0 and daily_schedule_id present.,Result entry shows scheduled/deferred message instead of immediate processing.,Not Executed
+SCH-014 - Re-upload for existing schedule screens only net-new records,Submit follow-up scheduled file containing old and new records for same schedule.,Previously screened records are skipped and only net-new records are screened.,Not Executed
+RES-001 - Results dashboard counters match row statuses,"Create submissions with clear, potential match, pending, failed, and match statuses.",Summary cards show accurate totals per status.,Not Executed
+RES-002 - Status filter narrows displayed rows,Apply each status filter option on Screening Results table.,Only rows matching selected status are shown.,Not Executed
+RES-003 - Type filter narrows displayed rows by entity type,"Apply type filter for Individual, Organization, Vessel, and Aircraft.",Only selected entity type rows remain visible.,Not Executed
+RES-004 - Search filter matches key table fields,"Search by entity name, PartyKey, mode, type, or country.",Matching rows are returned and non-matching rows are hidden.,Not Executed
+RES-005 - Sorting by submitted date works both directions,Toggle Submitted At sort from desc to asc and back.,Rows reorder correctly by timestamp.,Not Executed
+RES-006 - Sorting by status and score works,Sort by Status and then Matching Score.,Rows follow configured rank logic for status and numeric order for score.,Not Executed
+RES-007 - Pagination controls navigate full result set,Load more rows than one page and use Next and Previous controls.,Page navigation updates row window without data loss.,Not Executed
+RES-008 - Manual refresh reloads latest submissions,Click Refresh Results after new job activity.,Table updates from backend and Last refreshed timestamp updates.,Not Executed
+RES-009 - Auto-refresh runs while pending items exist,Create job with pending rows and wait at least one refresh interval.,Pending entries auto-refresh until terminal states are reached.,Not Executed
+RES-010 - Export filtered results CSV contains visible dataset,Apply filters then click Download Results CSV.,Downloaded CSV includes expected headers and only filtered rows.,Not Executed
+ADM-001 - Manage Users page denies unauthorized roles,Login as non-admin non-useradmin and open /manage-users.,Access Denied screen is displayed.,Not Executed
+ADM-002 - Create business unit with valid code and name,"As admin or useradmin, create new BU from User Administration page.","Business unit is saved, listed, and auditable.",Not Executed
+ADM-003 - Business unit create/update requires code and name,Attempt save with blank code or blank name.,UI shows validation error and save is blocked.,Not Executed
+ADM-004 - Updating BU to duplicate code is blocked,Edit BU and set next code equal to an existing BU code.,API/UI returns error that duplicate code already exists.,Not Executed
+ADM-005 - Deleting business unit removes it from selectable lists,Delete an existing BU and refresh screening form dropdowns.,Deleted BU is absent from active options and mappings.,Not Executed
+ADM-006 - Save user to business unit mapping persists selected codes,"Select user, choose multiple BUs, and click Save Mapping.",Saved mapping reflects selected BU codes on reload.,Not Executed
+DLY-001 - Daily Schedule admin page denies unauthorized user,Login as role without screening.daily or screening.admin and open /daily-schedules.,Access Denied screen is displayed.,Not Executed
+DLY-002 - Daily Schedule admin lists active schedules,Login as compliance/admin and open Daily Schedule page.,"Active schedules table loads with batch, frequency, and next run details.",Not Executed
+DLY-003 - Removing schedule deactivates only selected schedule,From Daily Schedule page click Remove for one schedule.,Selected schedule is removed from list while others remain.,Not Executed
+AUD-001 - Audit log page admin-only and data loads,Login as admin; open Audit Log page and load events.,Audit events are shown with paging controls.,Not Executed
+AUD-002 - Audit log user filter and errors-only filter work,Apply user filter then enable Show errors only.,Displayed events are constrained by selected user and error criteria.,Not Executed
+AUD-003 - API access log is written for every /api/v1 request,Invoke representative /api/v1 endpoints and inspect api_access_logs.,"Each request has method, path, status, latency, and correlation id entry.",Not Executed
+AUD-004 - 401 and 403 responses create explicit audit events,Trigger authentication and authorization failures on protected endpoints.,API_AUTHENTICATION_FAILED and API_AUTHORIZATION_FAILED events are recorded.,Not Executed
+AUD-005 - Sensitive query parameters are redacted in access logs,"Send request containing token, secret, password, and email query params.",Stored query values are redacted or masked and raw secrets are not persisted.,Not Executed
+AUD-006 - External API failures are persisted and high-risk alert can trigger,Force repeated upstream screening failures above configured threshold/window.,external_api_errors rows are created and HIGH_RISK_EXTERNAL_API_FAILURE_ALERT is emitted once per window.,Not Executed
+AUD-007 - Retention cleanup purges old operational data and audits purge,Seed old audit/access/error records; run worker cleanup cycle.,Old records are deleted per retention config and OPERATIONAL_DATA_PURGED event is logged when deletions occur.,Not Executed
+NEG-AUTH-001 - Missing bearer token is rejected,Call any /api/v1 endpoint without Authorization header when AUTH_ENABLED=true.,API returns HTTP 401 and request is denied.,Not Executed
+NEG-AUTH-002 - Expired access token is rejected,Call /api/v1 endpoint using expired JWT token.,API returns HTTP 401 with token validation failure.,Not Executed
+NEG-AUTH-003 - Tampered token signature is rejected,Modify JWT payload/signature and call protected API.,API returns HTTP 401 and does not process request.,Not Executed
+NEG-AUTH-004 - Auth enabled without issuer/jwks fails,Set AUTH_ENABLED=true but leave AUTH_ISSUER or AUTH_JWKS_URL empty; call protected endpoint.,API returns HTTP 500 with auth configuration error.,Not Executed
+NEG-RBAC-001 - Viewer cannot call batch create API,Login as viewer and call POST /api/v1/screenings/jobs.,API returns HTTP 403 insufficient scope.,Not Executed
+NEG-RBAC-002 - Analyst cannot disable daily schedules,Login as analyst and call DELETE /api/v1/screenings/daily-schedules/{schedule_id}.,API returns HTTP 403 insufficient scope.,Not Executed
+NEG-RBAC-003 - Useradmin cannot read audit events,Login as useradmin and call GET /api/v1/audit-events.,API returns HTTP 403 insufficient scope.,Not Executed
+NEG-BU-001 - Single screening without BU is rejected,POST /api/v1/screenings/match with missing business_unit_code.,API returns HTTP 400 Business Unit is required.,Not Executed
+NEG-BU-002 - Single screening with unmapped BU is rejected,POST /api/v1/screenings/match using business_unit_code not mapped to caller.,API returns HTTP 403 and no screening is executed.,Not Executed
+NEG-BU-003 - Batch upload with unmapped BU is rejected,POST /api/v1/screenings/batch-upload using unmapped business_unit_code.,API returns HTTP 400 and batch job is not queued.,Not Executed
+NEG-BU-004 - Create business unit with blank code fails,Call POST /api/v1/admin/business-units with empty business_unit_code.,API returns HTTP 400 Business Unit code is required.,Not Executed
+NEG-BU-005 - Update BU to duplicate code fails,Call PUT /api/v1/admin/business-units/{code} with next code already existing.,API returns HTTP 400 duplicate business unit code error.,Not Executed
+NEG-BU-006 - Delete unknown BU returns not found,Call DELETE /api/v1/admin/business-units/{unknown_code}.,API returns HTTP 404 Business Unit not found.,Not Executed
+NEG-SNG-001 - Empty single query payload is rejected,POST /api/v1/screenings/match with queries={} .,API returns HTTP 400 At least one query is required.,Not Executed
+NEG-SNG-002 - Viewer non-mock single call is denied,Login as viewer and call /screenings/match with mock_screening=false.,API returns HTTP 403 Viewer can perform only mock single screening.,Not Executed
+NEG-SNG-003 - Upstream screening failure normalizes failed response,Force Actimize failure during single screening.,Item response has status=500 and error text; audit and external error records are written.,Not Executed
+NEG-SNG-004 - Invalid DOB blocks submission in UI,In Single tab enter DOB in invalid format and submit.,UI validation blocks submit with DOB format error.,Not Executed
+NEG-BAT-001 - Invalid queries_json is rejected,POST batch-upload with malformed queries_json string.,API returns HTTP 400 Invalid queries_json.,Not Executed
+NEG-BAT-002 - Non-array screening_types_json is rejected,POST batch-upload with screening_types_json as object/string instead of array.,API returns HTTP 400 screening_types_json must be a JSON array.,Not Executed
+NEG-BAT-003 - Missing upload file is rejected,POST batch-upload without file form part.,API returns HTTP 400 file is required.,Not Executed
+NEG-BAT-004 - Empty upload file is rejected,POST batch-upload with zero-byte file.,API returns HTTP 400 Uploaded file is empty.,Not Executed
+NEG-BAT-005 - Duplicate PartyKey in upload is rejected,Upload batch with duplicate PartyKey values.,API returns HTTP 400 Upload validation failed with duplicate PartyKey detail.,Not Executed
+NEG-BAT-006 - Legacy row_<n> PartyKey is rejected,"Upload batch where keys are row_1,row_2 style without real PartyKey.",API returns HTTP 400 invalid PartyKey validation error.,Not Executed
+NEG-BAT-007 - Unsupported schema in upload is rejected,Upload query row with schema outside allowed list.,API returns HTTP 400 unsupported schema validation error.,Not Executed
+NEG-BAT-008 - Invalid gender code in upload is rejected,Upload query row with gender code other than M/F/blank.,API returns HTTP 400 gender code validation error.,Not Executed
+NEG-BAT-009 - Missing required name in upload is rejected,Upload row with no valid name fields.,API returns HTTP 400 validation error indicating name requirement.,Not Executed
+NEG-BAT-010 - Large immediate batch fails when S3 dispatch unavailable,Submit immediate batch when AWS_S3_UPLOAD_BUCKET is not configured.,API returns HTTP 500 requiring S3 storage for batch dispatch.,Not Executed
+NEG-BAT-011 - Unknown job id polling returns 404,Call GET /api/v1/screenings/jobs/{unknown_job_id}.,API returns HTTP 404 Job not found.,Not Executed
+NEG-BAT-012 - Corrupt queries.json in JOB_DISPATCH fails job,Corrupt uploaded queries.json in S3 before worker dispatch processing.,Worker marks job FAILED and logs BATCH_DISPATCH_FAILED audit event.,Not Executed
+NEG-SCH-001 - Non-compliance cannot create scheduled screening,Login as analyst/viewer and submit daily_screening=true request.,API/UI returns HTTP 403 scheduled screening not permitted.,Not Executed
+NEG-SCH-002 - Unknown schedule_id re-run request is rejected,Call submit_job path with schedule_id that does not exist.,Request fails with 400 Daily schedule not found.,Not Executed
+NEG-SCH-003 - Subscribe API rejects empty email when principal email absent,Call POST /screenings/daily-schedules/{id}/subscriptions with empty email and no user email claim.,API returns HTTP 400 email is required.,Not Executed
+NEG-SCH-004 - Unsubscribe nonexistent subscription returns 404,Call DELETE subscription endpoint for email not subscribed to schedule.,API returns HTTP 404 Subscription not found.,Not Executed
+NEG-SCH-005 - Remove unknown schedule returns 404,Call DELETE /screenings/daily-schedules/{unknown_schedule_id}.,API returns HTTP 404 Daily schedule not found.,Not Executed
+NEG-SCH-006 - Invalid schedule file type blocked in UI,In Schedule tab upload unsupported extension and submit.,UI blocks submit with Only CSV or Excel files are allowed.,Not Executed
+NEG-RES-001 - Results refresh failure shows error banner,Force /screenings/submissions API failure then click Refresh.,UI shows Failed to refresh screening results error message.,Not Executed
+NEG-RES-002 - Export CSV with zero rows is prevented,Apply filters so no rows are visible and click Download Results CSV.,No file is exported (button disabled or no-op).,Not Executed
+NEG-RES-003 - Failed row hit dialog shows failure details,Open hit entity dialog on Failed result row.,Dialog displays failure text and HTTP status when available.,Not Executed
+NEG-ADM-001 - Save BU mapping without selected user is blocked,On Manage Users page clear selected user and click Save Mapping.,UI shows Select a user to map Business Units error.,Not Executed
+NEG-ADM-002 - Unauthorized user cannot update BU mappings,Call PUT /api/v1/admin/business-unit-mappings/{user_id} without admin/useradmin scope.,API returns HTTP 403 insufficient scope.,Not Executed
+NEG-DLY-001 - Unauthorized user cannot remove daily schedule,Call DELETE /api/v1/screenings/daily-schedules/{id} without screening.daily/admin permission.,API returns HTTP 403 insufficient scope.,Not Executed
+NEG-DLY-002 - Daily schedule list API failure is surfaced,Force /screenings/daily-schedules API failure and open Daily Schedule page.,UI shows Failed to load daily schedules error state.,Not Executed
+NEG-AUD-001 - Sensitive query params must be masked in access logs,"Invoke API with query params token,password,secret,email and inspect api_access_logs.",Logged query string is masked/redacted and raw secrets are not stored.,Not Executed
+NEG-AUD-002 - 401 auth failures are auditable,Trigger 401 on /api/v1 endpoint and inspect audit_events.,API_AUTHENTICATION_FAILED audit event is present with correlation id.,Not Executed
+NEG-AUD-003 - 403 authorization failures are auditable,Trigger 403 on protected endpoint and inspect audit_events.,API_AUTHORIZATION_FAILED audit event is present with correlation id.,Not Executed
+NEG-AUD-004 - High-risk API failure alert is deduplicated within window,Generate failures above threshold multiple times within same alert window.,Only first alert in window is new; subsequent checks do not duplicate alert event.,Not Executed
+NEG-AUD-005 - Retention cleanup deletes only records older than cutoff,Seed old and recent operational rows then run cleanup cycle.,Only rows older than retention period are purged.,Not Executed
+NEG-AUD-006 - SNS publish failure writes audit event,Configure failing SNS publish path for schedule notification.,SNS_NOTIFICATION_PUBLISH_FAILED event is logged with failure details.,Not Executed
+NEG-AUD-007 - Malformed SQS message is audited and removed,Push invalid message body to screening queue for worker consumption.,Worker logs SQS_MESSAGE_DECODE_FAILED and deletes malformed message.,Not Executed
