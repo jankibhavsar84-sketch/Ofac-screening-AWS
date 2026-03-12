@@ -674,10 +674,12 @@ class ActimizeClient:
         safe_key = str(party_key or "").strip()
         if not safe_key:
             return safe_key
-        prefix = "AMLP_"
-        if safe_key.upper().startswith(prefix):
-            return f"{prefix}{safe_key[len(prefix):]}"
-        return f"{prefix}{safe_key}"
+        canonical_prefix = "AMLP_"
+        upper_key = safe_key.upper()
+        if upper_key.startswith("AMLP"):
+            remainder = safe_key[4:].lstrip(" _-")
+            return f"{canonical_prefix}{remainder}" if remainder else canonical_prefix
+        return f"{canonical_prefix}{safe_key}"
 
     def _build_party_key(self, query: EntityExample) -> str:
         normalized = query.model_dump(mode="json")

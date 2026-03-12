@@ -1046,8 +1046,19 @@ export function ScreeningDetailPage() {
   }, [businessUnitOptions, singleBusinessUnitCode, batchBusinessUnitCode, scheduleBusinessUnitCode]);
 
   const loadSubmissionHistory = useCallback(
-    async ({ silent, updateTimestamp, resetPage }: { silent: boolean; updateTimestamp: boolean; resetPage: boolean }) => {
-      if (!currentUser?.id) return;
+    async ({
+      silent,
+      updateTimestamp,
+      resetPage,
+      requestUserId,
+    }: {
+      silent: boolean;
+      updateTimestamp: boolean;
+      resetPage: boolean;
+      requestUserId?: string;
+    }) => {
+      const activeUserId = safeTrim(requestUserId || currentUser?.id || "");
+      if (!activeUserId) return;
       if (submissionsRefreshInFlightRef.current) return;
 
       submissionsRefreshInFlightRef.current = true;
@@ -1057,6 +1068,7 @@ export function ScreeningDetailPage() {
       }
       try {
         const historyRows = await listScreeningSubmissions(500);
+        if (activeUserId !== safeTrim(currentUser?.id || "")) return;
         const reconciled = await reconcileDailyScheduleFlags(historyRows as Submission[]);
         setSubmissions(reconciled);
         if (updateTimestamp) {
@@ -1080,9 +1092,22 @@ export function ScreeningDetailPage() {
   );
 
   useEffect(() => {
-    if (!currentUser?.id) return;
-    void loadSubmissionHistory({ silent: true, updateTimestamp: false, resetPage: false });
-  }, [currentUser?.id, loadSubmissionHistory]);
+    const userId = safeTrim(currentUser?.id || "");
+    submissionsRefreshInFlightRef.current = false;
+    setResultsRefreshError(null);
+    setResultsLastRefreshedAt(null);
+    setSubmissions([]);
+    if (!userId) {
+      setResultsRefreshing(false);
+      return;
+    }
+    void loadSubmissionHistory({
+      silent: false,
+      updateTimestamp: true,
+      resetPage: true,
+      requestUserId: userId,
+    });
+  }, [currentUser?.id, loadSubmissionHistory, setSubmissions]);
 
   function toggleScreeningType(
     value: ScreeningType,

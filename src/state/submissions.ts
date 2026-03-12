@@ -48,34 +48,9 @@ export type BatchSubmission = {
 
 export type Submission = SingleSubmission | BatchSubmission;
 
-const STORAGE_KEY = "tapan_ofac_submissions_v1";
-
-function loadInitial(): Submission[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as Submission[];
-  } catch {
-    return [];
-  }
-}
-
 export const submissionsState = atom<Submission[]>({
   key: "submissionsState",
-  default: loadInitial(),
-  effects: [
-    ({ onSet }) => {
-      onSet((newValue) => {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(newValue));
-        } catch {
-          // ignore storage errors
-        }
-      });
-    },
-  ],
+  default: [],
 });
 
 export const latestResultState = atom<Submission | null>({

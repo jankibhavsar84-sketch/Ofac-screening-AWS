@@ -5,7 +5,7 @@
                                     "FARGATE"
                                 ],
     "cpu":  "256",
-    "memory":  "512",
+    "memory":  "1024",
     "executionRoleArn":  "arn:aws:iam::279930135954:role/ofac-screening-task-execution-role",
     "taskRoleArn":  "arn:aws:iam::279930135954:role/ofac-screening-task-role",
     "containerDefinitions":  [

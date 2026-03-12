@@ -359,18 +359,45 @@ export async function matchSync(
   if (businessUnitCode && businessUnitCode.trim()) body.business_unit_code = businessUnitCode.trim();
   if (user?.id) body.user_id = user.id;
   if (user?.name) body.user_name = user.name;
+  const transientStatuses = new Set([429, 500, 502, 503, 504]);
+  const maxAttempts = 3;
 
-  const resp = await fetch(`${baseUrl}/screenings/match`, {
-    method: "POST",
-    headers: withAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(body),
-  });
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
+    try {
+      const resp = await fetch(`${baseUrl}/screenings/match`, {
+        method: "POST",
+        headers: withAuthHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(body),
+        cache: "no-store",
+        signal: controller.signal,
+      });
 
-  if (!resp.ok) {
-    throw new Error(`Failed to run synchronous screening: ${await parseApiError(resp)}`);
+      if (resp.ok) {
+        return (await resp.json()) as EntityMatchResponse;
+      }
+
+      const parsedError = await parseApiError(resp);
+      const isRetryable = transientStatuses.has(resp.status);
+      if (attempt < maxAttempts && isRetryable) {
+        await sleep(300 * attempt);
+        continue;
+      }
+      throw new Error(`Failed to run synchronous screening: ${parsedError}`);
+    } catch (error: any) {
+      const isAbort = error?.name === "AbortError";
+      if (attempt < maxAttempts && isAbort) {
+        await sleep(300 * attempt);
+        continue;
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   }
 
-  return (await resp.json()) as EntityMatchResponse;
+  throw new Error("Failed to run synchronous screening: Request failed");
 }
 
 export async function listAuditEvents(limit = 200, userId?: string, offset = 0): Promise<AuditEvent[]> {
@@ -600,13 +627,41 @@ export async function listScreeningSubmissions(limit = 200): Promise<SubmissionH
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
   const url = new URL(`${baseUrl}/screenings/submissions`, window.location.origin);
   url.searchParams.set("limit", String(limit));
-  const resp = await fetch(url.toString(), {
-    headers: withAuthHeaders(),
-    cache: "no-store",
-  });
-  if (!resp.ok) {
-    throw new Error(`Failed to load screening submissions: ${await parseApiError(resp)}`);
+  const transientStatuses = new Set([429, 500, 502, 503, 504]);
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 30000);
+    try {
+      const resp = await fetch(url.toString(), {
+        headers: withAuthHeaders(),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (resp.ok) {
+        const parsed = (await resp.json()) as unknown;
+        return Array.isArray(parsed) ? (parsed as SubmissionHistoryEntry[]) : [];
+      }
+
+      const parsedError = await parseApiError(resp);
+      const isRetryable = transientStatuses.has(resp.status);
+      if (attempt < maxAttempts && isRetryable) {
+        await sleep(300 * attempt);
+        continue;
+      }
+      throw new Error(`Failed to load screening submissions: ${parsedError}`);
+    } catch (error: any) {
+      const isAbort = error?.name === "AbortError";
+      if (attempt < maxAttempts && isAbort) {
+        await sleep(300 * attempt);
+        continue;
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   }
-  const parsed = (await resp.json()) as unknown;
-  return Array.isArray(parsed) ? (parsed as SubmissionHistoryEntry[]) : [];
+
+  throw new Error("Failed to load screening submissions: Request failed");
 }
