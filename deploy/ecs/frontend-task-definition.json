@@ -11,7 +11,11 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "frontend",
+<<<<<<< HEAD
                                      "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260312084554",
+=======
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260312082024",
+>>>>>>> 67346382683d1351cba5dfc101ff1e2d65c65e84
                                      "essential":  true,
                                      "command":  [
                                                      "/entrypoint.sh"
