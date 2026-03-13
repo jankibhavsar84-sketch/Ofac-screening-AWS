@@ -7,11 +7,31 @@ const VUS = Number(process.env.VUS || 20);
 const ITERATIONS = Number(process.env.ITERATIONS || 3);
 const TIMEOUT_MS = Number(process.env.STEP_TIMEOUT_MS || 30000);
 
-const CREDENTIALS = [
+const DEFAULT_CREDENTIALS = [
   { username: 'screening.admin', password: 'Admin123!' },
   { username: 'screening.analyst', password: 'Analyst123!' },
   { username: 'screening.viewer', password: 'Viewer123!' },
 ];
+
+const CREDENTIALS = (() => {
+  const raw = String(process.env.CREDENTIALS_JSON || '').trim();
+  if (!raw) return DEFAULT_CREDENTIALS;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length) {
+      const normalized = parsed
+        .map((row) => ({
+          username: String(row?.username || '').trim(),
+          password: String(row?.password || '').trim(),
+        }))
+        .filter((row) => row.username && row.password);
+      if (normalized.length) return normalized;
+    }
+  } catch {
+    // fallback to defaults
+  }
+  return DEFAULT_CREDENTIALS;
+})();
 
 function nowIso() {
   return new Date().toISOString();
@@ -50,13 +70,42 @@ async function login(page, cred) {
     }
   }
 
-  await page.waitForURL(/realms\/screening-local/i, { timeout: TIMEOUT_MS, waitUntil: 'domcontentloaded' });
-  await page.fill('#username', cred.username, { timeout: TIMEOUT_MS });
-  await page.fill('#password', cred.password, { timeout: TIMEOUT_MS });
-  await page.click('#kc-login', { timeout: TIMEOUT_MS });
-
   await page.waitForURL(
-    (url) => url.hostname === 'localhost' && url.port === '8080' && !url.searchParams.has('code'),
+    (url) => /realms\/screening-local/i.test(url.href) || /amazoncognito\.com/i.test(url.hostname),
+    { timeout: TIMEOUT_MS, waitUntil: 'domcontentloaded' }
+  );
+
+  if (/realms\/screening-local/i.test(page.url())) {
+    await page.fill('#username', cred.username, { timeout: TIMEOUT_MS });
+    await page.fill('#password', cred.password, { timeout: TIMEOUT_MS });
+    await page.click('#kc-login', { timeout: TIMEOUT_MS });
+  } else {
+    const usernameField = page.locator('input[name="username"]').first();
+    await usernameField.waitFor({ timeout: TIMEOUT_MS });
+    await usernameField.fill(cred.username, { timeout: TIMEOUT_MS });
+
+    const nextButton = page.getByRole('button', { name: /next|continue|sign in/i }).first();
+    await nextButton.click({ timeout: TIMEOUT_MS });
+
+    const passwordField = page.locator('input[name="password"]').first();
+    const passwordVisible = await passwordField.isVisible({ timeout: 12000 }).catch(() => false);
+    if (!passwordVisible) {
+      const usePasswordButton = page.getByRole('button', { name: /password|use password|try another way/i }).first();
+      if (await usePasswordButton.isVisible({ timeout: 4000 }).catch(() => false)) {
+        await usePasswordButton.click({ timeout: TIMEOUT_MS });
+      }
+    }
+
+    await passwordField.waitFor({ timeout: TIMEOUT_MS });
+    await passwordField.fill(cred.password, { timeout: TIMEOUT_MS });
+
+    const signInButton = page.getByRole('button', { name: /sign in|continue/i }).first();
+    await signInButton.click({ timeout: TIMEOUT_MS });
+  }
+
+  const base = new URL(BASE_URL);
+  await page.waitForURL(
+    (url) => url.hostname === base.hostname && String(url.port || '') === String(base.port || '') && !url.searchParams.has('code'),
     { timeout: TIMEOUT_MS, waitUntil: 'domcontentloaded' }
   );
   if (!/\/screening(?:\/|$)/i.test(page.url())) {
