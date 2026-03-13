@@ -7,6 +7,9 @@ const VUS = Number(process.env.VUS || 20);
 const STEP_TIMEOUT_MS = Number(process.env.STEP_TIMEOUT_MS || 45000);
 const REFRESH_LOOPS = Number(process.env.REFRESH_LOOPS || 8);
 const IDLE_MS = Number(process.env.IDLE_MS || 20000);
+const SOAK_MINUTES = Number(process.env.SOAK_MINUTES || 0);
+const SOAK_DURATION_MS = Math.max(0, Math.floor(SOAK_MINUTES * 60 * 1000));
+const ACTION_PAUSE_MS = Number(process.env.ACTION_PAUSE_MS || 700);
 
 const DEFAULT_CREDS = [
   { username: 'perf_load_user_01', password: 'Perf#2026Load!' },
@@ -134,33 +137,42 @@ async function loginWithRetries(page, cred, maxAttempts = 3) {
   throw lastError;
 }
 
+async function waitForEnabled(locator, timeoutMs = STEP_TIMEOUT_MS) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const visible = await locator.isVisible({ timeout: 1000 }).catch(() => false);
+    if (visible) {
+      const disabled = await locator.isDisabled().catch(() => false);
+      if (!disabled) return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  throw new Error('Timed out waiting for enabled control');
+}
+
 async function selectFirstBusinessUnit(selectLocator) {
   await selectLocator.waitFor({ timeout: STEP_TIMEOUT_MS });
-  const loaded = await selectLocator.evaluate((el) => {
-    const select = el;
-    return Array.from(select.options).some((o) => String(o.value || '').trim());
-  });
-  if (!loaded) {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    const value = await selectLocator.evaluate((el) => {
+      const select = el;
+      const option = Array.from(select.options).find((o) => String(o.value || '').trim());
+      return option ? String(option.value) : '';
+    });
+    if (value) {
+      await selectLocator.selectOption(value);
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 900));
   }
-
-  const value = await selectLocator.evaluate((el) => {
-    const select = el;
-    const option = Array.from(select.options).find((o) => String(o.value || '').trim());
-    return option ? String(option.value) : '';
-  });
-
-  if (!value) {
-    throw new Error('No Business Unit option available');
-  }
-  await selectLocator.selectOption(value);
+  throw new Error('No Business Unit option available');
 }
 
 async function runSingleScreening(page, vuId) {
   const singleTab = page.getByRole('tab', { name: /single screening/i }).first();
   await singleTab.click({ timeout: STEP_TIMEOUT_MS });
+  await page.locator('#panel-single').first().waitFor({ timeout: STEP_TIMEOUT_MS });
 
-  const buSelect = page.locator('select').first();
+  const buSelect = page.locator('#panel-single select').first();
   await selectFirstBusinessUnit(buSelect);
 
   const firstNameInput = page.locator('.nameCard .field').filter({ has: page.getByText(/^First Name$/) }).first().locator('input');
@@ -168,7 +180,8 @@ async function runSingleScreening(page, vuId) {
   await firstNameInput.fill(`Perf${vuId}`, { timeout: STEP_TIMEOUT_MS });
   await lastNameInput.fill(`Single${vuId}`, { timeout: STEP_TIMEOUT_MS });
 
-  const runButton = page.getByRole('button', { name: /run ofac screening/i }).first();
+  const runButton = page.locator('#panel-single .btnRunWide').first();
+  await waitForEnabled(runButton, 30000);
   await runButton.click({ timeout: STEP_TIMEOUT_MS });
 
   const submitOutcome = await Promise.race([
@@ -184,17 +197,19 @@ async function runSingleScreening(page, vuId) {
 async function runBatchScreening(page, vuId) {
   const batchTab = page.getByRole('tab', { name: /batch screening/i }).first();
   await batchTab.click({ timeout: STEP_TIMEOUT_MS });
+  await page.locator('#panel-batch').first().waitFor({ timeout: STEP_TIMEOUT_MS });
 
-  const batchNameField = page.locator('.field').filter({ has: page.getByText(/Batch Name/i) }).first().locator('input');
+  const batchNameField = page.locator('#panel-batch .field').filter({ has: page.getByText(/Batch Name/i) }).first().locator('input');
   await batchNameField.fill(`PERF_BATCH_VU_${vuId}_${Date.now()}`, { timeout: STEP_TIMEOUT_MS });
 
-  const buSelect = page.locator('select').first();
+  const buSelect = page.locator('#panel-batch select').first();
   await selectFirstBusinessUnit(buSelect);
 
   const fileInput = page.locator('input[type="file"]').first();
   await fileInput.setInputFiles(batchCsvFor(vuId));
 
-  const startButton = page.getByRole('button', { name: /start batch screening/i }).first();
+  const startButton = page.locator('#panel-batch .btnBatchWide').first();
+  await waitForEnabled(startButton, 45000);
   await startButton.click({ timeout: STEP_TIMEOUT_MS });
 
   const submitOutcome = await Promise.race([
@@ -247,33 +262,71 @@ async function runUser(browser, vuId, cred) {
       throw error;
     }
 
-    if (cohort === 'mixed_single_batch') {
-      const tSingle = Date.now();
-      try {
-        await runSingleScreening(page, vuId);
-        mark('single_screening_submit', tSingle, true);
-      } catch (error) {
-        mark('single_screening_submit', tSingle, false, String(error?.message || error));
-      }
+    const endAt = SOAK_DURATION_MS > 0 ? Date.now() + SOAK_DURATION_MS : 0;
 
-      const tBatch = Date.now();
-      try {
-        await runBatchScreening(page, vuId);
-        mark('batch_screening_submit', tBatch, true);
-      } catch (error) {
-        mark('batch_screening_submit', tBatch, false, String(error?.message || error));
+    if (cohort === 'mixed_single_batch') {
+      if (SOAK_DURATION_MS > 0) {
+        while (Date.now() < endAt) {
+          const tSingle = Date.now();
+          try {
+            await runSingleScreening(page, vuId);
+            mark('single_screening_submit', tSingle, true);
+          } catch (error) {
+            mark('single_screening_submit', tSingle, false, String(error?.message || error));
+          }
+
+          const tBatch = Date.now();
+          try {
+            await runBatchScreening(page, vuId);
+            mark('batch_screening_submit', tBatch, true);
+          } catch (error) {
+            mark('batch_screening_submit', tBatch, false, String(error?.message || error));
+          }
+
+          if (Date.now() < endAt) await page.waitForTimeout(ACTION_PAUSE_MS);
+        }
+      } else {
+        const tSingle = Date.now();
+        try {
+          await runSingleScreening(page, vuId);
+          mark('single_screening_submit', tSingle, true);
+        } catch (error) {
+          mark('single_screening_submit', tSingle, false, String(error?.message || error));
+        }
+
+        const tBatch = Date.now();
+        try {
+          await runBatchScreening(page, vuId);
+          mark('batch_screening_submit', tBatch, true);
+        } catch (error) {
+          mark('batch_screening_submit', tBatch, false, String(error?.message || error));
+        }
       }
     } else if (cohort === 'refresh_only') {
-      const tRefresh = Date.now();
-      try {
-        await runRefreshLoop(page);
-        mark('results_refresh_loop', tRefresh, true);
-      } catch (error) {
-        mark('results_refresh_loop', tRefresh, false, String(error?.message || error));
+      if (SOAK_DURATION_MS > 0) {
+        while (Date.now() < endAt) {
+          const tRefresh = Date.now();
+          try {
+            await runRefreshLoop(page);
+            mark('results_refresh_loop', tRefresh, true);
+          } catch (error) {
+            mark('results_refresh_loop', tRefresh, false, String(error?.message || error));
+          }
+          if (Date.now() < endAt) await page.waitForTimeout(ACTION_PAUSE_MS);
+        }
+      } else {
+        const tRefresh = Date.now();
+        try {
+          await runRefreshLoop(page);
+          mark('results_refresh_loop', tRefresh, true);
+        } catch (error) {
+          mark('results_refresh_loop', tRefresh, false, String(error?.message || error));
+        }
       }
     } else {
       const tIdle = Date.now();
-      await page.waitForTimeout(IDLE_MS);
+      const waitMs = SOAK_DURATION_MS > 0 ? SOAK_DURATION_MS : IDLE_MS;
+      await page.waitForTimeout(waitMs);
       mark('idle_wait', tIdle, true);
     }
   } finally {
@@ -323,6 +376,7 @@ async function runUser(browser, vuId, cred) {
   const summary = {
     baseUrl: BASE_URL,
     vus: VUS,
+    soakMinutes: SOAK_MINUTES,
     cohortDistribution: byCohort,
     startedAt: new Date(started).toISOString(),
     finishedAt: nowIso(),
