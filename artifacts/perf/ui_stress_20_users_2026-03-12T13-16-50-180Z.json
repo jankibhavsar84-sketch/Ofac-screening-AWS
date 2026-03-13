@@ -1,0 +1,1781 @@
+{
+  "summary": {
+    "baseUrl": "http://localhost:8080",
+    "vus": 20,
+    "iterationsPerVu": 3,
+    "startedAt": "2026-03-12T13:16:03.158Z",
+    "finishedAt": "2026-03-12T13:16:50.179Z",
+    "durationMs": 47021,
+    "completedVus": 20,
+    "successfulVus": 0,
+    "failedVus": 20,
+    "fatalErrors": [],
+    "totalSteps": 260,
+    "avgStepMs": 3090.75,
+    "p95StepMs": 10016,
+    "p99StepMs": 10728,
+    "maxStepMs": 12127
+  },
+  "completed": [
+    {
+      "vuId": 1,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:16:06.409Z",
+      "finishedAt": "2026-03-12T13:16:50.179Z",
+      "totalMs": 43770,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 12021,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10003,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 185,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 379,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 5,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10011,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 184,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 333,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 10,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10010,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 183,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 344,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 5,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 2,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:16:06.701Z",
+      "finishedAt": "2026-03-12T13:16:48.967Z",
+      "totalMs": 42266,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 10396,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10008,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 193,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 372,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 15,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10001,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 177,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 376,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 38,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10001,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 174,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 310,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 6,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 3,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:16:06.003Z",
+      "finishedAt": "2026-03-12T13:16:44.065Z",
+      "totalMs": 38062,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 6521,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10012,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 242,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 283,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 28,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10011,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 181,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 230,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 8,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10008,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 185,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 231,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 4,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:16:06.410Z",
+      "finishedAt": "2026-03-12T13:16:49.122Z",
+      "totalMs": 42712,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 10728,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10003,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 191,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 475,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 10,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10002,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 206,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 386,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10015,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 179,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 388,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 9,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 5,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:16:06.408Z",
+      "finishedAt": "2026-03-12T13:16:44.649Z",
+      "totalMs": 38241,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 6452,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10016,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 261,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 456,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 17,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10007,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 180,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 279,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 6,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10008,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 171,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 297,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 6,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:16:06.407Z",
+      "finishedAt": "2026-03-12T13:16:44.399Z",
+      "totalMs": 37992,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 6456,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10013,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 265,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 295,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 13,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10011,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 173,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 215,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 9,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10013,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 181,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 231,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 7,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:16:06.171Z",
+      "finishedAt": "2026-03-12T13:16:50.067Z",
+      "totalMs": 43896,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 12127,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10038,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 188,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 360,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 13,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10009,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 179,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 343,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 14,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10015,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 184,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 327,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 11,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 8,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:16:06.484Z",
+      "finishedAt": "2026-03-12T13:16:46.544Z",
+      "totalMs": 40060,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7963,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10005,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 284,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 379,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 16,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10005,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 197,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 310,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 15,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10014,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 201,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 324,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 8,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 9,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:16:06.413Z",
+      "finishedAt": "2026-03-12T13:16:48.660Z",
+      "totalMs": 42247,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 10684,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10007,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 193,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 301,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 22,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10001,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 197,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 257,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10005,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 186,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 227,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 9,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 10,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:16:06.722Z",
+      "finishedAt": "2026-03-12T13:16:46.086Z",
+      "totalMs": 39364,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7290,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10005,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 228,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 517,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 15,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10002,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 186,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 331,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 11,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10009,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 180,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 351,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 16,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 11,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:16:06.412Z",
+      "finishedAt": "2026-03-12T13:16:45.442Z",
+      "totalMs": 39030,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7255,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10004,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 246,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 463,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 17,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10010,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 185,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 264,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10001,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 180,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 293,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 8,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 12,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:16:06.487Z",
+      "finishedAt": "2026-03-12T13:16:46.086Z",
+      "totalMs": 39599,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7941,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10005,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 265,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 266,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 17,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10015,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 180,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 223,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 13,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10009,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 184,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 226,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 4,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 13,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:16:06.411Z",
+      "finishedAt": "2026-03-12T13:16:48.968Z",
+      "totalMs": 42557,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 10511,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10010,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 188,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 459,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 28,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10014,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 200,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 412,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 32,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10001,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 182,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 365,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 12,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 14,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:16:06.485Z",
+      "finishedAt": "2026-03-12T13:16:46.831Z",
+      "totalMs": 40346,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 8531,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10097,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 200,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 318,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 9,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10003,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 190,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 288,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 8,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10011,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 198,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 325,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 6,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 15,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:16:08.038Z",
+      "finishedAt": "2026-03-12T13:16:46.852Z",
+      "totalMs": 38814,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7332,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10018,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 204,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 242,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 11,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10010,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 178,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 215,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 6,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10001,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 208,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 237,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 13,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 16,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:16:06.488Z",
+      "finishedAt": "2026-03-12T13:16:46.544Z",
+      "totalMs": 40056,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7687,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10022,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 245,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 565,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 21,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10016,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 187,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 368,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 12,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10014,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 185,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 443,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 27,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 17,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:16:08.035Z",
+      "finishedAt": "2026-03-12T13:16:47.299Z",
+      "totalMs": 39264,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7673,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10017,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 208,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 317,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10003,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 182,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 265,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10001,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 197,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 279,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 18,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:16:08.203Z",
+      "finishedAt": "2026-03-12T13:16:47.156Z",
+      "totalMs": 38953,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7513,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10009,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 203,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 261,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 10,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10009,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 185,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 220,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 5,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10002,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 192,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 220,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 4,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 19,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:16:07.984Z",
+      "finishedAt": "2026-03-12T13:16:46.482Z",
+      "totalMs": 38498,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 6184,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10020,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 260,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 583,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 18,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10001,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 180,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 370,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 13,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10012,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 184,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 442,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 17,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 20,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:16:08.053Z",
+      "finishedAt": "2026-03-12T13:16:49.095Z",
+      "totalMs": 41042,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 9095,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10015,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 203,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 399,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 8,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10004,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 194,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 361,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 10,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10013,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 207,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 348,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 20,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/refresh screening results/i)\u001b[22m\n"
+        }
+      ]
+    }
+  ]
+}

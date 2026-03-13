@@ -1,0 +1,23 @@
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto('http://localhost:8080');
+  await page.getByRole('button', {name:/sign in/i}).click();
+  await page.fill('#username','screening.admin');
+  await page.fill('#password','Admin123!');
+  await page.click('#kc-login');
+  await page.waitForURL(/localhost:8080/,{timeout:60000,waitUntil:'domcontentloaded'});
+  console.log('after login',page.url());
+  await page.goto('http://localhost:8080/screening',{waitUntil:'domcontentloaded'});
+  console.log('after goto screening',page.url());
+  await page.waitForTimeout(5000);
+  console.log('title', await page.title());
+  const heading = page.getByRole('heading',{name:/Entity Screening Workbench/i});
+  console.log('heading count', await heading.count());
+  const bodyText = await page.locator('body').innerText();
+  console.log('body start', bodyText.slice(0,400));
+  await page.screenshot({path:'artifacts/perf/screening_debug.png', fullPage:true});
+  await browser.close();
+})();
