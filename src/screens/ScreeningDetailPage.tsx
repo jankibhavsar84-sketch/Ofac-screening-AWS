@@ -926,7 +926,9 @@ export function ScreeningDetailPage() {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const [singleError, setSingleError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [singleSubmitting, setSingleSubmitting] = useState(false);
+  const [batchSubmitting, setBatchSubmitting] = useState(false);
+  const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [businessUnitsError, setBusinessUnitsError] = useState<string | null>(null);
   const [businessUnitsLoading, setBusinessUnitsLoading] = useState(false);
@@ -947,6 +949,7 @@ export function ScreeningDetailPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const scheduleRunAtInputRef = useRef<HTMLInputElement | null>(null);
   const hitDialogCloseBtnRef = useRef<HTMLButtonElement | null>(null);
+  const anySubmitting = singleSubmitting || batchSubmitting || scheduleSubmitting;
   // NOTE: The system supports up to ~25 MB, but we guide users to keep uploads smaller
   // for reliability/performance.
   const MAX_UPLOAD_VALIDATION_MB = 25;
@@ -1327,39 +1330,39 @@ export function ScreeningDetailPage() {
   async function submitSingle(e: React.FormEvent) {
     e.preventDefault();
     setSingleError(null);
-    setSubmitting(true);
+    setSingleSubmitting(true);
 
     try {
       if (!canSingleScreen) {
         setSingleError("You do not have permission to run single screening.");
-        setSubmitting(false);
+        setSingleSubmitting(false);
         return;
       }
       if (!currentUser) {
         setSingleError("Authenticated user context is missing. Please sign in again.");
-        setSubmitting(false);
+        setSingleSubmitting(false);
         return;
       }
       if (viewerMockOnly && !singleMockScreening) {
         setSingleError("Viewer role can run only mock single screening.");
-        setSubmitting(false);
+        setSingleSubmitting(false);
         return;
       }
       if (!singleScreeningTypes.length) {
         setSingleError("Select at least one screening type.");
-        setSubmitting(false);
+        setSingleSubmitting(false);
         return;
       }
       if (!safeTrim(singleBusinessUnitCode)) {
         setSingleError("Business Unit is required.");
-        setSubmitting(false);
+        setSingleSubmitting(false);
         return;
       }
 
       const parsed = singleSchema.safeParse(names);
       if (!parsed.success) {
         setSingleError(parsed.error.issues[0]?.message ?? "Fix validation errors.");
-        setSubmitting(false);
+        setSingleSubmitting(false);
         return;
       }
 
@@ -1473,7 +1476,7 @@ export function ScreeningDetailPage() {
     } catch (err: any) {
       setSingleError(err?.message ?? "Failed to screen.");
     } finally {
-      setSubmitting(false);
+      setSingleSubmitting(false);
     }
   }
 
@@ -1507,7 +1510,7 @@ export function ScreeningDetailPage() {
       return;
     }
 
-    setSubmitting(true);
+    setBatchSubmitting(true);
     try {
       const name = batchFile.name.toLowerCase();
       let rows: any[] = [];
@@ -1686,7 +1689,7 @@ export function ScreeningDetailPage() {
     } catch (err: any) {
       setBatchError(err?.message ?? "Batch screening failed.");
     } finally {
-      setSubmitting(false);
+      setBatchSubmitting(false);
     }
   }
 
@@ -1731,7 +1734,7 @@ export function ScreeningDetailPage() {
     }
 
     const subscriptionEmails = parseSubscriptionEmails(scheduleSubscriptionEmails);
-    setSubmitting(true);
+    setScheduleSubmitting(true);
     try {
       const name = scheduleFile.name.toLowerCase();
       let rows: any[] = [];
@@ -1914,7 +1917,7 @@ export function ScreeningDetailPage() {
     } catch (err: any) {
       setScheduleError(err?.message ?? "Scheduled screening failed.");
     } finally {
-      setSubmitting(false);
+      setScheduleSubmitting(false);
     }
   }
 
@@ -2346,7 +2349,7 @@ export function ScreeningDetailPage() {
           {viewerMockOnly ? " (mock-only single screening)" : ""}
         </div>
 
-        <button className="btnGhost" type="button" onClick={clearAll} disabled={submitting} style={{ marginLeft: "auto" }}>
+        <button className="btnGhost" type="button" onClick={clearAll} disabled={anySubmitting} style={{ marginLeft: "auto" }}>
           Clear
         </button>
       </div>
@@ -2717,8 +2720,8 @@ export function ScreeningDetailPage() {
               </div>
 
               {singleError ? <div className="errorBox" role="alert" aria-live="assertive">{singleError}</div> : null}
-              <button className="btnRunWide" type="submit" disabled={submitting}>
-                {submitting ? "Running..." : "Run OFAC Screening"}
+              <button className="btnRunWide" type="submit" disabled={singleSubmitting}>
+                {singleSubmitting ? "Running..." : "Run OFAC Screening"}
               </button>
             </form>
           </div>
@@ -2864,8 +2867,8 @@ export function ScreeningDetailPage() {
             ) : null}
             {batchError ? <div className="errorBox" role="alert" aria-live="assertive">{batchError}</div> : null}
             <form onSubmit={submitBatch}>
-              <button className="btnBatchWide" type="submit" disabled={submitting}>
-                {submitting ? "Starting..." : "Start Batch Screening"}
+              <button className="btnBatchWide" type="submit" disabled={batchSubmitting}>
+                {batchSubmitting ? "Starting..." : "Start Batch Screening"}
               </button>
             </form>
           </div>
@@ -3081,8 +3084,8 @@ export function ScreeningDetailPage() {
                 </div>
               ) : null}
               {scheduleError ? <div className="errorBox" role="alert" aria-live="assertive">{scheduleError}</div> : null}
-              <button className="btnBatchWide" type="submit" disabled={submitting}>
-                {submitting ? "Starting..." : "Create Scheduled Screening"}
+              <button className="btnBatchWide" type="submit" disabled={scheduleSubmitting}>
+                {scheduleSubmitting ? "Starting..." : "Create Scheduled Screening"}
               </button>
             </form>
           </div>
