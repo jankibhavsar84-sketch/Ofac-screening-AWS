@@ -20,6 +20,7 @@ from .file_store import S3FileStore
 from .models import (
     AdminUserOption,
     AuditEvent,
+    AuditEventPage,
     BatchUploadAccepted,
     BusinessUnit,
     BusinessUnitUpdateRequest,
@@ -893,6 +894,18 @@ def list_audit_events(
     svc: ScreeningService = Depends(get_service),
 ) -> list[AuditEvent]:
     return svc.list_audit_events(limit=limit, user_id=user_id, offset=offset)
+
+
+@app.get("/api/v1/audit-events/page", response_model=AuditEventPage)
+def list_audit_events_page(
+    limit: int = Query(default=100, ge=1, le=300),
+    offset: int = Query(default=0, ge=0),
+    user_id: str | None = Query(default=None),
+    errors_only: bool = Query(default=False),
+    _: AuthPrincipal = Depends(require_any_scope("screening.admin", "screening.useradmin")),
+    svc: ScreeningService = Depends(get_service),
+) -> AuditEventPage:
+    return svc.list_audit_events_page(limit=limit, user_id=user_id, offset=offset, errors_only=errors_only)
 
 
 @app.post("/api/v1/screenings/match", response_model=EntityMatchResponse)

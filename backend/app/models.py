@@ -210,5 +210,12 @@ class AuditEvent(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
 
 
+class AuditEventPage(BaseModel):
+    items: list[AuditEvent] = Field(default_factory=list)
+    total: int = 0
+    limit: int
+    offset: int
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()

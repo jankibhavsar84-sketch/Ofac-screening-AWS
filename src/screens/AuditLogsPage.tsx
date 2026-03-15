@@ -1,12 +1,146 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { buildIdentity, hasPermission } from "../auth/claims";
-import { listAuditEvents, type AuditEvent } from "../api/screeningApi";
+import {
+  listAdminUsers,
+  listAuditEventPage,
+  type AdminUserOption,
+  type AuditEvent,
+} from "../api/screeningApi";
 
 type AuditUserOption = {
   userId: string;
   displayName: string;
 };
+
+const pageSizeOptions = [100, 200, 300] as const;
+const AUDIT_WORKSPACE_STORAGE_KEY = "ofac-screening:audit-workspace";
+const AUDIT_CACHE_STORAGE_KEY = "ofac-screening:audit-cache";
+const AUDIT_CACHE_TTL_MS = 60 * 1000;
+
+type AuditWorkspaceState = {
+  userFilter: string;
+  errorsOnly: boolean;
+  page: number;
+  pageSize: (typeof pageSizeOptions)[number];
+};
+
+type AuditCacheState = {
+  ownerUserId: string | null;
+  queryKey: string | null;
+  items: AuditEvent[];
+  total: number;
+  lastRefreshedAt: string | null;
+  userOptions: AuditUserOption[];
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function defaultAuditWorkspaceState(): AuditWorkspaceState {
+  return {
+    userFilter: "all",
+    errorsOnly: false,
+    page: 1,
+    pageSize: 100,
+  };
+}
+
+function defaultAuditCacheState(): AuditCacheState {
+  return {
+    ownerUserId: null,
+    queryKey: null,
+    items: [],
+    total: 0,
+    lastRefreshedAt: null,
+    userOptions: [],
+  };
+}
+
+function parseAuditUserOption(value: unknown): AuditUserOption | null {
+  if (!isRecord(value)) return null;
+  const userId = typeof value.userId === "string" ? value.userId.trim() : "";
+  const displayName = typeof value.displayName === "string" ? value.displayName.trim() : "";
+  if (!userId) return null;
+  return {
+    userId,
+    displayName: displayName || userId,
+  };
+}
+
+function parseAuditEvent(value: unknown): AuditEvent | null {
+  if (!isRecord(value)) return null;
+  const eventId = typeof value.event_id === "number" && Number.isFinite(value.event_id) ? Math.trunc(value.event_id) : NaN;
+  const createdAt = typeof value.created_at === "string" ? value.created_at : "";
+  const action = typeof value.action === "string" ? value.action : "";
+  if (!Number.isFinite(eventId) || !createdAt || !action) return null;
+  return {
+    event_id: eventId,
+    created_at: createdAt,
+    user_id: typeof value.user_id === "string" ? value.user_id : null,
+    user_name: typeof value.user_name === "string" ? value.user_name : null,
+    action,
+    entity_type: typeof value.entity_type === "string" ? value.entity_type : null,
+    entity_id: typeof value.entity_id === "string" ? value.entity_id : null,
+    details: isRecord(value.details) ? value.details : {},
+  };
+}
+
+function parseAuditWorkspaceState(value: unknown): AuditWorkspaceState | null {
+  if (!isRecord(value)) return null;
+  const page = typeof value.page === "number" && Number.isFinite(value.page) ? Math.max(1, Math.floor(value.page)) : 1;
+  const userFilter = typeof value.userFilter === "string" && value.userFilter.trim() ? value.userFilter.trim() : "all";
+  const errorsOnly = Boolean(value.errorsOnly);
+  const pageSizeRaw = typeof value.pageSize === "number" ? value.pageSize : NaN;
+  const pageSize = pageSizeRaw === 100 || pageSizeRaw === 200 || pageSizeRaw === 300 ? pageSizeRaw : 100;
+  return { userFilter, errorsOnly, page, pageSize };
+}
+
+function parseAuditCacheState(value: unknown): AuditCacheState | null {
+  if (!isRecord(value)) return null;
+  const ownerUserId =
+    value.ownerUserId === null || typeof value.ownerUserId === "string" ? value.ownerUserId : null;
+  const queryKey = value.queryKey === null || typeof value.queryKey === "string" ? value.queryKey : null;
+  const total = typeof value.total === "number" && Number.isFinite(value.total) ? Math.max(0, Math.floor(value.total)) : 0;
+  const lastRefreshedAt =
+    value.lastRefreshedAt === null || typeof value.lastRefreshedAt === "string" ? value.lastRefreshedAt : null;
+  const items = Array.isArray(value.items) ? value.items.map(parseAuditEvent).filter((item): item is AuditEvent => item !== null) : [];
+  const userOptions = Array.isArray(value.userOptions)
+    ? value.userOptions.map(parseAuditUserOption).filter((item): item is AuditUserOption => item !== null)
+    : [];
+  return {
+    ownerUserId,
+    queryKey,
+    items,
+    total,
+    lastRefreshedAt,
+    userOptions,
+  };
+}
+
+function loadStoredState<T>(storageKey: string, parse: (value: unknown) => T | null, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (raw == null) return fallback;
+    const parsed = parse(JSON.parse(raw));
+    if (parsed != null) return parsed;
+    window.localStorage.removeItem(storageKey);
+  } catch {
+    window.localStorage.removeItem(storageKey);
+  }
+  return fallback;
+}
+
+function persistStoredState(storageKey: string, value: unknown): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(value));
+  } catch {
+    // Ignore browser storage limitations.
+  }
+}
 
 function readString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -71,6 +205,56 @@ function resolveAuditUserName(event: AuditEvent): string {
 function formatActionLabel(action: string): string {
   const normalized = readString(action);
   return normalized ? toTitleCaseWords(normalized) : "-";
+}
+
+function mergeAuditUserOptions(
+  current: AuditUserOption[],
+  adminRows: AdminUserOption[] = [],
+  events: AuditEvent[] = [],
+  selfUserId?: string,
+  selfDisplayName?: string,
+): AuditUserOption[] {
+  const merged = new Map<string, string>();
+  for (const option of current) {
+    const userId = readString(option.userId);
+    if (!userId) continue;
+    merged.set(userId, readString(option.displayName) || userId);
+  }
+  for (const row of adminRows) {
+    const userId = readString(row.user_id);
+    if (!userId) continue;
+    const displayName = readString(row.display_name) || userId;
+    const existing = merged.get(userId);
+    const shouldUpgradeWithEmail = displayName.includes("@") && !readString(existing).includes("@");
+    if (!existing || existing === userId || shouldUpgradeWithEmail) {
+      merged.set(userId, displayName || userId);
+    }
+  }
+  for (const row of events) {
+    const rowUserId = readString(row.user_id);
+    if (!rowUserId) continue;
+    const resolvedName = resolveAuditUserName(row);
+    const existing = merged.get(rowUserId);
+    if (!existing || existing === rowUserId || isTechnicalIdentifier(existing)) {
+      merged.set(rowUserId, resolvedName || rowUserId);
+    }
+  }
+  if (selfUserId) {
+    merged.set(selfUserId, readString(selfDisplayName) || merged.get(selfUserId) || selfUserId);
+  }
+  return Array.from(merged.entries()).map(([userId, displayName]) => ({
+    userId,
+    displayName: displayName || userId,
+  }));
+}
+
+function buildAuditQueryKey(workspace: AuditWorkspaceState): string {
+  return JSON.stringify({
+    userFilter: workspace.userFilter,
+    errorsOnly: workspace.errorsOnly,
+    page: workspace.page,
+    pageSize: workspace.pageSize,
+  });
 }
 
 function shortId(value: string): string {
@@ -141,27 +325,36 @@ function SectionIcon() {
 }
 
 export function AuditLogsPage() {
-  const pageSizeOptions = [100, 200, 300] as const;
   const auth = useAuth();
   const identity = buildIdentity(auth.user);
   const allowed = hasPermission(identity, "screening.admin");
-
-  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const selfUserId = readString(identity?.id) || undefined;
+  const selfDisplayName = readString(identity?.name || identity?.email || identity?.id) || undefined;
+  const [auditWorkspace, setAuditWorkspace] = useState<AuditWorkspaceState>(() =>
+    loadStoredState(AUDIT_WORKSPACE_STORAGE_KEY, parseAuditWorkspaceState, defaultAuditWorkspaceState())
+  );
+  const [auditCache, setAuditCache] = useState<AuditCacheState>(() =>
+    loadStoredState(AUDIT_CACHE_STORAGE_KEY, parseAuditCacheState, defaultAuditCacheState())
+  );
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
-  const [auditUserFilter, setAuditUserFilter] = useState("all");
-  const [auditErrorsOnly, setAuditErrorsOnly] = useState(false);
-  const [auditUserOptions, setAuditUserOptions] = useState<AuditUserOption[]>([]);
-  const [auditPage, setAuditPage] = useState(1);
-  const [auditPageSize, setAuditPageSize] = useState<(typeof pageSizeOptions)[number]>(100);
+  const latestAuditRequestRef = useRef("");
+
+  const auditQueryKey = useMemo(() => buildAuditQueryKey(auditWorkspace), [auditWorkspace]);
+  const auditOffset = Math.max(0, (auditWorkspace.page - 1) * auditWorkspace.pageSize);
+  const hasCachedAuditPage =
+    (auditCache.ownerUserId || null) === (selfUserId || null) &&
+    auditCache.queryKey === auditQueryKey;
+  const auditEvents = hasCachedAuditPage ? auditCache.items : [];
+  const auditTotal = hasCachedAuditPage ? auditCache.total : 0;
 
   const sortedAuditUserOptions = useMemo(
-    () => [...auditUserOptions].sort((a, b) => a.displayName.localeCompare(b.displayName)),
-    [auditUserOptions]
+    () => [...auditCache.userOptions].sort((a, b) => a.displayName.localeCompare(b.displayName)),
+    [auditCache.userOptions]
   );
   const auditUserNameById = useMemo(() => {
     const map = new Map<string, string>();
-    for (const option of auditUserOptions) {
+    for (const option of auditCache.userOptions) {
       const id = option.userId.trim();
       const name = option.displayName.trim();
       if (!id || !name) continue;
@@ -170,72 +363,118 @@ export function AuditLogsPage() {
       }
     }
     return map;
-  }, [auditUserOptions]);
+  }, [auditCache.userOptions]);
 
-  async function loadAuditEvents(userId?: string) {
-    setAuditError(null);
-    setAuditLoading(true);
-    try {
-      const pageSize = 1000;
-      const maxRows = 50000;
-      let offset = 0;
-      const rows: AuditEvent[] = [];
-
-      while (offset < maxRows) {
-        const page = await listAuditEvents(pageSize, userId, offset);
-        rows.push(...page);
-        if (page.length < pageSize) break;
-        offset += page.length;
-      }
-
-      setAuditEvents(rows);
-      setAuditUserOptions((prev) => {
-        const merged = new Map<string, string>(prev.map((item) => [item.userId, item.displayName]));
-        for (const row of rows) {
-          const rowUserId = readString(row.user_id);
-          if (!rowUserId) continue;
-          const resolvedName = resolveAuditUserName(row);
-          const existing = merged.get(rowUserId);
-          if (!existing || existing === rowUserId) {
-            merged.set(rowUserId, resolvedName || rowUserId);
-          }
-        }
-        if (identity?.id) {
-          const id = identity.id.trim();
-          if (id && !merged.has(id)) {
-            merged.set(id, (identity.name || identity.email || identity.id).trim());
-          }
-        }
-        return Array.from(merged.entries()).map(([userIdValue, displayName]) => ({
-          userId: userIdValue,
-          displayName: displayName || userIdValue,
+  const loadAuditUserOptions = useCallback(
+    async (force = false) => {
+      const existingOptions = auditCache.userOptions;
+      if (!force && existingOptions.length > 0) return;
+      try {
+        const rows = await listAdminUsers();
+        setAuditCache((prev) => ({
+          ...prev,
+          ownerUserId: selfUserId || null,
+          userOptions: mergeAuditUserOptions(prev.userOptions, rows, [], selfUserId, selfDisplayName),
         }));
-      });
-    } catch (err: any) {
-      setAuditError(err?.message ?? "Failed to load audit events.");
-    } finally {
-      setAuditLoading(false);
-    }
-  }
+      } catch {
+        // Best effort only. Audit rows can still populate names.
+      }
+    },
+    [auditCache.userOptions, selfDisplayName, selfUserId]
+  );
+
+  const loadAuditPage = useCallback(
+    async (force = false) => {
+      const requestKey = auditQueryKey;
+      const userId = auditWorkspace.userFilter === "all" ? undefined : auditWorkspace.userFilter;
+      const isFresh =
+        hasCachedAuditPage &&
+        auditCache.lastRefreshedAt != null &&
+        Date.now() - Date.parse(auditCache.lastRefreshedAt) < AUDIT_CACHE_TTL_MS;
+      if (!force && isFresh) return;
+
+      latestAuditRequestRef.current = requestKey;
+      setAuditError(null);
+      setAuditLoading(true);
+      try {
+        const page = await listAuditEventPage(
+          auditWorkspace.pageSize,
+          userId,
+          auditOffset,
+          auditWorkspace.errorsOnly
+        );
+        if (latestAuditRequestRef.current !== requestKey) return;
+        setAuditCache((prev) => ({
+          ...prev,
+          ownerUserId: selfUserId || null,
+          queryKey: requestKey,
+          items: page.items,
+          total: page.total,
+          lastRefreshedAt: new Date().toISOString(),
+          userOptions: mergeAuditUserOptions(prev.userOptions, [], page.items, selfUserId, selfDisplayName),
+        }));
+      } catch (err: any) {
+        if (latestAuditRequestRef.current !== requestKey) return;
+        setAuditError(err?.message ?? "Failed to load audit events.");
+      } finally {
+        if (latestAuditRequestRef.current === requestKey) {
+          setAuditLoading(false);
+        }
+      }
+    },
+    [
+      auditCache.lastRefreshedAt,
+      auditOffset,
+      auditQueryKey,
+      auditWorkspace.errorsOnly,
+      auditWorkspace.pageSize,
+      auditWorkspace.userFilter,
+      hasCachedAuditPage,
+      selfDisplayName,
+      selfUserId,
+    ]
+  );
+
+  useEffect(() => {
+    persistStoredState(AUDIT_WORKSPACE_STORAGE_KEY, auditWorkspace);
+  }, [auditWorkspace]);
+
+  useEffect(() => {
+    persistStoredState(AUDIT_CACHE_STORAGE_KEY, auditCache);
+  }, [auditCache]);
+
+  useEffect(() => {
+    if ((auditCache.ownerUserId || null) === (selfUserId || null)) return;
+    setAuditCache({
+      ...defaultAuditCacheState(),
+      ownerUserId: selfUserId || null,
+    });
+    setAuditWorkspace((prev) => ({
+      ...prev,
+      userFilter: "all",
+      page: 1,
+    }));
+  }, [auditCache.ownerUserId, selfUserId]);
 
   useEffect(() => {
     if (!allowed) return;
-    const userId = auditUserFilter === "all" ? undefined : auditUserFilter;
-    void loadAuditEvents(userId);
-  }, [allowed, auditUserFilter]);
+    void loadAuditUserOptions();
+  }, [allowed, loadAuditUserOptions]);
 
-  const filteredAuditEvents = useMemo(() => {
-    if (!auditErrorsOnly) return auditEvents;
-    return auditEvents.filter((event) => {
-      const action = (event.action || "").toUpperCase();
-      const details = event.details as Record<string, unknown> | undefined;
-      return action.includes("FAILED") || Boolean(readErrorFromDetails(details));
-    });
-  }, [auditEvents, auditErrorsOnly]);
-  const totalAuditPages = Math.max(1, Math.ceil(filteredAuditEvents.length / auditPageSize));
-  const auditPageSafe = Math.min(auditPage, totalAuditPages);
-  const auditStartIdx = (auditPageSafe - 1) * auditPageSize;
-  const pagedAuditEvents = filteredAuditEvents.slice(auditStartIdx, auditStartIdx + auditPageSize);
+  useEffect(() => {
+    if (!allowed) return;
+    void loadAuditPage();
+  }, [allowed, loadAuditPage]);
+
+  const totalAuditPages = Math.max(1, Math.ceil(auditTotal / auditWorkspace.pageSize));
+  const auditPageSafe = Math.min(auditWorkspace.page, totalAuditPages);
+  const auditStartIdx = auditTotal === 0 ? 0 : (auditPageSafe - 1) * auditWorkspace.pageSize;
+  const pagedAuditEvents = auditEvents;
+
+  useEffect(() => {
+    if (auditWorkspace.page === auditPageSafe) return;
+    setAuditWorkspace((prev) => ({ ...prev, page: auditPageSafe }));
+  }, [auditPageSafe, auditWorkspace.page]);
 
   if (!allowed) {
     return (
@@ -268,7 +507,7 @@ export function AuditLogsPage() {
           <p className="pageHeroSub">Track system and user actions across screening, scheduling, notifications, and administration to support compliance traceability.</p>
         </div>
         <div className="pageHeroMeta" aria-hidden="true">
-          <span className="pageHeroPill">{filteredAuditEvents.length} Events</span>
+          <span className="pageHeroPill">{auditTotal} Events</span>
           <span className="pageHeroPill">Admin Scope</span>
           <span className="pageHeroPill">Paginated View</span>
         </div>
@@ -289,10 +528,13 @@ export function AuditLogsPage() {
               <div className="field" style={{ minWidth: 220 }}>
                 <label>User Filter</label>
                 <select
-                  value={auditUserFilter}
+                  value={auditWorkspace.userFilter}
                   onChange={(e) => {
-                    setAuditUserFilter(e.target.value);
-                    setAuditPage(1);
+                    setAuditWorkspace((prev) => ({
+                      ...prev,
+                      userFilter: e.target.value,
+                      page: 1,
+                    }));
                   }}
                 >
                   <option value="all">All users</option>
@@ -306,10 +548,13 @@ export function AuditLogsPage() {
               <label className="mockModeCheck" style={{ marginTop: 18 }}>
                 <input
                   type="checkbox"
-                  checked={auditErrorsOnly}
+                  checked={auditWorkspace.errorsOnly}
                   onChange={(e) => {
-                    setAuditErrorsOnly(e.target.checked);
-                    setAuditPage(1);
+                    setAuditWorkspace((prev) => ({
+                      ...prev,
+                      errorsOnly: e.target.checked,
+                      page: 1,
+                    }));
                   }}
                 />
                 <span>Show errors only</span>
@@ -319,8 +564,8 @@ export function AuditLogsPage() {
               type="button"
               className="btnGhost"
               onClick={() => {
-                setAuditPage(1);
-                void loadAuditEvents(auditUserFilter === "all" ? undefined : auditUserFilter);
+                void loadAuditUserOptions(true);
+                void loadAuditPage(true);
               }}
               disabled={auditLoading}
             >
@@ -332,18 +577,21 @@ export function AuditLogsPage() {
 
           <div className="auditPagerRow">
             <div className="pagerText">
-              Showing {filteredAuditEvents.length === 0 ? 0 : auditStartIdx + 1} to {Math.min(filteredAuditEvents.length, auditStartIdx + auditPageSize)} of {filteredAuditEvents.length} audit events
+              Showing {auditTotal === 0 ? 0 : auditStartIdx + 1} to {Math.min(auditTotal, auditStartIdx + auditWorkspace.pageSize)} of {auditTotal} audit events
             </div>
             <div className="auditPagerRight">
               <div className="field auditPagerSizeField">
                 <label>Records per page</label>
                 <select
-                  value={auditPageSize}
+                  value={auditWorkspace.pageSize}
                   onChange={(e) => {
                     const next = Number(e.target.value);
                     if (next === 100 || next === 200 || next === 300) {
-                      setAuditPageSize(next);
-                      setAuditPage(1);
+                      setAuditWorkspace((prev) => ({
+                        ...prev,
+                        pageSize: next,
+                        page: 1,
+                      }));
                     }
                   }}
                 >
@@ -358,7 +606,12 @@ export function AuditLogsPage() {
                 <button
                   className="auditPagerArrow"
                   disabled={auditPageSafe <= 1}
-                  onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                  onClick={() =>
+                    setAuditWorkspace((prev) => ({
+                      ...prev,
+                      page: Math.max(1, prev.page - 1),
+                    }))
+                  }
                   type="button"
                   aria-label="Previous page"
                   title="Previous page"
@@ -371,7 +624,12 @@ export function AuditLogsPage() {
                 <button
                   className="auditPagerArrow"
                   disabled={auditPageSafe >= totalAuditPages}
-                  onClick={() => setAuditPage((p) => Math.min(totalAuditPages, p + 1))}
+                  onClick={() =>
+                    setAuditWorkspace((prev) => ({
+                      ...prev,
+                      page: Math.min(totalAuditPages, prev.page + 1),
+                    }))
+                  }
                   type="button"
                   aria-label="Next page"
                   title="Next page"

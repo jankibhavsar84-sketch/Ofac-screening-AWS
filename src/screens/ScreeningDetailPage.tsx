@@ -3305,10 +3305,12 @@ export function ScreeningDetailPage() {
                     return (
                       <tr key={r.id}>
                         <td className="entityCell">
-                          <span className="entityIcon" aria-hidden="true">
-                            {uiTypeIcon(r.type)}
-                          </span>
-                          <span className="entityValue" title={r.entity}>{r.entity}</span>
+                          <div className="entityCellContent">
+                            <span className="entityIcon" aria-hidden="true">
+                              {uiTypeIcon(r.type)}
+                            </span>
+                            <span className="entityValue" title={r.entity}>{r.entity}</span>
+                          </div>
                         </td>
                         <td className="muted partyKeyCell">
                           <span className="partyKeyValue" title={r.partyKey || ""}>{r.partyKey || "\u2014"}</span>

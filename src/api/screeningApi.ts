@@ -86,6 +86,13 @@ export type AuditEvent = {
   details?: Record<string, unknown>;
 };
 
+export type AuditEventPage = {
+  items: AuditEvent[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 export type SubmissionHistoryEntry = Record<string, unknown>;
 
 export type BusinessUnit = {
@@ -415,6 +422,24 @@ export async function listAuditEvents(limit = 200, userId?: string, offset = 0):
     throw new Error(`Failed to load audit events: ${await parseApiError(resp)}`);
   }
   return (await resp.json()) as AuditEvent[];
+}
+
+export async function listAuditEventPage(limit = 100, userId?: string, offset = 0, errorsOnly = false): Promise<AuditEventPage> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/audit-events/page`, window.location.origin);
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("offset", String(Math.max(0, offset)));
+  url.searchParams.set("errors_only", errorsOnly ? "true" : "false");
+  if (userId && userId.trim()) {
+    url.searchParams.set("user_id", userId.trim());
+  }
+  const resp = await fetch(url.toString(), {
+    headers: withAuthHeaders(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load audit events: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as AuditEventPage;
 }
 
 export async function listDailySchedules(): Promise<DailySchedule[]> {
