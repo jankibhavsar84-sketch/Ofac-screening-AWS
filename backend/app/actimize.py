@@ -687,6 +687,16 @@ class ActimizeClient:
         digest = hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:16].upper()
         return self._normalize_party_key(f"{self.source_system}_{digest}")
 
+    def resolve_party_key(self, query: EntityExample) -> str:
+        props = query.properties if isinstance(query.properties, dict) else {}
+        explicit_party_key = _first_non_empty(
+            _as_list(props.get("partyKey"))
+            + _as_list(props.get("party_key"))
+            + _as_list(props.get("PartyKey"))
+            + _as_list(props.get("party key"))
+        )
+        return self._normalize_party_key(explicit_party_key or self._build_party_key(query))
+
     def _extract_error_detail(self, response: requests.Response) -> str:
         try:
             body = response.json()

@@ -951,7 +951,11 @@ def match_sync(
 
     responses: dict[str, dict] = {}
     for item_key, query in payload.queries.items():
-        request_payload = query.model_dump(mode="json")
+        query_for_screening = query.model_copy(deep=True)
+        request_props = dict(query_for_screening.properties if isinstance(query_for_screening.properties, dict) else {})
+        request_props["partyKey"] = actimize.resolve_party_key(query_for_screening)
+        query_for_screening.properties = request_props
+        request_payload = query_for_screening.model_dump(mode="json")
         repository.add_job_item(job_id=job_id, item_key=item_key, request_payload=request_payload)
         repository.add_audit_event(
             action="SYNC_SCREENING_API_CALL_STARTED",
@@ -973,7 +977,7 @@ def match_sync(
         )
         try:
             screened = actimize.screen_many_types(
-                query,
+                query_for_screening,
                 payload.screening_types,
                 payload.mock_screening,
                 requester_name=actor_user_name,
