@@ -717,17 +717,19 @@ class ActimizeClient:
                 message="Screening API input validation failed",
             )
 
-        is_hit = status_value == "HIT" or message_value in {"PM", "HIT", "MATCH", "POTENTIAL_MATCH"}
-        if status_value == "FAILURE" and not is_hit and message_value not in {"NM", "NO_HIT"}:
+        if message_value not in {"PM", "NM"}:
             raise ExternalApiCallError(
                 provider=self.provider,
                 operation="entity-screenings",
                 endpoint=f"{self.base_url}/entity-screenings",
-                message=f"Screening API returned FAILURE: {message_value or 'UNKNOWN'}",
+                message=(
+                    f"Screening API returned unsupported result: status={status_value or 'UNKNOWN'}, "
+                    f"message={message_value or 'UNKNOWN'}"
+                ),
             )
 
         normalized_results: list[dict[str, Any]] = []
-        if is_hit:
+        if message_value == "PM":
             props = query.properties if isinstance(query.properties, dict) else {}
             explicit_party_key = _first_non_empty(_as_list(props.get("partyKey")) + _as_list(props.get("party_key")))
             party_key = self._normalize_party_key(
@@ -742,7 +744,7 @@ class ActimizeClient:
                     "match": True,
                     "properties": {
                         "name": [display_name],
-                        "engineMessage": [message_value or "PM"],
+                        "engineMessage": [message_value],
                         "partyKey": [party_key],
                     },
                 }
@@ -753,4 +755,5 @@ class ActimizeClient:
             "total": {"value": len(normalized_results), "relation": "eq"},
             "query": query.model_dump(mode="json"),
             "status": 200,
+            "engine_message": message_value,
         }

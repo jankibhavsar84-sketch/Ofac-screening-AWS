@@ -539,8 +539,21 @@ function engineToUiStatus(s: EngineStatus, manualMatch?: boolean): UiStatus {
   return "Failed";
 }
 
-function classifyEngine(results: { match: boolean }[]): EngineStatus {
-  return results?.some((r) => r.match) ? "HIT" : "NO_HIT";
+function classifyEngine(matches: { status?: unknown; error_text?: unknown; error?: unknown; engine_message?: unknown; results?: { match?: boolean }[] } | null | undefined): EngineStatus {
+  if (!matches || typeof matches !== "object") return "ERROR";
+  const status = typeof matches.status === "number" ? matches.status : null;
+  if (status != null && status !== 200) return "ERROR";
+  const errorText = safeTrim(String(matches.error_text ?? matches.error ?? ""));
+  if (errorText) return "ERROR";
+
+  const engineMessage = safeTrim(String(matches.engine_message ?? "")).toUpperCase();
+  if (engineMessage === "PM") return "HIT";
+  if (engineMessage === "NM") return "NO_HIT";
+
+  const results = Array.isArray(matches.results) ? matches.results : [];
+  if (results.some((r) => Boolean(r?.match))) return "HIT";
+  if (status === 200 && results.length === 0) return "NO_HIT";
+  return "ERROR";
 }
 
 function badge(status: UiStatus) {
@@ -1501,8 +1514,9 @@ export function ScreeningDetailPage() {
           anyError = true;
           return;
         }
-        const engine = classifyEngine(matches.results ?? []);
+        const engine = classifyEngine(matches);
         if (engine === "HIT") anyHit = true;
+        if (engine === "ERROR") anyError = true;
       });
 
       entry.result = anyHit ? "HIT" : anyError ? "ERROR" : "NO_HIT";
@@ -1669,7 +1683,7 @@ export function ScreeningDetailPage() {
                 };
               }
 
-              const engine = classifyEngine(matches.results ?? []);
+              const engine = classifyEngine(matches);
               return {
                 customerType: m.uiType === "Individual" ? "Person" : "Entity",
                 displayName: m.displayName,
@@ -1897,7 +1911,7 @@ export function ScreeningDetailPage() {
                 };
               }
 
-              const engine = classifyEngine(matches.results ?? []);
+              const engine = classifyEngine(matches);
               return {
                 customerType: m.uiType === "Individual" ? "Person" : "Entity",
                 displayName: m.displayName,
@@ -1995,7 +2009,7 @@ export function ScreeningDetailPage() {
         meta.forEach((m) => {
           const matches = responses[m.key];
           let engine: EngineStatus = "ERROR";
-          if (matches) engine = classifyEngine(matches.results ?? []);
+          if (matches) engine = classifyEngine(matches);
 
           const manualMatch = Boolean((matches as any)?.manualMatch === true); // not present initially
           const ui = engineToUiStatus(engine, manualMatch);
@@ -3269,11 +3283,6 @@ export function ScreeningDetailPage() {
                       Screening Result {sortIndicator("status")}
                     </button>
                   </th>
-                  <th scope="col" style={{ width: 140 }}>
-                    <button type="button" className="linkBtn" onClick={() => toggleResultSort("score")}>
-                      Matching Score {sortIndicator("score")}
-                    </button>
-                  </th>
                   <th scope="col" style={{ width: 190 }}>
                     <button type="button" className="linkBtn" onClick={() => toggleResultSort("submittedAt")}>
                       Submitted Date/Time {sortIndicator("submittedAt")}
@@ -3285,7 +3294,7 @@ export function ScreeningDetailPage() {
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="emptyRow">
+                    <td colSpan={8} className="emptyRow">
                       No results found.
                     </td>
                   </tr>
@@ -3306,7 +3315,6 @@ export function ScreeningDetailPage() {
                         <td className="muted">{r.type}</td>
                         <td className="muted">{r.country || "\u2014"}</td>
                         <td>{badge(r.uiStatus)}</td>
-                        <td className="muted">{formatMatchingScore(r.matchingScore)}</td>
                         <td className="muted">{r.date}</td>
                         <td>
                           <div className="rowActions">

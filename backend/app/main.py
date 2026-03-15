@@ -1066,7 +1066,7 @@ def match_sync(
                 "total": {"value": 0, "relation": "eq"},
                 "query": request_payload,
                 "status": 500,
-                "error": str(exc),
+                "error_text": str(exc),
             }
 
     return EntityMatchResponse.model_validate(

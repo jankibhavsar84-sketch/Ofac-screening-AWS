@@ -16,7 +16,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "frontend",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260315171502",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260315175504",
                                      "cpu":  0,
                                      "portMappings":  [
                                                           {

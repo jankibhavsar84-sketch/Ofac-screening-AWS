@@ -530,9 +530,22 @@ class ScreeningService:
 
     @staticmethod
     def _classify_result_from_matches(matches: dict[str, Any]) -> str:
-        results = matches.get("results", []) if isinstance(matches, dict) else []
-        if not isinstance(results, list):
+        if not isinstance(matches, dict):
+            return "FAILED"
+        status = matches.get("status")
+        if isinstance(status, int) and status != 200:
+            return "FAILED"
+        error_text = str(matches.get("error_text") or matches.get("error") or "").strip()
+        if error_text:
+            return "FAILED"
+        engine_message = str(matches.get("engine_message") or "").strip().upper()
+        if engine_message == "PM":
+            return "HIT"
+        if engine_message == "NM":
             return "NO_HIT"
+        results = matches.get("results", [])
+        if not isinstance(results, list):
+            return "FAILED"
         for result in results:
             if isinstance(result, dict) and bool(result.get("match")):
                 return "HIT"

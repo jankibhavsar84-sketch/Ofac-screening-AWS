@@ -27,6 +27,7 @@ class EntityMatches(BaseModel):
     total: dict[str, Any]
     query: EntityExample
     status: int = 200
+    engine_message: str | None = None
     error_text: str | None = None
 
 
