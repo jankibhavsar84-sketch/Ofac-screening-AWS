@@ -2,7 +2,16 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRecoilState } from "recoil";
 import { useAuth } from "react-oidc-context";
 import { z } from "zod";
-import { submissionsState, latestResultState, type Submission, type BatchSubmission, type SingleSubmission } from "../state/submissions";
+import {
+  submissionsState,
+  latestResultState,
+  screeningWorkspaceState,
+  screeningResultsMetaState,
+  type Submission,
+  type BatchSubmission,
+  type SingleSubmission,
+  type ScreeningWorkspaceState,
+} from "../state/submissions";
 import {
   listDailySchedules,
   listMyBusinessUnits,
@@ -47,7 +56,6 @@ type NameItem =
 type StatusFilter = "All Statuses" | "Clear" | "Potential Match" | "Pending" | "Failed" | "Match";
 type TypeFilter = "All Types" | UiType;
 type ResultSortKey = "entity" | "mode" | "type" | "country" | "status" | "score" | "submittedAt";
-type ResultSortDirection = "asc" | "desc";
 type SelectOption<T extends string> = { value: T; label: string; icon?: React.ReactNode };
 
 function FormSelect<T extends string>({
@@ -861,15 +869,29 @@ export function ScreeningDetailPage() {
   const canBatchScreen = hasPermission(identity, "screening.write", "screening.admin");
   const canDailyScreening = hasPermission(identity, "screening.daily", "screening.admin");
   const viewerMockOnly = canSingleScreen && !canRunNonMockSingle;
-  const [mode, setMode] = useState<Mode>("SINGLE");
 
   const [submissions, setSubmissions] = useRecoilState(submissionsState);
   const [, setLatest] = useRecoilState(latestResultState);
+  const [screeningWorkspace, setScreeningWorkspace] = useRecoilState(screeningWorkspaceState);
+  const [screeningResultsMeta, setScreeningResultsMeta] = useRecoilState(screeningResultsMetaState);
   const [resultsRefreshing, setResultsRefreshing] = useState(false);
   const [resultsRefreshError, setResultsRefreshError] = useState<string | null>(null);
-  const [resultsLastRefreshedAt, setResultsLastRefreshedAt] = useState<Date | null>(null);
   const submissionsRefreshInFlightRef = useRef(false);
   const businessUnitsRequestSeqRef = useRef(0);
+  const screeningResultsMetaRef = useRef(screeningResultsMeta);
+  const resultsLastRefreshedAt = useMemo(() => {
+    const raw = safeTrim(screeningResultsMeta.lastRefreshedAt || "");
+    if (!raw) return null;
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }, [screeningResultsMeta.lastRefreshedAt]);
+  const mode = screeningWorkspace.mode;
+  const search = screeningWorkspace.search;
+  const statusFilter = screeningWorkspace.statusFilter;
+  const typeFilter = screeningWorkspace.typeFilter;
+  const resultSortKey = screeningWorkspace.resultSortKey;
+  const resultSortDirection = screeningWorkspace.resultSortDirection;
+  const page = screeningWorkspace.page;
   const currentUser = useMemo(
     () =>
       identity
@@ -879,6 +901,16 @@ export function ScreeningDetailPage() {
           }
         : null,
     [identity]
+  );
+
+  useEffect(() => {
+    screeningResultsMetaRef.current = screeningResultsMeta;
+  }, [screeningResultsMeta]);
+  const updateScreeningWorkspace = useCallback(
+    (patch: Partial<ScreeningWorkspaceState>) => {
+      setScreeningWorkspace((prev) => ({ ...prev, ...patch }));
+    },
+    [setScreeningWorkspace]
   );
 
   // SINGLE (multi-add)
@@ -936,14 +968,6 @@ export function ScreeningDetailPage() {
   const primaryName = names[0];
   const aliasNames = names.slice(1);
 
-  // Results filters + paging
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All Statuses");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("All Types");
-  const [resultSortKey, setResultSortKey] = useState<ResultSortKey>("submittedAt");
-  const [resultSortDirection, setResultSortDirection] = useState<ResultSortDirection>("desc");
-  const [page, setPage] = useState(1);
-
   // dropzone
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -993,15 +1017,15 @@ export function ScreeningDetailPage() {
 
   useEffect(() => {
     if (!canBatchScreen && mode === "BATCH") {
-      setMode("SINGLE");
+      updateScreeningWorkspace({ mode: "SINGLE" });
     }
-  }, [canBatchScreen, mode]);
+  }, [canBatchScreen, mode, updateScreeningWorkspace]);
 
   useEffect(() => {
     if (!canDailyScreening && mode === "SCHEDULE") {
-      setMode("SINGLE");
+      updateScreeningWorkspace({ mode: "SINGLE" });
     }
-  }, [canDailyScreening, mode]);
+  }, [canDailyScreening, mode, updateScreeningWorkspace]);
 
   const businessUnitOptions = useMemo(
     () =>
@@ -1074,11 +1098,12 @@ export function ScreeningDetailPage() {
         if (activeUserId !== safeTrim(currentUser?.id || "")) return;
         const reconciled = await reconcileDailyScheduleFlags(historyRows as Submission[]);
         setSubmissions(reconciled);
-        if (updateTimestamp) {
-          setResultsLastRefreshedAt(new Date());
-        }
+        setScreeningResultsMeta((prev) => ({
+          lastRefreshedAt: updateTimestamp ? new Date().toISOString() : prev.lastRefreshedAt,
+          submissionsOwnerUserId: activeUserId,
+        }));
         if (resetPage) {
-          setPage(1);
+          updateScreeningWorkspace({ page: 1 });
         }
       } catch (err: any) {
         if (!silent) {
@@ -1091,26 +1116,39 @@ export function ScreeningDetailPage() {
         }
       }
     },
-    [currentUser?.id, setSubmissions]
+    [currentUser?.id, setScreeningResultsMeta, setSubmissions, updateScreeningWorkspace]
   );
 
   useEffect(() => {
     const userId = safeTrim(currentUser?.id || "");
-    submissionsRefreshInFlightRef.current = false;
     setResultsRefreshError(null);
-    setResultsLastRefreshedAt(null);
-    setSubmissions([]);
     if (!userId) {
+      setSubmissions([]);
+      setLatest(null);
+      setScreeningResultsMeta({
+        lastRefreshedAt: null,
+        submissionsOwnerUserId: null,
+      });
       setResultsRefreshing(false);
       return;
     }
+    const cachedOwnerUserId = screeningResultsMetaRef.current.submissionsOwnerUserId;
+    const hasCachedResultsForUser = cachedOwnerUserId === userId;
+    if (!hasCachedResultsForUser && cachedOwnerUserId) {
+      setSubmissions([]);
+      setLatest(null);
+      setScreeningResultsMeta({
+        lastRefreshedAt: null,
+        submissionsOwnerUserId: userId,
+      });
+    }
     void loadSubmissionHistory({
-      silent: false,
+      silent: hasCachedResultsForUser,
       updateTimestamp: true,
-      resetPage: true,
+      resetPage: !hasCachedResultsForUser,
       requestUserId: userId,
     });
-  }, [currentUser?.id, loadSubmissionHistory, setSubmissions]);
+  }, [currentUser?.id, loadSubmissionHistory, setLatest, setScreeningResultsMeta, setSubmissions]);
 
   function toggleScreeningType(
     value: ScreeningType,
@@ -1472,7 +1510,7 @@ export function ScreeningDetailPage() {
       const next = [entry, ...submissions].slice(0, 500);
       setSubmissions(next);
       setLatest(entry);
-      setPage(1);
+      updateScreeningWorkspace({ page: 1 });
     } catch (err: any) {
       setSingleError(err?.message ?? "Failed to screen.");
     } finally {
@@ -1587,7 +1625,7 @@ export function ScreeningDetailPage() {
 
       setSubmissions((prev) => [entry, ...prev].slice(0, 500));
       setLatest(entry);
-      setPage(1);
+      updateScreeningWorkspace({ page: 1 });
 
       if (accepted.total_items > 0) {
         // Non-blocking async completion: keep UI responsive and update results when worker finishes.
@@ -1816,7 +1854,7 @@ export function ScreeningDetailPage() {
 
       setSubmissions((prev) => [entry, ...prev].slice(0, 500));
       setLatest(entry);
-      setPage(1);
+      updateScreeningWorkspace({ page: 1 });
 
       if (accepted.total_items > 0) {
         void (async () => {
@@ -2201,11 +2239,15 @@ export function ScreeningDetailPage() {
 
   function toggleResultSort(key: ResultSortKey): void {
     if (resultSortKey === key) {
-      setResultSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      updateScreeningWorkspace({
+        resultSortDirection: resultSortDirection === "asc" ? "desc" : "asc",
+      });
       return;
     }
-    setResultSortKey(key);
-    setResultSortDirection(key === "submittedAt" || key === "score" ? "desc" : "asc");
+    updateScreeningWorkspace({
+      resultSortKey: key,
+      resultSortDirection: key === "submittedAt" || key === "score" ? "desc" : "asc",
+    });
   }
 
   function openHitEntity(row: ResultRow) {
@@ -2250,16 +2292,16 @@ export function ScreeningDetailPage() {
     if (idx < 0) return;
 
     if (e.key === "Home") {
-      setMode(available[0]);
+      updateScreeningWorkspace({ mode: available[0] });
       return;
     }
     if (e.key === "End") {
-      setMode(available[available.length - 1]);
+      updateScreeningWorkspace({ mode: available[available.length - 1] });
       return;
     }
     const delta = e.key === "ArrowRight" ? 1 : -1;
     const next = (idx + delta + available.length) % available.length;
-    setMode(available[next]);
+    updateScreeningWorkspace({ mode: available[next] });
   }
   const roleDisplay = primaryRole ? primaryRole[0].toUpperCase() + primaryRole.slice(1) : "Unknown";
   const scheduleTimezoneLabel = useMemo(() => {
@@ -2303,7 +2345,7 @@ export function ScreeningDetailPage() {
             aria-selected={mode === "SINGLE"}
             aria-controls="panel-single"
             className={mode === "SINGLE" ? "tabBtn active" : "tabBtn"}
-            onClick={() => setMode("SINGLE")}
+            onClick={() => updateScreeningWorkspace({ mode: "SINGLE" })}
             onKeyDown={(e) => handleModeTabKeyDown(e, "SINGLE")}
             type="button"
           >
@@ -2317,7 +2359,7 @@ export function ScreeningDetailPage() {
             aria-selected={mode === "BATCH"}
             aria-controls="panel-batch"
             className={mode === "BATCH" ? "tabBtn active" : "tabBtn"}
-            onClick={() => setMode("BATCH")}
+            onClick={() => updateScreeningWorkspace({ mode: "BATCH" })}
             onKeyDown={(e) => handleModeTabKeyDown(e, "BATCH")}
             type="button"
             disabled={!canBatchScreen}
@@ -2333,7 +2375,7 @@ export function ScreeningDetailPage() {
             aria-selected={mode === "SCHEDULE"}
             aria-controls="panel-schedule"
             className={mode === "SCHEDULE" ? "tabBtn active" : "tabBtn"}
-            onClick={() => setMode("SCHEDULE")}
+            onClick={() => updateScreeningWorkspace({ mode: "SCHEDULE" })}
             onKeyDown={(e) => handleModeTabKeyDown(e, "SCHEDULE")}
             type="button"
             disabled={!canDailyScreening}
@@ -3145,8 +3187,10 @@ export function ScreeningDetailPage() {
                 aria-label="Search screening results"
                 value={search}
                 onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
+                  updateScreeningWorkspace({
+                    search: e.target.value,
+                    page: 1,
+                  });
                 }}
                 placeholder="Search entities..."
               />
@@ -3157,8 +3201,10 @@ export function ScreeningDetailPage() {
               className="filterSelect"
               value={statusFilter}
               onChange={(e) => {
-                setStatusFilter(e.target.value as StatusFilter);
-                setPage(1);
+                updateScreeningWorkspace({
+                  statusFilter: e.target.value as StatusFilter,
+                  page: 1,
+                });
               }}
             >
               <option>All Statuses</option>
@@ -3174,8 +3220,10 @@ export function ScreeningDetailPage() {
               className="filterSelect"
               value={typeFilter}
               onChange={(e) => {
-                setTypeFilter(e.target.value as TypeFilter);
-                setPage(1);
+                updateScreeningWorkspace({
+                  typeFilter: e.target.value as TypeFilter,
+                  page: 1,
+                });
               }}
             >
               <option>All Types</option>
@@ -3289,11 +3337,21 @@ export function ScreeningDetailPage() {
               </div>
 
               <div className="pagerRight">
-                <button className="pagerBtn" disabled={pageSafe <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} type="button">
+                <button
+                  className="pagerBtn"
+                  disabled={pageSafe <= 1}
+                  onClick={() => updateScreeningWorkspace({ page: Math.max(1, pageSafe - 1) })}
+                  type="button"
+                >
                   {"\u2039"}
                 </button>
                 <div className="pagerText">Page {pageSafe} of {totalPages}</div>
-                <button className="pagerBtn" disabled={pageSafe >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} type="button">
+                <button
+                  className="pagerBtn"
+                  disabled={pageSafe >= totalPages}
+                  onClick={() => updateScreeningWorkspace({ page: Math.min(totalPages, pageSafe + 1) })}
+                  type="button"
+                >
                   {"\u203A"}
                 </button>
               </div>
