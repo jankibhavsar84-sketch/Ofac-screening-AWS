@@ -3321,18 +3321,6 @@ export function ScreeningDetailPage() {
                         <td>
                           <div className="rowActions">
                             <div className="actionControls">
-                              {actimizeReviewAlertUrl ? (
-                                <a
-                                  href={actimizeReviewAlertUrl}
-                                  className="btnGhostSmall"
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title={`Review alert for ${r.entity}`}
-                                  aria-label={`Review alert for ${r.entity}`}
-                                >
-                                  Review Alert
-                                </a>
-                              ) : null}
                               <button
                                 type="button"
                                 className="iconBtn"
@@ -3396,6 +3384,21 @@ export function ScreeningDetailPage() {
                 <span className="muted">Source Entity</span>
                 <strong>{hitEntityDialog.sourceEntity}</strong>
               </div>
+              {actimizeReviewAlertUrl ? (
+                <div className="hitEntityRow">
+                  <span className="muted">Review Alert</span>
+                  <a
+                    href={actimizeReviewAlertUrl}
+                    className="btnGhostSmall"
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`Review alert for ${hitEntityDialog.sourceEntity}`}
+                    aria-label={`Review alert for ${hitEntityDialog.sourceEntity}`}
+                  >
+                    Open Actimize
+                  </a>
+                </div>
+              ) : null}
               <div className="hitEntityRow">
                 <span className="muted">Hit Entities</span>
                 {hitEntityDialog.pending ? (

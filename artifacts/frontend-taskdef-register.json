@@ -16,7 +16,7 @@
     "containerDefinitions":  [
                                  {
                                      "name":  "frontend",
-                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260315175504",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260315181847",
                                      "cpu":  0,
                                      "portMappings":  [
                                                           {
@@ -77,6 +77,10 @@
                                                          {
                                                              "name":  "VITE_OIDC_REDIRECT_URI",
                                                              "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "VITE_ACTIMIZE_REVIEW_ALERT_URL",
+                                                             "value":  "https://actimizeuat"
                                                          }
                                                      ],
                                      "mountPoints":  [
