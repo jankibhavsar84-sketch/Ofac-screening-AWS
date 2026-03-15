@@ -28,7 +28,10 @@ type AuditWorkspaceState = {
 type AuditCacheState = {
   ownerUserId: string | null;
   queryKey: string | null;
+<<<<<<< HEAD
   scopeKey: string | null;
+=======
+>>>>>>> 1f520090bea81039b1073b53606ee579c19def85
   items: AuditEvent[];
   total: number;
   lastRefreshedAt: string | null;
@@ -52,7 +55,10 @@ function defaultAuditCacheState(): AuditCacheState {
   return {
     ownerUserId: null,
     queryKey: null,
+<<<<<<< HEAD
     scopeKey: null,
+=======
+>>>>>>> 1f520090bea81039b1073b53606ee579c19def85
     items: [],
     total: 0,
     lastRefreshedAt: null,
@@ -104,7 +110,10 @@ function parseAuditCacheState(value: unknown): AuditCacheState | null {
   const ownerUserId =
     value.ownerUserId === null || typeof value.ownerUserId === "string" ? value.ownerUserId : null;
   const queryKey = value.queryKey === null || typeof value.queryKey === "string" ? value.queryKey : null;
+<<<<<<< HEAD
   const scopeKey = value.scopeKey === null || typeof value.scopeKey === "string" ? value.scopeKey : null;
+=======
+>>>>>>> 1f520090bea81039b1073b53606ee579c19def85
   const total = typeof value.total === "number" && Number.isFinite(value.total) ? Math.max(0, Math.floor(value.total)) : 0;
   const lastRefreshedAt =
     value.lastRefreshedAt === null || typeof value.lastRefreshedAt === "string" ? value.lastRefreshedAt : null;
@@ -115,7 +124,10 @@ function parseAuditCacheState(value: unknown): AuditCacheState | null {
   return {
     ownerUserId,
     queryKey,
+<<<<<<< HEAD
     scopeKey,
+=======
+>>>>>>> 1f520090bea81039b1073b53606ee579c19def85
     items,
     total,
     lastRefreshedAt,
@@ -256,6 +268,7 @@ function buildAuditQueryKey(workspace: AuditWorkspaceState): string {
   return JSON.stringify({
     userFilter: workspace.userFilter,
     errorsOnly: workspace.errorsOnly,
+<<<<<<< HEAD
     pageSize: workspace.pageSize,
     page: workspace.page,
   });
@@ -265,6 +278,9 @@ function buildAuditScopeKey(workspace: AuditWorkspaceState): string {
   return JSON.stringify({
     userFilter: workspace.userFilter,
     errorsOnly: workspace.errorsOnly,
+=======
+    page: workspace.page,
+>>>>>>> 1f520090bea81039b1073b53606ee579c19def85
     pageSize: workspace.pageSize,
   });
 }
@@ -353,6 +369,7 @@ export function AuditLogsPage() {
   const latestAuditRequestRef = useRef("");
 
   const auditQueryKey = useMemo(() => buildAuditQueryKey(auditWorkspace), [auditWorkspace]);
+<<<<<<< HEAD
   const auditScopeKey = useMemo(() => buildAuditScopeKey(auditWorkspace), [auditWorkspace]);
   const auditOffset = Math.max(0, (auditWorkspace.page - 1) * auditWorkspace.pageSize);
   const hasCachedAuditScope =
@@ -363,6 +380,14 @@ export function AuditLogsPage() {
     auditCache.queryKey === auditQueryKey;
   const auditEvents = hasCachedAuditPage ? auditCache.items : [];
   const auditTotal = hasCachedAuditScope ? auditCache.total : 0;
+=======
+  const auditOffset = Math.max(0, (auditWorkspace.page - 1) * auditWorkspace.pageSize);
+  const hasCachedAuditPage =
+    (auditCache.ownerUserId || null) === (selfUserId || null) &&
+    auditCache.queryKey === auditQueryKey;
+  const auditEvents = hasCachedAuditPage ? auditCache.items : [];
+  const auditTotal = hasCachedAuditPage ? auditCache.total : 0;
+>>>>>>> 1f520090bea81039b1073b53606ee579c19def85
 
   const sortedAuditUserOptions = useMemo(
     () => [...auditCache.userOptions].sort((a, b) => a.displayName.localeCompare(b.displayName)),
@@ -424,7 +449,10 @@ export function AuditLogsPage() {
           ...prev,
           ownerUserId: selfUserId || null,
           queryKey: requestKey,
+<<<<<<< HEAD
           scopeKey: auditScopeKey,
+=======
+>>>>>>> 1f520090bea81039b1073b53606ee579c19def85
           items: page.items,
           total: page.total,
           lastRefreshedAt: new Date().toISOString(),
@@ -443,7 +471,10 @@ export function AuditLogsPage() {
       auditCache.lastRefreshedAt,
       auditOffset,
       auditQueryKey,
+<<<<<<< HEAD
       auditScopeKey,
+=======
+>>>>>>> 1f520090bea81039b1073b53606ee579c19def85
       auditWorkspace.errorsOnly,
       auditWorkspace.pageSize,
       auditWorkspace.userFilter,

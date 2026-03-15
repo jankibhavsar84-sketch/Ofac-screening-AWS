@@ -2751,6 +2751,7 @@ class JobRepository:
         if errors_only:
             clauses.append(
                 """(
+<<<<<<< HEAD
                     UPPER(action) LIKE ?
                     OR details_json LIKE ?
                     OR details_json LIKE ?
@@ -2758,6 +2759,14 @@ class JobRepository:
                 )"""
             )
             params.extend(["%FAILED%", '%"error"%', '%"error_text"%', '%"detail"%'])
+=======
+                    UPPER(action) LIKE '%FAILED%'
+                    OR details_json LIKE '%"error"%'
+                    OR details_json LIKE '%"error_text"%'
+                    OR details_json LIKE '%"detail"%'
+                )"""
+            )
+>>>>>>> 1f520090bea81039b1073b53606ee579c19def85
         if not clauses:
             return "", tuple()
         return f"WHERE {' AND '.join(clauses)}", tuple(params)
