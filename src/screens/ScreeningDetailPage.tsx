@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRecoilState } from "recoil";
 import { useAuth } from "react-oidc-context";
 import { z } from "zod";
+import { appEnv } from "../config/env";
 import {
   submissionsState,
   latestResultState,
@@ -2318,6 +2319,7 @@ export function ScreeningDetailPage() {
     updateScreeningWorkspace({ mode: available[next] });
   }
   const roleDisplay = primaryRole ? primaryRole[0].toUpperCase() + primaryRole.slice(1) : "Unknown";
+  const actimizeReviewAlertUrl = appEnv("VITE_ACTIMIZE_REVIEW_ALERT_URL", "").trim();
   const scheduleTimezoneLabel = useMemo(() => {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local";
     const tzPart = Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
@@ -3319,6 +3321,18 @@ export function ScreeningDetailPage() {
                         <td>
                           <div className="rowActions">
                             <div className="actionControls">
+                              {actimizeReviewAlertUrl ? (
+                                <a
+                                  href={actimizeReviewAlertUrl}
+                                  className="btnGhostSmall"
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title={`Review alert for ${r.entity}`}
+                                  aria-label={`Review alert for ${r.entity}`}
+                                >
+                                  Review Alert
+                                </a>
+                              ) : null}
                               <button
                                 type="button"
                                 className="iconBtn"

@@ -142,6 +142,7 @@ Frontend (`.env`, see `.env.example`):
 - `VITE_OIDC_SCOPE` ex: `openid profile email` (Cognito)
 - `VITE_OIDC_IDLE_TIMEOUT_MS` ex: `900000` (15 minutes; set `0` to disable idle auto-logout)
 - `VITE_OIDC_CLEAR_SESSION_ON_CLOSE` ex: `true` (stores OIDC session in `sessionStorage`; clears on tab/browser close)
+- `VITE_ACTIMIZE_REVIEW_ALERT_URL` ex: `https://actimizeuat` (optional; controls the `Review Alert` link in Screening Results)
 
 Frontend runtime config in container:
 - In ECS, frontend reads `VITE_*` values at container startup from environment variables (no image rebuild needed).
