@@ -1778,13 +1778,22 @@ textarea{min-height:90px;resize:vertical}
 }
 .emptyRow{padding:20px;color:var(--muted)}
 
-.entityCell{display:flex;align-items:center;gap:10px}
+.entityCell{
+  white-space:nowrap;
+}
+.entityCellContent{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
 .entityValue{
   display:inline-block;
   max-width:220px;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
+  line-height:1.2;
 }
 .entityIcon{
   width:26px;height:26px;border-radius:8px;
@@ -1795,12 +1804,11 @@ textarea{min-height:90px;resize:vertical}
   white-space:nowrap;
 }
 .partyKeyValue{
-  display:inline-block;
+  display:block;
   max-width:120px;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
-  vertical-align:middle;
   line-height:1.2;
 }
 

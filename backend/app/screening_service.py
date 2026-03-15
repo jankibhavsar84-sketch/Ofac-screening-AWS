@@ -10,6 +10,7 @@ from .config import settings
 from .models import (
     AdminUserOption,
     AuditEvent,
+    AuditEventPage,
     BusinessUnit,
     DailyScheduleInfo,
     EntityMatchResponse,
@@ -779,6 +780,21 @@ class ScreeningService:
     def list_audit_events(self, limit: int = 200, user_id: str | None = None, offset: int = 0) -> list[AuditEvent]:
         events = self.repository.list_audit_events(limit=limit, user_id=user_id, offset=offset)
         return [AuditEvent.model_validate(e) for e in events]
+
+    def list_audit_events_page(
+        self,
+        limit: int = 200,
+        user_id: str | None = None,
+        offset: int = 0,
+        errors_only: bool = False,
+    ) -> AuditEventPage:
+        page = self.repository.list_audit_events_page(limit=limit, user_id=user_id, offset=offset, errors_only=errors_only)
+        return AuditEventPage(
+            items=[AuditEvent.model_validate(item) for item in page.get("items", [])],
+            total=int(page.get("total") or 0),
+            limit=int(page.get("limit") or limit),
+            offset=int(page.get("offset") or offset),
+        )
 
     def list_admin_users(self) -> list[AdminUserOption]:
         merged: dict[str, str] = {}

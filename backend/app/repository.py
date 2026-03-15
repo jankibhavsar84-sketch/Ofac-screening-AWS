@@ -455,6 +455,20 @@ class JobRepository:
             self._execute(
                 conn,
                 """
+                CREATE INDEX IF NOT EXISTS idx_audit_events_event_id
+                ON audit_events(event_id DESC);
+                """,
+            )
+            self._execute(
+                conn,
+                """
+                CREATE INDEX IF NOT EXISTS idx_audit_events_user_event
+                ON audit_events(user_id, event_id DESC);
+                """,
+            )
+            self._execute(
+                conn,
+                """
                 CREATE INDEX IF NOT EXISTS idx_external_api_errors_created_at
                 ON external_api_errors(created_at);
                 """,
@@ -2723,35 +2737,65 @@ class JobRepository:
             "new_alert_created": True,
         }
 
-    def list_audit_events(self, limit: int = 200, user_id: str | None = None, offset: int = 0) -> list[dict[str, Any]]:
+    def _build_audit_events_where_clause(
+        self,
+        user_id: str | None = None,
+        errors_only: bool = False,
+    ) -> tuple[str, tuple[Any, ...]]:
+        clauses: list[str] = []
+        params: list[Any] = []
+        safe_user_id = str(user_id or "").strip()
+        if safe_user_id:
+            clauses.append("user_id = ?")
+            params.append(safe_user_id)
+        if errors_only:
+            clauses.append(
+                """(
+                    UPPER(action) LIKE ?
+                    OR details_json LIKE ?
+                    OR details_json LIKE ?
+                    OR details_json LIKE ?
+                )"""
+            )
+            params.extend(["%FAILED%", '%"error"%', '%"error_text"%', '%"detail"%'])
+        if not clauses:
+            return "", tuple()
+        return f"WHERE {' AND '.join(clauses)}", tuple(params)
+
+    def list_audit_events_page(
+        self,
+        limit: int = 200,
+        user_id: str | None = None,
+        offset: int = 0,
+        errors_only: bool = False,
+    ) -> dict[str, Any]:
         safe_limit = min(max(int(limit), 1), 1000)
         safe_offset = max(int(offset), 0)
+        where_sql, where_params = self._build_audit_events_where_clause(user_id=user_id, errors_only=errors_only)
         with self._connect() as conn:
-            if user_id and user_id.strip():
-                rows = self._execute(
-                    conn,
-                    """
-                    SELECT event_id, created_at, user_id, user_name, action, entity_type, entity_id, details_json
-                    FROM audit_events
-                    WHERE user_id = ?
-                    ORDER BY event_id DESC
-                    LIMIT ?
-                    OFFSET ?
-                    """,
-                    (user_id.strip(), safe_limit, safe_offset),
-                ).fetchall()
-            else:
-                rows = self._execute(
-                    conn,
-                    """
-                    SELECT event_id, created_at, user_id, user_name, action, entity_type, entity_id, details_json
-                    FROM audit_events
-                    ORDER BY event_id DESC
-                    LIMIT ?
-                    OFFSET ?
-                    """,
-                    (safe_limit, safe_offset),
-                ).fetchall()
+            total_row = self._execute(
+                conn,
+                f"""
+                SELECT COUNT(1) AS total
+                FROM audit_events
+                {where_sql}
+                """,
+                where_params,
+            ).fetchone()
+            total = int(total_row["total"] or 0) if total_row else 0
+
+            rows = self._execute(
+                conn,
+                f"""
+                SELECT event_id, created_at, user_id, user_name, action, entity_type, entity_id, details_json
+                FROM audit_events
+                {where_sql}
+                ORDER BY event_id DESC
+                LIMIT ?
+                OFFSET ?
+                """,
+                (*where_params, safe_limit, safe_offset),
+            ).fetchall()
 
             missing_name_user_ids = sorted(
                 {
@@ -2801,7 +2845,22 @@ class JobRepository:
                     "details": json.loads(row["details_json"]) if row["details_json"] else {},
                 }
             )
-        return events
+        return {
+            "items": events,
+            "total": total,
+            "limit": safe_limit,
+            "offset": safe_offset,
+        }
+
+    def list_audit_events(
+        self,
+        limit: int = 200,
+        user_id: str | None = None,
+        offset: int = 0,
+        errors_only: bool = False,
+    ) -> list[dict[str, Any]]:
+        page = self.list_audit_events_page(limit=limit, user_id=user_id, offset=offset, errors_only=errors_only)
+        return list(page["items"])
 
     def claim_daily_schedule_run(
         self,
