@@ -36,12 +36,20 @@
                                                              "value":  "false"
                                                          },
                                                          {
+                                                             "name":  "ACTIMIZE_LOG_RAW_API_IO",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_RAW_API_LOG_MAX_CHARS",
+                                                             "value":  "20000"
+                                                         },
+                                                         {
                                                              "name":  "SCREENING_TPS",
                                                              "value":  "26"
                                                          },
                                                          {
                                                              "name":  "SCREENING_PARALLEL_MESSAGES",
-                                                             "value":  "26"
+                                                             "value":  "15"
                                                          },
                                                          {
                                                              "name":  "DAILY_SCREENING_TIMEZONE",

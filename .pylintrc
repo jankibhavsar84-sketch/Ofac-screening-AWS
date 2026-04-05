@@ -1,0 +1,33 @@
+[MASTER]
+jobs=0
+
+[FORMAT]
+max-line-length=140
+
+[MESSAGES CONTROL]
+disable=
+    broad-except,
+    consider-using-set-comprehension,
+    duplicate-code,
+    global-statement,
+    import-outside-toplevel,
+    invalid-name,
+    line-too-long,
+    missing-class-docstring,
+    missing-function-docstring,
+    missing-module-docstring,
+    mixed-line-endings,
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-branches,
+    too-many-instance-attributes,
+    too-many-lines,
+    too-many-locals,
+    too-many-nested-blocks,
+    too-many-public-methods,
+    too-many-return-statements,
+    too-many-statements,
+    trailing-newlines,
+    unused-argument,
+    no-self-use,
+    use-maxsplit-arg

@@ -1,0 +1,354 @@
+{
+  "baseUrl": "https://d3ppga4y8wg1ck.cloudfront.net",
+  "sampleWorkbookPath": "c:\\software\\ofac-screening-aws\\public\\Actimize_SSB1_template.xlsx",
+  "startedAt": "2026-03-23T00:00:45.636Z",
+  "plannedStartAt": "2026-03-23T00:00:28.308Z",
+  "finishedAt": "2026-03-23T00:00:45.636Z",
+  "vus": 20,
+  "recordsPerBatch": 1000,
+  "totalRecordsPlanned": 20000,
+  "format": "populated-xlsx-based-on-sample",
+  "prepFailures": [],
+  "submissions": [
+    {
+      "vuId": 9,
+      "username": "perf_load_user_09",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_09.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_09",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.436Z",
+      "endedAt": "2026-03-23T00:00:39.828Z",
+      "responseMs": 11392,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 18,
+      "username": "perf_load_user_18",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_18.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_18",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.363Z",
+      "endedAt": "2026-03-23T00:00:29.696Z",
+      "responseMs": 1333,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 14,
+      "username": "perf_load_user_14",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_14.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_14",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.422Z",
+      "endedAt": "2026-03-23T00:00:35.729Z",
+      "responseMs": 7307,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 2,
+      "username": "perf_load_user_02",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_02.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_02",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.423Z",
+      "endedAt": "2026-03-23T00:00:45.635Z",
+      "responseMs": 17212,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 1,
+      "username": "perf_load_user_01",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_01.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_01",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.424Z",
+      "endedAt": "2026-03-23T00:00:31.405Z",
+      "responseMs": 2981,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 16,
+      "username": "perf_load_user_16",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_16.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_16",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.426Z",
+      "endedAt": "2026-03-23T00:00:31.407Z",
+      "responseMs": 2981,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 8,
+      "username": "perf_load_user_08",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_08.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_08",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.427Z",
+      "endedAt": "2026-03-23T00:00:34.927Z",
+      "responseMs": 6500,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 6,
+      "username": "perf_load_user_06",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_06.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_06",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.428Z",
+      "endedAt": "2026-03-23T00:00:40.634Z",
+      "responseMs": 12206,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 15,
+      "username": "perf_load_user_15",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_15.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_15",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.429Z",
+      "endedAt": "2026-03-23T00:00:41.444Z",
+      "responseMs": 13015,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 3,
+      "username": "perf_load_user_03",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_03.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_03",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.430Z",
+      "endedAt": "2026-03-23T00:00:41.449Z",
+      "responseMs": 13019,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 20,
+      "username": "perf_load_user_20",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_20.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_20",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.430Z",
+      "endedAt": "2026-03-23T00:00:38.142Z",
+      "responseMs": 9712,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 12,
+      "username": "perf_load_user_12",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_12.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_12",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.431Z",
+      "endedAt": "2026-03-23T00:00:36.536Z",
+      "responseMs": 8105,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 17,
+      "username": "perf_load_user_17",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_17.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_17",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.432Z",
+      "endedAt": "2026-03-23T00:00:45.630Z",
+      "responseMs": 17198,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 7,
+      "username": "perf_load_user_07",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_07.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_07",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.433Z",
+      "endedAt": "2026-03-23T00:00:37.343Z",
+      "responseMs": 8910,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 19,
+      "username": "perf_load_user_19",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_19.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_19",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.433Z",
+      "endedAt": "2026-03-23T00:00:39.024Z",
+      "responseMs": 10591,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 4,
+      "username": "perf_load_user_04",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_04.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_04",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.434Z",
+      "endedAt": "2026-03-23T00:00:45.625Z",
+      "responseMs": 17191,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 13,
+      "username": "perf_load_user_13",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_13.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_13",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.434Z",
+      "endedAt": "2026-03-23T00:00:45.624Z",
+      "responseMs": 17190,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 11,
+      "username": "perf_load_user_11",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_11.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_11",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.434Z",
+      "endedAt": "2026-03-23T00:00:43.930Z",
+      "responseMs": 15496,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 5,
+      "username": "perf_load_user_05",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_05.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_05",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.435Z",
+      "endedAt": "2026-03-23T00:00:43.123Z",
+      "responseMs": 14688,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    },
+    {
+      "vuId": 10,
+      "username": "perf_load_user_10",
+      "businessUnitCode": "US_PRU_HR",
+      "fileName": "stress_populated_2603222359_vu_10.xlsx",
+      "batchName": "STRESS_POPULATED_2603222359_VU_10",
+      "rowsSubmitted": 1000,
+      "startedAt": "2026-03-23T00:00:28.435Z",
+      "endedAt": "2026-03-23T00:00:45.636Z",
+      "responseMs": 17201,
+      "statusCode": 400,
+      "ok": false,
+      "text": "{\"detail\":\"Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)\"}",
+      "body": {
+        "detail": "Upload validation failed. Row 2: PartyKey is required. Row 3: PartyKey is required. Row 4: PartyKey is required. Row 5: PartyKey is required. (+996 more)"
+      }
+    }
+  ]
+}

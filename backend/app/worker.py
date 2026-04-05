@@ -566,41 +566,15 @@ def _process_received_message(
         return
 
     correlation_id = str(message.correlation_id or "").strip() or str(uuid4())
-    repository.add_audit_event(
-        action="SQS_MESSAGE_PICKED",
-        user_id=message.user_id,
-        user_name=message.user_name,
-        entity_type="screening_queue_item",
-        entity_id=f"{message.job_id}:{message.item_key}",
-        details={
-            "queue_name": settings.aws_sqs_queue_name,
-            "message_id": message_id,
-            "job_id": message.job_id,
-            "item_key": message.item_key,
-            "source_schedule_id": message.source_schedule_id,
-            "correlation_id": correlation_id,
-        },
-    )
-
-    repository.mark_item_processing(message.job_id, message.item_key)
     request_payload = message.query.model_dump(mode="json")
-    repository.add_audit_event(
-        action="ASYNC_SCREENING_API_CALL_STARTED",
-        user_id=message.user_id,
-        user_name=message.user_name,
-        entity_type="screening_item",
-        entity_id=f"{message.job_id}:{message.item_key}",
-        details={
-            "job_id": message.job_id,
-            "item_key": message.item_key,
-            "provider": settings.actimize_provider,
-            "operation": "screen_many_types",
-            "screening_types": message.screening_types,
-            "mock_screening": message.mock_screening,
-            "source_schedule_id": message.source_schedule_id,
-            "correlation_id": correlation_id,
-            "request": request_payload,
-        },
+    logger.info(
+        "screening item started job=%s key=%s correlation_id=%s screening_types=%s mock=%s schedule_id=%s",
+        message.job_id,
+        message.item_key,
+        correlation_id,
+        message.screening_types,
+        message.mock_screening,
+        message.source_schedule_id,
     )
 
     try:
@@ -614,24 +588,12 @@ def _process_received_message(
         repository.mark_item_completed(message.job_id, message.item_key, result)
         result_items = result.get("results", []) if isinstance(result, dict) else []
         result_count = len(result_items) if isinstance(result_items, list) else 0
-        repository.add_audit_event(
-            action="ASYNC_SCREENING_API_CALL_SUCCEEDED",
-            user_id=message.user_id,
-            user_name=message.user_name,
-            entity_type="screening_item",
-            entity_id=f"{message.job_id}:{message.item_key}",
-            details={
-                "job_id": message.job_id,
-                "item_key": message.item_key,
-                "provider": settings.actimize_provider,
-                "operation": "screen_many_types",
-                "screening_types": message.screening_types,
-                "mock_screening": message.mock_screening,
-                "source_schedule_id": message.source_schedule_id,
-                "correlation_id": correlation_id,
-                "result_count": result_count,
-                "result": result,
-            },
+        logger.info(
+            "screening item succeeded job=%s key=%s correlation_id=%s result_count=%s",
+            message.job_id,
+            message.item_key,
+            correlation_id,
+            result_count,
         )
         if message.source_schedule_id and message.source_record_hash:
             repository.mark_schedule_record_screened(
@@ -665,77 +627,23 @@ def _process_received_message(
         )
         provider, operation, endpoint, status_code, api_details = _resolve_external_api_context(exc)
 
-        repository.add_external_api_error(
-            provider=provider,
-            operation=operation,
-            endpoint=endpoint,
-            status_code=status_code,
-            user_id=message.user_id,
-            user_name=message.user_name,
-            job_id=message.job_id,
-            item_key=message.item_key,
-            error_text=str(exc),
-            details={
-                "query": request_payload,
-                "screening_types": message.screening_types,
-                "mock_screening": message.mock_screening,
-                "source_schedule_id": message.source_schedule_id,
-                "correlation_id": correlation_id,
-                **api_details,
-            },
-        )
-        alert = repository.maybe_emit_high_risk_external_api_failure_alert(
-            provider=provider,
-            operation=operation,
-            threshold=settings.high_risk_external_api_error_threshold,
-            window_minutes=settings.high_risk_external_api_error_window_minutes,
-            correlation_id=correlation_id,
-        )
-        if alert and alert.get("new_alert_created"):
-            logger.warning(
-                "high risk external API failure alert: provider=%s operation=%s total=%s window_minutes=%s threshold=%s",
-                alert.get("provider"),
-                alert.get("operation"),
-                alert.get("total_errors"),
-                alert.get("window_minutes"),
-                alert.get("threshold"),
-            )
-        repository.add_audit_event(
-            action="ASYNC_SCREENING_API_CALL_FAILED",
-            user_id=message.user_id,
-            user_name=message.user_name,
-            entity_type="screening_item",
-            entity_id=f"{message.job_id}:{message.item_key}",
-            details={
-                "job_id": message.job_id,
-                "item_key": message.item_key,
-                "provider": provider,
-                "operation": operation,
-                "endpoint": endpoint,
-                "status_code": status_code,
-                "screening_types": message.screening_types,
-                "mock_screening": message.mock_screening,
-                "source_schedule_id": message.source_schedule_id,
-                "correlation_id": correlation_id,
-                "request": request_payload,
-                "error": str(exc),
-                **api_details,
-            },
+        logger.error(
+            "screening item failed job=%s key=%s correlation_id=%s provider=%s operation=%s endpoint=%s status_code=%s screening_types=%s mock=%s schedule_id=%s request=%s details=%s error=%s",
+            message.job_id,
+            message.item_key,
+            correlation_id,
+            provider,
+            operation,
+            endpoint,
+            status_code,
+            message.screening_types,
+            message.mock_screening,
+            message.source_schedule_id,
+            json.dumps(request_payload, ensure_ascii=True, sort_keys=True),
+            json.dumps(api_details or {}, ensure_ascii=True, sort_keys=True),
+            str(exc),
         )
         repository.mark_item_failed(message.job_id, message.item_key, str(exc))
-        repository.add_audit_event(
-            action="ASYNC_SCREENING_ITEM_FAILED",
-            user_id=message.user_id,
-            user_name=message.user_name,
-            entity_type="screening_item",
-            entity_id=f"{message.job_id}:{message.item_key}",
-            details={
-                "job_id": message.job_id,
-                "item_key": message.item_key,
-                "correlation_id": correlation_id,
-                "error": str(exc),
-            },
-        )
         if message.source_schedule_id:
             created_notifications = repository.maybe_publish_schedule_job_notification(
                 job_id=message.job_id,

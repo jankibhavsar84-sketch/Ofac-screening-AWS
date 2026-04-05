@@ -116,6 +116,14 @@ PDF version of these diagrams: `docs/architecture-api-flow.pdf`
 
 ## Local Run (Containerized)
 
+Initialize the database schema explicitly on a fresh environment:
+
+```bash
+docker compose run --rm backend python -m app.init_db
+```
+
+Then start the stack:
+
 ```bash
 docker compose up --build
 ```
@@ -142,7 +150,7 @@ Frontend (`.env`, see `.env.example`):
 - `VITE_OIDC_SCOPE` ex: `openid profile email` (Cognito)
 - `VITE_OIDC_IDLE_TIMEOUT_MS` ex: `900000` (15 minutes; set `0` to disable idle auto-logout)
 - `VITE_OIDC_CLEAR_SESSION_ON_CLOSE` ex: `true` (stores OIDC session in `sessionStorage`; clears on tab/browser close)
-- `VITE_ACTIMIZE_REVIEW_ALERT_URL` ex: `https://actimizeuat` (optional; controls the `Review Alert` link in Screening Results)
+- `VITE_ACTIMIZE_REVIEW_ALERT_URL` ex: `http://actimizeuat/` (optional; controls the `Review Alert` link in Screening Results)
 
 Frontend runtime config in container:
 - In ECS, frontend reads `VITE_*` values at container startup from environment variables (no image rebuild needed).
@@ -151,6 +159,7 @@ Frontend runtime config in container:
 Backend/Worker (`backend/.env.example`):
 
 - `APP_DB_URL` optional. If set to a `postgresql://...` URL, backend/worker use PostgreSQL instead of SQLite (`APP_DB_PATH`).
+- Backend and worker validate schema at startup, but they do not run DDL automatically. Initialize schema explicitly with `python -m app.init_db` as part of setup/deployment.
 - `SCREENING_TPS=32` caps outbound screening API request rate
 - `SCREENING_PARALLEL_MESSAGES=1` controls how many SQS messages the worker processes concurrently
 - `ACTIMIZE_MOCK` is ignored; backend always calls Actimize

@@ -1,0 +1,11 @@
+.git
+.gitignore
+node_modules
+dist
+storybook-static
+coverage
+*.log
+.DS_Store
+backend/__pycache__
+backend/**/*.pyc
+

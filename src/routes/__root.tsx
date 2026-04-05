@@ -69,7 +69,7 @@ function RootLayout() {
         <div className="topHeaderInner page">
           <div className="brandRow">
             <div className="brandIcon" aria-hidden="true">
-              <img src="/Circle_Pru_Rrock.avif" className="brandIconImg" alt="" />
+              <img src="/pru-t-icon.svg" className="brandIconImg" alt="" />
             </div>
             <div className="brandText">
               <div className="brandTitle">Watchlist Screening</div>

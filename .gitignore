@@ -32,3 +32,9 @@ storybook-static
 # MS Office temporary/lock files
 ~$*.doc
 ~$*.docx
+
+# Generated artifacts
+artifacts/dependency-check-data/
+artifacts/**/dependency-check-data/
+artifacts/*.tar
+artifacts/**/*.tar

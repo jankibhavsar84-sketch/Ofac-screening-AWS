@@ -1,0 +1,2321 @@
+{
+  "summary": {
+    "baseUrl": "https://d3ppga4y8wg1ck.cloudfront.net",
+    "vus": 20,
+    "iterationsPerVu": 5,
+    "startedAt": "2026-03-13T01:34:35.189Z",
+    "finishedAt": "2026-03-13T01:35:33.366Z",
+    "durationMs": 58177,
+    "completedVus": 20,
+    "successfulVus": 20,
+    "failedVus": 0,
+    "fatalErrors": [],
+    "totalSteps": 420,
+    "avgStepMs": 2055.7,
+    "p95StepMs": 5590,
+    "p99StepMs": 34123,
+    "maxStepMs": 45648
+  },
+  "completed": [
+    {
+      "vuId": 1,
+      "username": "perf_load_user_01",
+      "startedAt": "2026-03-13T01:34:40.008Z",
+      "finishedAt": "2026-03-13T01:35:33.365Z",
+      "totalMs": 53357,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 45648,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 17,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 448,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1128,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 150,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 37,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 382,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1388,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 179,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 41,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 418,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1438,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 18,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 18,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 228,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 652,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 19,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 13,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 367,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 520,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 29,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 2,
+      "username": "perf_load_user_02",
+      "startedAt": "2026-03-13T01:34:40.747Z",
+      "finishedAt": "2026-03-13T01:35:33.234Z",
+      "totalMs": 52487,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 44639,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 88,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 532,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1218,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 143,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 43,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 344,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1511,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 147,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 51,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 396,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 890,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 52,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 17,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 268,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 588,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 22,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 20,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 268,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 749,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 34,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 3,
+      "username": "perf_load_user_03",
+      "startedAt": "2026-03-13T01:34:40.828Z",
+      "finishedAt": "2026-03-13T01:35:32.075Z",
+      "totalMs": 51247,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 17335,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 47,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 766,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 893,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 377,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 82,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 256,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 890,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 730,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 90,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1102,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1770,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 77,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 77,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 386,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1693,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 190,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 124,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 2001,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2024,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 130,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 4,
+      "username": "perf_load_user_04",
+      "startedAt": "2026-03-13T01:34:41.226Z",
+      "finishedAt": "2026-03-13T01:35:32.851Z",
+      "totalMs": 51625,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 34123,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 152,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1485,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3144,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 148,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 46,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 892,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2936,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 103,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 96,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 624,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1684,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 59,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 49,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 473,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1557,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 105,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 25,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 495,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1083,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 77,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 5,
+      "username": "perf_load_user_05",
+      "startedAt": "2026-03-13T01:34:40.827Z",
+      "finishedAt": "2026-03-13T01:35:32.669Z",
+      "totalMs": 51842,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 34250,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 269,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1038,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3029,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 297,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 152,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 528,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1631,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 152,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 27,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1988,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1531,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 71,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 50,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1118,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1243,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 140,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 51,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 440,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1140,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 142,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 6,
+      "username": "perf_load_user_06",
+      "startedAt": "2026-03-13T01:34:40.826Z",
+      "finishedAt": "2026-03-13T01:35:32.917Z",
+      "totalMs": 52091,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 22918,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 178,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 549,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1387,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 129,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 40,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 287,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1430,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 76,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 50,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 471,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1704,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 155,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 64,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 668,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1698,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 179,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 154,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 500,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3501,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 211,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 7,
+      "username": "perf_load_user_07",
+      "startedAt": "2026-03-13T01:34:40.007Z",
+      "finishedAt": "2026-03-13T01:35:33.018Z",
+      "totalMs": 53011,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 23376,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 25,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 580,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1432,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 117,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 33,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 422,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1294,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 160,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 73,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 556,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1574,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 135,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 136,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 610,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1867,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 88,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 25,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 599,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3141,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 145,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 8,
+      "username": "perf_load_user_08",
+      "startedAt": "2026-03-13T01:34:39.794Z",
+      "finishedAt": "2026-03-13T01:35:32.165Z",
+      "totalMs": 52371,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 17370,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 215,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 929,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 5590,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 1688,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 46,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 5571,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1624,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 205,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 61,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 391,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3477,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 91,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 208,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1380,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2120,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 49,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 43,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 623,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1808,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 186,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 9,
+      "username": "perf_load_user_09",
+      "startedAt": "2026-03-13T01:34:40.893Z",
+      "finishedAt": "2026-03-13T01:35:33.059Z",
+      "totalMs": 52166,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 34848,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 156,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1003,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2492,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 143,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 143,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1185,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1770,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 78,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 84,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 694,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1335,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 176,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 62,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 689,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1140,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 42,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 56,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 941,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1334,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 149,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 10,
+      "username": "perf_load_user_10",
+      "startedAt": "2026-03-13T01:34:41.839Z",
+      "finishedAt": "2026-03-13T01:35:33.133Z",
+      "totalMs": 51294,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 21520,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 28,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 611,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1399,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 67,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 71,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 460,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1342,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 109,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 102,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 526,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1592,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 146,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 152,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 581,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1849,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 87,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 53,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 587,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3089,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 163,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 11,
+      "username": "perf_load_user_11",
+      "startedAt": "2026-03-13T01:34:42.877Z",
+      "finishedAt": "2026-03-13T01:35:33.079Z",
+      "totalMs": 50202,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 32382,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 239,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1468,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3165,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 146,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 46,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 874,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1958,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 240,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 63,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1411,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1712,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 90,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 50,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1144,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1568,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 183,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 35,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 379,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 957,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 14,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 12,
+      "username": "perf_load_user_12",
+      "startedAt": "2026-03-13T01:34:42.842Z",
+      "finishedAt": "2026-03-13T01:35:33.082Z",
+      "totalMs": 50240,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 25580,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 35,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 963,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2216,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 228,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 65,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 719,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3783,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 393,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 101,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1023,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2490,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 251,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 57,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 808,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2115,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 138,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 97,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 601,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1607,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 95,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 13,
+      "username": "perf_load_user_13",
+      "startedAt": "2026-03-13T01:34:43.805Z",
+      "finishedAt": "2026-03-13T01:35:32.919Z",
+      "totalMs": 49114,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 20605,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 41,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 606,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1233,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 163,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 73,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 504,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1576,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 209,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 133,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1183,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2116,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 187,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 82,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 760,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 4199,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 278,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 56,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 729,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2204,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 129,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 14,
+      "username": "perf_load_user_14",
+      "startedAt": "2026-03-13T01:34:43.811Z",
+      "finishedAt": "2026-03-13T01:35:33.033Z",
+      "totalMs": 49222,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 18492,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 272,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1267,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1614,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 6329,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 65,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 4628,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3317,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 240,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 104,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 831,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1987,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 220,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 91,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1508,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1684,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 137,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 37,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 448,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1469,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 215,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 15,
+      "username": "perf_load_user_15",
+      "startedAt": "2026-03-13T01:34:43.818Z",
+      "finishedAt": "2026-03-13T01:35:32.431Z",
+      "totalMs": 48613,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 31231,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 265,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1603,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3140,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 165,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 41,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 583,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1972,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 254,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 80,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 741,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1640,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 179,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 54,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1313,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1482,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 215,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 71,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 549,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1051,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 33,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 16,
+      "username": "perf_load_user_16",
+      "startedAt": "2026-03-13T01:34:43.957Z",
+      "finishedAt": "2026-03-13T01:35:33.141Z",
+      "totalMs": 49184,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 20466,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 50,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 594,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1448,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 57,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 63,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 666,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1654,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 460,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 156,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 705,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2083,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 121,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 39,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 766,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 4138,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 320,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 82,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1174,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2512,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 169,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 17,
+      "username": "perf_load_user_17",
+      "startedAt": "2026-03-13T01:34:44.009Z",
+      "finishedAt": "2026-03-13T01:35:32.967Z",
+      "totalMs": 48958,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 25704,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 46,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 674,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 5266,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 583,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 77,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1110,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3518,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 170,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 134,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 812,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1854,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 194,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 39,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 446,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1743,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 164,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 31,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 397,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1427,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 91,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 18,
+      "username": "perf_load_user_18",
+      "startedAt": "2026-03-13T01:34:44.184Z",
+      "finishedAt": "2026-03-13T01:35:32.498Z",
+      "totalMs": 48314,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 18111,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 280,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 832,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1836,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 205,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 78,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 580,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1511,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 250,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 76,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 515,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2258,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 230,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 125,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 546,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1881,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 151,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 314,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 2289,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3126,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 153,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 19,
+      "username": "perf_load_user_19",
+      "startedAt": "2026-03-13T01:34:44.015Z",
+      "finishedAt": "2026-03-13T01:35:33.162Z",
+      "totalMs": 49147,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 31512,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 198,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1155,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2515,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 135,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 147,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 647,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1386,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 85,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 82,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 564,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1692,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 81,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 20,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 486,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1517,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 179,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 67,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 362,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2436,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 139,
+          "ok": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "vuId": 20,
+      "username": "perf_load_user_20",
+      "startedAt": "2026-03-13T01:34:44.320Z",
+      "finishedAt": "2026-03-13T01:35:33.192Z",
+      "totalMs": 48872,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 31973,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 67,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 1105,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 3296,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 133,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 67,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 687,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 2156,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 205,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 99,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 448,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1669,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 182,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 28,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 421,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1361,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 178,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 56,
+          "ok": true
+        },
+        {
+          "name": "search_results",
+          "ms": 572,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 1190,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 66,
+          "ok": true
+        }
+      ],
+      "errors": []
+    }
+  ]
+}

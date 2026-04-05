@@ -1,7 +1,7 @@
 # Technical Design Document (TDD): OFAC / Watchlist Screening Platform
 
-**Version:** 1.2  
-**Date:** 2026-03-08  
+**Version:** 1.4  
+**Date:** 2026-03-25  
 **Repo:** `ofac-screening-aws`  
 
 This document describes the technical design for the OFAC / watchlist screening platform deployed on AWS. It includes AWS architecture, API flows, process flows, and component responsibilities.
@@ -10,13 +10,15 @@ This document describes the technical design for the OFAC / watchlist screening 
 
 The platform supports:
 - **Single Screening (Sync):** user submits a single entity and receives an immediate response.
-- **Batch Screening (Async):** user uploads a batch; the platform returns immediately with a job id; a worker processes in background.
-- **Large Batch Dispatch (Async):** for very large immediate batch uploads, backend stores `queries.json` in S3 and enqueues a `JOB_DISPATCH` SQS message so the worker can expand/enqueue per-record tasks without hitting CloudFront origin timeouts.
-- **Daily Screening (Scheduled):** selected batches are automatically re-screened daily shortly after midnight Eastern time.
+- **Batch Screening (Async):** user uploads a CSV/XLSX file plus metadata only; the backend parses, validates, and normalizes the file before creating async work.
+- **Large Batch Dispatch (Async):** for very large immediate batch uploads, backend stores the uploaded source file and a backend-generated `queries.json` in S3 and enqueues a `JOB_DISPATCH` SQS message so the worker can expand/enqueue per-record tasks without hitting CloudFront origin timeouts.
+- **Daily Screening (Scheduled):** selected batches are automatically re-screened on their configured cadence (`DAILY`, `WEEKLY`, `MONTHLY`) shortly after the configured local run time.
 - **AuthN/AuthZ:** OIDC login (AWS Cognito or enterprise IdP federation) and role-based authorization.
-- **Audit Trail:** all key user/system actions are recorded for traceability.
+- **Audit Trail:** key user/system actions are recorded for traceability, with admin-facing paged audit APIs.
+- **Fast Screening Dashboard:** summary cards load from a dedicated aggregate API over the full user history, while the Screening Results grid loads a separate recent-results feed capped for UX performance.
 - **API Access Logging:** every `/api/v1/*` request is logged with status, latency, auth state, and correlation id.
-- **Operational Controls:** log retention and high-risk external API failure alerting.
+- **Raw Upstream Troubleshooting Logs:** outbound Prudential/Actimize request and response payloads are logged to CloudWatch with sensitive fields redacted.
+- **Operational Controls:** explicit schema initialization, connection pooling, DB retry/backoff, retention cleanup, and high-risk external API failure alerting.
 
 ## 2. AWS Architecture (Deployed View)
 
@@ -61,7 +63,7 @@ flowchart LR
   BE -->|enqueue| Q
   BE -->|read/write| DB
   BE -->|emit logs| CW
-  BE -->|upload source + queries.json| S3
+  BE -->|upload source + generated queries.json| S3
 
   WK -->|poll| Q
   WK -->|read/write| DB
@@ -96,24 +98,25 @@ flowchart LR
   - User login and token issuance (or federation from enterprise IdP).
   - Group membership in tokens maps to app roles/permissions.
 - **S3 (optional, required for large batch dispatch)**
-  - Stores batch upload source files (XLSX) and `queries.json` when enabled.
+  - Stores batch upload source files (`.csv` / `.xlsx`) and backend-generated `queries.json` when enabled.
   - Large immediate uploads use S3-backed `JOB_DISPATCH` expansion to avoid CloudFront timeouts.
 - **SNS (optional)**
   - Publishes scheduled screening completion notifications to subscribed email recipients (implementation uses per-recipient SNS topics to avoid repeated email confirmation prompts when schedules change).
 - **CloudWatch Logs**
   - Central log streams per ECS service for support and troubleshooting.
 
-## 3. Security Design
+## 3. Security Design by Component
 
-### 3.1 Authentication
+### 3.1 Frontend Container Security (`frontend`)
 
 - Browser uses **OIDC Authorization Code + PKCE** against Cognito.
-- Frontend stores session per configuration (session storage supported for tab-close logout behavior).
+- Frontend stores session per configuration (including session-storage mode for tab-close logout behavior).
 - Frontend sends `Authorization: Bearer <access_token>` with API requests.
+- Frontend permissions are a UX concern only: buttons/tabs may be hidden or disabled, but enforcement remains in the backend container.
 
-### 3.2 Authorization Model
+### 3.2 Backend Container Authorization (`backend`)
 
-Roles are derived from token claims (e.g., Cognito `cognito:groups`, or `custom:roles` if federating).
+Roles are derived from token claims (for example Cognito `cognito:groups` or federated custom role claims).
 
 Role intent:
 - `viewer`: can perform screening only in mock mode.
@@ -121,9 +124,9 @@ Role intent:
 - `compliance`: analyst permissions + daily screening enable/disable.
 - `admin`: compliance permissions + user admin + audit visibility.
 
-Backend enforces permissions per endpoint (scope/role checks).
+Backend enforces permissions per endpoint with scope/role checks.
 
-### 3.3 Token Validation
+### 3.3 Backend Token Validation (`backend`)
 
 Backend validates JWT signature using JWKS and checks:
 - issuer matches configured issuer
@@ -132,10 +135,10 @@ Backend validates JWT signature using JWKS and checks:
   - accept app client id in `aud` OR `client_id` OR `azp`
 
 Auth audit behavior:
-- API 401/403 outcomes are written to `audit_events` and `api_access_logs`.
+- API `401`/`403` outcomes are written to `audit_events` and `api_access_logs`.
 - Identity-provider login attempts (hosted by Cognito/enterprise IdP) remain in IdP-native audit logs; this app records API-layer authentication outcomes.
 
-## 4. Component Responsibilities
+## 4. Component Responsibilities and Functional Ownership
 
 ### 4.1 Frontend (SPA + Nginx reverse proxy)
 
@@ -145,6 +148,10 @@ Responsibilities:
 - Call backend APIs under `/api/v1/*`.
 - Poll job progress for batch screening and render status transitions.
 - Enforce UX constraints based on user permissions (hide/disable actions).
+- Persist screening workspace state and audit-log filter/page state in browser `localStorage`.
+- Load dashboard summary counts from `GET /api/v1/screenings/summary` across the full user history.
+- Load Screening Results rows from `GET /api/v1/screenings/results` using a recent-results window capped to the latest `300` rows for the signed-in user.
+- Expose environment-configurable review-alert navigation via `VITE_ACTIMIZE_REVIEW_ALERT_URL`.
 
 Runtime configuration:
 - `VITE_*` values are injected at container startup into `app-config.js`.
@@ -156,12 +163,16 @@ Responsibilities:
 - Validate and accept screening requests.
 - Provide synchronous screening endpoint for immediate results.
 - Create batch jobs and enqueue SQS messages for async processing.
-- For immediate large batch uploads, create the job quickly and enqueue a single `JOB_DISPATCH` message; the worker expands into per-record `SCREEN_ITEM` tasks using `queries.json` stored in S3.
+- Provide a lightweight screening summary API that returns aggregate counts for the signed-in user without loading result rows.
+- Provide a lightweight recent-results API that returns only the latest `300` result rows for the signed-in user, separated from summary-card aggregation.
+- Parse uploaded CSV/XLSX files server-side, validate row rules, normalize them into `EntityExample` payloads, and return `row_meta` for UI rendering.
+- For immediate large batch uploads, create the job quickly and enqueue a single `JOB_DISPATCH` message; the worker expands into per-record `SCREEN_ITEM` tasks using backend-generated `queries.json` stored in S3.
 - Provide job progress endpoints for polling.
 - Manage daily schedule definitions (list/disable).
 - Write audit events for key actions and failures.
 - Run middleware-based API access logging (method/path/status/latency/user/auth state).
 - Generate and return request correlation id (`X-Correlation-ID`) and propagate to downstream screening flows.
+- Validate database schema at startup, but do not run DDL automatically in runtime API processes.
 
 ### 4.3 Worker (SQS Consumer + Daily Scheduler Loop)
 
@@ -169,11 +180,13 @@ Responsibilities:
 - Poll SQS messages and process screening items.
 - Handle `JOB_DISPATCH` messages for large immediate batch uploads by downloading `queries.json` from S3, creating job items in bulk, and enqueuing per-record `SCREEN_ITEM` tasks using `SendMessageBatch` (10 at a time).
 - Enforce screening throughput and execute screening calls for selected types.
-- Enforce throughput constraint via fixed-rate limiter (`32 TPS`).
+- Enforce throughput constraint via fixed-rate limiter (`SCREENING_TPS`) and concurrency cap (`SCREENING_PARALLEL_MESSAGES`) per worker task.
 - Persist item results (completed/failed) into the database.
 - Periodically check due daily schedules and trigger new batch jobs.
 - Apply retention policy cleanup for audit/access/error stores.
 - Emit high-risk audit alerts when external API failures exceed configured threshold/window.
+- Use pooled PostgreSQL connections with retry/backoff for transient DB acquisition failures.
+- Emit detailed CloudWatch logs for async screening start/success/failure, including raw external API request/response payloads with redaction.
 
 ### 4.4 Screening Engine Adapter (Actimize Watchlist Adapter)
 
@@ -181,6 +194,11 @@ Responsibilities:
 - Provide `screen_single` and `screen_many_types`.
 - Normalize results into a stable structure for UI consumption.
 - Support mock screening for demos/dev environments.
+- Accept Prudential wrapper responses that use either `status_code` or `statusCode`, and unwrap nested `body` payloads before normalization.
+- Enforce current Prudential response contract:
+  - HTTP `200` + payload `message="PM"` => potential match
+  - HTTP `200` + payload `message="NM"` => clear
+  - any other payload/status => failure
 
 Note: In this repo, the adapter is configured for the Actimize/Kong sanctions API and preserves the "single-type per request" behavior required by Actimize-style engines.
 
@@ -192,6 +210,8 @@ Responsibilities:
 - Persist audit events for compliance and troubleshooting.
 - Persist API access logs (`api_access_logs`) for request/response traceability.
 - Persist external API failures (`external_api_errors`) with provider/operation context.
+- Persist source-upload metadata (`batch_file_uploads`) and daily schedule dedupe state (`schedule_record_state`).
+- Separate schema initialization from runtime by using `python -m app.init_db` during setup/deployment.
 
 ## 5. Data Model (Business Objects)
 
@@ -228,7 +248,112 @@ Item status is tracked similarly and rolls up to job snapshot counts.
 - `external_api_errors`
   - Error repository for upstream screening API failures with provider, endpoint, status code, and request context.
 
-## 6. API Design
+### 5.5 Database Design Diagram
+
+```mermaid
+erDiagram
+  jobs ||--o{ job_items : contains
+  jobs ||--|| job_metadata : describes
+  batch_file_uploads o|--o| jobs : source_upload_for
+  daily_schedules o|--o{ schedule_subscriptions : has
+  daily_schedules o|--o{ schedule_record_state : tracks
+  daily_schedules o|--o{ jobs : triggers
+  jobs o|--o| job_schedule_notifications : notifies_once
+  daily_schedules o|--o{ schedule_notifications : emits
+  business_units ||--o{ user_business_units : maps
+  business_units ||--o{ daily_schedules : scopes
+  business_units ||--o{ job_metadata : scopes
+  jobs o|--o{ external_api_errors : may_record
+  jobs o|--o{ audit_events : may_record
+```
+
+### 5.6 Table Names, Structure, and Use Case
+
+#### `jobs`
+
+- Primary key: `job_id`
+- Core columns: `status`, `created_at`, `updated_at`, `total_items`, `source_schedule_id`, `source_upload_id`, `user_id`, `user_name`
+- Use case: top-level execution container for sync, batch, and scheduled screening runs
+
+#### `job_items`
+
+- Primary key: `(job_id, item_key)`
+- Core columns: `request_json`, `response_json`, `status`, `error_text`, `updated_at`
+- Use case: per-record screening state and normalized response storage
+
+#### `job_metadata`
+
+- Primary key: `job_id`
+- Core columns: `mode`, `screening_types_json`, `mock_screening`, `batch_name`, `file_name`, `daily_screening`, `schedule_frequency`, `daily_schedule_id`, `query_count`, `deferred_until`, `business_unit_code`
+- Use case: UI/history metadata for jobs that does not belong in the execution counter table
+
+#### `daily_schedules`
+
+- Primary key: `schedule_id`
+- Core columns: `batch_name`, `user_id`, `user_name`, `queries_json`, `screening_types_json`, `mock_screening`, `schedule_frequency`, `timezone`, `run_hour`, `run_minute`, `created_at`, `last_run_at`, `next_run_at`, `is_active`, `source_upload_id`, `source_file_name`, `source_s3_uri`, `business_unit_code`
+- Use case: persisted recurring-screening definitions and next-run state
+
+#### `batch_file_uploads`
+
+- Primary key: `upload_id`
+- Core columns: `schedule_id`, `job_id`, `user_id`, `user_name`, `file_name`, `s3_bucket`, `s3_key`, `s3_uri`, `queries_s3_bucket`, `queries_s3_key`, `queries_s3_uri`, `file_hash`, `record_count`, `created_at`, `is_active`
+- Use case: traceability for uploaded source files and backend-generated `queries.json`
+
+#### `schedule_record_state`
+
+- Primary key: `(schedule_id, record_hash)`
+- Core columns: `first_seen_at`, `last_screened_at`, `last_job_id`
+- Use case: dedupe and incremental daily schedule behavior so unchanged records are not rescreened unnecessarily
+
+#### `schedule_subscriptions`
+
+- Primary key: `subscription_id`
+- Core columns: `schedule_id`, `user_id`, `user_name`, `email`, `is_active`, `created_at`, `updated_at`
+- Use case: scheduled screening completion recipients
+
+#### `job_schedule_notifications`
+
+- Primary key: `job_id`
+- Core columns: `schedule_id`, `created_at`
+- Use case: idempotency guard so one scheduled job triggers notifications once
+
+#### `schedule_notifications`
+
+- Primary key: `notification_id`
+- Core columns: `created_at`, `user_id`, `user_name`, `email`, `schedule_id`, `job_id`, `title`, `message`, `summary_json`
+- Use case: notification outbox/audit trail for schedule completion messaging
+
+#### `audit_events`
+
+- Primary key: `event_id`
+- Core columns: `created_at`, `user_id`, `user_name`, `action`, `entity_type`, `entity_id`, `details_json`
+- Use case: admin/compliance-facing audit trail for screening, auth, and operational actions
+
+#### `api_access_logs`
+
+- Primary key: `access_id`
+- Core columns: `created_at`, `correlation_id`, `request_method`, `request_path`, `query_string`, `status_code`, `duration_ms`, `client_ip`, `user_agent`, `user_id`, `user_name`, `auth_state`, `details_json`
+- Use case: request-level operational traceability for `/api/v1/*`
+
+#### `external_api_errors`
+
+- Primary key: `error_id`
+- Core columns: `created_at`, `provider`, `operation`, `endpoint`, `status_code`, `user_id`, `user_name`, `job_id`, `item_key`, `error_text`, `details_json`
+- Use case: upstream screening failure analysis and alerting
+
+#### `business_units`
+
+- Primary key: `business_unit_code`
+- Core columns: `business_unit_name`, `is_active`, `created_at`, `updated_at`
+- Use case: runtime-managed reference data for business-unit authorization and submission scoping
+
+#### `user_business_units`
+
+- Primary key: `(user_id, business_unit_code)`
+- Core columns: `user_name`, `is_active`, `created_at`, `updated_at`
+- Use case: user-to-business-unit authorization mapping used by screening submission flows
+
+## 6. Backend API Container Design
 
 Base path: `/api/v1` (except health endpoint).
 
@@ -253,73 +378,77 @@ Base path: `/api/v1` (except health endpoint).
 
 ### 6.2 Endpoint Catalog
 
-| Method | Path | Required Permission | Functionality |
-|---|---|---|---|
-| `GET` | `/health` | None | Liveness/readiness response (`{"status":"ok"}`). |
-| `POST` | `/api/v1/screenings/jobs` | `screening.write` or `screening.daily` or `screening.admin` | Creates async screening job from JSON payload (`queries`, screening types, schedule options). If `daily_screening=true`, schedule is created/updated and first execution is deferred to schedule time. |
-| `POST` | `/api/v1/screenings/batch-upload` | `screening.write` or `screening.daily` or `screening.admin` | Uploads batch file + query payload, validates file content rules, optionally stores source in S3. For scheduled/daily runs, creates job/schedule. For immediate large runs, requires S3 upload enabled and enqueues a `JOB_DISPATCH` message so the worker can expand/enqueue per-record tasks without request timeouts. Supports optional subscription creation for schedules. |
-| `GET` | `/api/v1/screenings/jobs/{job_id}` | `screening.read` | Returns job progress counts and terminal responses when complete. |
-| `GET` | `/api/v1/screenings/submissions` | `screening.read` | Returns user-visible submission history for single and batch runs with normalized result status. |
-| `POST` | `/api/v1/screenings/match` | `screening.write` or `screening.single.mock` or `screening.admin` | Performs synchronous screening, persists job/item metadata, returns immediate merged results; logs per-item API call success/failure. |
-| `GET` | `/api/v1/screenings/daily-schedules` | `screening.read` | Lists active schedules with frequency, next run, source file metadata, and business unit. |
-| `DELETE` | `/api/v1/screenings/daily-schedules/{schedule_id}` | `screening.daily` or `screening.admin` | Disables one daily schedule and writes audit event. |
-| `GET` | `/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` | `screening.read` | Lists subscriptions for a schedule (scoped to caller context). |
-| `POST` | `/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` | `screening.read` | Upserts subscription email for schedule notifications. |
-| `DELETE` | `/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` | `screening.read` | Removes subscription by email for the schedule. |
-| `GET` | `/api/v1/business-units` | `screening.read` | Returns active business units mapped to current user. |
-| `GET` | `/api/v1/admin/business-units` | `screening.admin` or `screening.useradmin` | Lists all business units (`include_inactive` supported). |
-| `POST` | `/api/v1/admin/business-units` | `screening.admin` or `screening.useradmin` | Creates new business unit reference row. |
-| `PUT` | `/api/v1/admin/business-units/{business_unit_code}` | `screening.admin` or `screening.useradmin` | Updates business unit code/name and cascades code change to mappings/metadata. |
-| `DELETE` | `/api/v1/admin/business-units/{business_unit_code}` | `screening.admin` or `screening.useradmin` | Deletes business unit and related user mappings. |
-| `GET` | `/api/v1/admin/business-unit-mappings` | `screening.admin` or `screening.useradmin` | Lists user-to-business-unit mappings. |
-| `PUT` | `/api/v1/admin/business-unit-mappings/{user_id}` | `screening.admin` or `screening.useradmin` | Replaces mapping for one user with supplied business unit list. |
-| `GET` | `/api/v1/admin/users` | `screening.admin` or `screening.useradmin` | Lists known users (DB + Cognito user pool enumeration fallback). |
-| `GET` | `/api/v1/audit-events` | `screening.admin` or `screening.useradmin` | Returns audit events with pagination (`limit`, `offset`) and optional `user_id` filter. |
+All public REST endpoints in this section are owned by the `backend` container in ECS service `ofac-screening-backend-svc`.
 
-### 6.3 Functional Notes By API Area
+| Method | Path | Container | Required Permission | Functionality |
+|---|---|---|---|---|
+| `GET` | `/health` | `backend` | None | Liveness/readiness response (`{"status":"ok"}`). |
+| `POST` | `/api/v1/screenings/jobs` | `backend` | `screening.write` or `screening.daily` or `screening.admin` | Creates async screening job from JSON payload (`queries`, screening types, schedule options). If `daily_screening=true`, schedule is created/updated and first execution is deferred to schedule time. |
+| `POST` | `/api/v1/screenings/batch-upload` | `backend` | `screening.write` or `screening.daily` or `screening.admin` | Uploads batch file + metadata only, validates file content rules on the backend, normalizes rows into `EntityExample` payloads, optionally stores source and generated `queries.json` in S3, and returns `row_meta` for UI rendering. For scheduled/daily runs, creates job/schedule. For immediate large runs, requires S3 upload enabled and enqueues a `JOB_DISPATCH` message so the worker can expand/enqueue per-record tasks without request timeouts. Supports optional subscription creation for schedules. |
+| `GET` | `/api/v1/screenings/jobs/{job_id}` | `backend` | `screening.read` | Returns job progress counts and terminal responses when complete. |
+| `GET` | `/api/v1/screenings/submissions` | `backend` | `screening.read` | Returns legacy user-visible submission history for single and batch runs with normalized result status. |
+| `GET` | `/api/v1/screenings/summary` | `backend` | `screening.read` | Returns full-history dashboard counts for the signed-in user (`total`, `clear`, `potential`, `pending`, `failed`, `match`) without loading result rows. |
+| `GET` | `/api/v1/screenings/results` | `backend` | `screening.read` | Returns only the latest `300` normalized screening-result rows for the signed-in user, ordered newest-first for fast grid rendering. |
+| `POST` | `/api/v1/screenings/match` | `backend` | `screening.write` or `screening.single.mock` or `screening.admin` | Performs synchronous screening, persists job/item metadata, returns immediate merged results; logs per-item API call success/failure. |
+| `GET` | `/api/v1/screenings/daily-schedules` | `backend` | `screening.read` | Lists active schedules with frequency, next run, source file metadata, and business unit. |
+| `DELETE` | `/api/v1/screenings/daily-schedules/{schedule_id}` | `backend` | `screening.daily` or `screening.admin` | Disables one daily schedule and writes audit event. |
+| `GET` | `/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` | `backend` | `screening.read` | Lists subscriptions for a schedule (scoped to caller context). |
+| `POST` | `/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` | `backend` | `screening.read` | Upserts subscription email for schedule notifications. |
+| `DELETE` | `/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` | `backend` | `screening.read` | Removes subscription by email for the schedule. |
+| `GET` | `/api/v1/business-units` | `backend` | `screening.read` | Returns active business units mapped to current user. |
+| `GET` | `/api/v1/admin/business-units` | `backend` | `screening.admin` or `screening.useradmin` | Lists all business units (`include_inactive` supported). |
+| `POST` | `/api/v1/admin/business-units` | `backend` | `screening.admin` or `screening.useradmin` | Creates new business unit reference row. |
+| `PUT` | `/api/v1/admin/business-units/{business_unit_code}` | `backend` | `screening.admin` or `screening.useradmin` | Updates business unit code/name and cascades code change to mappings/metadata. |
+| `DELETE` | `/api/v1/admin/business-units/{business_unit_code}` | `backend` | `screening.admin` or `screening.useradmin` | Deletes business unit and related user mappings. |
+| `GET` | `/api/v1/admin/business-unit-mappings` | `backend` | `screening.admin` or `screening.useradmin` | Lists user-to-business-unit mappings. |
+| `PUT` | `/api/v1/admin/business-unit-mappings/{user_id}` | `backend` | `screening.admin` or `screening.useradmin` | Replaces mapping for one user with supplied business unit list. |
+| `GET` | `/api/v1/admin/users` | `backend` | `screening.admin` or `screening.useradmin` | Lists known users (DB + Cognito user pool enumeration fallback). |
+| `GET` | `/api/v1/audit-events` | `backend` | `screening.admin` or `screening.useradmin` | Returns audit events with pagination (`limit`, `offset`) and optional `user_id` filter. |
+| `GET` | `/api/v1/audit-events/page` | `backend` | `screening.admin` or `screening.useradmin` | Returns paged audit events with `items`, `total`, `limit`, `offset`, optional `user_id`, and `errors_only` filtering. |
 
-- Screening submission APIs:
-  - Persist job, item, metadata, and audit records.
-  - Async jobs enqueue either per-item `SCREEN_ITEM` work (JSON submit) or a single `JOB_DISPATCH` work item (large batch upload) which expands into per-item work in the worker.
-  - Sync jobs execute immediately and write per-item external API call audit lifecycle.
-- Batch-upload validation:
-  - `queries_json` must be non-empty object.
-  - `PartyKey` is required, cannot be blank, and must be unique.
-  - Legacy `row_<n>` keys are rejected.
-  - Allowed schema values: person/individual/company/organization/legalentity/unknown.
-  - Gender validation allows `M`, `F`, or blank (plus textual male/female/unknown variants).
-  - At least one non-empty name is required.
-- Scheduling and subscriptions:
-  - Schedule creation does not screen immediately; worker executes at `next_run_at`.
-  - Schedule runs support frequency (`DAILY`, `WEEKLY`, `MONTHLY`) and dedupe against previously screened schedule record hashes.
-  - Completion notifications are generated for subscribed emails and logged.
-- Admin APIs:
-  - Business unit reference table is runtime-managed via API (create/update/delete/list).
-  - User/business-unit mapping determines selectable BU values in screening flows and is enforced on submit.
-- Audit APIs:
-  - `audit_events` is admin-only.
-  - Additional operational telemetry is stored in `api_access_logs` and `external_api_errors` tables for enterprise support/compliance queries.
+### 6.3 API Specifications by Functional Group
 
-### 6.4 Canonical Schemas (Selected)
+All APIs below are served by the `backend` container in `ofac-screening-backend-svc`.
 
-#### `MatchJobRequest` (`POST /api/v1/screenings/jobs`)
+#### 6.3.1 Health and Screening APIs
+
+##### `GET /health` (`backend`)
+
+Request:
+
+```http
+GET /health HTTP/1.1
+Host: d3ppga4y8wg1ck.cloudfront.net
+```
+
+Response:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+##### `POST /api/v1/screenings/jobs` (`backend`)
+
+Request:
 
 ```json
 {
   "queries": {
     "P001": {
-      "schema": "person",
+      "schema": "Person",
       "properties": {
         "partyKey": "P001",
         "name": ["Jane Doe"],
-        "birthDate": "1980-01-01",
-        "gender": "F"
+        "birthDate": ["1980-01-01"],
+        "gender": ["Female"]
       }
     }
   },
   "screening_types": ["Sanction", "PEP"],
   "mock_screening": false,
-  "business_unit_code": "AML",
+  "business_unit_code": "US_PRU_HR",
   "daily_screening": false,
   "schedule_frequency": "DAILY",
   "schedule_run_at": null,
@@ -328,7 +457,7 @@ Base path: `/api/v1` (except health endpoint).
 }
 ```
 
-#### `MatchJobAccepted` (`202` from `POST /api/v1/screenings/jobs`)
+Response:
 
 ```json
 {
@@ -336,29 +465,577 @@ Base path: `/api/v1` (except health endpoint).
   "status": "QUEUED",
   "submitted_at": "2026-03-08T21:12:33.123456+00:00",
   "total_items": 1,
-  "business_unit_code": "AML",
+  "business_unit_code": "US_PRU_HR",
   "daily_schedule_id": null,
   "screened_item_keys": []
 }
 ```
 
-#### `Batch Upload` (`POST /api/v1/screenings/batch-upload` multipart)
+##### `POST /api/v1/screenings/batch-upload` (`backend`)
 
-- `file`: uploaded XLSX (required)
-- `queries_json`: JSON string containing `{ "<PartyKey>": { "schema": "...", "properties": {...} }, ... }` (required)
-- `screening_types_json`: JSON string array (default `[]`)
-- `business_unit_code`: string (required)
-- Optional scheduling: `daily_screening`, `schedule_frequency`, `schedule_run_at`, `schedule_id`
-- Optional behavior: `mock_screening`, `batch_name`, `subscribe_results`, `subscribe_email`, `subscribe_emails`
+Request:
+- multipart form-data
+- required parts: `file`, `business_unit_code`
+- common optional parts: `screening_types_json`, `batch_name`, `daily_screening`, `schedule_frequency`, `mock_screening`
 
-#### `ScreeningQueueMessage` (SQS body)
+Example:
 
-- `message_type="SCREEN_ITEM"` (default): carries one record (`item_key` + `query`).
-- `message_type="JOB_DISPATCH"`: control message used by large batch uploads (must omit `query`; may omit `item_key`); worker downloads `queries.json` from S3 and expands into `SCREEN_ITEM` messages.
+```text
+file=batch.xlsx
+screening_types_json=["Sanction"]
+business_unit_code=US_PRU_HR
+batch_name=PGIM_SANCTION_BATCH
+daily_screening=false
+mock_screening=false
+```
 
-## 7. Process Flows
+Response:
 
-### 7.1 OIDC Login (Cognito)
+```json
+{
+  "job_id": "493f2ca6-6b61-4017-8220-843d377d436b",
+  "status": "QUEUED",
+  "submitted_at": "2026-03-22T19:39:54.995828+00:00",
+  "total_items": 1000,
+  "business_unit_code": "US_PRU_HR",
+  "daily_schedule_id": null,
+  "screened_item_keys": [],
+  "source_upload_id": "298c33ad-c110-4d7e-a03b-b742fff5cea2",
+  "file_name": "batch.xlsx",
+  "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/.../batch.xlsx",
+  "schedule_frequency": null,
+  "row_meta": [
+    {
+      "key": "AMLP_I_000001",
+      "display_name": "Jane Doe",
+      "ui_type": "Individual"
+    }
+  ]
+}
+```
+
+##### `GET /api/v1/screenings/jobs/{job_id}` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/screenings/jobs/493f2ca6-6b61-4017-8220-843d377d436b
+```
+
+Response:
+
+```json
+{
+  "job_id": "493f2ca6-6b61-4017-8220-843d377d436b",
+  "status": "COMPLETED",
+  "submitted_at": "2026-03-22T19:39:54.995828+00:00",
+  "total_items": 1000,
+  "completed_items": 1000,
+  "failed_items": 0,
+  "pending_items": 0,
+  "processing_items": 0,
+  "responses": {
+    "AMLP_I_000001": {
+      "results": [],
+      "total": { "value": 0, "relation": "eq" },
+      "query": {
+        "schema": "Person",
+        "properties": {
+          "partyKey": "AMLP_I_000001",
+          "name": ["Jane Doe"]
+        }
+      },
+      "status": 200,
+      "engine_message": "NM"
+    }
+  },
+  "limit": 5
+}
+```
+
+##### `GET /api/v1/screenings/submissions` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/screenings/submissions?limit=5
+```
+
+Response:
+
+```json
+[
+  {
+    "id": "493f2ca6-6b61-4017-8220-843d377d436b",
+    "mode": "BATCH",
+    "createdAt": "2026-03-22T19:39:54.995828+00:00",
+    "businessUnitCode": "US_PRU_HR",
+    "overallResult": "NO_HIT",
+    "screeningTypes": ["Sanction"],
+    "fileName": "batch.xlsx"
+  }
+]
+```
+
+##### `GET /api/v1/screenings/summary` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/screenings/summary
+```
+
+Response:
+
+```json
+{
+  "total": 71981,
+  "clear": 55235,
+  "potential": 0,
+  "pending": 101,
+  "failed": 16746,
+  "match": 0
+}
+```
+
+##### `GET /api/v1/screenings/results` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/screenings/results?limit=300
+```
+
+Response:
+
+```json
+[
+  {
+    "id": "493f2ca6-6b61-4017-8220-843d377d436b_AMLP_I_000001",
+    "entity": "Jane Doe",
+    "partyKey": "AMLP_I_000001",
+    "mode": "BATCH",
+    "type": "Individual",
+    "country": "US",
+    "engineStatus": "NO_HIT",
+    "manualMatch": false,
+    "uiStatus": "Clear",
+    "matchingScore": null,
+    "submittedAt": "2026-03-22T19:39:54.995828+00:00",
+    "batchSubmissionId": "493f2ca6-6b61-4017-8220-843d377d436b",
+    "dailyScheduleId": null,
+    "dailyScheduleActive": false
+  }
+]
+```
+
+##### `POST /api/v1/screenings/match` (`backend`)
+
+Request:
+
+```json
+{
+  "queries": {
+    "AMLP_DD083427C0BB6275": {
+      "schema": "Person",
+      "properties": {
+        "partyKey": "AMLP_DD083427C0BB6275",
+        "name": ["Janki Bhavsar"],
+        "address": ["101 Arrowgate Drive"],
+        "country": ["US"]
+      }
+    }
+  },
+  "screening_types": ["Sanction"],
+  "mock_screening": false,
+  "business_unit_code": "US_PRU_HR"
+}
+```
+
+Response:
+
+```json
+{
+  "responses": {
+    "AMLP_DD083427C0BB6275": {
+      "results": [],
+      "total": { "value": 0, "relation": "eq" },
+      "query": {
+        "schema": "Person",
+        "properties": {
+          "partyKey": "AMLP_DD083427C0BB6275",
+          "name": ["Janki Bhavsar"]
+        }
+      },
+      "status": 200
+    }
+  },
+  "limit": 5
+}
+```
+
+#### 6.3.2 Daily Schedule APIs
+
+##### `GET /api/v1/screenings/daily-schedules` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/screenings/daily-schedules
+```
+
+Response:
+
+```json
+[
+  {
+    "schedule_id": "sch_123",
+    "batch_name": "Actimize_Sanction_Daily_Screening",
+    "user_id": "610bf5e0-e011-70f9-6430-21484b3de4f4",
+    "user_name": "Tapankumar Bhavsar",
+    "business_unit_code": "US_PRU_HR",
+    "screening_types": ["Sanction"],
+    "schedule_frequency": "DAILY",
+    "timezone": "America/New_York",
+    "run_hour": 0,
+    "run_minute": 22,
+    "created_at": "2026-03-19T00:00:00+00:00",
+    "last_run_at": "2026-03-25T04:22:00+00:00",
+    "next_run_at": "2026-03-26T04:22:00+00:00",
+    "total_items": 100,
+    "is_active": true
+  }
+]
+```
+
+##### `DELETE /api/v1/screenings/daily-schedules/{schedule_id}` (`backend`)
+
+Request:
+
+```text
+DELETE /api/v1/screenings/daily-schedules/sch_123
+```
+
+Response:
+
+```json
+{
+  "status": "removed",
+  "schedule_id": "sch_123"
+}
+```
+
+##### `GET /api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/screenings/daily-schedules/sch_123/subscriptions
+```
+
+Response:
+
+```json
+[
+  {
+    "subscription_id": "sub_123",
+    "schedule_id": "sch_123",
+    "user_id": "610bf5e0-e011-70f9-6430-21484b3de4f4",
+    "user_name": "Tapankumar Bhavsar",
+    "email": "tdbhavsar@gmail.com",
+    "is_active": true,
+    "created_at": "2026-03-22T10:00:00+00:00"
+  }
+]
+```
+
+##### `POST /api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` (`backend`)
+
+Request:
+
+```text
+POST /api/v1/screenings/daily-schedules/sch_123/subscriptions?email=tdbhavsar@gmail.com
+```
+
+Response:
+
+```json
+{
+  "subscription_id": "sub_123",
+  "schedule_id": "sch_123",
+  "user_id": "610bf5e0-e011-70f9-6430-21484b3de4f4",
+  "user_name": "Tapankumar Bhavsar",
+  "email": "tdbhavsar@gmail.com",
+  "is_active": true,
+  "created_at": "2026-03-22T10:00:00+00:00"
+}
+```
+
+##### `DELETE /api/v1/screenings/daily-schedules/{schedule_id}/subscriptions` (`backend`)
+
+Request:
+
+```text
+DELETE /api/v1/screenings/daily-schedules/sch_123/subscriptions?email=tdbhavsar@gmail.com
+```
+
+Response:
+
+```json
+{
+  "status": "removed",
+  "schedule_id": "sch_123",
+  "email": "tdbhavsar@gmail.com"
+}
+```
+
+#### 6.3.3 Reference Data and Administration APIs
+
+##### `GET /api/v1/business-units` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/business-units
+```
+
+Response:
+
+```json
+[
+  {
+    "business_unit_code": "US_PRU_HR",
+    "business_unit_name": "US Prudential HR",
+    "is_active": true,
+    "created_at": "2026-03-09T15:22:00+00:00",
+    "updated_at": "2026-03-24T19:10:00+00:00"
+  }
+]
+```
+
+##### `GET /api/v1/admin/business-units` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/admin/business-units?include_inactive=true
+```
+
+Response:
+
+```json
+[
+  {
+    "business_unit_code": "US_PRU_HR",
+    "business_unit_name": "US Prudential HR",
+    "is_active": true,
+    "created_at": "2026-03-09T15:22:00+00:00",
+    "updated_at": "2026-03-24T19:10:00+00:00"
+  },
+  {
+    "business_unit_code": "LEGACY_TEST",
+    "business_unit_name": "Legacy Test Unit",
+    "is_active": false,
+    "created_at": "2026-02-01T11:00:00+00:00",
+    "updated_at": "2026-03-01T11:00:00+00:00"
+  }
+]
+```
+
+##### `POST /api/v1/admin/business-units` (`backend`)
+
+Request:
+
+```json
+{
+  "business_unit_code": "GLOBAL_COMPLIANCE",
+  "business_unit_name": "Global Compliance"
+}
+```
+
+Response:
+
+```json
+{
+  "business_unit_code": "GLOBAL_COMPLIANCE",
+  "business_unit_name": "Global Compliance",
+  "is_active": true,
+  "created_at": "2026-03-25T14:55:00+00:00",
+  "updated_at": "2026-03-25T14:55:00+00:00"
+}
+```
+
+##### `PUT /api/v1/admin/business-units/{business_unit_code}` (`backend`)
+
+Request:
+
+```json
+{
+  "business_unit_code": "GLOBAL_COMPLIANCE",
+  "business_unit_name": "Enterprise Compliance"
+}
+```
+
+Response:
+
+```json
+{
+  "business_unit_code": "GLOBAL_COMPLIANCE",
+  "business_unit_name": "Enterprise Compliance",
+  "is_active": true,
+  "created_at": "2026-03-25T14:55:00+00:00",
+  "updated_at": "2026-03-25T15:00:00+00:00"
+}
+```
+
+##### `DELETE /api/v1/admin/business-units/{business_unit_code}` (`backend`)
+
+Request:
+
+```text
+DELETE /api/v1/admin/business-units/GLOBAL_COMPLIANCE
+```
+
+Response:
+
+```json
+{
+  "status": "removed",
+  "business_unit_code": "GLOBAL_COMPLIANCE"
+}
+```
+
+##### `GET /api/v1/admin/business-unit-mappings` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/admin/business-unit-mappings
+```
+
+Response:
+
+```json
+[
+  {
+    "user_id": "610bf5e0-e011-70f9-6430-21484b3de4f4",
+    "user_name": "Tapankumar Bhavsar",
+    "business_unit_codes": ["US_PRU_HR", "GLOBAL_COMPLIANCE"]
+  }
+]
+```
+
+##### `PUT /api/v1/admin/business-unit-mappings/{user_id}` (`backend`)
+
+Request:
+
+```json
+{
+  "user_name": "Tapankumar Bhavsar",
+  "business_unit_codes": ["US_PRU_HR", "GLOBAL_COMPLIANCE"]
+}
+```
+
+Response:
+
+```json
+{
+  "user_id": "610bf5e0-e011-70f9-6430-21484b3de4f4",
+  "user_name": "Tapankumar Bhavsar",
+  "business_unit_codes": ["US_PRU_HR", "GLOBAL_COMPLIANCE"]
+}
+```
+
+##### `GET /api/v1/admin/users` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/admin/users
+```
+
+Response:
+
+```json
+[
+  {
+    "user_id": "610bf5e0-e011-70f9-6430-21484b3de4f4",
+    "display_name": "Tapankumar Bhavsar"
+  },
+  {
+    "user_id": "perf_load_user_01",
+    "display_name": "perf_load_user_01"
+  }
+]
+```
+
+#### 6.3.4 Audit and Operational Trace APIs
+
+##### `GET /api/v1/audit-events` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/audit-events?limit=50&offset=0&user_id=610bf5e0-e011-70f9-6430-21484b3de4f4
+```
+
+Response:
+
+```json
+[
+  {
+    "event_id": 18742,
+    "created_at": "2026-03-25T15:05:00+00:00",
+    "user_id": "610bf5e0-e011-70f9-6430-21484b3de4f4",
+    "user_name": "Tapankumar Bhavsar",
+    "action": "SYNC_SCREENING_SUBMITTED",
+    "entity_type": "screening_job",
+    "entity_id": "job_123",
+    "details": {
+      "business_unit_code": "US_PRU_HR",
+      "correlation_id": "e2df2ee7-ff05-4e8c-9b7d-7d08f45e8c1b"
+    }
+  }
+]
+```
+
+##### `GET /api/v1/audit-events/page` (`backend`)
+
+Request:
+
+```text
+GET /api/v1/audit-events/page?limit=100&offset=0&errors_only=true
+```
+
+Response:
+
+```json
+{
+  "items": [
+    {
+      "event_id": 18744,
+      "created_at": "2026-03-25T15:06:00+00:00",
+      "user_id": "610bf5e0-e011-70f9-6430-21484b3de4f4",
+      "user_name": "Tapankumar Bhavsar",
+      "action": "SYNC_SCREENING_API_CALL_FAILED",
+      "entity_type": "screening_item",
+      "entity_id": "job_123:AMLP_000001",
+      "details": {
+        "status_code": 500,
+        "provider": "prudential",
+        "operation": "entity-screenings"
+      }
+    }
+  ],
+  "total": 42,
+  "limit": 100,
+  "offset": 0
+}
+```
+
+## 7. Component Interaction Flows
+
+### 7.1 Frontend-Initiated Authentication Flow
 
 ```mermaid
 sequenceDiagram
@@ -377,7 +1054,9 @@ sequenceDiagram
   API-->>FE: 200/403 based on permissions
 ```
 
-### 7.2 Single Screening (Sync)
+### 7.2 Frontend-Initiated Screening Flows
+
+#### 7.2.1 Single Screening (Sync)
 
 ```mermaid
 sequenceDiagram
@@ -396,7 +1075,7 @@ sequenceDiagram
   API-->>UI: response (merged hits)
 ```
 
-### 7.3 Batch Screening (Async - JSON Submit)
+#### 7.2.2 Batch Screening (Async - JSON Submit)
 
 ```mermaid
 sequenceDiagram
@@ -427,7 +1106,7 @@ sequenceDiagram
   API-->>UI: progress + results when terminal
 ```
 
-### 7.3.1 Batch Upload (Async - Large Batch Dispatch)
+#### 7.2.3 Batch Upload (Async - Large Batch Dispatch)
 
 ```mermaid
 sequenceDiagram
@@ -438,11 +1117,12 @@ sequenceDiagram
   participant Q as SQS
   participant WK as Worker
 
-  UI->>API: POST /api/v1/screenings/batch-upload (multipart: file + queries_json)
-  API->>S3: upload source file + queries.json
+  UI->>API: POST /api/v1/screenings/batch-upload (multipart: file + metadata)
+  API->>API: parse + validate file, build normalized queries
+  API->>S3: upload source file + generated queries.json
   API->>DB: register batch upload + create job (queued)
   API->>Q: enqueue JOB_DISPATCH (job_id + upload_id)
-  API-->>UI: 202 {job_id, status=queued}
+  API-->>UI: 202 {job_id, status=queued, row_meta}
 
   WK->>Q: receive JOB_DISPATCH
   WK->>S3: download queries.json
@@ -451,7 +1131,9 @@ sequenceDiagram
   WK->>Q: delete JOB_DISPATCH
 ```
 
-### 7.4 Daily Screening Trigger (Worker Scheduler)
+### 7.3 Worker-Initiated Scheduling and Rollup Flows
+
+#### 7.3.1 Daily Screening Trigger (Worker Scheduler)
 
 ```mermaid
 sequenceDiagram
@@ -468,7 +1150,7 @@ sequenceDiagram
   WK->>DB: update next_run_at
 ```
 
-### 7.5 Batch Job Status Rollup
+#### 7.3.2 Batch Job Status Rollup
 
 ```mermaid
 stateDiagram-v2
@@ -478,7 +1160,9 @@ stateDiagram-v2
   processing --> failed: all items done and all failed
 ```
 
-### 7.6 Correlation and Access Audit Flow
+### 7.4 Cross-Component Observability Flow
+
+#### 7.4.1 Correlation and Access Audit Flow
 
 ```mermaid
 sequenceDiagram
@@ -499,27 +1183,40 @@ sequenceDiagram
   WK->>DB: audit_events + external_api_errors (with correlation id)
 ```
 
-## 8. Operational Design
+## 8. Operational Design by Component
 
-### 8.1 Throughput and Rate Limiting
+### 8.1 Worker Container Throughput and Rate Limiting
 
 - Worker enforces a fixed-rate schedule for outbound screening calls.
 - Default is `32 TPS` across the worker process.
+- Worker concurrency is controlled separately by `SCREENING_PARALLEL_MESSAGES` per ECS task.
+- Overall throughput is therefore a function of:
+  - ECS worker desired count
+  - `SCREENING_PARALLEL_MESSAGES`
+  - `SCREENING_TPS`
+  - upstream Prudential latency/error rate
 
-### 8.2 Resilience and Retries
+### 8.2 Backend and Worker Resilience
 
 - Worker marks failures per item; job can still complete with partial failures.
 - Messages are deleted after processing to avoid duplicates (at-least-once queue semantics should be accounted for by idempotent writes).
 - Daily schedule trigger uses a claim step to reduce duplicate schedule runs.
+- Prudential/Actimize HTTP `429/500/502/503/504` responses are retried with exponential backoff.
+- Prudential wrapped responses are normalized whether they use `status_code/body` or `statusCode/body`.
+- Repository uses a shared PostgreSQL connection pool per process and retries transient DB acquisition failures.
+- Runtime API/worker processes validate schema only; schema creation/migration is an explicit deployment/setup step via `python -m app.init_db`.
 
-### 8.3 Observability
+### 8.3 Backend and Worker Observability
 
 - Application logs shipped to CloudWatch via ECS log driver.
 - Audit events provide a business-level trail, separate from system logs.
 - API access logs provide request-level traceability with latency and auth state.
 - Correlation id is propagated to queue/worker/external error records for end-to-end troubleshooting.
+- Raw Prudential/Actimize request and response payloads are logged to CloudWatch when `ACTIMIZE_LOG_RAW_API_IO=true`.
+- Sensitive fields such as bearer tokens, client assertions, secrets, and access tokens are redacted before logging.
+- Worker troubleshooting logs now capture the same raw wrapped Prudential success/error payload shapes seen by sync screening, which is important when batch and sync behavior diverge because of parser-version drift.
 
-### 8.4 Data Retention and Risk Alerting
+### 8.4 Data Store Retention and Risk Alerting
 
 - Worker executes periodic retention cleanup for:
   - `audit_events`
@@ -530,11 +1227,12 @@ sequenceDiagram
   - If external API failures exceed configured threshold inside configured time window, worker records `HIGH_RISK_EXTERNAL_API_FAILURE_ALERT` in `audit_events`.
 - Access-log query parameters are redacted for sensitive key types (token/secret/password/email-like fields).
 
-### 8.5 Cost Controls (Dev)
+### 8.5 ECS Cost Controls (Dev)
 
 - Keep worker desired count at `0` when not testing batch/daily.
 - Use small Fargate tasks (256/512) for dev.
 - Use minimal RDS instance for dev and stop when not needed (per environment policy).
+- Active batch-performance deployments may intentionally pin the worker service above zero and override `SCREENING_PARALLEL_MESSAGES`; this is an operational deployment choice, not a config default.
 
 ## 9. Deployment Artifacts
 
@@ -553,10 +1251,11 @@ Frontend settings are provided as container env vars and written at startup into
 | Parameter | Default Value | Explanation |
 |---|---:|---|
 | `BACKEND_UPSTREAM` | `http://backend.screening.internal:8000` | Backend origin that Nginx proxies to for `/api/*` (typically the ECS service-discovery name). |
-| `NGINX_CLIENT_MAX_BODY_SIZE` | `25m` | Max upload size for `/api/` reverse-proxy requests (must accommodate batch XLSX + `queries_json`). |
+| `NGINX_CLIENT_MAX_BODY_SIZE` | `25m` | Max upload size for `/api/` reverse-proxy requests (must accommodate batch source files). |
 | `VITE_SCREENING_API_BASE_URL` | `/api/v1` | Base path used by the SPA for API requests (Nginx proxies `/api/*` to backend). |
 | `VITE_SCREENING_POLL_INTERVAL_MS` | `750` | UI polling interval for job progress (`GET /api/v1/screenings/jobs/{job_id}`). |
 | `VITE_SCREENING_JOB_TIMEOUT_MS` | `90000` | UI timeout for long-running job polling flows before surfacing a timeout to the user. |
+| `VITE_ACTIMIZE_REVIEW_ALERT_URL` | *(empty)* | Optional review-alert URL shown in hit-entity details. |
 | `VITE_AUTH_ENABLED` | `false` | Enables OIDC login + bearer token attachment to API calls. |
 | `VITE_OIDC_AUTHORITY` | *(empty)* | OIDC issuer/authority URL (required when `VITE_AUTH_ENABLED=true`). |
 | `VITE_OIDC_CLIENT_ID` | *(empty)* | OIDC client id (required when `VITE_AUTH_ENABLED=true`). |
@@ -576,6 +1275,12 @@ Backend and worker share the same settings (see `backend/app/config.py` and `bac
 | `APP_VERSION` | `1.0.0` | Used by FastAPI for service metadata. |
 | `APP_DB_PATH` | `/tmp/screening.db` | SQLite path (used when `APP_DB_URL` is not configured). |
 | `APP_DB_URL` | *(empty)* | PostgreSQL connection string. Set in AWS deployments (recommended). |
+| `DB_POOL_MIN_SIZE` | `1` | Minimum PostgreSQL pooled connections per process. |
+| `DB_POOL_MAX_SIZE` | `8` | Maximum PostgreSQL pooled connections per process. |
+| `DB_POOL_TIMEOUT_S` | `5.0` | Connection-pool acquisition timeout. |
+| `DB_CONNECT_MAX_ATTEMPTS` | `4` | Retry attempts for transient DB acquisition failures. |
+| `DB_CONNECT_BACKOFF_INITIAL_MS` | `100` | Initial DB retry backoff. |
+| `DB_CONNECT_BACKOFF_MAX_MS` | `1500` | Max DB retry backoff. |
 | `CORS_ALLOW_ORIGINS` | `*` | CORS allow-list for API responses. Tighten in production. |
 | `MULTIPART_MAX_PART_SIZE` | `25m` | Max multipart part size accepted by the backend for `/screenings/batch-upload`. |
 | `AWS_REGION` | `us-east-1` | AWS region for SQS/S3/SNS clients. |
@@ -607,7 +1312,10 @@ Backend and worker share the same settings (see `backend/app/config.py` and `bac
 | `ACTIMIZE_REQUESTER_NAME` | `SCREENING_SYSTEM` | Default requester name sent in Actimize payload when user name is not provided. |
 | `ACTIMIZE_ALERT_REVIEW_URL` | *(empty)* | Optional URL included in scheduled completion notifications for where to review alerts. |
 | `ACTIMIZE_TIMEOUT_S` | `10.0` | HTTP timeout (seconds) for Actimize requests. |
+| `ACTIMIZE_LOG_RAW_API_IO` | `false` | Enables raw upstream request/response logging to CloudWatch with redaction. |
+| `ACTIMIZE_RAW_API_LOG_MAX_CHARS` | `20000` | Max raw request/response characters retained per log entry. |
 | `SCREENING_TPS` | `32` | Worker outbound throughput cap (TPS). |
+| `SCREENING_PARALLEL_MESSAGES` | `1` | Max in-flight SQS screening items processed concurrently per worker task. |
 | `SCREENING_POLL_INTERVAL_MS` | `750` | Intended poll interval (ms) used by clients/UX; backend uses it for any internal timing where applicable. |
 | `SCREENING_SYNC_TIMEOUT_S` | `60` | Timeout budget (seconds) for synchronous screening request flows. |
 | `SCREENING_RESULT_LIMIT` | `5` | Default max number of matches returned per item. |
@@ -636,8 +1344,8 @@ This section documents how fields from the uploaded batch file (CSV/XLSX) map in
 
 ### 11.1 Batch File Format and Header Rules
 
-- Supported uploads: `.csv`, `.xlsx`, `.xls`.
-- Excel parsing uses the **first worksheet** only (e.g., the template sheet named `Template`).
+- Supported uploads: `.csv`, `.xlsx`.
+- Excel parsing uses the **first worksheet** only.
 - Column header matching is **case-insensitive** and tolerant of separators:
   - headers are normalized by lowercasing and removing non-alphanumeric characters
   - example: `Party Key`, `party_key`, and `PartyKey` all map to the same field.
@@ -645,7 +1353,7 @@ This section documents how fields from the uploaded batch file (CSV/XLSX) map in
 
 ### 11.2 Column Mapping to `queries_json` (`EntityExample`)
 
-Batch rows are parsed in the frontend (`src/utils/batchParse.ts`) and converted into `queries_json` (`src/screens/ScreeningDetailPage.tsx`).
+Batch rows are parsed in the backend (`backend/app/batch_upload_parser.py`) and converted into normalized `EntityExample` payloads.
 The backend treats the `PartyKey` as the canonical record identifier and ensures it is propagated into the downstream screening request.
 
 | Batch File Column (template) | Parsed Field | `queries_json` (`EntityExample`) | Notes |
@@ -659,7 +1367,7 @@ The backend treats the `PartyKey` as the canonical record identifier and ensures
 | `PrimaryFullName` | `fullName` | `properties.name[]` | Required for Organization/Unknown; for Individual it can be used instead of split names. |
 | `Alias1FullName` | `aliasName` | `properties.alias[]` | Optional; sent as a single alias entry. |
 | `DateOfBirth` | `dateOfBirth` | `properties.birthDate[]` | Individual only. Accepted as `YYYY-MM-DD`, `YYYY/MM/DD`, `DD/MM/YYYY`, `DD-MM-YYYY`, or `YYYY` (year-only). |
-| `Gender` | `gender` | *(not mapped)* | Validated as `M`, `F`, or blank, but **not currently forwarded** to `queries_json` or Actimize payload. |
+| `Gender` | `gender` | `properties.gender[]` | Accepts `Male`, `Female`, `Other`, blank, and legacy `M/F/O`; backend normalizes to title case and later uppercases for Actimize. |
 | `Addresses` | `addresses` | `properties.address[]` | Optional comma-separated list of full-address lines. If blank, UI derives a one-line address from `Address1*` fields. |
 | `Address1Line1` | `addressLine1` | `properties.address[]` | Used only when `Addresses` is blank (part of derived one-line address). |
 | `Address1Line2` | `addressLine2` | `properties.address[]` | Used only when `Addresses` is blank (part of derived one-line address). |
@@ -669,10 +1377,11 @@ The backend treats the `PartyKey` as the canonical record identifier and ensures
 | `Countries` | `countries` | `properties.nationality[]` or `properties.country[]` | Optional comma-separated list. Prefer ISO2 country codes (e.g., `US`, `IN`). |
 | `Address1Country` | `country` | `properties.nationality[]` or `properties.country[]` | Used as a fallback country when `Countries` is blank. |
 | `NationalityCountry1` | `countryOfCitizenship` | `properties.nationality[]` or `properties.country[]` | Added to the country set; UI uses nationality for persons and country for organizations. |
-| `CountryOfBirth` | `countryOfBirth` | *(not mapped)* | Parsed but **not currently forwarded** to `queries_json` or Actimize payload. |
+| `CountryOfBirth` | `countryOfBirth` | `properties.birthLocation[]` | Parsed and forwarded as birth location / country of birth. |
 | `PartyId1Value` | `idNumber` | `properties.idNumber[]` (Person) or `properties.registrationNumber[]` (Company) | Optional. Only the ID value is forwarded. |
-| `PartyId1Type` | `idType` | *(not mapped)* | Parsed but **not currently forwarded**; Actimize adapter uses a default (`PASSPORT` for persons, `TIN` for entities). |
-| `PartyId1IDCountry` | `idCountry` | *(not mapped)* | Parsed but **not currently forwarded**; Actimize adapter uses the first mapped country (if available). |
+| `PartyId1Type` | `idType` | `properties.ids[].idType` | Parsed and forwarded when present; adapter still applies defaults if missing. |
+| `PartyId1IDCountry` | `idCountry` | `properties.ids[].idCountry` | Parsed and forwarded when present; adapter still falls back to first mapped country if missing. |
+| `Title` | `title` | `properties.title[]` | Forwarded when present. |
 | `Notes` | *(none)* | *(not mapped)* | Ignored. |
 
 ### 11.3 Mapping from `queries_json` (`EntityExample`) to Actimize `POST /entity-screenings`
@@ -693,3 +1402,12 @@ The JSON payload is derived from `EntityExample` roughly as follows:
 | `properties.address[]` | `addresses[]` | Mapped as `street1` plus default `country` (first mapped nationality/country); up to 5 entries. |
 | `properties.idNumber[]` / `properties.registrationNumber[]` | `ids[]` | Sent as `{idType, idValue, idCountry}` with defaults and first mapped country; up to 5 entries. |
 | `properties.birthDate[]` | `dateOfBirth` or `yearOfBirth` | Dates normalize to `DD/MM/YYYY` when possible; year-only populates `yearOfBirth`. |
+| `properties.birthLocation[]` | `countryofBirth` | Uses ISO3 country code when possible; otherwise passes through raw value. |
+| `properties.gender[]` | `gender` | Uppercased before submission (`Female` -> `FEMALE`). |
+| `properties.title[]` | `title` | Passed through when present. |
+
+### 11.4 Current Result Classification Rules
+
+- HTTP `200` + Prudential body `message="PM"` => **Potential Match**
+- HTTP `200` + Prudential body `message="NM"` => **Clear**
+- Any other HTTP status or payload message => **Failed**

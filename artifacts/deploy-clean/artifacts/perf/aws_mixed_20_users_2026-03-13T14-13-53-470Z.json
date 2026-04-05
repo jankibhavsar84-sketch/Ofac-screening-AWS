@@ -1,0 +1,310 @@
+{
+  "summary": {
+    "baseUrl": "https://d3ppga4y8wg1ck.cloudfront.net",
+    "vus": 20,
+    "cohortDistribution": {
+      "mixed_single_batch": 7,
+      "refresh_only": 2,
+      "idle_only": 2
+    },
+    "startedAt": "2026-03-13T14:12:57.449Z",
+    "finishedAt": "2026-03-13T14:13:53.470Z",
+    "durationMs": 56021,
+    "completedUsers": 11,
+    "successfulUsers": 10,
+    "failedUsers": 10,
+    "fatalErrors": [
+      "page.waitForURL: Timeout 45000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================",
+      "locator.waitFor: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"password\"]').first() to be visible\u001b[22m\n",
+      "page.waitForURL: Timeout 45000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================",
+      "page.waitForURL: net::ERR_ABORTED; maybe frame was detached?\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================",
+      "page.waitForURL: Timeout 45000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================",
+      "page.waitForURL: Timeout 45000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================",
+      "page.waitForURL: Timeout 45000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================",
+      "locator.waitFor: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"password\"]').first() to be visible\u001b[22m\n",
+      "page.waitForURL: Timeout 45000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================"
+    ],
+    "totalSteps": 29,
+    "avgStepMs": 9077.38,
+    "p95StepMs": 20008,
+    "p99StepMs": 20011,
+    "maxStepMs": 20011
+  },
+  "completed": [
+    {
+      "vuId": 2,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_02",
+      "totalMs": 24222,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 12484,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 2416,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 9253,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T14:13:00.035Z",
+      "finishedAt": "2026-03-13T14:13:24.257Z"
+    },
+    {
+      "vuId": 3,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_03",
+      "totalMs": 18678,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 14393,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 2106,
+          "ok": false
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 2104,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "single_screening_submit",
+          "error": "No Business Unit option available"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "No Business Unit option available"
+        }
+      ],
+      "startedAt": "2026-03-13T14:12:59.888Z",
+      "finishedAt": "2026-03-13T14:13:18.566Z"
+    },
+    {
+      "vuId": 4,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_04",
+      "totalMs": 25952,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 12204,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 2344,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 11336,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T14:13:00.038Z",
+      "finishedAt": "2026-03-13T14:13:25.990Z"
+    },
+    {
+      "vuId": 5,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_05",
+      "totalMs": 21327,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 12110,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 2414,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 6733,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T14:13:00.032Z",
+      "finishedAt": "2026-03-13T14:13:21.359Z"
+    },
+    {
+      "vuId": 6,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_06",
+      "totalMs": 25246,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 12593,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 2377,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 10214,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T14:13:00.318Z",
+      "finishedAt": "2026-03-13T14:13:25.564Z"
+    },
+    {
+      "vuId": 8,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_08",
+      "totalMs": 25127,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 12732,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 2483,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 9845,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T14:12:59.893Z",
+      "finishedAt": "2026-03-13T14:13:25.020Z"
+    },
+    {
+      "vuId": 10,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_10",
+      "totalMs": 24510,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 11824,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 2295,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 10335,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T14:13:00.134Z",
+      "finishedAt": "2026-03-13T14:13:24.644Z"
+    },
+    {
+      "vuId": 11,
+      "cohort": "refresh_only",
+      "username": "perf_load_user_11",
+      "totalMs": 17750,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 14427,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 3264,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T14:13:00.699Z",
+      "finishedAt": "2026-03-13T14:13:18.449Z"
+    },
+    {
+      "vuId": 13,
+      "cohort": "refresh_only",
+      "username": "perf_load_user_13",
+      "totalMs": 15900,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 12427,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 3363,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T14:13:00.621Z",
+      "finishedAt": "2026-03-13T14:13:16.522Z"
+    },
+    {
+      "vuId": 16,
+      "cohort": "idle_only",
+      "username": "perf_load_user_16",
+      "totalMs": 33987,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 13917,
+          "ok": true
+        },
+        {
+          "name": "idle_wait",
+          "ms": 20008,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T14:13:00.668Z",
+      "finishedAt": "2026-03-13T14:13:34.655Z"
+    },
+    {
+      "vuId": 20,
+      "cohort": "idle_only",
+      "username": "perf_load_user_20",
+      "totalMs": 31307,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 11232,
+          "ok": true
+        },
+        {
+          "name": "idle_wait",
+          "ms": 20011,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T14:13:01.749Z",
+      "finishedAt": "2026-03-13T14:13:33.056Z"
+    }
+  ]
+}

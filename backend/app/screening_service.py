@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 from uuid import uuid4
@@ -415,6 +416,14 @@ class ScreeningService:
     def _normalize_business_unit_code(value: str | None) -> str:
         return str(value or "").strip().upper()
 
+    @staticmethod
+    def _parse_job_status(value: Any) -> JobStatus:
+        raw_value = str(value or "").strip().upper()
+        for candidate in JobStatus:
+            if candidate.value == raw_value:
+                return candidate
+        return JobStatus.processing
+
     def _validate_business_unit_access(self, user_id: str | None, business_unit_code: str | None) -> str:
         safe_code = self._normalize_business_unit_code(business_unit_code)
         if not safe_code:
@@ -429,8 +438,7 @@ class ScreeningService:
         if not snapshot:
             return None
 
-        status_raw = snapshot["status"]
-        status = JobStatus(status_raw) if status_raw in JobStatus._value2member_map_ else JobStatus.processing
+        status = self._parse_job_status(snapshot["status"])
 
         progress = MatchJobProgress(
             job_id=snapshot["job_id"],
@@ -492,8 +500,6 @@ class ScreeningService:
             if not raw:
                 return []
             try:
-                import json
-
                 decoded = json.loads(raw)
                 if isinstance(decoded, list):
                     return [str(v).strip() for v in decoded if str(v).strip()]
@@ -552,8 +558,229 @@ class ScreeningService:
                 return "HIT"
         return "NO_HIT"
 
+    @staticmethod
+    def _extract_string_list(value: Any) -> list[str]:
+        if isinstance(value, list):
+            return [str(item or "").strip() for item in value if str(item or "").strip()]
+        if isinstance(value, str):
+            safe = value.strip()
+            return [safe] if safe else []
+        return []
+
+    def _extract_country_from_query(self, query: dict[str, Any] | None) -> str:
+        props = (query or {}).get("properties")
+        if not isinstance(props, dict):
+            return ""
+
+        for key in ("country", "nationality", "countries", "jurisdiction"):
+            values = self._extract_string_list(props.get(key))
+            if values:
+                rendered = ", ".join(dict.fromkeys([value.upper() if len(value) == 2 else value for value in values]))
+                if rendered:
+                    return rendered
+        return ""
+
+    @staticmethod
+    def _extract_party_key_from_query(query: dict[str, Any] | None, fallback: str = "") -> str:
+        props = (query or {}).get("properties")
+        if isinstance(props, dict):
+            for key in ("partyKey", "party_key", "party key", "PartyKey"):
+                values = props.get(key)
+                if isinstance(values, list):
+                    for value in values:
+                        safe = str(value or "").strip()
+                        if safe:
+                            return safe
+                if isinstance(values, str) and values.strip():
+                    return values.strip()
+        return str(fallback or "").strip()
+
+    @staticmethod
+    def _build_matches_payload(
+        item_status: str,
+        request_payload: dict[str, Any],
+        response_payload: dict[str, Any] | None,
+        error_text: str,
+    ) -> dict[str, Any]:
+        safe_status = str(item_status or "").strip().upper()
+        if safe_status in {JobStatus.queued.value, JobStatus.processing.value}:
+            return {
+                "results": [],
+                "total": {"value": 0, "relation": "eq"},
+                "query": request_payload,
+                "status": 202,
+            }
+        if safe_status == JobStatus.failed.value or response_payload is None:
+            return {
+                "results": [],
+                "total": {"value": 0, "relation": "eq"},
+                "query": request_payload,
+                "status": 500,
+                "error_text": error_text or None,
+            }
+        return response_payload
+
+    @staticmethod
+    def _engine_status_from_matches(matches: dict[str, Any]) -> str:
+        classification = ScreeningService._classify_result_from_matches(matches)
+        status = int(matches.get("status") or 0) if isinstance(matches.get("status"), int) else None
+        if status == 202:
+            return "PROCESSING"
+        if classification == "HIT":
+            return "HIT"
+        if classification == "NO_HIT":
+            return "NO_HIT"
+        return "FAILED"
+
+    @staticmethod
+    def _ui_status_from_engine(engine_status: str, manual_match: bool = False) -> str:
+        if manual_match:
+            return "Match"
+        if engine_status == "NO_HIT":
+            return "Clear"
+        if engine_status == "HIT":
+            return "Potential Match"
+        if engine_status == "PROCESSING":
+            return "Pending"
+        return "Failed"
+
+    @staticmethod
+    def _top_matching_score(matches: dict[str, Any]) -> float | None:
+        results = matches.get("results")
+        if not isinstance(results, list):
+            return None
+        scores = [
+            float(result.get("score"))
+            for result in results
+            if isinstance(result, dict) and isinstance(result.get("score"), (int, float))
+        ]
+        if not scores:
+            return None
+        return max(scores)
+
+    @staticmethod
+    def _parse_json_payload(raw: Any) -> dict[str, Any] | None:
+        if isinstance(raw, dict):
+            return raw
+        if not isinstance(raw, str) or not raw.strip():
+            return None
+        try:
+            parsed = json.loads(raw)
+        except Exception:  # noqa: BLE001
+            return None
+        return parsed if isinstance(parsed, dict) else None
+
+    def _build_recent_result_row(self, row: dict[str, Any], active_schedule_ids: set[str]) -> dict[str, Any] | None:
+        job_id = str(row.get("job_id") or "").strip()
+        item_key = str(row.get("item_key") or "").strip()
+        if not job_id or not item_key:
+            return None
+
+        request_payload = self._parse_json_payload(row.get("request_json")) or {}
+        response_payload = self._parse_json_payload(row.get("response_json"))
+        item_status = str(row.get("item_status") or "").strip().upper()
+        error_text = str(row.get("item_error_text") or "").strip()
+        matches = self._build_matches_payload(item_status, request_payload, response_payload, error_text)
+        engine_status = self._engine_status_from_matches(matches)
+        ui_status = self._ui_status_from_engine(engine_status)
+        ui_type = self._query_to_ui_type(request_payload)
+        display_name = self._display_name_from_query(request_payload, item_key)
+        party_key = self._extract_party_key_from_query(request_payload, item_key)
+        submitted_at = str(row.get("created_at") or "").strip()
+        screening_types = self._parse_screening_types(row.get("screening_types_json"))
+        daily_schedule_id = str(row.get("daily_schedule_id") or row.get("source_schedule_id") or "").strip() or None
+        daily_schedule_active = bool(daily_schedule_id and daily_schedule_id in active_schedule_ids)
+
+        mode_raw = str(row.get("mode") or "").strip().upper()
+        inferred_mode = (
+            "BATCH"
+            if row.get("source_upload_id") or row.get("source_schedule_id") or int(row.get("total_items") or 0) > 1
+            else "SINGLE"
+        )
+        mode = mode_raw if mode_raw in {"SINGLE", "BATCH"} else inferred_mode
+
+        submission_stub = {
+            "id": job_id,
+            "mode": mode,
+            "createdAt": submitted_at,
+            "createdByUserId": row.get("user_id"),
+            "createdByUserName": row.get("user_name"),
+            "businessUnitCode": row.get("business_unit_code"),
+            "screeningTypes": screening_types,
+            "fileName": (
+                str(row.get("file_name") or "").strip()
+                or str(row.get("upload_file_name") or "").strip()
+                or str(row.get("batch_name") or "").strip()
+                or "Batch Submission"
+            ),
+            "dailyScheduleId": daily_schedule_id,
+            "dailyScheduleActive": daily_schedule_active,
+        }
+
+        if mode == "SINGLE":
+            raw = {
+                "submission": submission_stub,
+                "m": {
+                    "key": item_key,
+                    "uiType": ui_type,
+                    "displayName": display_name,
+                },
+                "matches": matches,
+            }
+        else:
+            raw = {
+                "submission": submission_stub,
+                "item": {
+                    "displayName": display_name,
+                    "customerType": "Person" if ui_type == "Individual" else "Entity",
+                    "result": engine_status,
+                    "details": {
+                        "uiType": ui_type,
+                        "matches": matches,
+                    },
+                },
+            }
+
+        return {
+            "id": f"{job_id}_{item_key}",
+            "entity": display_name,
+            "partyKey": party_key,
+            "mode": mode,
+            "type": ui_type,
+            "country": self._extract_country_from_query(request_payload),
+            "engineStatus": engine_status,
+            "manualMatch": False,
+            "uiStatus": ui_status,
+            "matchingScore": self._top_matching_score(matches),
+            "submittedAt": submitted_at,
+            "batchSubmissionId": None if mode == "SINGLE" else job_id,
+            "dailyScheduleId": daily_schedule_id,
+            "dailyScheduleActive": daily_schedule_active,
+            "raw": raw,
+        }
+
+    def list_user_recent_results(self, user_id: str | None, user_name: str | None, limit: int = 300) -> list[dict[str, Any]]:
+        rows = self.repository.list_recent_result_items(user_id=user_id, user_name=user_name, limit=limit)
+        active_schedule_ids = {
+            str(s.get("schedule_id", "")).strip()
+            for s in self.repository.list_active_daily_schedules(user_id=user_id)
+            if str(s.get("schedule_id", "")).strip()
+        }
+        recent_rows: list[dict[str, Any]] = []
+        for row in rows:
+            mapped = self._build_recent_result_row(row, active_schedule_ids)
+            if mapped is not None:
+                recent_rows.append(mapped)
+        return recent_rows
+
+    def get_user_result_summary(self, user_id: str | None, user_name: str | None) -> dict[str, int]:
+        return self.repository.get_user_result_summary_counts(user_id=user_id, user_name=user_name)
+
     def list_user_submissions(self, user_id: str | None, user_name: str | None, limit: int = 200) -> list[dict[str, Any]]:
         rows = self.repository.list_jobs_for_history(user_id=user_id, user_name=user_name, limit=limit)
+        items_by_job = self.repository.list_job_items_for_jobs(
+            [str(row.get("job_id") or "").strip() for row in rows]
+        )
         active_schedule_ids = {
             str(s.get("schedule_id", "")).strip()
             for s in self.repository.list_active_daily_schedules(user_id=user_id)
@@ -565,14 +792,12 @@ class ScreeningService:
             job_id = str(row.get("job_id") or "").strip()
             if not job_id:
                 continue
-            snapshot = self.repository.get_job_snapshot(job_id)
-            if not snapshot:
-                continue
+            job_items = items_by_job.get(job_id, [])
 
             mode_raw = str(row.get("mode") or "").strip().upper()
             inferred_mode = (
                 "BATCH"
-                if row.get("source_upload_id") or row.get("source_schedule_id") or int(snapshot.get("total_items") or 0) > 1
+                if row.get("source_upload_id") or row.get("source_schedule_id") or int(row.get("total_items") or 0) > 1
                 else "SINGLE"
             )
             mode = mode_raw if mode_raw in {"SINGLE", "BATCH"} else inferred_mode
@@ -588,7 +813,7 @@ class ScreeningService:
                 any_error = False
                 any_processing = False
 
-                for item in snapshot.get("items", []):
+                for item in job_items:
                     item_key = str(item.get("item_key") or "").strip()
                     if not item_key:
                         continue
@@ -628,10 +853,10 @@ class ScreeningService:
                 submissions.append(
                     {
                         "id": job_id,
-                        "createdAt": snapshot.get("created_at"),
+                        "createdAt": row.get("created_at"),
                         "mode": "SINGLE",
-                        "createdByUserId": snapshot.get("user_id"),
-                        "createdByUserName": snapshot.get("user_name"),
+                        "createdByUserId": row.get("user_id"),
+                        "createdByUserName": row.get("user_name"),
                         "customerType": "Person",
                         "displayName": f"Single Screening ({len(meta)})",
                         "result": overall,
@@ -653,7 +878,7 @@ class ScreeningService:
             has_error = False
             has_processing = False
 
-            for item in snapshot.get("items", []):
+            for item in job_items:
                 request_payload = item.get("request") if isinstance(item.get("request"), dict) else {}
                 item_key = str(item.get("item_key") or "").strip() or "item"
                 ui_type = self._query_to_ui_type(request_payload)
@@ -717,10 +942,10 @@ class ScreeningService:
             submissions.append(
                 {
                     "id": job_id,
-                    "createdAt": snapshot.get("created_at"),
+                    "createdAt": row.get("created_at"),
                     "mode": "BATCH",
-                    "createdByUserId": snapshot.get("user_id"),
-                    "createdByUserName": snapshot.get("user_name"),
+                    "createdByUserId": row.get("user_id"),
+                    "createdByUserName": row.get("user_name"),
                     "jobId": job_id,
                     "fileName": file_name,
                     "overallResult": overall,

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title>Prudential T icon</title>
+  <rect width="128" height="128" fill="#c4dc61"/>
+  <rect x="31" y="31" width="66" height="66" fill="none" stroke="#000" stroke-width="3" stroke-dasharray="3 3"/>
+  <rect x="28" y="28" width="6" height="6" fill="none" stroke="#000" stroke-width="3"/>
+  <rect x="94" y="28" width="6" height="6" fill="none" stroke="#000" stroke-width="3"/>
+  <rect x="28" y="94" width="6" height="6" fill="none" stroke="#000" stroke-width="3"/>
+  <rect x="94" y="94" width="6" height="6" fill="none" stroke="#000" stroke-width="3"/>
+  <path
+    d="M42 44H86V58H80V50H48V58H42V44ZM42 58H58V64H48V72H40V58H42ZM70 58H86V72H78V64H70V58ZM58 58H70V100H76V108H52V100H58V58Z"
+    fill="none"
+    stroke="#000"
+    stroke-width="3"
+    stroke-linecap="square"
+    stroke-linejoin="miter"
+  />
+</svg>

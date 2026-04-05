@@ -1,0 +1,205 @@
+{
+    "containerDefinitions":  [
+                                 {
+                                     "name":  "backend",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260322170937",
+                                     "cpu":  0,
+                                     "portMappings":  [
+                                                          {
+                                                              "containerPort":  8000,
+                                                              "hostPort":  8000,
+                                                              "protocol":  "tcp",
+                                                              "name":  "api",
+                                                              "appProtocol":  "http"
+                                                          }
+                                                      ],
+                                     "essential":  true,
+                                     "command":  [
+                                                     "uvicorn",
+                                                     "app.main:app",
+                                                     "--host",
+                                                     "0.0.0.0",
+                                                     "--port",
+                                                     "8000"
+                                                 ],
+                                     "environment":  [
+                                                         {
+                                                             "name":  "CORS_ALLOW_ORIGINS",
+                                                             "value":  "*"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_SES_SENDER_EMAIL",
+                                                             "value":  "no-reply@prudential.com"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_SOURCE_SYSTEM",
+                                                             "value":  "AMLP"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_SQS_QUEUE_NAME",
+                                                             "value":  "screening-requests"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_SNS_NOTIFICATIONS_ENABLED",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY",
+                                                             "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "AUTH_ENABLED",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "AUTH_ISSUER",
+                                                             "value":  "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_ptvmAe35M"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_ALERT_REVIEW_URL",
+                                                             "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "AWS_NOTIFICATION_DELIVERY_MODE",
+                                                             "value":  "SES"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_PROVIDER",
+                                                             "value":  "prudential"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_S3_UPLOAD_PREFIX",
+                                                             "value":  "screening-input"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_S3_UPLOAD_BUCKET",
+                                                             "value":  "amzn-s3-quickscreen-batch"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_MOCK",
+                                                             "value":  "false"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH",
+                                                             "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "APP_DB_PATH",
+                                                             "value":  "/tmp/screening.db"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_CLIENT_ASSERTION_AUDIENCE",
+                                                             "value":  "https://sso.dev.prudential.com:443/am/oauth2"
+                                                         },
+                                                         {
+                                                             "name":  "AUTH_JWKS_URL",
+                                                             "value":  "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_ptvmAe35M/.well-known/jwks.json"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_SNS_SCHEDULE_TOPIC_PREFIX",
+                                                             "value":  "ofac-screening-schedule"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_CLIENT_ID",
+                                                             "value":  "ZiPqKLBeUjxysmwyh3LbMT7plYzeIEuy"
+                                                         },
+                                                         {
+                                                             "name":  "AUTH_AUDIENCE",
+                                                             "value":  "2ul9mdnt44kl60hgiihbc7o5sk"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_CLIENT_ASSERTION_TYPE",
+                                                             "value":  "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+                                                         },
+                                                         {
+                                                             "name":  "AWS_REGION",
+                                                             "value":  "us-east-2"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_API_KEY",
+                                                             "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "APP_DB_URL",
+                                                             "value":  "postgresql://screening_admin:wab%29Mg%5EP-n2L%2AV7h%5Ef2%5DWxdi@screening-postgres-dev.c1y8yq0u2xoz.us-east-2.rds.amazonaws.com:5432/screening?sslmode=require"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64",
+                                                             "value":  "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUpSQUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQ1M0d2dna3FBZ0VBQW9JQ0FRQ1AzazFzTWFweGRxU3oKTHFsMFg1MmNWOWRLSTRnTGVpVHliS2hIR1R4WGdvZkVCVEwvZUoxblRMOFpPRjJhMjlnYXg1c3Vya1h6R3ltUgpxUmhDQmM3Sm5zU2FmYnIrMWdCTnRMTW9KQnhkRTlmWi9rbmgreDBtREhkcXltNk1SZDc3Z0JWUzlXQVlpNDFkClYwVnkzeTFwMjdvYzk4TURDdjdabXYrV3hNa1RucUkxK2ltelJLa0NvK3B5VFZQcVRqT0FiVnA1Tkg4OUpTTXkKdUxwQXBRaVoxZXIzQzQyeTN5bldGN3Q0UUlNMXlnRHdDZ2NucTdZUTZQRk1rRTVXQU4zODJwWDl3SHhQVzNXMwpadWNsQXBsYTR2V1ZhejVickp6VkJ1WmFYMTdzOENFYnk3OUQxc05wK2tqVVpsWWRsc0ovZWNCZmhUR3pqYlJpCjEwcEhmTzB1RTJLUERQY0M2Y1RTM1ZPZlFuSUVDam9ZS09INWIwSjB4WGpFcGNUZ204a3E4ZGEyaDJFVmV0alUKSUsxWTk2bHl1aVJuMzZUSXRUTXQ3WHZSRld1YW5QRXNjalc2aXpsWFB4YXA0OWxCSk44dUhwTTFJOHhhdkt2WApINXZwakkxVVpwUVlrbkNVY3A3N0JGVDBEd1ZyNUxWQU9neGtRS3VkcmhwOW01Yk5tc0tuT2Z2dGduTWtvMTVxCnlNNnpDSldPcHBjYW9sRmEwVHo4dTJXbUFtWWRFU2E4NGNTMGRYN3JFbDlrMkpIT1MxRGtCTnhWTFpjYm9iWDYKTG5QWVB1ODRYczJBNXA5cWFLRk8raTZpQ1NsK0hKYjdsTTI3QzgvWi9qcVRYQ1kvcTRSVEg0bFR1QmJIWjdJOApNS0FVRXhmT1dHVUFTMTVGVi81NVI1ekJ0dnRqK3dJREFRQUJBb0lDQUFQRUVtdkFHeEdRUlB4cHZzYk1qL0FkClBvWHl5eWRkd2FUVTRrekdKTlczbFgwMGs2S3JVaGQzbzFMeUxrVVU5eUd3VXVnVWFNRlYxeTg0YVdtbEJFWXoKMFRxb0N1S0wwSU00TlM1YVQ2SENHTGJjbUt1QktzQ3B0K0NFUHdPTitxbkRyd3MyWUJjVVpCVnE2T2I2WDVKegpUWHBmbyt1cStJUFNzbGtNZXFUNFZJK3NKalpLbUUvNDRYU3ZnSUJVSHJZQVpzdGdhK282VkNNS1FkbmFXQkRLCjBEVTZTTEhEZExGbGVxTkpzUVdSN1pkYTg5ZitmeXdQSk8zWG95MU9KWUZ1YVZtMGxheHdIUE01anRoaHFvaisKQXVhdjRYaDkycmNhMEtIUitFYWtmSUZoUW5id29ybmQ4dFVZZnEyVW1pL0RESjJUZTNzVFBRTVBWcUxyYXJ2dApXU0VBNzBxc0xvY1hVdlY0WjBpZSt1ajZOYUIvZVBTREpLTFlHOVZDNWlJNGtadFZ6eW1keldnUmZiN2FodW43ClpGR0xSRkZ2Q0pvSTAyekM4dUlLa3pGUkZWMmRia3lpTndZNEx3T0lyaklhbDEraGg3ditCNWdLZy9uS2hJa2MKcFZHZ3IwRmhJckVUeEdicnFSZkdzTmNZcUIrTTVwMzNxZDMwbkhzeUhPQy91UUxTbWtZVUsxbTl5TjJTNlJZbgpXY05kS3hqbEliR0FrVWZyZ0YzdHpWcnkrRTVURGM5dnkvRlpESlUyWDRGSUZaY1ZKcXhpQzAvdU0xMjh5dlVyCnVURWZodEJRRk90elFMcU0ydFRseGMyMzVuSXM0UHFCY2gwVFBudUNMYkNKNHdCVUMwSXRHM3N1MkRIR0JvcXAKRnFCRkhnT21TOWhEd2J4TzAwbXhBb0lCQVFEaG9rTmZwNGYycVE5MWoxSmVvQy9HdHZQWEtqR0xFeVUyd0hmNAp5NUpsamxzSno4TEs3cThFd3VHcW50S1VlRXR0VUZyZVVscC9McEJuSE9OT3Jpc2crTStyQTFMYmtXcXpxVkIrCmNCQjd4MDYraWRObU1EcGpFWGhzNUJDbGVUaEFZSlo1UkJtYS9saVpvYzFoWmIvSXRMSjJ0RjBNRG9rTVM2c3cKSjF5Y1pkNm1VUm9sV3NVZnk0NHhoUVFDS2xjTk1uUVpwSy9HUzJ2WTRpcmkvdzlXcHBIZkw5NytXd3FTcnVXSAppdVdqZ3oyVHk3WkMwQ2pzR0Z1NXJScmdPNUtBTmNRRjQ5MEEvbmgzdzRleHd2OVFhd29xZWFzb2F0NW8rZWVWCnFHNDhkVU11R3Zrc2wybVZtd1ZRVUZIYi9tRSt5Y3pXaFg4ZlBTVFNqRDZOZkR2TEFvSUJBUUNqT3Z1YlcreTkKVzBzbVpjdWF6emJLQ1UzSllnVEM2Zjh2Q3ZrNGpNTUZ2eFdqMnhmdnRQZUVDUHZObTBVUFNVQ2ZoN3I5NlF1KwpMdFlxNW4wejgvckxaaUt2OXZ1WjRhcGNMRXUxOVlHV1o5RHVqV3BDME16a2NrcXZic0V0S3JMWGtZNHZiUlg3CkR2VGZCcDJ0akE3dUxBTENDdXZSazNtZUJ2MEhBN3BUTC9ZVGhENVh5SUpkK3BhVlFkN1BzL1RCTEx1VnovTjEKWjRLclZPeCtWOWZCNjJ6WWRneU5JWkM0ZlJFYzlQWmtHSjB0SEdLRXZlb3J4bHlsRlBHNW9IcEVuRHpPMWJEdgp4WWRSaFFYMW1XczdzSFZnZEc3bDFYRm8xdkNxUjJNT1ZHdTA2YzYyUFFCL3NZd0pYaEVmc3JyVUJmNlg4bzBGCmEvWnR3SmRmazlLUkFvSUJBUURMQmxDTlQ1ZTkwTjJDTUpZell2dmFXR0VNcUlDdjNXaE0zZDZWMWNkQzdsYm8KZXpPUm1qZU5seldyYXdHY2FxbWtFUHZTdEZPTndQNWFhZG4yd0MwNm0rZHd2NnJjdXZwQjh3WGszejFWd3o4TgpuOExDWG44TENYdE1yK0p5b3FLRSt1UXE5YVg4bXdScUtQYyt2bWxWVlpLSDBUOHdUQnZ4SGwxSkZRSDJFSXZKCko0elpNOVhRQ0Q5SU82SWh1S3RmeXBoQlFyaVBPdW90MjBRdndNV3llR3NsWWxQS2wyenFFOG1ncnRCMjB1NmoKZ0ZmZHdxUXYzTE1jWGJDak43ZFkrZ2dLTE1COTFudmJkK3N2Zm9CeGdmOUJ2UHpQZjJubEY0alVWeHZwOXJHZQpXTk1BMXJWQTBwNXpaL0pnZTRKUkZ3L2pyM2QxU25WSnBydmFYNEVGQW9JQkFRQ0Uzb2RmQUdYbUFZRmJ3VE1LClVqQlVKMXlsVjk5dVZoRjkxcDNsdFZjdXYwdTdOS1g0WHNPNE82UFV5dFpkU2hDTGkyM2dMNnA2WmgrNWppTk8KZmdTaE93TnpYMFdSRGt1aGVnRXJIYXdkcFdaQ09PVE5mSys4S1hpMzh4eldTbEtIL1JqVGJDV2ZWcDVuU1RoaQp3NGFIdzFWL1pHcHZEMi9JL2dGTGkzSkpNdHBKS3JXZ3VUdTlpalMzVElZMVpsUU9SdjV2UlhYMUZJd2VNU1BNCitHNU5rUGpwL3JYYXovN0EzalZtNzlQOHlMaHd0eEZPNGxUU3kwWXdycXJSb2xyRXJMVW0zSFdKeDYyTjR3MWwKelR1bnU4emY5Z2NybVNJVzZCZkJWQmpDMmw5T1JhQVpZZkNkQVFadnZaMk13dTBubDdXVk5FQXNzS1JJMUtPagpqbTJ4QW9JQkFRQ3BKY3JXckJzdk45cGlyRjBBOVBBeXJZYVhjOFV3ZEVzZlU5Z1V3Y1FzNHhyUmFZMjh2elFYCnRFdVdiYm1ESmlxdXJXM1YrekJ1M3FmWVU1dmh0Zk1WUjIrVWN0ampMZitPQ2pzWTVRbjZrNEhneU1yL1kxM2YKVE1qRngrNW5VNUsvdXJuVFJGMW5JNm9qbEJtY0dJQlNsZW1lSldLOWN6VFpmb0NZUTRDOTdsZVZYVGQrbUJYWQpCQTE3aitiWHU1Q01zd21sczRuZld5c2JNNmxOTkNMZENxUmRlelNxRDR1RkloUVc4QndLZy9HNVNvUUI0TTFmCnB6NzBZVnJqMkp2RWxMaUZjVXFPMlA4akJNRXoxbmJmNklRMVJSVDlYSWJyK0E4YkJFTU5td1lhV0NxcHBIdVUKWGlCclUzeDBNemRRZXprdklSeVdtQzJXNUp5WU1LVUcKLS0tLS1FTkQgUFJJVkFURSBLRVktLS0tLQo="
+                                                         },
+                                                         {
+                                                             "name":  "AUTH_ALGORITHMS",
+                                                             "value":  "RS256"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_CLIENT_ASSERTION_ALGORITHM",
+                                                             "value":  "RS256"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_SCOPE",
+                                                             "value":  "api://api-dev.pruvpcaws066.pruaws.prudential.com/sanction_screening_api_v1/.default"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_BASE_URL",
+                                                             "value":  "https://us-dev.apis.prudential.com/financial-governance/sanctions-screening/v1"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_CLIENT_ASSERTION_KID",
+                                                             "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_TOKEN_URL",
+                                                             "value":  "https://us-dev.apis.prudential.com/utility/identity-management/v2/oauth2/token"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_BEARER_TOKEN",
+                                                             "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_CLIENT_SECRET",
+                                                             "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_LOG_RAW_API_IO",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_RAW_API_LOG_MAX_CHARS",
+                                                             "value":  "20000"
+                                                         }
+                                                     ],
+                                     "mountPoints":  [
+
+                                                     ],
+                                     "volumesFrom":  [
+
+                                                     ],
+                                     "logConfiguration":  {
+                                                              "logDriver":  "awslogs",
+                                                              "options":  {
+                                                                              "awslogs-group":  "/ecs/ofac-screening-backend",
+                                                                              "awslogs-region":  "us-east-2",
+                                                                              "awslogs-stream-prefix":  "ecs"
+                                                                          }
+                                                          },
+                                     "systemControls":  [
+
+                                                        ]
+                                 }
+                             ],
+    "family":  "ofac-screening-backend",
+    "taskRoleArn":  "arn:aws:iam::279930135954:role/ofac-screening-task-role",
+    "executionRoleArn":  "arn:aws:iam::279930135954:role/ofac-screening-task-execution-role",
+    "networkMode":  "awsvpc",
+    "volumes":  [
+
+                ],
+    "placementConstraints":  [
+
+                             ],
+    "requiresCompatibilities":  [
+                                    "FARGATE"
+                                ],
+    "cpu":  "256",
+    "memory":  "1024"
+}

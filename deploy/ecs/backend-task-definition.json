@@ -52,6 +52,14 @@
                                                              "value":  "false"
                                                          },
                                                          {
+                                                             "name":  "ACTIMIZE_LOG_RAW_API_IO",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "ACTIMIZE_RAW_API_LOG_MAX_CHARS",
+                                                             "value":  "20000"
+                                                         },
+                                                         {
                                                              "name":  "AUTH_ENABLED",
                                                              "value":  "true"
                                                          },

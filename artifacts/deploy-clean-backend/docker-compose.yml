@@ -1,0 +1,87 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    command: start-dev --http-port=8080 --import-realm
+    volumes:
+      - ./docs/keycloak:/opt/keycloak/data/import
+    ports:
+      - "8081:8080"
+
+  localstack:
+    image: localstack/localstack:3
+    environment:
+      - SERVICES=sqs
+      - AWS_DEFAULT_REGION=us-east-1
+      - DEBUG=0
+    ports:
+      - "4566:4566"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      - APP_DB_PATH=/data/screening.db
+      - CORS_ALLOW_ORIGINS=*
+      - AWS_REGION=us-east-1
+      - AWS_SQS_QUEUE_NAME=screening-requests
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - ACTIMIZE_MOCK=true
+      - SCREENING_TPS=32
+      - SCREENING_POLL_INTERVAL_MS=500
+      - SCREENING_SYNC_TIMEOUT_S=90
+      - AUTH_ENABLED=true
+      - AUTH_ISSUER=http://keycloak:8080/realms/screening-local
+      - AUTH_JWKS_URL=http://keycloak:8080/realms/screening-local/protocol/openid-connect/certs
+      - AUTH_AUDIENCE=
+      - AUTH_ALGORITHMS=RS256
+    volumes:
+      - screening-data:/data
+    depends_on:
+      - localstack
+      - keycloak
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python -m app.worker
+    environment:
+      - APP_DB_PATH=/data/screening.db
+      - AWS_REGION=us-east-1
+      - AWS_SQS_QUEUE_NAME=screening-requests
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - ACTIMIZE_MOCK=true
+      - SCREENING_TPS=32
+      - AUTH_ENABLED=true
+      - AUTH_ISSUER=http://keycloak:8080/realms/screening-local
+      - AUTH_JWKS_URL=http://keycloak:8080/realms/screening-local/protocol/openid-connect/certs
+      - AUTH_AUDIENCE=
+      - AUTH_ALGORITHMS=RS256
+    volumes:
+      - screening-data:/data
+    depends_on:
+      - localstack
+      - backend
+      - keycloak
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  screening-data:

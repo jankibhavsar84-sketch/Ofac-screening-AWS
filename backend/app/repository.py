@@ -1,24 +1,31 @@
 from __future__ import annotations
 
+import atexit
 import calendar
 import hashlib
 import json
 import re
 import sqlite3
+import time
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .config import settings
 from .models import JobStatus, now_iso
 
 try:
     import psycopg
     from psycopg.rows import dict_row
+    from psycopg_pool import ConnectionPool, PoolTimeout
 except Exception:  # pragma: no cover - optional dependency for local sqlite mode
     psycopg = None
     dict_row = None
+    ConnectionPool = None
+    PoolTimeout = None
 
 
 def _as_bool(value: Any) -> bool:
@@ -54,6 +61,67 @@ DEFAULT_BUSINESS_UNITS: list[tuple[str, str]] = [
 ]
 DEFAULT_FALLBACK_BUSINESS_UNIT_CODE = "US_PRU_OPES"
 
+REQUIRED_TABLES: tuple[str, ...] = (
+    "jobs",
+    "job_items",
+    "job_metadata",
+    "daily_schedules",
+    "batch_file_uploads",
+    "schedule_record_state",
+    "schedule_subscriptions",
+    "job_schedule_notifications",
+    "audit_events",
+    "api_access_logs",
+    "external_api_errors",
+    "schedule_notifications",
+    "business_units",
+    "user_business_units",
+)
+
+REQUIRED_INDEXES: tuple[str, ...] = (
+    "idx_schedule_subscriptions_unique",
+    "idx_daily_schedules_next_run",
+    "idx_notifications_user",
+    "idx_notifications_email",
+    "idx_user_business_units_user",
+    "idx_user_business_units_code",
+    "idx_audit_events_event_id",
+    "idx_audit_events_user_event",
+    "idx_external_api_errors_created_at",
+    "idx_external_api_errors_job_item",
+    "idx_api_access_logs_created_at",
+    "idx_api_access_logs_correlation",
+    "idx_api_access_logs_user",
+    "idx_api_access_logs_path",
+)
+
+REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
+    "jobs": ("source_schedule_id", "source_upload_id", "user_id", "user_name"),
+    "job_metadata": (
+        "mode",
+        "screening_types_json",
+        "mock_screening",
+        "batch_name",
+        "file_name",
+        "daily_screening",
+        "schedule_frequency",
+        "daily_schedule_id",
+        "query_count",
+        "deferred_until",
+        "business_unit_code",
+    ),
+    "daily_schedules": (
+        "user_id",
+        "user_name",
+        "schedule_frequency",
+        "source_upload_id",
+        "source_file_name",
+        "source_s3_uri",
+        "business_unit_code",
+    ),
+    "batch_file_uploads": ("queries_s3_bucket", "queries_s3_key", "queries_s3_uri"),
+}
+
 
 def _is_technical_identifier(value: str | None) -> bool:
     raw = str(value or "").strip()
@@ -66,24 +134,114 @@ def _is_technical_identifier(value: str | None) -> bool:
     return False
 
 
+_TRANSIENT_POSTGRES_CONNECT_MARKERS: tuple[str, ...] = (
+    "connection timeout expired",
+    "could not connect",
+    "server closed the connection unexpectedly",
+    "connection has been closed unexpectedly",
+    "ssl syscall error",
+    "ssl connection has been closed unexpectedly",
+    "remaining connection slots are reserved",
+    "too many clients already",
+    "connection refused",
+    "timeout expired",
+    "eof detected",
+)
+
+
 class JobRepository:
-    def __init__(self, db_path: str, db_url: str = "") -> None:
+    def __init__(self, db_path: str, db_url: str = "", initialize_schema: bool = False) -> None:
         self.db_path = db_path
         self.db_url = (db_url or "").strip()
         self.is_postgres = self.db_url.startswith("postgres://") or self.db_url.startswith("postgresql://")
+        self._pool: Any | None = None
+        self._connect_attempts = max(int(settings.db_connect_max_attempts), 1)
+        self._connect_backoff_initial_s = max(int(settings.db_connect_backoff_initial_ms), 0) / 1000.0
+        self._connect_backoff_max_s = max(int(settings.db_connect_backoff_max_ms), 0) / 1000.0
 
-        if self.is_postgres and psycopg is None:
-            raise RuntimeError("PostgreSQL driver not installed. Add psycopg[binary] to requirements.")
+        if self.is_postgres and (psycopg is None or ConnectionPool is None):
+            raise RuntimeError("PostgreSQL driver/pool not installed. Add psycopg[binary] and psycopg-pool to requirements.")
 
-        self._ensure_db()
+        if self.is_postgres:
+            self._pool = self._build_postgres_pool()
+            atexit.register(self.close)
+
+        if initialize_schema:
+            self.initialize_schema()
+        else:
+            self.validate_schema()
+
+    def close(self) -> None:
+        if self._pool is not None:
+            self._pool.close()
+
+    def _build_postgres_pool(self) -> Any:
+        min_size = max(int(settings.db_pool_min_size), 1)
+        max_size = max(int(settings.db_pool_max_size), min_size)
+        timeout_s = max(float(settings.db_pool_timeout_s), 1.0)
+        return ConnectionPool(
+            conninfo=self.db_url,
+            min_size=min_size,
+            max_size=max_size,
+            timeout=timeout_s,
+            kwargs={"row_factory": dict_row},
+        )
+
+    def _is_retryable_postgres_connect_error(self, exc: Exception) -> bool:
+        if PoolTimeout is not None and isinstance(exc, PoolTimeout):
+            return True
+        if psycopg is not None and isinstance(exc, (psycopg.OperationalError, psycopg.InterfaceError)):
+            return True
+        message = str(exc or "").strip().lower()
+        return any(marker in message for marker in _TRANSIENT_POSTGRES_CONNECT_MARKERS)
+
+    def _sleep_before_retry(self, attempt: int) -> None:
+        if attempt >= self._connect_attempts:
+            return
+        delay = self._connect_backoff_initial_s * (2 ** max(attempt - 1, 0))
+        delay = min(delay, self._connect_backoff_max_s or delay)
+        if delay > 0:
+            time.sleep(delay)
+
+    @contextmanager
+    def _sqlite_connection(self) -> Any:
+        conn = sqlite3.connect(self.db_path, timeout=30)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    @contextmanager
+    def _postgres_connection(self) -> Any:
+        if self._pool is None:
+            raise RuntimeError("PostgreSQL connection pool is not initialized")
+
+        last_exc: Exception | None = None
+        conn_ctx: Any | None = None
+        conn: Any | None = None
+        for attempt in range(1, self._connect_attempts + 1):
+            try:
+                conn_ctx = cast(Any, self._pool.connection())
+                conn = conn_ctx.__enter__()  # pylint: disable=no-member
+                break
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                if not self._is_retryable_postgres_connect_error(exc) or attempt >= self._connect_attempts:
+                    raise
+                self._sleep_before_retry(attempt)
+        if conn_ctx is None or conn is None:
+            raise last_exc or RuntimeError("Failed to acquire PostgreSQL connection")
+
+        try:
+            yield conn
+        finally:
+            conn_ctx.__exit__(None, None, None)  # pylint: disable=no-member
 
     def _connect(self) -> Any:
         if self.is_postgres:
-            return psycopg.connect(self.db_url, row_factory=dict_row)
-
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        conn.row_factory = sqlite3.Row
-        return conn
+            return self._postgres_connection()
+        return self._sqlite_connection()
 
     def _sql(self, query: str) -> str:
         if not self.is_postgres:
@@ -93,14 +251,152 @@ class JobRepository:
     def _execute(self, conn: Any, query: str, params: tuple[Any, ...] = ()) -> Any:
         return conn.execute(self._sql(query), params)
 
-    def _ensure_db(self) -> None:
+    def _postgres_table_exists(self, conn: Any, table_name: str) -> bool:
+        row = self._execute(
+            conn,
+            """
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = current_schema()
+              AND table_name = ?
+            LIMIT 1
+            """,
+            (table_name,),
+        ).fetchone()
+        return bool(row)
+
+    def _postgres_index_exists(self, conn: Any, index_name: str) -> bool:
+        row = self._execute(
+            conn,
+            """
+            SELECT 1
+            FROM pg_indexes
+            WHERE schemaname = current_schema()
+              AND indexname = ?
+            LIMIT 1
+            """,
+            (index_name,),
+        ).fetchone()
+        return bool(row)
+
+    def _postgres_column_exists(self, conn: Any, table_name: str, column_name: str) -> bool:
+        row = self._execute(
+            conn,
+            """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = ?
+              AND column_name = ?
+            LIMIT 1
+            """,
+            (table_name, column_name),
+        ).fetchone()
+        return bool(row)
+
+    def _sqlite_table_exists(self, conn: Any, table_name: str) -> bool:
+        row = self._execute(
+            conn,
+            """
+            SELECT 1
+            FROM sqlite_master
+            WHERE type = 'table'
+              AND name = ?
+            LIMIT 1
+            """,
+            (table_name,),
+        ).fetchone()
+        return bool(row)
+
+    def _sqlite_index_exists(self, conn: Any, index_name: str) -> bool:
+        row = self._execute(
+            conn,
+            """
+            SELECT 1
+            FROM sqlite_master
+            WHERE type = 'index'
+              AND name = ?
+            LIMIT 1
+            """,
+            (index_name,),
+        ).fetchone()
+        return bool(row)
+
+    def _sqlite_column_exists(self, conn: Any, table_name: str, column_name: str) -> bool:
+        cols = self._execute(conn, f"PRAGMA table_info({table_name})").fetchall()
+        return any(str(col["name"]) == column_name for col in cols)
+
+    def _table_exists(self, conn: Any, table_name: str) -> bool:
+        if self.is_postgres:
+            return self._postgres_table_exists(conn, table_name)
+        return self._sqlite_table_exists(conn, table_name)
+
+    def _index_exists(self, conn: Any, index_name: str) -> bool:
+        if self.is_postgres:
+            return self._postgres_index_exists(conn, index_name)
+        return self._sqlite_index_exists(conn, index_name)
+
+    def _column_exists(self, conn: Any, table_name: str, column_name: str) -> bool:
+        if self.is_postgres:
+            return self._postgres_column_exists(conn, table_name, column_name)
+        return self._sqlite_column_exists(conn, table_name, column_name)
+
+    def _ensure_table(self, conn: Any, table_name: str, ddl: str) -> None:
+        if self._table_exists(conn, table_name):
+            return
+        self._execute(conn, ddl)
+
+    def _ensure_index(self, conn: Any, index_name: str, ddl: str) -> None:
+        if self._index_exists(conn, index_name):
+            return
+        self._execute(conn, ddl)
+
+    def validate_schema(self) -> None:
+        if not self.is_postgres:
+            db_file = Path(self.db_path)
+            db_file.parent.mkdir(parents=True, exist_ok=True)
+
+        missing_tables: list[str] = []
+        missing_indexes: list[str] = []
+        missing_columns: list[str] = []
+
+        with self._connect() as conn:
+            for table_name in REQUIRED_TABLES:
+                if not self._table_exists(conn, table_name):
+                    missing_tables.append(table_name)
+
+            for index_name in REQUIRED_INDEXES:
+                if not self._index_exists(conn, index_name):
+                    missing_indexes.append(index_name)
+
+            for table_name, column_names in REQUIRED_COLUMNS.items():
+                for column_name in column_names:
+                    if not self._column_exists(conn, table_name, column_name):
+                        missing_columns.append(f"{table_name}.{column_name}")
+
+        if missing_tables or missing_indexes or missing_columns:
+            details: list[str] = []
+            if missing_tables:
+                details.append(f"tables={', '.join(missing_tables)}")
+            if missing_columns:
+                details.append(f"columns={', '.join(missing_columns)}")
+            if missing_indexes:
+                details.append(f"indexes={', '.join(missing_indexes)}")
+            location = "APP_DB_URL" if self.is_postgres else self.db_path
+            raise RuntimeError(
+                "Database schema is not initialized. Run the explicit init step before starting the backend. "
+                f"Target={location}. Missing {'; '.join(details)}"
+            )
+
+    def initialize_schema(self) -> None:
         if not self.is_postgres:
             db_file = Path(self.db_path)
             db_file.parent.mkdir(parents=True, exist_ok=True)
 
         with self._connect() as conn:
-            self._execute(
+            self._ensure_table(
                 conn,
+                "jobs",
                 """
                 CREATE TABLE IF NOT EXISTS jobs (
                   job_id TEXT PRIMARY KEY,
@@ -115,8 +411,9 @@ class JobRepository:
                 );
                 """,
             )
-            self._execute(
+            self._ensure_table(
                 conn,
+                "job_items",
                 """
                 CREATE TABLE IF NOT EXISTS job_items (
                   job_id TEXT NOT NULL,
@@ -131,8 +428,9 @@ class JobRepository:
                 );
                 """,
             )
-            self._execute(
+            self._ensure_table(
                 conn,
+                "job_metadata",
                 """
                 CREATE TABLE IF NOT EXISTS job_metadata (
                   job_id TEXT PRIMARY KEY,
@@ -149,8 +447,9 @@ class JobRepository:
                 );
                 """,
             )
-            self._execute(
+            self._ensure_table(
                 conn,
+                "daily_schedules",
                 """
                 CREATE TABLE IF NOT EXISTS daily_schedules (
                   schedule_id TEXT PRIMARY KEY,
@@ -174,8 +473,9 @@ class JobRepository:
                 );
                 """,
             )
-            self._execute(
+            self._ensure_table(
                 conn,
+                "batch_file_uploads",
                 """
                 CREATE TABLE IF NOT EXISTS batch_file_uploads (
                   upload_id TEXT PRIMARY KEY,
@@ -197,8 +497,9 @@ class JobRepository:
                 );
                 """,
             )
-            self._execute(
+            self._ensure_table(
                 conn,
+                "schedule_record_state",
                 """
                 CREATE TABLE IF NOT EXISTS schedule_record_state (
                   schedule_id TEXT NOT NULL,
@@ -210,8 +511,9 @@ class JobRepository:
                 );
                 """,
             )
-            self._execute(
+            self._ensure_table(
                 conn,
+                "schedule_subscriptions",
                 """
                 CREATE TABLE IF NOT EXISTS schedule_subscriptions (
                   subscription_id TEXT PRIMARY KEY,
@@ -225,8 +527,9 @@ class JobRepository:
                 );
                 """,
             )
-            self._execute(
+            self._ensure_table(
                 conn,
+                "job_schedule_notifications",
                 """
                 CREATE TABLE IF NOT EXISTS job_schedule_notifications (
                   job_id TEXT PRIMARY KEY,
@@ -237,8 +540,9 @@ class JobRepository:
             )
 
             if self.is_postgres:
-                self._execute(
+                self._ensure_table(
                     conn,
+                    "audit_events",
                     """
                     CREATE TABLE IF NOT EXISTS audit_events (
                       event_id BIGSERIAL PRIMARY KEY,
@@ -252,8 +556,9 @@ class JobRepository:
                     );
                     """,
                 )
-                self._execute(
+                self._ensure_table(
                     conn,
+                    "api_access_logs",
                     """
                     CREATE TABLE IF NOT EXISTS api_access_logs (
                       access_id BIGSERIAL PRIMARY KEY,
@@ -273,8 +578,9 @@ class JobRepository:
                     );
                     """,
                 )
-                self._execute(
+                self._ensure_table(
                     conn,
+                    "external_api_errors",
                     """
                     CREATE TABLE IF NOT EXISTS external_api_errors (
                       error_id BIGSERIAL PRIMARY KEY,
@@ -292,8 +598,9 @@ class JobRepository:
                     );
                     """,
                 )
-                self._execute(
+                self._ensure_table(
                     conn,
+                    "schedule_notifications",
                     """
                     CREATE TABLE IF NOT EXISTS schedule_notifications (
                       notification_id BIGSERIAL PRIMARY KEY,
@@ -310,8 +617,9 @@ class JobRepository:
                     """,
                 )
             else:
-                self._execute(
+                self._ensure_table(
                     conn,
+                    "audit_events",
                     """
                     CREATE TABLE IF NOT EXISTS audit_events (
                       event_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -325,8 +633,9 @@ class JobRepository:
                     );
                     """,
                 )
-                self._execute(
+                self._ensure_table(
                     conn,
+                    "api_access_logs",
                     """
                     CREATE TABLE IF NOT EXISTS api_access_logs (
                       access_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -346,8 +655,9 @@ class JobRepository:
                     );
                     """,
                 )
-                self._execute(
+                self._ensure_table(
                     conn,
+                    "external_api_errors",
                     """
                     CREATE TABLE IF NOT EXISTS external_api_errors (
                       error_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -365,8 +675,9 @@ class JobRepository:
                     );
                     """,
                 )
-                self._execute(
+                self._ensure_table(
                     conn,
+                    "schedule_notifications",
                     """
                     CREATE TABLE IF NOT EXISTS schedule_notifications (
                       notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -383,8 +694,9 @@ class JobRepository:
                     """,
                 )
 
-            self._execute(
+            self._ensure_table(
                 conn,
+                "business_units",
                 """
                 CREATE TABLE IF NOT EXISTS business_units (
                   business_unit_code TEXT PRIMARY KEY,
@@ -395,8 +707,9 @@ class JobRepository:
                 );
                 """,
             )
-            self._execute(
+            self._ensure_table(
                 conn,
+                "user_business_units",
                 """
                 CREATE TABLE IF NOT EXISTS user_business_units (
                   user_id TEXT NOT NULL,
@@ -410,99 +723,113 @@ class JobRepository:
                 """,
             )
 
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_schedule_subscriptions_unique",
                 """
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_subscriptions_unique
                 ON schedule_subscriptions(schedule_id, email);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_daily_schedules_next_run",
                 """
                 CREATE INDEX IF NOT EXISTS idx_daily_schedules_next_run
                 ON daily_schedules(next_run_at);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_notifications_user",
                 """
                 CREATE INDEX IF NOT EXISTS idx_notifications_user
                 ON schedule_notifications(user_id, created_at);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_notifications_email",
                 """
                 CREATE INDEX IF NOT EXISTS idx_notifications_email
                 ON schedule_notifications(email, created_at);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_user_business_units_user",
                 """
                 CREATE INDEX IF NOT EXISTS idx_user_business_units_user
                 ON user_business_units(user_id, is_active);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_user_business_units_code",
                 """
                 CREATE INDEX IF NOT EXISTS idx_user_business_units_code
                 ON user_business_units(business_unit_code, is_active);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_audit_events_event_id",
                 """
                 CREATE INDEX IF NOT EXISTS idx_audit_events_event_id
                 ON audit_events(event_id DESC);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_audit_events_user_event",
                 """
                 CREATE INDEX IF NOT EXISTS idx_audit_events_user_event
                 ON audit_events(user_id, event_id DESC);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_external_api_errors_created_at",
                 """
                 CREATE INDEX IF NOT EXISTS idx_external_api_errors_created_at
                 ON external_api_errors(created_at);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_external_api_errors_job_item",
                 """
                 CREATE INDEX IF NOT EXISTS idx_external_api_errors_job_item
                 ON external_api_errors(job_id, item_key, created_at);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_api_access_logs_created_at",
                 """
                 CREATE INDEX IF NOT EXISTS idx_api_access_logs_created_at
                 ON api_access_logs(created_at);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_api_access_logs_correlation",
                 """
                 CREATE INDEX IF NOT EXISTS idx_api_access_logs_correlation
                 ON api_access_logs(correlation_id, created_at);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_api_access_logs_user",
                 """
                 CREATE INDEX IF NOT EXISTS idx_api_access_logs_user
                 ON api_access_logs(user_id, created_at);
                 """,
             )
-            self._execute(
+            self._ensure_index(
                 conn,
+                "idx_api_access_logs_path",
                 """
                 CREATE INDEX IF NOT EXISTS idx_api_access_logs_path
                 ON api_access_logs(request_path, created_at);
@@ -541,14 +868,13 @@ class JobRepository:
             self._seed_default_business_units(conn)
 
     def _ensure_column(self, conn: Any, table_name: str, column_name: str, column_def: str) -> None:
+        if self._column_exists(conn, table_name, column_name):
+            return
+
         if self.is_postgres:
             self._execute(conn, f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column_name} {column_def}")
             return
 
-        cols = self._execute(conn, f"PRAGMA table_info({table_name})").fetchall()
-        exists = any(str(col["name"]) == column_name for col in cols)
-        if exists:
-            return
         self._execute(conn, f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}")
 
     @staticmethod
@@ -911,6 +1237,259 @@ class JobRepository:
                 }
             )
         return out
+
+    def list_job_items_for_jobs(self, job_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
+        normalized_job_ids = [str(job_id).strip() for job_id in job_ids if str(job_id).strip()]
+        if not normalized_job_ids:
+            return {}
+
+        placeholders = ", ".join("?" for _ in normalized_job_ids)
+        with self._connect() as conn:
+            rows = self._execute(
+                conn,
+                f"""
+                SELECT job_id, item_key, request_json, response_json, status, error_text, updated_at
+                FROM job_items
+                WHERE job_id IN ({placeholders})
+                ORDER BY job_id ASC, item_key ASC
+                """,
+                tuple(normalized_job_ids),
+            ).fetchall()
+
+        items_by_job: dict[str, list[dict[str, Any]]] = {job_id: [] for job_id in normalized_job_ids}
+        for row in rows:
+            job_id = str(row["job_id"] or "").strip()
+            if not job_id:
+                continue
+            try:
+                request_payload = json.loads(row["request_json"]) if row["request_json"] else None
+            except Exception:
+                request_payload = None
+            try:
+                response_payload = json.loads(row["response_json"]) if row["response_json"] else None
+            except Exception:
+                response_payload = None
+
+            items_by_job.setdefault(job_id, []).append(
+                {
+                    "item_key": row["item_key"],
+                    "request": request_payload,
+                    "response": response_payload,
+                    "status": row["status"],
+                    "error_text": row["error_text"],
+                    "updated_at": row["updated_at"],
+                }
+            )
+
+        return items_by_job
+
+    def list_recent_result_items(
+        self,
+        user_id: str | None,
+        user_name: str | None,
+        limit: int = 300,
+    ) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(int(limit or 300), 300))
+        safe_user_id = str(user_id or "").strip()
+        safe_user_name = str(user_name or "").strip()
+
+        filters: list[str] = []
+        params: list[Any] = []
+        if safe_user_id and safe_user_name:
+            filters.append("(j.user_id = ? OR LOWER(COALESCE(j.user_name, '')) = LOWER(?))")
+            params.extend([safe_user_id, safe_user_name])
+        elif safe_user_id:
+            filters.append("j.user_id = ?")
+            params.append(safe_user_id)
+        elif safe_user_name:
+            filters.append("LOWER(COALESCE(j.user_name, '')) = LOWER(?)")
+            params.append(safe_user_name)
+
+        where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+        with self._connect() as conn:
+            rows = self._execute(
+                conn,
+                f"""
+                SELECT
+                  j.job_id, j.status AS job_status, j.created_at, j.updated_at AS job_updated_at, j.total_items,
+                  j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
+                  jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
+                  jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
+                  bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri,
+                  ji.item_key, ji.request_json, ji.response_json, ji.status AS item_status, ji.error_text AS item_error_text, ji.updated_at AS item_updated_at
+                FROM job_items ji
+                INNER JOIN jobs j ON j.job_id = ji.job_id
+                LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                {where_sql}
+                ORDER BY j.created_at DESC, COALESCE(ji.updated_at, j.updated_at, j.created_at) DESC, ji.item_key ASC
+                LIMIT ?
+                """,
+                tuple([*params, safe_limit]),
+            ).fetchall()
+
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            out.append(
+                {
+                    "job_id": row["job_id"],
+                    "job_status": row["job_status"],
+                    "created_at": row["created_at"],
+                    "job_updated_at": row["job_updated_at"],
+                    "total_items": int(row["total_items"] or 0),
+                    "source_schedule_id": row["source_schedule_id"],
+                    "source_upload_id": row["source_upload_id"],
+                    "user_id": row["user_id"],
+                    "user_name": row["user_name"],
+                    "mode": row["mode"],
+                    "screening_types_json": row["screening_types_json"],
+                    "mock_screening": row["mock_screening"],
+                    "batch_name": row["batch_name"],
+                    "file_name": row["file_name"],
+                    "daily_screening": row["daily_screening"],
+                    "schedule_frequency": row["schedule_frequency"],
+                    "daily_schedule_id": row["daily_schedule_id"],
+                    "query_count": int(row["query_count"] or 0) if row["query_count"] is not None else 0,
+                    "deferred_until": row["deferred_until"],
+                    "business_unit_code": row["business_unit_code"],
+                    "upload_file_name": row["upload_file_name"],
+                    "upload_s3_uri": row["upload_s3_uri"],
+                    "item_key": row["item_key"],
+                    "item_status": row["item_status"],
+                    "item_error_text": row["item_error_text"],
+                    "item_updated_at": row["item_updated_at"],
+                    "request_json": row["request_json"],
+                    "response_json": row["response_json"],
+                }
+            )
+        return out
+
+    def get_user_result_summary_counts(self, user_id: str | None, user_name: str | None) -> dict[str, int]:
+        safe_user_id = str(user_id or "").strip()
+        safe_user_name = str(user_name or "").strip()
+
+        filters: list[str] = []
+        params: list[Any] = []
+        if safe_user_id and safe_user_name:
+            filters.append("(j.user_id = ? OR LOWER(COALESCE(j.user_name, '')) = LOWER(?))")
+            params.extend([safe_user_id, safe_user_name])
+        elif safe_user_id:
+            filters.append("j.user_id = ?")
+            params.append(safe_user_id)
+        elif safe_user_name:
+            filters.append("LOWER(COALESCE(j.user_name, '')) = LOWER(?)")
+            params.append(safe_user_name)
+
+        where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+        if self.is_postgres:
+            with self._connect() as conn:
+                row = self._execute(
+                    conn,
+                    f"""
+                    WITH filtered AS (
+                      SELECT ji.status, ji.error_text, ji.response_json
+                      FROM job_items ji
+                      INNER JOIN jobs j ON j.job_id = ji.job_id
+                      {where_sql}
+                    ),
+                    classified AS (
+                      SELECT
+                        status,
+                        CASE
+                          WHEN status IN ('QUEUED', 'PROCESSING') THEN 'PENDING'
+                          WHEN status = 'FAILED' THEN 'FAILED'
+                          WHEN COALESCE(NULLIF(response_json, ''), '') = '' THEN 'FAILED'
+                          WHEN COALESCE((response_json::jsonb ->> 'status')::int, 200) <> 200 THEN 'FAILED'
+                          WHEN COALESCE(NULLIF(response_json::jsonb ->> 'error_text', ''), NULLIF(response_json::jsonb ->> 'error', '')) IS NOT NULL THEN 'FAILED'
+                          WHEN UPPER(COALESCE(response_json::jsonb ->> 'engine_message', '')) = 'PM' THEN 'POTENTIAL'
+                          WHEN UPPER(COALESCE(response_json::jsonb ->> 'engine_message', '')) = 'NM' THEN 'CLEAR'
+                          WHEN EXISTS (
+                            SELECT 1
+                            FROM jsonb_array_elements(COALESCE(response_json::jsonb -> 'results', '[]'::jsonb)) AS elem
+                            WHERE COALESCE((elem ->> 'match')::boolean, FALSE) = TRUE
+                          ) THEN 'POTENTIAL'
+                          ELSE 'CLEAR'
+                        END AS outcome
+                      FROM filtered
+                    )
+                    SELECT
+                      COUNT(*) AS total,
+                      COUNT(*) FILTER (WHERE outcome = 'CLEAR') AS clear,
+                      COUNT(*) FILTER (WHERE outcome = 'POTENTIAL') AS potential,
+                      COUNT(*) FILTER (WHERE outcome = 'PENDING') AS pending,
+                      COUNT(*) FILTER (WHERE outcome = 'FAILED') AS failed
+                    FROM classified
+                    """,
+                    tuple(params),
+                ).fetchone()
+        else:
+            with self._connect() as conn:
+                rows = self._execute(
+                    conn,
+                    f"""
+                    SELECT ji.status, ji.error_text, ji.response_json
+                    FROM job_items ji
+                    INNER JOIN jobs j ON j.job_id = ji.job_id
+                    {where_sql}
+                    """,
+                    tuple(params),
+                ).fetchall()
+
+            total = 0
+            clear = 0
+            potential = 0
+            pending = 0
+            failed = 0
+            for item in rows:
+                total += 1
+                item_status = str(item["status"] or "").strip().upper()
+                if item_status in {JobStatus.queued.value, JobStatus.processing.value}:
+                    pending += 1
+                    continue
+                if item_status == JobStatus.failed.value:
+                    failed += 1
+                    continue
+                try:
+                    response_payload = json.loads(item["response_json"]) if item["response_json"] else {}
+                except Exception:
+                    response_payload = {}
+                response_status = response_payload.get("status")
+                response_error = str(response_payload.get("error_text") or response_payload.get("error") or "").strip()
+                if (isinstance(response_status, int) and response_status != 200) or response_error or not isinstance(response_payload, dict):
+                    failed += 1
+                    continue
+                engine_message = str(response_payload.get("engine_message") or "").strip().upper()
+                if engine_message == "PM":
+                    potential += 1
+                    continue
+                if engine_message == "NM":
+                    clear += 1
+                    continue
+                results = response_payload.get("results", [])
+                if isinstance(results, list) and any(isinstance(result, dict) and bool(result.get("match")) for result in results):
+                    potential += 1
+                else:
+                    clear += 1
+
+            return {
+                "total": total,
+                "clear": clear,
+                "potential": potential,
+                "pending": pending,
+                "failed": failed,
+                "match": 0,
+            }
+
+        return {
+            "total": int(row["total"] or 0) if row else 0,
+            "clear": int(row["clear"] or 0) if row else 0,
+            "potential": int(row["potential"] or 0) if row else 0,
+            "pending": int(row["pending"] or 0) if row else 0,
+            "failed": int(row["failed"] or 0) if row else 0,
+            "match": 0,
+        }
 
     def add_job_item(self, job_id: str, item_key: str, request_payload: dict[str, Any]) -> None:
         ts = now_iso()
@@ -2751,7 +3330,6 @@ class JobRepository:
         if errors_only:
             clauses.append(
                 """(
-<<<<<<< HEAD
                     UPPER(action) LIKE ?
                     OR details_json LIKE ?
                     OR details_json LIKE ?
@@ -2759,14 +3337,6 @@ class JobRepository:
                 )"""
             )
             params.extend(["%FAILED%", '%"error"%', '%"error_text"%', '%"detail"%'])
-=======
-                    UPPER(action) LIKE '%FAILED%'
-                    OR details_json LIKE '%"error"%'
-                    OR details_json LIKE '%"error_text"%'
-                    OR details_json LIKE '%"detail"%'
-                )"""
-            )
->>>>>>> 1f520090bea81039b1073b53606ee579c19def85
         if not clauses:
             return "", tuple()
         return f"WHERE {' AND '.join(clauses)}", tuple(params)

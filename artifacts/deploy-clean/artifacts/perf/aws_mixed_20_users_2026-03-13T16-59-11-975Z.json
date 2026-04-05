@@ -1,0 +1,4876 @@
+{
+  "summary": {
+    "baseUrl": "https://d3ppga4y8wg1ck.cloudfront.net",
+    "vus": 20,
+    "soakMinutes": 5,
+    "cohortDistribution": {
+      "mixed_single_batch": 10,
+      "refresh_only": 5,
+      "idle_only": 5
+    },
+    "startedAt": "2026-03-13T16:52:58.473Z",
+    "finishedAt": "2026-03-13T16:59:11.974Z",
+    "durationMs": 373501,
+    "completedUsers": 20,
+    "successfulUsers": 10,
+    "failedUsers": 10,
+    "fatalErrors": [],
+    "totalSteps": 876,
+    "avgStepMs": 7078.67,
+    "p95StepMs": 45272,
+    "p99StepMs": 45471,
+    "maxStepMs": 300021
+  },
+  "completed": [
+    {
+      "vuId": 1,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_01",
+      "totalMs": 370516,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 15164,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 4296,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45255,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15096,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45209,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15106,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45312,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14961,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45294,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15122,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45249,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15195,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45242,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        }
+      ],
+      "startedAt": "2026-03-13T16:52:58.874Z",
+      "finishedAt": "2026-03-13T16:59:09.390Z"
+    },
+    {
+      "vuId": 2,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_02",
+      "totalMs": 367482,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 14164,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 2208,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45479,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14884,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45273,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15222,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45400,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14940,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45337,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14858,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45466,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14727,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45490,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        }
+      ],
+      "startedAt": "2026-03-13T16:52:58.846Z",
+      "finishedAt": "2026-03-13T16:59:06.328Z"
+    },
+    {
+      "vuId": 3,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_03",
+      "totalMs": 372966,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 15252,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 6857,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45392,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14773,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45244,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15038,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45329,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14927,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45303,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15155,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45255,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15151,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45257,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        }
+      ],
+      "startedAt": "2026-03-13T16:52:58.922Z",
+      "finishedAt": "2026-03-13T16:59:11.888Z"
+    },
+    {
+      "vuId": 4,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_04",
+      "totalMs": 367323,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 15110,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 1315,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45352,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14907,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45250,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15049,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45436,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14794,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45415,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14974,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45235,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15034,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45412,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        }
+      ],
+      "startedAt": "2026-03-13T16:52:58.921Z",
+      "finishedAt": "2026-03-13T16:59:06.244Z"
+    },
+    {
+      "vuId": 5,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_05",
+      "totalMs": 367272,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 14543,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 1733,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45448,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14871,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45287,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14941,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45235,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15086,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45433,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14808,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45399,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15065,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45381,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        }
+      ],
+      "startedAt": "2026-03-13T16:52:58.974Z",
+      "finishedAt": "2026-03-13T16:59:06.246Z"
+    },
+    {
+      "vuId": 6,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_06",
+      "totalMs": 367334,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 14539,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 1696,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45471,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14716,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45129,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15254,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45234,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15079,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45440,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14958,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45249,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15036,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45488,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        }
+      ],
+      "startedAt": "2026-03-13T16:52:58.991Z",
+      "finishedAt": "2026-03-13T16:59:06.325Z"
+    },
+    {
+      "vuId": 7,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_07",
+      "totalMs": 367327,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 14523,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 1710,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45470,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14837,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45320,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14941,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45235,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15081,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45440,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14813,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45394,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15066,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45458,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        }
+      ],
+      "startedAt": "2026-03-13T16:52:58.995Z",
+      "finishedAt": "2026-03-13T16:59:06.322Z"
+    },
+    {
+      "vuId": 8,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_08",
+      "totalMs": 344205,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 15510,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 8247,
+          "ok": false
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 4701,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 24790,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45188,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15082,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45372,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15071,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45272,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15119,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45368,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15081,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45345,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "single_screening_submit",
+          "error": "No Business Unit option available"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        }
+      ],
+      "startedAt": "2026-03-13T16:52:59.047Z",
+      "finishedAt": "2026-03-13T16:58:43.252Z"
+    },
+    {
+      "vuId": 9,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_09",
+      "totalMs": 370875,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 15116,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 4962,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45315,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15086,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45251,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15180,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45347,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14781,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45324,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14846,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45222,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15160,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45245,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        }
+      ],
+      "startedAt": "2026-03-13T16:52:59.135Z",
+      "finishedAt": "2026-03-13T16:59:10.010Z"
+    },
+    {
+      "vuId": 10,
+      "cohort": "mixed_single_batch",
+      "username": "perf_load_user_10",
+      "totalMs": 369020,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 15068,
+          "ok": true
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 3378,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45399,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14913,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45384,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14790,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45315,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14935,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45328,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 14897,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45134,
+          "ok": false
+        },
+        {
+          "name": "single_screening_submit",
+          "ms": 15231,
+          "ok": true
+        },
+        {
+          "name": "batch_screening_submit",
+          "ms": 45210,
+          "ok": false
+        }
+      ],
+      "errors": [
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        },
+        {
+          "step": "batch_screening_submit",
+          "error": "Timed out waiting for enabled control"
+        }
+      ],
+      "startedAt": "2026-03-13T16:52:59.105Z",
+      "finishedAt": "2026-03-13T16:59:08.125Z"
+    },
+    {
+      "vuId": 11,
+      "cohort": "refresh_only",
+      "username": "perf_load_user_11",
+      "totalMs": 315835,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 15030,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1783,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1714,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1244,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1220,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1205,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1207,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1209,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1203,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1230,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1234,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1194,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1229,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1199,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1205,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1197,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1204,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1175,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1193,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1208,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1222,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1233,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1211,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1285,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1258,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1208,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1191,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1194,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1193,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1186,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1262,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1218,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1206,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1269,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1199,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1195,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1199,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1198,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1198,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1205,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1183,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1216,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1233,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1194,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1221,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1202,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1244,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1641,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1224,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1252,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1289,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1233,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1266,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1305,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1341,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1340,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1253,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1269,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1282,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1248,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1269,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1256,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1235,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1349,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1454,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1216,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1222,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1234,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1230,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1220,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1262,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1215,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1288,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1240,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1221,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1288,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1258,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1384,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1299,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1218,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1207,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1218,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1228,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1276,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1277,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1241,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1241,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1228,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1279,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1214,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1273,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1292,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1248,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1282,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1290,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1265,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1288,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1244,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1448,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1236,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1282,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T16:52:59.240Z",
+      "finishedAt": "2026-03-13T16:58:15.075Z"
+    },
+    {
+      "vuId": 12,
+      "cohort": "refresh_only",
+      "username": "perf_load_user_12",
+      "totalMs": 315387,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 14940,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1801,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1822,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1301,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1255,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1234,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1222,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1267,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1260,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1244,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1218,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1244,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1277,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1233,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1222,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1262,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1240,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1425,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1212,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1220,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1210,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1203,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1215,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1258,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1208,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1243,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1269,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1199,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1224,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1216,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1235,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1217,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1220,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1211,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1209,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1232,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1209,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1233,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1243,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1204,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1496,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1288,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1282,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1245,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1270,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1256,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1271,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1352,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1295,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1265,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1270,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1210,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1203,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1234,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1221,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1224,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1206,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1220,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1245,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1306,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1280,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1215,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1204,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1212,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1236,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1264,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1235,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1212,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1232,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1202,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1244,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1236,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1263,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1228,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1304,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1351,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1240,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1229,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1228,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1243,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1334,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1256,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1255,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1230,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1275,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1277,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1235,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1243,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1300,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1272,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1275,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1264,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1278,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1289,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1264,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1411,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1279,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1241,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T16:52:59.312Z",
+      "finishedAt": "2026-03-13T16:58:14.699Z"
+    },
+    {
+      "vuId": 13,
+      "cohort": "refresh_only",
+      "username": "perf_load_user_13",
+      "totalMs": 315420,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 14741,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1963,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1915,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1317,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1255,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1234,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1222,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1268,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1245,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1219,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1243,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1232,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1270,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1233,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1222,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1248,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1395,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1220,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1210,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1204,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1216,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1208,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1271,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1200,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1224,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1216,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1234,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1217,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1221,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1210,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1209,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1232,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1209,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1234,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1243,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1206,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1495,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1289,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1283,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1270,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1256,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1255,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1270,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1366,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1287,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1264,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1272,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1207,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1224,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1203,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1234,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1220,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1228,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1224,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1205,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1219,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1245,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1235,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1309,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1279,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1222,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1215,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1203,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1212,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1256,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1240,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1264,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1241,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1235,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1213,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1209,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1235,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1244,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1236,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1236,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1264,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1213,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1303,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1255,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1350,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1241,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1230,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1244,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1334,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1256,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1255,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1229,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1294,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1222,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1262,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1243,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1299,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1271,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1276,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1265,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1278,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1288,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1265,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1411,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1256,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1270,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1241,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T16:52:59.284Z",
+      "finishedAt": "2026-03-13T16:58:14.704Z"
+    },
+    {
+      "vuId": 14,
+      "cohort": "refresh_only",
+      "username": "perf_load_user_14",
+      "totalMs": 318597,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 17927,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1469,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1285,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1281,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1264,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1291,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1258,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1230,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1248,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1255,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1260,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1313,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1407,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1221,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1203,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1224,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1206,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1266,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1271,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1279,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1229,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1236,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1255,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1207,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1219,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1219,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1248,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1230,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1212,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1222,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1213,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1215,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1253,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1234,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1611,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1260,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1276,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1266,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1266,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1305,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1341,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1341,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1272,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1258,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1248,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1269,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1235,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1260,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1347,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1454,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1215,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1222,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1235,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1213,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1230,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1228,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1262,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1215,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1288,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1248,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1252,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1221,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1288,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1252,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1383,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1300,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1218,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1205,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1218,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1228,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1273,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1241,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1260,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1241,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1229,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1275,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1292,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1264,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1282,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1292,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1265,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1262,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1288,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1244,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1448,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1236,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1282,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1229,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1199,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T16:52:59.721Z",
+      "finishedAt": "2026-03-13T16:58:18.318Z"
+    },
+    {
+      "vuId": 15,
+      "cohort": "refresh_only",
+      "username": "perf_load_user_15",
+      "totalMs": 318448,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 17429,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1428,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1286,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1245,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1281,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1265,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1247,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1241,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1291,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1258,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1236,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1230,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1255,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1255,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1313,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1408,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1221,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1203,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1205,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1265,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1271,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1279,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1238,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1229,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1235,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1256,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1207,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1219,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1219,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1250,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1248,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1212,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1233,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1213,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1232,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1217,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1253,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1233,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1261,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1684,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1262,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1265,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1306,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1341,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1340,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1254,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1272,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1258,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1249,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1268,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1257,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1231,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1234,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1237,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1260,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1332,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1453,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1191,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1199,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1216,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1214,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1201,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1216,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1215,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1243,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1213,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1209,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1289,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1242,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1204,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1207,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1191,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1262,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1239,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1226,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1211,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1198,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1187,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1199,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1193,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1178,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1193,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1216,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1213,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1225,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1246,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1190,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1199,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1200,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1209,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1204,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1195,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1195,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1308,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1227,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1194,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1205,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1214,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1224,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1212,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1197,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1267,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1223,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1245,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1229,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1271,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1275,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1274,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1264,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1278,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1289,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1264,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1442,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1259,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1269,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1251,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1241,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1197,
+          "ok": true
+        },
+        {
+          "name": "results_refresh_loop",
+          "ms": 1207,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T16:53:00.260Z",
+      "finishedAt": "2026-03-13T16:58:18.708Z"
+    },
+    {
+      "vuId": 16,
+      "cohort": "idle_only",
+      "username": "perf_load_user_16",
+      "totalMs": 317354,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 17332,
+          "ok": true
+        },
+        {
+          "name": "idle_wait",
+          "ms": 300017,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T16:53:00.319Z",
+      "finishedAt": "2026-03-13T16:58:17.673Z"
+    },
+    {
+      "vuId": 17,
+      "cohort": "idle_only",
+      "username": "perf_load_user_17",
+      "totalMs": 317356,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 17350,
+          "ok": true
+        },
+        {
+          "name": "idle_wait",
+          "ms": 300002,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T16:53:00.284Z",
+      "finishedAt": "2026-03-13T16:58:17.640Z"
+    },
+    {
+      "vuId": 18,
+      "cohort": "idle_only",
+      "username": "perf_load_user_18",
+      "totalMs": 314318,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 14299,
+          "ok": true
+        },
+        {
+          "name": "idle_wait",
+          "ms": 300013,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T16:53:00.285Z",
+      "finishedAt": "2026-03-13T16:58:14.603Z"
+    },
+    {
+      "vuId": 19,
+      "cohort": "idle_only",
+      "username": "perf_load_user_19",
+      "totalMs": 313881,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 13854,
+          "ok": true
+        },
+        {
+          "name": "idle_wait",
+          "ms": 300021,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T16:53:00.319Z",
+      "finishedAt": "2026-03-13T16:58:14.201Z"
+    },
+    {
+      "vuId": 20,
+      "cohort": "idle_only",
+      "username": "perf_load_user_20",
+      "totalMs": 316798,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 16786,
+          "ok": true
+        },
+        {
+          "name": "idle_wait",
+          "ms": 300008,
+          "ok": true
+        }
+      ],
+      "errors": [],
+      "startedAt": "2026-03-13T16:53:00.554Z",
+      "finishedAt": "2026-03-13T16:58:17.352Z"
+    }
+  ]
+}

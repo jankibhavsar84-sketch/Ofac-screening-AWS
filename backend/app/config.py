@@ -56,6 +56,12 @@ class Settings:
     app_version: str
     app_db_path: str
     app_db_url: str
+    db_pool_min_size: int
+    db_pool_max_size: int
+    db_pool_timeout_s: float
+    db_connect_max_attempts: int
+    db_connect_backoff_initial_ms: int
+    db_connect_backoff_max_ms: int
     cors_allow_origins: str
     multipart_max_part_size_bytes: int
 
@@ -91,6 +97,8 @@ class Settings:
     actimize_alert_review_url: str
     actimize_timeout_s: float
     actimize_mock: bool
+    actimize_log_raw_api_io: bool
+    actimize_raw_api_log_max_chars: int
 
     screening_tps: int
     screening_parallel_messages: int
@@ -121,6 +129,12 @@ def load_settings() -> Settings:
         app_version=os.getenv("APP_VERSION", "1.0.0"),
         app_db_path=os.getenv("APP_DB_PATH", "/tmp/screening.db"),
         app_db_url=os.getenv("APP_DB_URL", "").strip(),
+        db_pool_min_size=_to_int(os.getenv("DB_POOL_MIN_SIZE"), 1),
+        db_pool_max_size=_to_int(os.getenv("DB_POOL_MAX_SIZE"), 8),
+        db_pool_timeout_s=_to_float(os.getenv("DB_POOL_TIMEOUT_S"), 5.0),
+        db_connect_max_attempts=_to_int(os.getenv("DB_CONNECT_MAX_ATTEMPTS"), 4),
+        db_connect_backoff_initial_ms=_to_int(os.getenv("DB_CONNECT_BACKOFF_INITIAL_MS"), 100),
+        db_connect_backoff_max_ms=_to_int(os.getenv("DB_CONNECT_BACKOFF_MAX_MS"), 1500),
         cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*"),
         multipart_max_part_size_bytes=_to_bytes(os.getenv("MULTIPART_MAX_PART_SIZE", "25m"), 25 * 1024 * 1024),
         aws_region=os.getenv("AWS_REGION", "us-east-1"),
@@ -161,6 +175,14 @@ def load_settings() -> Settings:
         actimize_alert_review_url=os.getenv("ACTIMIZE_ALERT_REVIEW_URL", "").strip(),
         actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 10.0),
         actimize_mock=_to_bool(os.getenv("ACTIMIZE_MOCK"), False),
+        actimize_log_raw_api_io=_to_bool(
+            os.getenv("ACTIMIZE_LOG_RAW_API_IO"),
+            _to_bool(os.getenv("ACTIMIZE_LOG_RAW_SUCCESS_RESPONSE"), False),
+        ),
+        actimize_raw_api_log_max_chars=_to_int(
+            os.getenv("ACTIMIZE_RAW_API_LOG_MAX_CHARS"),
+            _to_int(os.getenv("ACTIMIZE_RAW_SUCCESS_LOG_MAX_CHARS"), 20000),
+        ),
         screening_tps=_to_int(os.getenv("SCREENING_TPS"), 32),
         screening_parallel_messages=_to_int(os.getenv("SCREENING_PARALLEL_MESSAGES"), 1),
         screening_poll_interval_ms=_to_int(os.getenv("SCREENING_POLL_INTERVAL_MS"), 750),

@@ -1,0 +1,1477 @@
+{
+  "api_access_logs": {
+    "columns": [
+      {
+        "column": "access_id",
+        "type": "bigint",
+        "nullable": "NO",
+        "default": "nextval('api_access_logs_access_id_seq'::regclass)"
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "correlation_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "request_method",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "request_path",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "query_string",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "status_code",
+        "type": "integer",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "duration_ms",
+        "type": "integer",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "client_ip",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_agent",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "auth_state",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "details_json",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16568_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16568_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16568_4_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16568_5_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16568_7_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16568_8_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "access_id",
+        "name": "api_access_logs_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "api_access_logs_pkey",
+        "def": "CREATE UNIQUE INDEX api_access_logs_pkey ON public.api_access_logs USING btree (access_id)"
+      },
+      {
+        "name": "idx_api_access_logs_correlation",
+        "def": "CREATE INDEX idx_api_access_logs_correlation ON public.api_access_logs USING btree (correlation_id, created_at)"
+      },
+      {
+        "name": "idx_api_access_logs_created_at",
+        "def": "CREATE INDEX idx_api_access_logs_created_at ON public.api_access_logs USING btree (created_at)"
+      },
+      {
+        "name": "idx_api_access_logs_path",
+        "def": "CREATE INDEX idx_api_access_logs_path ON public.api_access_logs USING btree (request_path, created_at)"
+      },
+      {
+        "name": "idx_api_access_logs_user",
+        "def": "CREATE INDEX idx_api_access_logs_user ON public.api_access_logs USING btree (user_id, created_at)"
+      }
+    ]
+  },
+  "audit_events": {
+    "columns": [
+      {
+        "column": "event_id",
+        "type": "bigint",
+        "nullable": "NO",
+        "default": "nextval('audit_events_event_id_seq'::regclass)"
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "user_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "action",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "entity_type",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "entity_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "details_json",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16469_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16469_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16469_5_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "event_id",
+        "name": "audit_events_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "audit_events_pkey",
+        "def": "CREATE UNIQUE INDEX audit_events_pkey ON public.audit_events USING btree (event_id)"
+      }
+    ]
+  },
+  "batch_file_uploads": {
+    "columns": [
+      {
+        "column": "upload_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "schedule_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "job_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "file_name",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "s3_bucket",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "s3_key",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "s3_uri",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "file_hash",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "record_count",
+        "type": "integer",
+        "nullable": "NO",
+        "default": "0"
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "is_active",
+        "type": "boolean",
+        "nullable": "NO",
+        "default": "true"
+      },
+      {
+        "column": "queries_s3_bucket",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "queries_s3_key",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "queries_s3_uri",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16477_11_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16477_12_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16477_13_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16477_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16477_6_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "upload_id",
+        "name": "batch_file_uploads_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "batch_file_uploads_pkey",
+        "def": "CREATE UNIQUE INDEX batch_file_uploads_pkey ON public.batch_file_uploads USING btree (upload_id)"
+      }
+    ]
+  },
+  "business_units": {
+    "columns": [
+      {
+        "column": "business_unit_code",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "business_unit_name",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "is_active",
+        "type": "boolean",
+        "nullable": "NO",
+        "default": "true"
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "updated_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16537_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16537_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16537_3_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16537_4_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16537_5_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "business_unit_code",
+        "name": "business_units_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "business_units_pkey",
+        "def": "CREATE UNIQUE INDEX business_units_pkey ON public.business_units USING btree (business_unit_code)"
+      }
+    ]
+  },
+  "daily_schedules": {
+    "columns": [
+      {
+        "column": "schedule_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "batch_name",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "user_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "queries_json",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "screening_types_json",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "mock_screening",
+        "type": "boolean",
+        "nullable": "NO",
+        "default": "false"
+      },
+      {
+        "column": "timezone",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "run_hour",
+        "type": "integer",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "run_minute",
+        "type": "integer",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "last_run_at",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "next_run_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "is_active",
+        "type": "boolean",
+        "nullable": "NO",
+        "default": "true"
+      },
+      {
+        "column": "schedule_frequency",
+        "type": "text",
+        "nullable": "NO",
+        "default": "'DAILY'::text"
+      },
+      {
+        "column": "source_upload_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "source_file_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "source_s3_uri",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "business_unit_code",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_10_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_11_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_13_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_14_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_15_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_5_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_6_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_7_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_8_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16459_9_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "schedule_id",
+        "name": "daily_schedules_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "daily_schedules_pkey",
+        "def": "CREATE UNIQUE INDEX daily_schedules_pkey ON public.daily_schedules USING btree (schedule_id)"
+      },
+      {
+        "name": "idx_daily_schedules_next_run",
+        "def": "CREATE INDEX idx_daily_schedules_next_run ON public.daily_schedules USING btree (next_run_at)"
+      }
+    ]
+  },
+  "external_api_errors": {
+    "columns": [
+      {
+        "column": "error_id",
+        "type": "bigint",
+        "nullable": "NO",
+        "default": "nextval('external_api_errors_error_id_seq'::regclass)"
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "provider",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "operation",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "endpoint",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "status_code",
+        "type": "integer",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "job_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "item_key",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "error_text",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "details_json",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16557_11_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16557_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16557_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16557_3_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "error_id",
+        "name": "external_api_errors_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "external_api_errors_pkey",
+        "def": "CREATE UNIQUE INDEX external_api_errors_pkey ON public.external_api_errors USING btree (error_id)"
+      },
+      {
+        "name": "idx_external_api_errors_created_at",
+        "def": "CREATE INDEX idx_external_api_errors_created_at ON public.external_api_errors USING btree (created_at)"
+      },
+      {
+        "name": "idx_external_api_errors_job_item",
+        "def": "CREATE INDEX idx_external_api_errors_job_item ON public.external_api_errors USING btree (job_id, item_key, created_at)"
+      }
+    ]
+  },
+  "job_items": {
+    "columns": [
+      {
+        "column": "job_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "item_key",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "request_json",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "response_json",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "status",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "error_text",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "updated_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16447_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16447_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16447_3_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16447_5_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16447_7_not_null"
+      },
+      {
+        "type": "FOREIGN KEY",
+        "column": "job_id",
+        "name": "job_items_job_id_fkey"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "job_id",
+        "name": "job_items_pkey"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "item_key",
+        "name": "job_items_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "job_items_pkey",
+        "def": "CREATE UNIQUE INDEX job_items_pkey ON public.job_items USING btree (job_id, item_key)"
+      }
+    ]
+  },
+  "job_metadata": {
+    "columns": [
+      {
+        "column": "job_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "mode",
+        "type": "text",
+        "nullable": "NO",
+        "default": "'BATCH'::text"
+      },
+      {
+        "column": "screening_types_json",
+        "type": "text",
+        "nullable": "NO",
+        "default": "'[]'::text"
+      },
+      {
+        "column": "mock_screening",
+        "type": "boolean",
+        "nullable": "NO",
+        "default": "false"
+      },
+      {
+        "column": "batch_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "file_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "daily_screening",
+        "type": "boolean",
+        "nullable": "NO",
+        "default": "false"
+      },
+      {
+        "column": "schedule_frequency",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "daily_schedule_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "query_count",
+        "type": "integer",
+        "nullable": "NO",
+        "default": "0"
+      },
+      {
+        "column": "deferred_until",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "business_unit_code",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16523_10_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16523_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16523_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16523_3_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16523_4_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16523_7_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "job_id",
+        "name": "job_metadata_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "job_metadata_pkey",
+        "def": "CREATE UNIQUE INDEX job_metadata_pkey ON public.job_metadata USING btree (job_id)"
+      }
+    ]
+  },
+  "job_schedule_notifications": {
+    "columns": [
+      {
+        "column": "job_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "schedule_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16501_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16501_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16501_3_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "job_id",
+        "name": "job_schedule_notifications_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "job_schedule_notifications_pkey",
+        "def": "CREATE UNIQUE INDEX job_schedule_notifications_pkey ON public.job_schedule_notifications USING btree (job_id)"
+      }
+    ]
+  },
+  "jobs": {
+    "columns": [
+      {
+        "column": "job_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "status",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "updated_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "total_items",
+        "type": "integer",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "source_schedule_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "source_upload_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16440_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16440_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16440_3_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16440_4_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16440_5_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "job_id",
+        "name": "jobs_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "jobs_pkey",
+        "def": "CREATE UNIQUE INDEX jobs_pkey ON public.jobs USING btree (job_id)"
+      }
+    ]
+  },
+  "schedule_notifications": {
+    "columns": [
+      {
+        "column": "notification_id",
+        "type": "bigint",
+        "nullable": "NO",
+        "default": "nextval('schedule_notifications_notification_id_seq'::regclass)"
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "user_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "email",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "schedule_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "job_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "title",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "message",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "summary_json",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16509_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16509_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16509_8_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16509_9_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "notification_id",
+        "name": "schedule_notifications_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "idx_notifications_email",
+        "def": "CREATE INDEX idx_notifications_email ON public.schedule_notifications USING btree (email, created_at)"
+      },
+      {
+        "name": "idx_notifications_user",
+        "def": "CREATE INDEX idx_notifications_user ON public.schedule_notifications USING btree (user_id, created_at)"
+      },
+      {
+        "name": "schedule_notifications_pkey",
+        "def": "CREATE UNIQUE INDEX schedule_notifications_pkey ON public.schedule_notifications USING btree (notification_id)"
+      }
+    ]
+  },
+  "schedule_record_state": {
+    "columns": [
+      {
+        "column": "schedule_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "record_hash",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "first_seen_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "last_screened_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "last_job_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16486_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16486_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16486_3_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16486_4_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "schedule_id",
+        "name": "schedule_record_state_pkey"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "record_hash",
+        "name": "schedule_record_state_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "schedule_record_state_pkey",
+        "def": "CREATE UNIQUE INDEX schedule_record_state_pkey ON public.schedule_record_state USING btree (schedule_id, record_hash)"
+      }
+    ]
+  },
+  "schedule_subscriptions": {
+    "columns": [
+      {
+        "column": "subscription_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "schedule_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "user_id",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "user_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "email",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "is_active",
+        "type": "boolean",
+        "nullable": "NO",
+        "default": "true"
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "updated_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16493_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16493_2_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16493_5_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16493_6_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16493_7_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16493_8_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "subscription_id",
+        "name": "schedule_subscriptions_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "idx_schedule_subscriptions_unique",
+        "def": "CREATE UNIQUE INDEX idx_schedule_subscriptions_unique ON public.schedule_subscriptions USING btree (schedule_id, email)"
+      },
+      {
+        "name": "schedule_subscriptions_pkey",
+        "def": "CREATE UNIQUE INDEX schedule_subscriptions_pkey ON public.schedule_subscriptions USING btree (subscription_id)"
+      }
+    ]
+  },
+  "user_business_units": {
+    "columns": [
+      {
+        "column": "user_id",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "user_name",
+        "type": "text",
+        "nullable": "YES",
+        "default": null
+      },
+      {
+        "column": "business_unit_code",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "is_active",
+        "type": "boolean",
+        "nullable": "NO",
+        "default": "true"
+      },
+      {
+        "column": "created_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      },
+      {
+        "column": "updated_at",
+        "type": "text",
+        "nullable": "NO",
+        "default": null
+      }
+    ],
+    "constraints": [
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16545_1_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16545_3_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16545_4_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16545_5_not_null"
+      },
+      {
+        "type": "CHECK",
+        "column": null,
+        "name": "2200_16545_6_not_null"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "user_id",
+        "name": "user_business_units_pkey"
+      },
+      {
+        "type": "PRIMARY KEY",
+        "column": "business_unit_code",
+        "name": "user_business_units_pkey"
+      }
+    ],
+    "indexes": [
+      {
+        "name": "idx_user_business_units_code",
+        "def": "CREATE INDEX idx_user_business_units_code ON public.user_business_units USING btree (business_unit_code, is_active)"
+      },
+      {
+        "name": "idx_user_business_units_user",
+        "def": "CREATE INDEX idx_user_business_units_user ON public.user_business_units USING btree (user_id, is_active)"
+      },
+      {
+        "name": "user_business_units_pkey",
+        "def": "CREATE UNIQUE INDEX user_business_units_pkey ON public.user_business_units USING btree (user_id, business_unit_code)"
+      }
+    ]
+  }
+}

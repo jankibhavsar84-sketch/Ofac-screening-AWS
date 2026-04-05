@@ -1,0 +1,334 @@
+{
+  "queueUrl": "https://sqs.us-east-2.amazonaws.com/279930135954/screening-requests",
+  "samples": [
+    {
+      "timestamp": "2026-03-22T19:40:36.962311+00:00",
+      "elapsed_s": 1.3,
+      "visible": 486,
+      "inflight": 60,
+      "total": 546
+    },
+    {
+      "timestamp": "2026-03-22T19:40:58.242391+00:00",
+      "elapsed_s": 22.6,
+      "visible": 486,
+      "inflight": 60,
+      "total": 546
+    },
+    {
+      "timestamp": "2026-03-22T19:41:19.531542+00:00",
+      "elapsed_s": 43.9,
+      "visible": 11156,
+      "inflight": 39,
+      "total": 11195
+    },
+    {
+      "timestamp": "2026-03-22T19:41:40.802768+00:00",
+      "elapsed_s": 65.1,
+      "visible": 2201,
+      "inflight": 56,
+      "total": 2257
+    },
+    {
+      "timestamp": "2026-03-22T19:42:02.097996+00:00",
+      "elapsed_s": 86.4,
+      "visible": 18151,
+      "inflight": 60,
+      "total": 18211
+    },
+    {
+      "timestamp": "2026-03-22T19:42:23.354159+00:00",
+      "elapsed_s": 107.7,
+      "visible": 18286,
+      "inflight": 46,
+      "total": 18332
+    },
+    {
+      "timestamp": "2026-03-22T19:42:44.978604+00:00",
+      "elapsed_s": 129.3,
+      "visible": 17401,
+      "inflight": 42,
+      "total": 17443
+    },
+    {
+      "timestamp": "2026-03-22T19:43:06.303398+00:00",
+      "elapsed_s": 150.6,
+      "visible": 17041,
+      "inflight": 51,
+      "total": 17092
+    },
+    {
+      "timestamp": "2026-03-22T19:43:27.542553+00:00",
+      "elapsed_s": 171.9,
+      "visible": 16906,
+      "inflight": 46,
+      "total": 16952
+    },
+    {
+      "timestamp": "2026-03-22T19:43:48.837793+00:00",
+      "elapsed_s": 193.2,
+      "visible": 16261,
+      "inflight": 42,
+      "total": 16303
+    },
+    {
+      "timestamp": "2026-03-22T19:44:10.090733+00:00",
+      "elapsed_s": 214.4,
+      "visible": 16666,
+      "inflight": 38,
+      "total": 16704
+    },
+    {
+      "timestamp": "2026-03-22T19:44:31.423146+00:00",
+      "elapsed_s": 235.8,
+      "visible": 15436,
+      "inflight": 52,
+      "total": 15488
+    },
+    {
+      "timestamp": "2026-03-22T19:44:52.692802+00:00",
+      "elapsed_s": 257.0,
+      "visible": 15181,
+      "inflight": 49,
+      "total": 15230
+    },
+    {
+      "timestamp": "2026-03-22T19:45:13.987925+00:00",
+      "elapsed_s": 278.3,
+      "visible": 15031,
+      "inflight": 51,
+      "total": 15082
+    },
+    {
+      "timestamp": "2026-03-22T19:45:35.227116+00:00",
+      "elapsed_s": 299.6,
+      "visible": 14686,
+      "inflight": 36,
+      "total": 14722
+    },
+    {
+      "timestamp": "2026-03-22T19:45:56.587981+00:00",
+      "elapsed_s": 320.9,
+      "visible": 13876,
+      "inflight": 58,
+      "total": 13934
+    },
+    {
+      "timestamp": "2026-03-22T19:46:17.978912+00:00",
+      "elapsed_s": 342.3,
+      "visible": 13471,
+      "inflight": 60,
+      "total": 13531
+    },
+    {
+      "timestamp": "2026-03-22T19:46:39.253049+00:00",
+      "elapsed_s": 363.6,
+      "visible": 13141,
+      "inflight": 34,
+      "total": 13175
+    },
+    {
+      "timestamp": "2026-03-22T19:47:00.550122+00:00",
+      "elapsed_s": 384.9,
+      "visible": 13591,
+      "inflight": 50,
+      "total": 13641
+    },
+    {
+      "timestamp": "2026-03-22T19:47:21.850328+00:00",
+      "elapsed_s": 406.2,
+      "visible": 12436,
+      "inflight": 42,
+      "total": 12478
+    },
+    {
+      "timestamp": "2026-03-22T19:47:43.114040+00:00",
+      "elapsed_s": 427.4,
+      "visible": 12061,
+      "inflight": 44,
+      "total": 12105
+    },
+    {
+      "timestamp": "2026-03-22T19:48:04.413978+00:00",
+      "elapsed_s": 448.7,
+      "visible": 12061,
+      "inflight": 44,
+      "total": 12105
+    },
+    {
+      "timestamp": "2026-03-22T19:48:25.800518+00:00",
+      "elapsed_s": 470.1,
+      "visible": 11251,
+      "inflight": 52,
+      "total": 11303
+    },
+    {
+      "timestamp": "2026-03-22T19:48:47.064193+00:00",
+      "elapsed_s": 491.4,
+      "visible": 10846,
+      "inflight": 54,
+      "total": 10900
+    },
+    {
+      "timestamp": "2026-03-22T19:49:08.345653+00:00",
+      "elapsed_s": 512.7,
+      "visible": 10471,
+      "inflight": 48,
+      "total": 10519
+    },
+    {
+      "timestamp": "2026-03-22T19:49:29.660671+00:00",
+      "elapsed_s": 534.0,
+      "visible": 10051,
+      "inflight": 55,
+      "total": 10106
+    },
+    {
+      "timestamp": "2026-03-22T19:49:50.935358+00:00",
+      "elapsed_s": 555.3,
+      "visible": 9991,
+      "inflight": 50,
+      "total": 10041
+    },
+    {
+      "timestamp": "2026-03-22T19:50:12.226975+00:00",
+      "elapsed_s": 576.6,
+      "visible": 10351,
+      "inflight": 60,
+      "total": 10411
+    },
+    {
+      "timestamp": "2026-03-22T19:50:33.478164+00:00",
+      "elapsed_s": 597.8,
+      "visible": 9241,
+      "inflight": 34,
+      "total": 9275
+    },
+    {
+      "timestamp": "2026-03-22T19:50:54.756566+00:00",
+      "elapsed_s": 619.1,
+      "visible": 8656,
+      "inflight": 53,
+      "total": 8709
+    },
+    {
+      "timestamp": "2026-03-22T19:51:16.001235+00:00",
+      "elapsed_s": 640.3,
+      "visible": 8446,
+      "inflight": 51,
+      "total": 8497
+    },
+    {
+      "timestamp": "2026-03-22T19:51:37.273741+00:00",
+      "elapsed_s": 661.6,
+      "visible": 7846,
+      "inflight": 39,
+      "total": 7885
+    },
+    {
+      "timestamp": "2026-03-22T19:51:58.572239+00:00",
+      "elapsed_s": 682.9,
+      "visible": 7996,
+      "inflight": 59,
+      "total": 8055
+    },
+    {
+      "timestamp": "2026-03-22T19:52:19.887709+00:00",
+      "elapsed_s": 704.2,
+      "visible": 6976,
+      "inflight": 43,
+      "total": 7019
+    },
+    {
+      "timestamp": "2026-03-22T19:52:41.156736+00:00",
+      "elapsed_s": 725.5,
+      "visible": 6856,
+      "inflight": 36,
+      "total": 6892
+    },
+    {
+      "timestamp": "2026-03-22T19:53:02.424095+00:00",
+      "elapsed_s": 746.8,
+      "visible": 6676,
+      "inflight": 28,
+      "total": 6704
+    },
+    {
+      "timestamp": "2026-03-22T19:53:23.700377+00:00",
+      "elapsed_s": 768.0,
+      "visible": 5686,
+      "inflight": 51,
+      "total": 5737
+    },
+    {
+      "timestamp": "2026-03-22T19:53:45.483576+00:00",
+      "elapsed_s": 789.8,
+      "visible": 5851,
+      "inflight": 53,
+      "total": 5904
+    },
+    {
+      "timestamp": "2026-03-22T19:54:06.732571+00:00",
+      "elapsed_s": 811.1,
+      "visible": 5266,
+      "inflight": 58,
+      "total": 5324
+    },
+    {
+      "timestamp": "2026-03-22T19:54:28.017601+00:00",
+      "elapsed_s": 832.3,
+      "visible": 4501,
+      "inflight": 52,
+      "total": 4553
+    },
+    {
+      "timestamp": "2026-03-22T19:54:49.291810+00:00",
+      "elapsed_s": 853.6,
+      "visible": 4891,
+      "inflight": 43,
+      "total": 4934
+    },
+    {
+      "timestamp": "2026-03-22T19:55:10.556435+00:00",
+      "elapsed_s": 874.9,
+      "visible": 4681,
+      "inflight": 25,
+      "total": 4706
+    },
+    {
+      "timestamp": "2026-03-22T19:55:31.812600+00:00",
+      "elapsed_s": 896.1,
+      "visible": 3331,
+      "inflight": 38,
+      "total": 3369
+    },
+    {
+      "timestamp": "2026-03-22T19:55:53.081021+00:00",
+      "elapsed_s": 917.4,
+      "visible": 3001,
+      "inflight": 60,
+      "total": 3061
+    },
+    {
+      "timestamp": "2026-03-22T19:56:15.329874+00:00",
+      "elapsed_s": 939.7,
+      "visible": 3391,
+      "inflight": 43,
+      "total": 3434
+    },
+    {
+      "timestamp": "2026-03-22T20:03:48.074492+00:00",
+      "elapsed_s": 1392.4,
+      "visible": 0,
+      "inflight": 0,
+      "total": 0
+    },
+    {
+      "timestamp": "2026-03-22T20:04:09.478200+00:00",
+      "elapsed_s": 1413.8,
+      "visible": 0,
+      "inflight": 0,
+      "total": 0
+    }
+  ]
+}

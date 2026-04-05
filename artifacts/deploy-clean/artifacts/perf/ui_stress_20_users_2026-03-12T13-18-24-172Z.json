@@ -1,0 +1,1781 @@
+{
+  "summary": {
+    "baseUrl": "http://localhost:8080",
+    "vus": 20,
+    "iterationsPerVu": 3,
+    "startedAt": "2026-03-12T13:17:36.572Z",
+    "finishedAt": "2026-03-12T13:18:24.171Z",
+    "durationMs": 47599,
+    "completedVus": 20,
+    "successfulVus": 0,
+    "failedVus": 20,
+    "fatalErrors": [],
+    "totalSteps": 260,
+    "avgStepMs": 3174.62,
+    "p95StepMs": 10065,
+    "p99StepMs": 10998,
+    "maxStepMs": 11351
+  },
+  "completed": [
+    {
+      "vuId": 1,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:17:39.853Z",
+      "finishedAt": "2026-03-12T13:18:23.903Z",
+      "totalMs": 44050,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 9790,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10066,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 607,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 662,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 28,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10033,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 203,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 432,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 10,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10026,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 244,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 564,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 20,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 2,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:17:39.851Z",
+      "finishedAt": "2026-03-12T13:18:23.862Z",
+      "totalMs": 44011,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 11351,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10057,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 209,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 391,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 11,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10024,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 185,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 310,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10018,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 557,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 467,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 12,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    17 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 3,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:17:39.938Z",
+      "finishedAt": "2026-03-12T13:18:18.191Z",
+      "totalMs": 38253,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 6787,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10075,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 184,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 214,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10021,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 183,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 223,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10020,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 185,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 221,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 11,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    16 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 4,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:17:39.425Z",
+      "finishedAt": "2026-03-12T13:18:18.564Z",
+      "totalMs": 39139,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7269,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10061,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 175,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 413,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 5,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10007,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 179,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 326,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 8,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10022,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 177,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 359,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 5,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    16 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    19 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 5,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:17:40.007Z",
+      "finishedAt": "2026-03-12T13:18:24.059Z",
+      "totalMs": 44052,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 9573,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10065,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 281,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 539,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 18,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10071,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 192,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 332,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 78,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10014,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 208,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 367,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 27,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 6,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:17:39.995Z",
+      "finishedAt": "2026-03-12T13:18:21.398Z",
+      "totalMs": 41403,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 9607,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10057,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 289,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 312,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 33,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10041,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 179,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 245,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 12,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10012,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 181,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 247,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 10,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 7,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:17:39.848Z",
+      "finishedAt": "2026-03-12T13:18:19.099Z",
+      "totalMs": 39251,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7175,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10228,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 210,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 355,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 12,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10011,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 176,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 326,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 7,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10012,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 183,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 359,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 13,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    15 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 8,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:17:40.002Z",
+      "finishedAt": "2026-03-12T13:18:23.964Z",
+      "totalMs": 43962,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 9620,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10056,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 273,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 445,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 19,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10060,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 183,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 308,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 19,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10019,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 187,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 357,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 31,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 9,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:17:40.005Z",
+      "finishedAt": "2026-03-12T13:18:21.246Z",
+      "totalMs": 41241,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 9571,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10053,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 252,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 313,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 13,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10049,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 183,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 241,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 4,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10021,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 179,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 228,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 5,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 10,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:17:40.006Z",
+      "finishedAt": "2026-03-12T13:18:24.103Z",
+      "totalMs": 44097,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 9637,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10065,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 1026,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 582,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 15,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10025,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 212,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 411,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 19,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10019,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 597,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 738,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 10,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    15 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 11,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:17:39.898Z",
+      "finishedAt": "2026-03-12T13:18:18.940Z",
+      "totalMs": 39042,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 7322,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10031,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 208,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 321,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 9,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10012,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 182,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 277,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 8,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10015,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 192,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 303,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 5,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    15 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 12,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:17:39.423Z",
+      "finishedAt": "2026-03-12T13:18:17.861Z",
+      "totalMs": 38438,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 6998,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10050,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 185,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 242,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 6,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10014,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 182,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 229,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 6,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10015,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 180,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 217,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 4,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    15 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 13,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:17:40.018Z",
+      "finishedAt": "2026-03-12T13:18:24.047Z",
+      "totalMs": 44029,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 10998,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10016,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 216,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 499,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 16,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10016,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 212,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 354,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 4,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10026,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 270,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 528,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 18,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 14,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:17:39.900Z",
+      "finishedAt": "2026-03-12T13:18:24.010Z",
+      "totalMs": 44110,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 8854,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10829,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 277,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 667,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 121,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10074,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 203,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 410,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 40,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10022,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 231,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 529,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 16,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 15,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:17:40.161Z",
+      "finishedAt": "2026-03-12T13:18:23.779Z",
+      "totalMs": 43618,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 11023,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10031,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 217,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 326,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 14,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10010,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 213,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 222,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 11,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10013,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 253,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 327,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 16,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 16,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:17:40.410Z",
+      "finishedAt": "2026-03-12T13:18:24.171Z",
+      "totalMs": 43761,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 9174,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10061,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 310,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 903,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 23,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10020,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 300,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 511,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 23,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10022,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 260,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 669,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 59,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 17,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:17:40.681Z",
+      "finishedAt": "2026-03-12T13:18:23.941Z",
+      "totalMs": 43260,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 8870,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10077,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 252,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 731,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 54,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10069,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 198,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 367,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 40,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10025,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 207,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 459,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 25,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 18,
+      "username": "screening.viewer",
+      "startedAt": "2026-03-12T13:17:40.310Z",
+      "finishedAt": "2026-03-12T13:18:21.479Z",
+      "totalMs": 41169,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 9313,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10041,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 304,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 412,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 28,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10070,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 179,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 226,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 10,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10012,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 171,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 222,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 11,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 19,
+      "username": "screening.admin",
+      "startedAt": "2026-03-12T13:17:40.726Z",
+      "finishedAt": "2026-03-12T13:18:23.738Z",
+      "totalMs": 43012,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 8896,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10093,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 280,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 950,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 30,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10028,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 229,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 480,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 39,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10020,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 289,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 638,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 49,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    },
+    {
+      "vuId": 20,
+      "username": "screening.analyst",
+      "startedAt": "2026-03-12T13:17:40.500Z",
+      "finishedAt": "2026-03-12T13:18:24.137Z",
+      "totalMs": 43637,
+      "steps": [
+        {
+          "name": "login",
+          "ms": 9101,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10061,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 310,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 689,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 77,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10034,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 191,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 454,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 24,
+          "ok": true
+        },
+        {
+          "name": "refresh_results",
+          "ms": 10018,
+          "ok": false
+        },
+        {
+          "name": "search_results",
+          "ms": 221,
+          "ok": true
+        },
+        {
+          "name": "switch_tabs",
+          "ms": 570,
+          "ok": true
+        },
+        {
+          "name": "read_dashboard_cards",
+          "ms": 56,
+          "ok": true
+        }
+      ],
+      "errors": [
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        },
+        {
+          "step": "refresh_results",
+          "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /refreshing? screening results/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"iconBtn\" aria-busy=\"true\" title=\"Refreshing screening results...\" aria-label=\"Refreshing screening results\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    18 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ]
+    }
+  ]
+}

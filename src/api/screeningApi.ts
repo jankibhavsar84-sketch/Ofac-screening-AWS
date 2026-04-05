@@ -95,6 +95,33 @@ export type AuditEventPage = {
 
 export type SubmissionHistoryEntry = Record<string, unknown>;
 
+export type ScreeningSummaryCounts = {
+  total: number;
+  clear: number;
+  potential: number;
+  pending: number;
+  failed: number;
+  match: number;
+};
+
+export type RecentScreeningResultRow = {
+  id: string;
+  entity: string;
+  partyKey: string;
+  mode: "SINGLE" | "BATCH";
+  type: string;
+  country: string;
+  engineStatus: string;
+  manualMatch: boolean;
+  uiStatus: string;
+  matchingScore: number | null;
+  submittedAt: string;
+  batchSubmissionId: string | null;
+  dailyScheduleId: string | null;
+  dailyScheduleActive: boolean;
+  raw: Record<string, unknown>;
+};
+
 export type BusinessUnit = {
   business_unit_code: string;
   business_unit_name: string;
@@ -138,6 +165,7 @@ export type BatchUploadAccepted = {
   file_name: string;
   s3_uri?: string | null;
   schedule_frequency?: string | null;
+  row_meta?: { key: string; display_name: string; ui_type: string }[];
 };
 
 export type JobProgress = {
@@ -241,7 +269,6 @@ function buildBatchBody(
 
 type BatchUploadRequest = {
   file: File;
-  queries: Record<string, EntityExample>;
   screeningTypes?: string[];
   batchName: string;
   dailyScreening?: boolean;
@@ -260,7 +287,6 @@ export async function uploadBatchAndSubmitJob(payload: BatchUploadRequest): Prom
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
   const form = new FormData();
   form.set("file", payload.file);
-  form.set("queries_json", JSON.stringify(payload.queries));
   form.set("screening_types_json", JSON.stringify(payload.screeningTypes ?? []));
   form.set("batch_name", payload.batchName);
   form.set("daily_screening", payload.dailyScreening ? "true" : "false");
@@ -689,4 +715,40 @@ export async function listScreeningSubmissions(limit = 200): Promise<SubmissionH
   }
 
   throw new Error("Failed to load screening submissions: Request failed");
+}
+
+export async function getScreeningSummary(): Promise<ScreeningSummaryCounts> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/screenings/summary`, window.location.origin);
+  const resp = await fetch(url.toString(), {
+    headers: withAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load screening summary: ${await parseApiError(resp)}`);
+  }
+  const parsed = (await resp.json()) as Partial<ScreeningSummaryCounts>;
+  return {
+    total: Number(parsed.total ?? 0),
+    clear: Number(parsed.clear ?? 0),
+    potential: Number(parsed.potential ?? 0),
+    pending: Number(parsed.pending ?? 0),
+    failed: Number(parsed.failed ?? 0),
+    match: Number(parsed.match ?? 0),
+  };
+}
+
+export async function listRecentScreeningResults(limit = 300): Promise<RecentScreeningResultRow[]> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/screenings/results`, window.location.origin);
+  url.searchParams.set("limit", String(limit));
+  const resp = await fetch(url.toString(), {
+    headers: withAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load screening results: ${await parseApiError(resp)}`);
+  }
+  const parsed = (await resp.json()) as unknown;
+  return Array.isArray(parsed) ? (parsed as RecentScreeningResultRow[]) : [];
 }

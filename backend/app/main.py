@@ -8,7 +8,7 @@ from typing import Any
 from urllib.parse import parse_qsl
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.responses import Response
@@ -26,7 +26,6 @@ from .models import (
     BusinessUnitUpdateRequest,
     BusinessUnitUpsertRequest,
     DailyScheduleInfo,
-    EntityExample,
     EntityMatchResponse,
     JobStatus,
     MatchJobAccepted,
@@ -450,7 +449,6 @@ async def create_batch_job_with_upload(
     if not isinstance(file, StarletteUploadFile) or not str(getattr(file, "filename", "") or "").strip():
         raise HTTPException(status_code=400, detail="file is required")
 
-    queries_json = _form_required_str("queries_json")
     screening_types_json = _form_str("screening_types_json", "[]") or "[]"
     batch_name = _form_str("batch_name", "") or ""
     daily_screening = _form_bool("daily_screening", False)
@@ -468,14 +466,6 @@ async def create_batch_job_with_upload(
         raise HTTPException(status_code=403, detail="Only Compliance/Admin can enable scheduled screening")
 
     try:
-        parsed_queries = json.loads(queries_json)
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=400, detail=f"Invalid queries_json: {exc}") from exc
-    if not isinstance(parsed_queries, dict) or not parsed_queries:
-        raise HTTPException(status_code=400, detail="queries_json must be a non-empty object")
-    _validate_batch_upload_queries(parsed_queries)
-
-    try:
         parsed_types = json.loads(screening_types_json)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Invalid screening_types_json: {exc}") from exc
@@ -486,6 +476,17 @@ async def create_batch_job_with_upload(
     body = await file.read()
     if not body:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    try:
+        from .batch_upload_parser import BatchUploadValidationError, parse_batch_upload
+
+        parsed_upload = parse_batch_upload(file.filename, body)
+    except BatchUploadValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    parsed_queries = parsed_upload.queries
+    queries_json = json.dumps(
+        {item_key: query.model_dump(mode="json") for item_key, query in parsed_queries.items()},
+        separators=(",", ":"),
+    )
 
     upload_id = str(uuid4())
     file_hash = hashlib.sha256(body).hexdigest()
@@ -531,12 +532,8 @@ async def create_batch_job_with_upload(
 
     # Scheduled/daily batch jobs should not execute immediately; preserve existing behavior.
     if daily_screening or (schedule_id or "").strip():
-        queries: dict[str, EntityExample] = {}
-        for item_key, value in parsed_queries.items():
-            queries[str(item_key)] = EntityExample.model_validate(value)
-
         payload = MatchJobRequest(
-            queries=queries,
+            queries=parsed_queries,
             screening_types=screening_types,
             mock_screening=bool(mock_screening),
             business_unit_code=_normalize_business_unit_code(business_unit_code),
@@ -678,6 +675,14 @@ async def create_batch_job_with_upload(
         file_name=file.filename,
         s3_uri=s3_info.get("s3_uri"),
         schedule_frequency=schedule_frequency if daily_screening else None,
+        row_meta=[
+            {
+                "key": row.key,
+                "display_name": row.display_name,
+                "ui_type": row.ui_type,
+            }
+            for row in parsed_upload.row_meta
+        ],
     )
 
 
@@ -815,6 +820,30 @@ def list_screening_submissions(
     svc: ScreeningService = Depends(get_service),
 ) -> list[dict[str, Any]]:
     return svc.list_user_submissions(
+        user_id=principal.user_id,
+        user_name=_preferred_actor_name(principal),
+        limit=limit,
+    )
+
+
+@app.get("/api/v1/screenings/summary", response_model=dict[str, int])
+def get_screening_summary(
+    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> dict[str, int]:
+    return svc.get_user_result_summary(
+        user_id=principal.user_id,
+        user_name=_preferred_actor_name(principal),
+    )
+
+
+@app.get("/api/v1/screenings/results", response_model=list[dict[str, Any]])
+def list_recent_screening_results(
+    limit: int = Query(default=300, ge=1, le=300),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[dict[str, Any]]:
+    return svc.list_user_recent_results(
         user_id=principal.user_id,
         user_name=_preferred_actor_name(principal),
         limit=limit,

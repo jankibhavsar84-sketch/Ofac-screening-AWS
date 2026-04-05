@@ -4,28 +4,22 @@ import { useAuth } from "react-oidc-context";
 import { z } from "zod";
 import { appEnv } from "../config/env";
 import {
-  submissionsState,
-  latestResultState,
   screeningWorkspaceState,
   screeningResultsMetaState,
-  type Submission,
-  type BatchSubmission,
-  type SingleSubmission,
   type ScreeningWorkspaceState,
 } from "../state/submissions";
 import {
-  listDailySchedules,
+  getScreeningSummary,
   listMyBusinessUnits,
-  listScreeningSubmissions,
+  listRecentScreeningResults,
   matchSync,
   uploadBatchAndSubmitJob,
-  waitForScreeningJob,
   type BusinessUnit,
   type EntityExample,
-  type EntityMatches,
+  type RecentScreeningResultRow,
+  type ScreeningSummaryCounts,
 } from "../api/screeningApi";
 import { buildIdentity, getPrimaryRole, hasPermission } from "../auth/claims";
-import { parseCsv, parseExcel } from "../utils/batchParse";
 import { CountryAutosuggest } from "../components/CountryAutoSuggest";
 import { IsoDateInput } from "../components/IsoDateInput";
 
@@ -58,6 +52,11 @@ type StatusFilter = "All Statuses" | "Clear" | "Potential Match" | "Pending" | "
 type TypeFilter = "All Types" | UiType;
 type ResultSortKey = "entity" | "mode" | "type" | "country" | "status" | "score" | "submittedAt";
 type SelectOption<T extends string> = { value: T; label: string; icon?: React.ReactNode };
+
+const RECENT_RESULTS_CACHE_MS = 2 * 60 * 1000;
+const RECENT_RESULTS_LIMIT = 300;
+const RECENT_RESULT_ROWS_STORAGE_KEY = "ofac-screening:recent-result-rows";
+const RECENT_RESULT_SUMMARY_STORAGE_KEY = "ofac-screening:recent-result-summary";
 
 function FormSelect<T extends string>({
   value,
@@ -136,6 +135,34 @@ function FormSelect<T extends string>({
 
 function safeTrim(v: string) {
   return (v ?? "").trim();
+}
+
+function readLocalStorageJson<T>(storageKey: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLocalStorageJson(storageKey: string, value: unknown) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(value));
+  } catch {
+    // Ignore storage quota and browser policy errors.
+  }
+}
+
+function clearLocalStorageKey(storageKey: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(storageKey);
+  } catch {
+    // Ignore browser policy errors.
+  }
 }
 
 function formatSubmittedDateTime(value: unknown): string {
@@ -338,223 +365,98 @@ function buildEntityExampleFromNameItem(item: NameItem): EntityExample {
   return { schema, properties: props };
 }
 
-function parseCommaValues(input: unknown): string[] {
-  const value = safeTrim(String(input ?? ""));
-  if (!value) return [];
-  return value
-    .split(",")
-    .map((token) => safeTrim(token))
-    .filter(Boolean);
-}
-
-function buildStructuredName(first: string, middle: string, last: string, maiden: string, fullName: string): string {
-  const split = [safeTrim(first), safeTrim(middle), safeTrim(last), safeTrim(maiden)].filter(Boolean).join(" ");
-  return safeTrim(fullName) || split;
-}
-
-function buildAddressLine(
-  line1: unknown,
-  line2: unknown,
-  city: unknown,
-  stateProvince: unknown,
-  zipCode: unknown,
-  country: unknown
-): string {
-  return [line1, line2, city, stateProvince, zipCode, country]
-    .map((v) => safeTrim(String(v ?? "")))
-    .filter(Boolean)
-    .join(", ");
-}
-
-function parseBatchRows(rows: any[]): {
-  queries: Record<string, EntityExample>;
-  rowMeta: { key: string; displayName: string; uiType: UiType }[]; 
-  validationErrors: string[];
-} {
-  const queries: Record<string, EntityExample> = {};
-  const rowMeta: { key: string; displayName: string; uiType: UiType }[] = [];
-  const validationErrors: string[] = [];
-  const seenPartyKeys = new Set<string>();
-
-  rows.forEach((r, idx) => {
-    const rowNumber = idx + 2; // 1-based + header row
-    const partyKey = safeTrim(String(r.partyKey || ""));
-    const normalizedPartyKey = partyKey.toUpperCase();
-    const missingPartyKey = !partyKey;
-    const duplicatePartyKey = Boolean(partyKey && seenPartyKeys.has(normalizedPartyKey));
-
-    if (missingPartyKey) {
-      validationErrors.push(`Row ${rowNumber}: PartyKey is required.`);
-    } else if (duplicatePartyKey) {
-      validationErrors.push(`Row ${rowNumber}: Duplicate PartyKey '${partyKey}'. PartyKey must be unique within the file.`);
-    } else {
-      seenPartyKeys.add(normalizedPartyKey);
-    }
-
-    const rawPartyType = safeTrim(String(r.partyType || ""));
-    const normalizedPartyType = rawPartyType.toUpperCase();
-    const hasLegacyCustomerType = Boolean(safeTrim(String(r.customerTypeRaw || "")));
-    const customerType = r.customerType === "Entity" ? "Entity" : "Person";
-
-    let uiType: UiType;
-    if (normalizedPartyType === "I") uiType = "Individual";
-    else if (normalizedPartyType === "E") uiType = "Organization";
-    else if (rawPartyType) uiType = "Unknown";
-    else if (hasLegacyCustomerType) uiType = customerType === "Entity" ? "Organization" : "Individual";
-    else if (safeTrim(String(r.firstName || "")) || safeTrim(String(r.lastName || ""))) uiType = "Individual";
-    else if (safeTrim(String(r.fullName || ""))) uiType = "Organization";
-    else uiType = "Unknown";
-
-    const rawGender = safeTrim(String(r.gender || ""));
-    const normalizedGender = rawGender.toUpperCase();
-    if (rawGender && normalizedGender !== "M" && normalizedGender !== "F") {
-      validationErrors.push(`Row ${rowNumber}: Gender code must be M, F, or blank.`);
-    }
-
-    const firstName = safeTrim(r.primaryFirstName || r.firstName || "");
-    const middleName = safeTrim(r.primaryMiddleName || r.middleName || "");
-    const lastName = safeTrim(r.primaryLastName || r.lastName || "");
-    const maidenName = safeTrim(r.primaryMaidenName || "");
-    const splitName = [firstName, middleName, lastName].filter(Boolean).join(" ");
-    const explicitFullName = buildStructuredName(firstName, middleName, lastName, maidenName, safeTrim(r.primaryFullName || r.fullName || ""));
-    const hasSplitFirstLast = Boolean(firstName && lastName);
-    const hasFullName = Boolean(explicitFullName);
-    const fullName = explicitFullName || (uiType === "Individual" ? splitName : "");
-
-    const display =
-      uiType === "Individual" ? fullName || [firstName, lastName].filter(Boolean).join(" ") : fullName || lastName;
-
-    const key = partyKey || `row_${idx + 1}`;
-    rowMeta.push({ key, displayName: display || `(Row ${idx + 1})`, uiType });
-    if (missingPartyKey || duplicatePartyKey) return;
-
-    if (uiType === "Individual" && !hasFullName && !hasSplitFirstLast) {
-      validationErrors.push(`Row ${rowNumber}: For Individual, provide either Full Name or both First Name and Last Name.`);
-      return;
-    }
-    if (uiType !== "Individual" && !fullName) {
-      validationErrors.push(`Row ${rowNumber}: For Organization or Unknown, Full Name is required.`);
-      return;
-    }
-
-    const addresses = parseCommaValues(r.addresses || "");
-    const addressCandidates = [
-      buildAddressLine(r.address1Line1, r.address1Line2, r.address1City, r.address1stateProvince, r.address1ZipCode, r.address1Country),
-      buildAddressLine(r.address2Line1, r.address2Line2, r.address2City, r.address2stateProvince, r.address2ZipCode, r.address2Country),
-      buildAddressLine(r.address3Line1, r.address3Line2, r.address3City, r.address3stateProvince, r.address3ZipCode, r.address3Country),
-      buildAddressLine(r.addressLine1, r.addressLine2, r.city, r.state, r.zip, r.country),
-    ]
-      .map((value) => safeTrim(value))
-      .filter(Boolean);
-    addressCandidates.forEach((value) => {
-      if (!addresses.includes(value)) addresses.push(value);
-    });
-    if (!addresses.length) {
-      const oneLineAddress = [safeTrim(r.addressLine1 || ""), safeTrim(r.addressLine2 || ""), safeTrim(r.city || ""), safeTrim(r.state || ""), safeTrim(r.zip || "")]
-        .filter(Boolean)
-        .join(", ");
-      if (oneLineAddress) addresses.push(oneLineAddress);
-    }
-
-    const countries = Array.from(
-      new Set(
-        [
-          ...parseCommaValues(r.countries || ""),
-          safeTrim(r.country || ""),
-          safeTrim(r.countryOfCitizenship || ""),
-          safeTrim(r.address1Country || ""),
-          safeTrim(r.address2Country || ""),
-          safeTrim(r.address3Country || ""),
-          safeTrim(r.birthCountry || ""),
-          safeTrim(r.nationalityCountry1 || ""),
-          safeTrim(r.nationalityCountry2 || ""),
-          safeTrim(r.nationalityCountry3 || ""),
-        ]
-          .map((value) => safeTrim(value))
-          .filter(Boolean)
-      )
-    );
-
-    const alias1 = buildStructuredName(
-      safeTrim(r.alias1FirstName || ""),
-      safeTrim(r.alias1MiddleName || ""),
-      safeTrim(r.alias1LastName || ""),
-      safeTrim(r.alias1MaidenName || ""),
-      safeTrim(r.alias1FullName || "")
-    );
-    const alias2 = buildStructuredName(
-      safeTrim(r.alias2FirstName || ""),
-      safeTrim(r.alias2MiddleName || ""),
-      safeTrim(r.alias2LastName || ""),
-      safeTrim(r.alias2MaidenName || ""),
-      safeTrim(r.alias2FullName || "")
-    );
-    const alias3 = buildStructuredName(
-      safeTrim(r.alias3FirstName || ""),
-      safeTrim(r.alias3MiddleName || ""),
-      safeTrim(r.alias3LastName || ""),
-      safeTrim(r.alias3MaidenName || ""),
-      safeTrim(r.alias3FullName || "")
-    );
-    const mergedAlias = [safeTrim(r.aliasName || ""), alias1, alias2, alias3].filter(Boolean).join(", ");
-
-    const ids = [
-      { idType: safeTrim(r.partyId1Type || r.idType || r.idCode || ""), idNumber: safeTrim(r.partyId1Value || r.idNumber || ""), idCountry: safeTrim(r.partyId1IDCountry || r.idCountry || r.idIssueCountry || "") },
-      { idType: safeTrim(r.partyId2Type || ""), idNumber: safeTrim(r.partyId2Value || ""), idCountry: safeTrim(r.partyId2IDCountry || "") },
-      { idType: safeTrim(r.partyId3Type || ""), idNumber: safeTrim(r.partyId3Value || ""), idCountry: safeTrim(r.partyId3IDCountry || "") },
-    ].filter((doc) => Boolean(doc.idNumber));
-
-    const item: NameItem = {
-      id: key,
-      uiType,
-      nameMode: uiType === "Individual" ? "split" : "full",
-      firstName,
-      lastName,
-      middleName,
-      fullName,
-      aliasName: mergedAlias,
-      dateOfBirth: safeTrim(r.dateOfBirth || r.yearOfBirth || ""),
-      countries,
-      addresses,
-      ids,
-      birthLocation: safeTrim(r.birthLocation || r.birthCountry || ""),
-      gender: rawGender,
-      title: safeTrim(r.title || ""),
-    };
-
-    queries[partyKey] = buildEntityExampleFromNameItem(item);
-  });
-
-  return { queries, rowMeta, validationErrors };
-}
-
 type EngineStatus = "NO_HIT" | "HIT" | "PROCESSING" | "FAILED" | "ERROR";
 type UiStatus = "Clear" | "Potential Match" | "Pending" | "Failed" | "Match";
 type ResultMode = "SINGLE" | "BATCH";
+type ResultRow = {
+  id: string;
+  entity: string;
+  partyKey: string;
+  mode: ResultMode;
+  type: UiType;
+  country: string;
+  engineStatus: EngineStatus;
+  manualMatch: boolean;
+  uiStatus: UiStatus;
+  matchingScore: number | null;
+  date: string;
+  submittedAt: string;
+  batchSubmissionId: string | null;
+  dailyScheduleId: string | null;
+  dailyScheduleActive: boolean;
+  raw: any;
+};
 
-function engineToUiStatus(s: EngineStatus, manualMatch?: boolean): UiStatus {
-  if (manualMatch) return "Match";
-  if (s === "NO_HIT") return "Clear";
-  if (s === "HIT") return "Potential Match";
-  if (s === "PROCESSING") return "Pending";
-  return "Failed";
+type SummaryCounts = ScreeningSummaryCounts;
+
+function defaultSummaryCounts(): SummaryCounts {
+  return {
+    total: 0,
+    clear: 0,
+    potential: 0,
+    pending: 0,
+    failed: 0,
+    match: 0,
+  };
 }
 
-function classifyEngine(matches: { status?: unknown; error_text?: unknown; error?: unknown; engine_message?: unknown; results?: { match?: boolean }[] } | null | undefined): EngineStatus {
-  if (!matches || typeof matches !== "object") return "ERROR";
-  const status = typeof matches.status === "number" ? matches.status : null;
-  if (status != null && status !== 200) return "ERROR";
-  const errorText = safeTrim(String(matches.error_text ?? matches.error ?? ""));
-  if (errorText) return "ERROR";
+function normalizeResultRow(row: RecentScreeningResultRow): ResultRow | null {
+  const typeRaw = safeTrim(String(row?.type || ""));
+  const uiStatusRaw = safeTrim(String(row?.uiStatus || ""));
+  const modeRaw = safeTrim(String(row?.mode || "")).toUpperCase();
+  const engineStatusRaw = safeTrim(String(row?.engineStatus || "")).toUpperCase();
 
-  const engineMessage = safeTrim(String(matches.engine_message ?? "")).toUpperCase();
-  if (engineMessage === "PM") return "HIT";
-  if (engineMessage === "NM") return "NO_HIT";
+  const allowedTypes = new Set<UiType>(["Individual", "Organization", "Unknown", "Vessel", "Aircraft"]);
+  const allowedStatuses = new Set<UiStatus>(["Clear", "Potential Match", "Pending", "Failed", "Match"]);
+  const allowedModes = new Set<ResultMode>(["SINGLE", "BATCH"]);
+  const allowedEngines = new Set<EngineStatus>(["NO_HIT", "HIT", "PROCESSING", "FAILED", "ERROR"]);
 
-  const results = Array.isArray(matches.results) ? matches.results : [];
-  if (results.some((r) => Boolean(r?.match))) return "HIT";
-  if (status === 200 && results.length === 0) return "NO_HIT";
-  return "ERROR";
+  const id = safeTrim(String(row?.id || ""));
+  const entity = safeTrim(String(row?.entity || ""));
+  const submittedAt = safeTrim(String(row?.submittedAt || ""));
+  if (!id || !entity || !submittedAt) return null;
+  if (!allowedTypes.has(typeRaw as UiType)) return null;
+  if (!allowedStatuses.has(uiStatusRaw as UiStatus)) return null;
+  if (!allowedModes.has(modeRaw as ResultMode)) return null;
+  if (!allowedEngines.has(engineStatusRaw as EngineStatus)) return null;
+
+  return {
+    id,
+    entity,
+    partyKey: safeTrim(String(row?.partyKey || "")),
+    mode: modeRaw as ResultMode,
+    type: typeRaw as UiType,
+    country: safeTrim(String(row?.country || "")),
+    engineStatus: engineStatusRaw as EngineStatus,
+    manualMatch: Boolean(row?.manualMatch === true),
+    uiStatus: uiStatusRaw as UiStatus,
+    matchingScore: typeof row?.matchingScore === "number" ? row.matchingScore : null,
+    date: formatSubmittedDateTime(submittedAt),
+    submittedAt,
+    batchSubmissionId: typeof row?.batchSubmissionId === "string" ? row.batchSubmissionId : null,
+    dailyScheduleId: typeof row?.dailyScheduleId === "string" ? row.dailyScheduleId : null,
+    dailyScheduleActive: Boolean(row?.dailyScheduleActive === true),
+    raw: row?.raw ?? {},
+  };
+}
+
+function normalizeResultRows(rows: RecentScreeningResultRow[] | unknown): ResultRow[] {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row) => normalizeResultRow(row as RecentScreeningResultRow))
+    .filter((row): row is ResultRow => row !== null);
+}
+
+function normalizeSummaryCounts(value: Partial<SummaryCounts> | unknown): SummaryCounts {
+  const summary = (value ?? {}) as Partial<SummaryCounts>;
+  return {
+    total: Number(summary.total ?? 0),
+    clear: Number(summary.clear ?? 0),
+    potential: Number(summary.potential ?? 0),
+    pending: Number(summary.pending ?? 0),
+    failed: Number(summary.failed ?? 0),
+    match: Number(summary.match ?? 0),
+  };
 }
 
 function badge(status: UiStatus) {
@@ -600,92 +502,6 @@ function asStringList(input: unknown): string[] {
   return [];
 }
 
-function toCountryDisplay(values: string[]): string {
-  const normalized = values
-    .map((v) => {
-      const t = safeTrim(v);
-      if (!t) return "";
-      return t.length === 2 ? t.toUpperCase() : t;
-    })
-    .filter(Boolean);
-  return Array.from(new Set(normalized)).join(", ");
-}
-
-function extractCountryFromQuery(query: any): string {
-  const props = query?.properties;
-  if (!props || typeof props !== "object") return "";
-
-  const candidates: string[][] = [
-    asStringList((props as any).country),
-    asStringList((props as any).nationality),
-    asStringList((props as any).countries),
-    asStringList((props as any).jurisdiction),
-  ];
-
-  for (const list of candidates) {
-    const rendered = toCountryDisplay(list);
-    if (rendered) return rendered;
-  }
-  return "";
-}
-
-function extractCountryFromRaw(raw: any): string {
-  const fromQuery =
-    extractCountryFromQuery(raw?.matches?.query) ||
-    extractCountryFromQuery(raw?.item?.details?.matches?.query) ||
-    extractCountryFromQuery(raw?.details?.query) ||
-    extractCountryFromQuery(raw?.item?.details?.query);
-
-  if (fromQuery) return fromQuery;
-
-  const fallback = raw?.country ?? raw?.item?.country ?? raw?.submission?.country;
-  if (typeof fallback === "string") return safeTrim(fallback);
-  return "";
-}
-
-function extractPartyKeyFromQuery(query: any): string {
-  const props = query?.properties;
-  if (!props || typeof props !== "object") return "";
-
-  const values = [
-    ...asStringList((props as any).partyKey),
-    ...asStringList((props as any).party_key),
-    ...asStringList((props as any)["party key"]),
-    ...asStringList((props as any).PartyKey),
-  ].map((value) => safeTrim(value));
-  return values.find(Boolean) || "";
-}
-
-function extractPartyKeyFromRaw(raw: any): string {
-  const fromQuery =
-    extractPartyKeyFromQuery(raw?.matches?.query) ||
-    extractPartyKeyFromQuery(raw?.item?.details?.matches?.query) ||
-    extractPartyKeyFromQuery(raw?.details?.query) ||
-    extractPartyKeyFromQuery(raw?.item?.details?.query);
-
-  if (fromQuery) return fromQuery;
-
-  const results = getResultCandidatesFromRaw(raw);
-  for (const result of results) {
-    const props = result?.properties;
-    if (props && typeof props === "object") {
-      const fromProps = [
-        ...asStringList((props as any).partyKey),
-        ...asStringList((props as any).party_key),
-        ...asStringList((props as any)["party key"]),
-      ]
-        .map((value) => safeTrim(value))
-        .find(Boolean);
-      if (fromProps) return fromProps;
-    }
-
-    const fromId = safeTrim(String(result?.id ?? ""));
-    if (fromId) return fromId;
-  }
-
-  return "";
-}
-
 function extractHitTag(result: any): string {
   const props = result?.properties;
   const keywords = asStringList(props?.keyword).concat(asStringList(props?.keywords));
@@ -702,15 +518,6 @@ function getResultCandidatesFromRaw(raw: any): any[] {
   const batch = raw?.item?.details?.matches?.results;
   const legacy = raw?.details?.results ?? raw?.details?.matches?.results;
   return Array.isArray(direct) ? direct : Array.isArray(batch) ? batch : Array.isArray(legacy) ? legacy : [];
-}
-
-function topMatchingScore(results: any[] | undefined): number | null {
-  if (!Array.isArray(results) || results.length === 0) return null;
-  const best = results
-    .filter((r) => r && typeof r === "object" && typeof r.score === "number")
-    .map((r) => Number(r.score))
-    .sort((a, b) => b - a)[0];
-  return typeof best === "number" && Number.isFinite(best) ? best : null;
 }
 
 function getHitMatchesFromRaw(raw: any): HitMatch[] {
@@ -884,13 +691,17 @@ export function ScreeningDetailPage() {
   const canDailyScreening = hasPermission(identity, "screening.daily", "screening.admin");
   const viewerMockOnly = canSingleScreen && !canRunNonMockSingle;
 
-  const [submissions, setSubmissions] = useRecoilState(submissionsState);
-  const [, setLatest] = useRecoilState(latestResultState);
   const [screeningWorkspace, setScreeningWorkspace] = useRecoilState(screeningWorkspaceState);
   const [screeningResultsMeta, setScreeningResultsMeta] = useRecoilState(screeningResultsMetaState);
+  const [recentResultRows, setRecentResultRows] = useState<ResultRow[]>(
+    () => normalizeResultRows(readLocalStorageJson<RecentScreeningResultRow[]>(RECENT_RESULT_ROWS_STORAGE_KEY, []))
+  );
+  const [summaryCounts, setSummaryCounts] = useState<SummaryCounts>(
+    () => normalizeSummaryCounts(readLocalStorageJson<Partial<SummaryCounts>>(RECENT_RESULT_SUMMARY_STORAGE_KEY, defaultSummaryCounts()))
+  );
   const [resultsRefreshing, setResultsRefreshing] = useState(false);
   const [resultsRefreshError, setResultsRefreshError] = useState<string | null>(null);
-  const submissionsRefreshInFlightRef = useRef(false);
+  const recentResultsRefreshInFlightRef = useRef(false);
   const businessUnitsRequestSeqRef = useRef(0);
   const screeningResultsMetaRef = useRef(screeningResultsMeta);
   const resultsLastRefreshedAt = useMemo(() => {
@@ -926,6 +737,14 @@ export function ScreeningDetailPage() {
     },
     [setScreeningWorkspace]
   );
+
+  useEffect(() => {
+    writeLocalStorageJson(RECENT_RESULT_ROWS_STORAGE_KEY, recentResultRows);
+  }, [recentResultRows]);
+
+  useEffect(() => {
+    writeLocalStorageJson(RECENT_RESULT_SUMMARY_STORAGE_KEY, summaryCounts);
+  }, [summaryCounts]);
 
   // SINGLE (multi-add)
   const [names, setNames] = useState<NameItem[]>([
@@ -1086,7 +905,7 @@ export function ScreeningDetailPage() {
     if (!validCodes.has(scheduleBusinessUnitCode)) setScheduleBusinessUnitCode(firstCode);
   }, [businessUnitOptions, singleBusinessUnitCode, batchBusinessUnitCode, scheduleBusinessUnitCode]);
 
-  const loadSubmissionHistory = useCallback(
+  const loadRecentResults = useCallback(
     async ({
       silent,
       updateTimestamp,
@@ -1100,18 +919,21 @@ export function ScreeningDetailPage() {
     }) => {
       const activeUserId = safeTrim(requestUserId || currentUser?.id || "");
       if (!activeUserId) return;
-      if (submissionsRefreshInFlightRef.current) return;
+      if (recentResultsRefreshInFlightRef.current) return;
 
-      submissionsRefreshInFlightRef.current = true;
+      recentResultsRefreshInFlightRef.current = true;
       if (!silent) {
         setResultsRefreshing(true);
         setResultsRefreshError(null);
       }
       try {
-        const historyRows = await listScreeningSubmissions(500);
+        const [summary, rows] = await Promise.all([
+          getScreeningSummary(),
+          listRecentScreeningResults(RECENT_RESULTS_LIMIT),
+        ]);
         if (activeUserId !== safeTrim(currentUser?.id || "")) return;
-        const reconciled = await reconcileDailyScheduleFlags(historyRows as Submission[]);
-        setSubmissions(reconciled);
+        setSummaryCounts(normalizeSummaryCounts(summary));
+        setRecentResultRows(normalizeResultRows(rows));
         setScreeningResultsMeta((prev) => ({
           lastRefreshedAt: updateTimestamp ? new Date().toISOString() : prev.lastRefreshedAt,
           submissionsOwnerUserId: activeUserId,
@@ -1124,21 +946,23 @@ export function ScreeningDetailPage() {
           setResultsRefreshError(err?.message ?? "Failed to refresh screening results.");
         }
       } finally {
-        submissionsRefreshInFlightRef.current = false;
+        recentResultsRefreshInFlightRef.current = false;
         if (!silent) {
           setResultsRefreshing(false);
         }
       }
     },
-    [currentUser?.id, setScreeningResultsMeta, setSubmissions, updateScreeningWorkspace]
+    [currentUser?.id, setScreeningResultsMeta, updateScreeningWorkspace]
   );
 
   useEffect(() => {
     const userId = safeTrim(currentUser?.id || "");
     setResultsRefreshError(null);
     if (!userId) {
-      setSubmissions([]);
-      setLatest(null);
+      setRecentResultRows([]);
+      setSummaryCounts(defaultSummaryCounts());
+      clearLocalStorageKey(RECENT_RESULT_ROWS_STORAGE_KEY);
+      clearLocalStorageKey(RECENT_RESULT_SUMMARY_STORAGE_KEY);
       setScreeningResultsMeta({
         lastRefreshedAt: null,
         submissionsOwnerUserId: null,
@@ -1148,21 +972,31 @@ export function ScreeningDetailPage() {
     }
     const cachedOwnerUserId = screeningResultsMetaRef.current.submissionsOwnerUserId;
     const hasCachedResultsForUser = cachedOwnerUserId === userId;
+    const hasFreshCachedResults =
+      hasCachedResultsForUser &&
+      recentResultRows.length > 0 &&
+      !!resultsLastRefreshedAt &&
+      Date.now() - resultsLastRefreshedAt.getTime() <= RECENT_RESULTS_CACHE_MS;
     if (!hasCachedResultsForUser && cachedOwnerUserId) {
-      setSubmissions([]);
-      setLatest(null);
+      setRecentResultRows([]);
+      setSummaryCounts(defaultSummaryCounts());
+      clearLocalStorageKey(RECENT_RESULT_ROWS_STORAGE_KEY);
+      clearLocalStorageKey(RECENT_RESULT_SUMMARY_STORAGE_KEY);
       setScreeningResultsMeta({
         lastRefreshedAt: null,
         submissionsOwnerUserId: userId,
       });
     }
-    void loadSubmissionHistory({
+    if (hasFreshCachedResults) {
+      return;
+    }
+    void loadRecentResults({
       silent: hasCachedResultsForUser,
       updateTimestamp: true,
       resetPage: !hasCachedResultsForUser,
       requestUserId: userId,
     });
-  }, [currentUser?.id, loadSubmissionHistory, setLatest, setScreeningResultsMeta, setSubmissions]);
+  }, [currentUser?.id, loadRecentResults, recentResultRows.length, resultsLastRefreshedAt, setScreeningResultsMeta]);
 
   function toggleScreeningType(
     value: ScreeningType,
@@ -1171,36 +1005,8 @@ export function ScreeningDetailPage() {
     setSelected((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
   }
 
-  async function reconcileDailyScheduleFlags(items: Submission[]): Promise<Submission[]> {
-    try {
-      const schedules = await listDailySchedules();
-      const activeScheduleIds = new Set(
-        schedules
-          .map((s) => safeTrim(String(s.schedule_id || "")))
-          .filter(Boolean)
-      );
-
-      return items.map((s) => {
-        if (s.mode !== "BATCH") return s;
-        const scheduleId = safeTrim(String((s as any).dailyScheduleId || ""));
-        if (!scheduleId) return s;
-
-        const isActive = activeScheduleIds.has(scheduleId);
-        const currentlyActive = Boolean((s as any).dailyScheduleActive === true);
-        if (isActive === currentlyActive) return s;
-        return {
-          ...s,
-          dailyScheduleActive: isActive,
-          dailyScreening: isActive ? Boolean((s as any).dailyScreening ?? true) : false,
-        } as BatchSubmission;
-      });
-    } catch {
-      return items;
-    }
-  }
-
   function refreshResults() {
-    void loadSubmissionHistory({ silent: false, updateTimestamp: true, resetPage: true });
+    void loadRecentResults({ silent: false, updateTimestamp: true, resetPage: true });
   }
 
   const singleSchema = useMemo(() => {
@@ -1248,7 +1054,6 @@ export function ScreeningDetailPage() {
     setSingleError(null);
     setBatchError(null);
     setScheduleError(null);
-    setLatest(null);
 
     if (mode === "SINGLE") {
       setNames([
@@ -1476,56 +1281,11 @@ export function ScreeningDetailPage() {
       meta.push({ key, uiType: primaryName.uiType, displayName: displayName || "(Item 1)" });
       queries[key] = query;
 
-      const resp = await matchSync(queries, singleScreeningTypes, singleMockScreening, {
+      await matchSync(queries, singleScreeningTypes, singleMockScreening, {
         id: currentUser.id,
         name: currentUser.name,
       }, singleBusinessUnitCode);
-
-      // Convert to a single "SINGLE" submission containing multiple items (still SINGLE mode for your history)
-      // We store as SingleSubmission but keep details so results table can read it
-      const entry: SingleSubmission = {
-        id: uuid(),
-        createdAt: new Date().toISOString(),
-        mode: "SINGLE",
-        createdByUserId: currentUser.id,
-        createdByUserName: currentUser.name,
-        businessUnitCode: singleBusinessUnitCode,
-        customerType: "Person", // not used by new results table; keep for backward compatibility
-        displayName: `Single Screening (${meta.length})`,
-        result: "NO_HIT",
-        screeningTypes: singleScreeningTypes,
-        message: notes ? `Notes: ${notes}` : undefined,
-        details: {
-          meta,
-          responses: resp.responses,
-          notes,
-          screeningTypes: singleScreeningTypes,
-          mockScreening: singleMockScreening,
-          businessUnitCode: singleBusinessUnitCode,
-        },
-      };
-
-      // derive top result for the main record (if any potential match -> HIT)
-      let anyHit = false;
-      let anyError = false;
-
-      meta.forEach((m) => {
-        const matches = resp.responses[m.key];
-        if (!matches) {
-          anyError = true;
-          return;
-        }
-        const engine = classifyEngine(matches);
-        if (engine === "HIT") anyHit = true;
-        if (engine === "ERROR") anyError = true;
-      });
-
-      entry.result = anyHit ? "HIT" : anyError ? "ERROR" : "NO_HIT";
-
-      const next = [entry, ...submissions].slice(0, 500);
-      setSubmissions(next);
-      setLatest(entry);
-      updateScreeningWorkspace({ page: 1 });
+      void loadRecentResults({ silent: false, updateTimestamp: true, resetPage: true, requestUserId: currentUser.id });
     } catch (err: any) {
       setSingleError(err?.message ?? "Failed to screen.");
     } finally {
@@ -1559,33 +1319,14 @@ export function ScreeningDetailPage() {
       return;
     }
     if (!batchFile) {
-      setBatchError("Please drop or select a CSV/XLSX file.");
+      setBatchError("Please drop or select a CSV or XLSX file.");
       return;
     }
 
     setBatchSubmitting(true);
     try {
-      const name = batchFile.name.toLowerCase();
-      let rows: any[] = [];
-
-      if (name.endsWith(".csv")) rows = await parseCsv(batchFile);
-      else if (name.endsWith(".xlsx") || name.endsWith(".xls")) rows = await parseExcel(batchFile);
-      else throw new Error("Only CSV or Excel files are allowed.");
-
-      if (!rows.length) throw new Error("No rows found in the file.");
-
-      const { queries, rowMeta, validationErrors } = parseBatchRows(rows);
-      if (validationErrors.length) {
-        const preview = validationErrors.slice(0, 4).join(" ");
-        const remaining = validationErrors.length > 4 ? ` (+${validationErrors.length - 4} more)` : "";
-        throw new Error(`Upload validation failed. ${preview}${remaining}`);
-      }
-
-      if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
-
-      const accepted = await uploadBatchAndSubmitJob({
+      await uploadBatchAndSubmitJob({
         file: batchFile,
-        queries,
         screeningTypes: batchScreeningTypes,
         batchName,
         businessUnitCode: batchBusinessUnitCode,
@@ -1594,144 +1335,7 @@ export function ScreeningDetailPage() {
         subscribeResults: false,
         userName: currentUser.name,
       });
-
-      const screenedKeySet = new Set(
-        (accepted.screened_item_keys ?? [])
-          .map((key) => safeTrim(String(key)))
-          .filter(Boolean)
-      );
-      const hasScreenedSubset = screenedKeySet.size > 0;
-
-      const placeholderItems: BatchSubmission["items"] = rowMeta.map((m) => {
-        const isScheduledSkip = hasScreenedSubset && !screenedKeySet.has(m.key);
-        const fallbackMatches: EntityMatches = {
-          results: [],
-          total: { value: 0, relation: "eq" },
-          query: queries[m.key],
-          status: isScheduledSkip ? 204 : 202,
-        };
-        return {
-          customerType: m.uiType === "Individual" ? "Person" : "Entity",
-          displayName: m.displayName,
-          result: isScheduledSkip ? "NO_HIT" : "PROCESSING",
-          message: isScheduledSkip ? "Skipped (already screened in previous schedule runs)." : "Screening in progress",
-          details: { uiType: m.uiType, matches: fallbackMatches },
-        };
-      });
-
-      const entry: BatchSubmission = {
-        id: uuid(),
-        createdAt: new Date().toISOString(),
-        mode: "BATCH",
-        createdByUserId: currentUser.id,
-        createdByUserName: currentUser.name,
-        businessUnitCode: batchBusinessUnitCode,
-        jobId: accepted.job_id,
-        fileName: batchFile.name,
-        overallResult: accepted.total_items === 0 ? "NO_HIT" : "PROCESSING",
-        screeningTypes: batchScreeningTypes,
-        dailyScreening: false,
-        dailyScheduleId: accepted.daily_schedule_id ?? undefined,
-        dailyScheduleActive: false,
-        sourceUploadId: accepted.source_upload_id,
-        sourceS3Uri: accepted.s3_uri ?? undefined,
-        items: placeholderItems,
-      };
-
-      setSubmissions((prev) => [entry, ...prev].slice(0, 500));
-      setLatest(entry);
-      updateScreeningWorkspace({ page: 1 });
-
-      if (accepted.total_items > 0) {
-        // Non-blocking async completion: keep UI responsive and update results when worker finishes.
-        void (async () => {
-          try {
-            const progress = await waitForScreeningJob(accepted.job_id, { timeoutMs: 1000 * 60 * 60 });
-            const responses = progress.responses ?? {};
-
-            const resolvedItems: BatchSubmission["items"] = rowMeta.map((m) => {
-              const isScheduledSkip = hasScreenedSubset && !screenedKeySet.has(m.key);
-              if (isScheduledSkip) {
-                const fallbackMatches: EntityMatches = {
-                  results: [],
-                  total: { value: 0, relation: "eq" },
-                  query: queries[m.key],
-                  status: 204,
-                };
-                return {
-                  customerType: m.uiType === "Individual" ? "Person" : "Entity",
-                  displayName: m.displayName,
-                  result: "NO_HIT",
-                  message: "Skipped (already screened in previous schedule runs).",
-                  details: { uiType: m.uiType, matches: fallbackMatches },
-                };
-              }
-
-              const matches = responses[m.key];
-              if (!matches) {
-                const fallbackMatches: EntityMatches = {
-                  results: [],
-                  total: { value: 0, relation: "eq" },
-                  query: queries[m.key],
-                  status: 500,
-                };
-                return {
-                  customerType: m.uiType === "Individual" ? "Person" : "Entity",
-                  displayName: m.displayName,
-                  result: "ERROR",
-                  message: "Screening failed for this row",
-                  details: { uiType: m.uiType, matches: fallbackMatches },
-                };
-              }
-
-              const engine = classifyEngine(matches);
-              return {
-                customerType: m.uiType === "Individual" ? "Person" : "Entity",
-                displayName: m.displayName,
-                result: engine === "HIT" ? "HIT" : engine === "NO_HIT" ? "NO_HIT" : "ERROR",
-                message: matches?.results?.[0]?.caption ? `Top match: ${matches.results[0].caption}` : undefined,
-                details: { uiType: m.uiType, matches },
-              };
-            });
-
-            const overall =
-              progress.status === "FAILED"
-                ? "ERROR"
-                : resolvedItems.some((i) => i.result === "HIT")
-                  ? "HIT"
-                  : resolvedItems.some((i) => i.result === "ERROR")
-                    ? "ERROR"
-                    : "NO_HIT";
-
-            setSubmissions((prev) =>
-              prev.map((s) =>
-                s.mode === "BATCH" &&
-                (s.id === entry.id || s.id === accepted.job_id || safeTrim(String((s as any).jobId || "")) === accepted.job_id)
-                  ? ({ ...s, overallResult: overall, items: resolvedItems } as BatchSubmission)
-                  : s
-              )
-            );
-          } catch (err: any) {
-            const failureText = safeTrim(String(err?.message ?? "Batch screening failed."));
-            setSubmissions((prev) =>
-              prev.map((s) => {
-                if (
-                  s.mode !== "BATCH" ||
-                  (s.id !== entry.id && s.id !== accepted.job_id && safeTrim(String((s as any).jobId || "")) !== accepted.job_id)
-                ) {
-                  return s;
-                }
-                const failedItems = s.items.map((it) =>
-                  it.result === "PROCESSING"
-                    ? { ...it, result: "ERROR", message: failureText || "Batch screening failed." }
-                    : it
-                );
-                return { ...s, overallResult: "ERROR", items: failedItems } as BatchSubmission;
-              })
-            );
-          }
-        })();
-      }
+      void loadRecentResults({ silent: false, updateTimestamp: true, resetPage: true, requestUserId: currentUser.id });
 
       // reset batch inputs after success
       setBatchFile(null);
@@ -1789,27 +1393,8 @@ export function ScreeningDetailPage() {
     const subscriptionEmails = parseSubscriptionEmails(scheduleSubscriptionEmails);
     setScheduleSubmitting(true);
     try {
-      const name = scheduleFile.name.toLowerCase();
-      let rows: any[] = [];
-
-      if (name.endsWith(".csv")) rows = await parseCsv(scheduleFile);
-      else if (name.endsWith(".xlsx") || name.endsWith(".xls")) rows = await parseExcel(scheduleFile);
-      else throw new Error("Only CSV or Excel files are allowed.");
-
-      if (!rows.length) throw new Error("No rows found in the file.");
-
-      const { queries, rowMeta, validationErrors } = parseBatchRows(rows);
-      if (validationErrors.length) {
-        const preview = validationErrors.slice(0, 4).join(" ");
-        const remaining = validationErrors.length > 4 ? ` (+${validationErrors.length - 4} more)` : "";
-        throw new Error(`Upload validation failed. ${preview}${remaining}`);
-      }
-
-      if (!Object.keys(queries).length) throw new Error("All rows are invalid (missing required names).");
-
-      const accepted = await uploadBatchAndSubmitJob({
+      await uploadBatchAndSubmitJob({
         file: scheduleFile,
-        queries,
         screeningTypes: scheduleScreeningTypes,
         batchName: scheduleName,
         businessUnitCode: scheduleBusinessUnitCode,
@@ -1821,143 +1406,7 @@ export function ScreeningDetailPage() {
         subscribeEmails: subscriptionEmails,
         userName: currentUser.name,
       });
-
-      const screenedKeySet = new Set((accepted.screened_item_keys ?? []).map((key) => safeTrim(String(key))).filter(Boolean));
-      const hasScreenedSubset = screenedKeySet.size > 0;
-      const isDeferredScheduleStart = accepted.total_items === 0 && Boolean(accepted.daily_schedule_id);
-
-      const placeholderItems: BatchSubmission["items"] = rowMeta.map((m) => {
-        const isScheduledSkip = hasScreenedSubset && !screenedKeySet.has(m.key);
-        const fallbackMatches: EntityMatches = {
-          results: [],
-          total: { value: 0, relation: "eq" },
-          query: queries[m.key],
-          status: isScheduledSkip ? 204 : 202,
-        };
-        return {
-          customerType: m.uiType === "Individual" ? "Person" : "Entity",
-          displayName: m.displayName,
-          result: isScheduledSkip ? "NO_HIT" : "PROCESSING",
-          message: isScheduledSkip
-            ? "Skipped (already screened in previous schedule runs)."
-            : isDeferredScheduleStart
-              ? "Scheduled. Screening will start at the configured run time."
-              : "Screening in progress",
-          details: { uiType: m.uiType, matches: fallbackMatches },
-        };
-      });
-
-      const entry: BatchSubmission = {
-        id: uuid(),
-        createdAt: new Date().toISOString(),
-        mode: "BATCH",
-        createdByUserId: currentUser.id,
-        createdByUserName: currentUser.name,
-        businessUnitCode: scheduleBusinessUnitCode,
-        jobId: accepted.job_id,
-        fileName: scheduleFile.name,
-        overallResult: isDeferredScheduleStart ? "PROCESSING" : accepted.total_items === 0 ? "NO_HIT" : "PROCESSING",
-        screeningTypes: scheduleScreeningTypes,
-        dailyScreening: true,
-        scheduleFrequency,
-        dailyScheduleId: accepted.daily_schedule_id ?? undefined,
-        dailyScheduleActive: Boolean(accepted.daily_schedule_id),
-        sourceUploadId: accepted.source_upload_id,
-        sourceS3Uri: accepted.s3_uri ?? undefined,
-        items: placeholderItems,
-      };
-
-      setSubmissions((prev) => [entry, ...prev].slice(0, 500));
-      setLatest(entry);
-      updateScreeningWorkspace({ page: 1 });
-
-      if (accepted.total_items > 0) {
-        void (async () => {
-          try {
-            const progress = await waitForScreeningJob(accepted.job_id, { timeoutMs: 1000 * 60 * 60 });
-            const responses = progress.responses ?? {};
-
-            const resolvedItems: BatchSubmission["items"] = rowMeta.map((m) => {
-              const isScheduledSkip = hasScreenedSubset && !screenedKeySet.has(m.key);
-              if (isScheduledSkip) {
-                const fallbackMatches: EntityMatches = {
-                  results: [],
-                  total: { value: 0, relation: "eq" },
-                  query: queries[m.key],
-                  status: 204,
-                };
-                return {
-                  customerType: m.uiType === "Individual" ? "Person" : "Entity",
-                  displayName: m.displayName,
-                  result: "NO_HIT",
-                  message: "Skipped (already screened in previous schedule runs).",
-                  details: { uiType: m.uiType, matches: fallbackMatches },
-                };
-              }
-
-              const matches = responses[m.key];
-              if (!matches) {
-                const fallbackMatches: EntityMatches = {
-                  results: [],
-                  total: { value: 0, relation: "eq" },
-                  query: queries[m.key],
-                  status: 500,
-                };
-                return {
-                  customerType: m.uiType === "Individual" ? "Person" : "Entity",
-                  displayName: m.displayName,
-                  result: "ERROR",
-                  message: "Screening failed for this row",
-                  details: { uiType: m.uiType, matches: fallbackMatches },
-                };
-              }
-
-              const engine = classifyEngine(matches);
-              return {
-                customerType: m.uiType === "Individual" ? "Person" : "Entity",
-                displayName: m.displayName,
-                result: engine === "HIT" ? "HIT" : engine === "NO_HIT" ? "NO_HIT" : "ERROR",
-                message: matches?.results?.[0]?.caption ? `Top match: ${matches.results[0].caption}` : undefined,
-                details: { uiType: m.uiType, matches },
-              };
-            });
-
-            const overall =
-              progress.status === "FAILED"
-                ? "ERROR"
-                : resolvedItems.some((i) => i.result === "HIT")
-                  ? "HIT"
-                  : resolvedItems.some((i) => i.result === "ERROR")
-                    ? "ERROR"
-                    : "NO_HIT";
-
-            setSubmissions((prev) =>
-              prev.map((s) =>
-                s.mode === "BATCH" &&
-                (s.id === entry.id || s.id === accepted.job_id || safeTrim(String((s as any).jobId || "")) === accepted.job_id)
-                  ? ({ ...s, overallResult: overall, items: resolvedItems } as BatchSubmission)
-                  : s
-              )
-            );
-          } catch (err: any) {
-            const failureText = safeTrim(String(err?.message ?? "Scheduled screening failed."));
-            setSubmissions((prev) =>
-              prev.map((s) => {
-                if (
-                  s.mode !== "BATCH" ||
-                  (s.id !== entry.id && s.id !== accepted.job_id && safeTrim(String((s as any).jobId || "")) !== accepted.job_id)
-                ) {
-                  return s;
-                }
-                const failedItems = s.items.map((it) =>
-                  it.result === "PROCESSING" ? { ...it, result: "ERROR", message: failureText || "Scheduled screening failed." } : it
-                );
-                return { ...s, overallResult: "ERROR", items: failedItems } as BatchSubmission;
-              })
-            );
-          }
-        })();
-      }
+      void loadRecentResults({ silent: false, updateTimestamp: true, resetPage: true, requestUserId: currentUser.id });
 
       setScheduleName("");
       setScheduleScreeningTypes(["Sanction"]);
@@ -1975,158 +1424,17 @@ export function ScreeningDetailPage() {
   }
 
   // ---------- Flatten results (used under BOTH tabs) ----------
-  type ResultRow = {
-    id: string;
-    entity: string;
-    partyKey: string;
-    mode: ResultMode;
-    type: UiType;
-    country: string;
-    engineStatus: EngineStatus;
-    manualMatch: boolean;
-    uiStatus: UiStatus;
-    matchingScore: number | null;
-    date: string;
-    submittedAt: string;
-    batchSubmissionId: string | null;
-    dailyScheduleId: string | null;
-    dailyScheduleActive: boolean;
-    raw: any;
-  };
-
-  const flattened: ResultRow[] = useMemo(() => {
-    if (!currentUser) return [];
-    const rows: ResultRow[] = [];
-
-    submissions.forEach((s: Submission) => {
-      const created = formatSubmittedDateTime((s as any).createdAt);
-      const submittedAtRaw = safeTrim(String((s as any).createdAt || ""));
-
-      // SINGLE: our new single submission stores details.meta + responses
-      if (s.mode === "SINGLE" && (s as any).details?.meta && (s as any).details?.responses) {
-        const meta = (s as any).details.meta as { key: string; uiType: UiType; displayName: string }[];
-        const responses = (s as any).details.responses as Record<string, any>;
-
-        meta.forEach((m) => {
-          const matches = responses[m.key];
-          let engine: EngineStatus = "ERROR";
-          if (matches) engine = classifyEngine(matches);
-
-          const manualMatch = Boolean((matches as any)?.manualMatch === true); // not present initially
-          const ui = engineToUiStatus(engine, manualMatch);
-          const matchingScore = topMatchingScore(matches?.results);
-
-          rows.push({
-            id: `${s.id}_${m.key}`,
-            entity: m.displayName,
-            partyKey: extractPartyKeyFromRaw({ submission: s, m, matches }) || safeTrim(String(m.key || "")),
-            mode: "SINGLE",
-            type: m.uiType,
-            country: extractCountryFromQuery(matches?.query),
-            engineStatus: engine,
-            manualMatch,
-            uiStatus: ui,
-            matchingScore,
-            date: created,
-            submittedAt: submittedAtRaw,
-            batchSubmissionId: null,
-            dailyScheduleId: null,
-            dailyScheduleActive: false,
-            raw: { submission: s, m, matches },
-          });
-        });
-
-        return;
-      }
-
-      // Legacy SINGLE (older structure)
-      if (s.mode === "SINGLE") {
-        const engine = (s as any).result as EngineStatus;
-        const uiType: UiType = (s as any).customerType === "Entity" ? "Organization" : "Individual";
-        const manualMatch = Boolean((s as any).manualMatch === true);
-        const ui = engineToUiStatus(engine, manualMatch);
-        rows.push({
-          id: s.id,
-          entity: (s as any).displayName,
-          partyKey: extractPartyKeyFromRaw(s),
-          mode: "SINGLE",
-          type: uiType,
-          country: extractCountryFromRaw(s),
-          engineStatus: engine,
-          manualMatch,
-          uiStatus: ui,
-          matchingScore: topMatchingScore((s as any)?.details?.results),
-          date: created,
-          submittedAt: submittedAtRaw,
-          batchSubmissionId: null,
-          dailyScheduleId: null,
-          dailyScheduleActive: false,
-          raw: s,
-        });
-        return;
-      }
-
-      // BATCH
-      if (s.mode === "BATCH") {
-        (s as any).items.forEach((it: any, idx: number) => {
-          const engine = it.result as EngineStatus;
-          const uiType: UiType = it.details?.uiType ?? (it.customerType === "Entity" ? "Organization" : "Individual");
-          const manualMatch = Boolean(it.manualMatch === true);
-          const ui = engineToUiStatus(engine, manualMatch);
-          rows.push({
-            id: `${s.id}_${idx}`,
-            entity: it.displayName,
-            partyKey: extractPartyKeyFromRaw({ submission: s, item: it }),
-            mode: "BATCH",
-            type: uiType,
-            country: extractCountryFromQuery(it?.details?.matches?.query),
-            engineStatus: engine,
-            manualMatch,
-            uiStatus: ui,
-            matchingScore: topMatchingScore(it?.details?.matches?.results),
-            date: created,
-            submittedAt: submittedAtRaw,
-            batchSubmissionId: s.id,
-            dailyScheduleId: typeof (s as any).dailyScheduleId === "string" ? (s as any).dailyScheduleId : null,
-            dailyScheduleActive: Boolean((s as any).dailyScheduleActive === true),
-            raw: { submission: s, item: it },
-          });
-        });
-      }
-    });
-
-    return rows;
-  }, [submissions, currentUser]);
+  const flattened = recentResultRows;
 
   const hasPendingResults = useMemo(() => flattened.some((row) => row.uiStatus === "Pending"), [flattened]);
 
   useEffect(() => {
     if (!currentUser?.id || !hasPendingResults) return;
     const timerId = window.setInterval(() => {
-      void loadSubmissionHistory({ silent: true, updateTimestamp: false, resetPage: false });
+      void loadRecentResults({ silent: true, updateTimestamp: false, resetPage: false });
     }, 15000);
     return () => window.clearInterval(timerId);
-  }, [currentUser?.id, hasPendingResults, loadSubmissionHistory]);
-
-  const summaryCounts = useMemo(() => {
-    let total = 0;
-    let clear = 0;
-    let potential = 0;
-    let pending = 0;
-    let failed = 0;
-    let match = 0;
-
-    flattened.forEach((row) => {
-      total += 1;
-      if (row.uiStatus === "Clear") clear += 1;
-      if (row.uiStatus === "Potential Match") potential += 1;
-      if (row.uiStatus === "Pending") pending += 1;
-      if (row.uiStatus === "Failed") failed += 1;
-      if (row.uiStatus === "Match") match += 1;
-    });
-
-    return { total, clear, potential, pending, failed, match };
-  }, [flattened]);
+  }, [currentUser?.id, hasPendingResults, loadRecentResults]);
 
   // ---------- Filters ----------
   const filtered = useMemo(() => {
@@ -2881,7 +2189,7 @@ export function ScreeningDetailPage() {
                   <>Drop your file here or click to browse</>
                 )}
               </div>
-              <div className="dropSub">Supports CSV and Excel files</div>
+              <div className="dropSub">Supports CSV and XLSX files</div>
               <div className="dropSub">
                 <strong>Max File Size: {MAX_UPLOAD_DISPLAY_MB} MB</strong> <span className="muted">(system limit: {MAX_UPLOAD_VALIDATION_MB} MB)</span>
               </div>
@@ -2889,7 +2197,7 @@ export function ScreeningDetailPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv,.xlsx,.xls"
+                accept=".csv,.xlsx"
                 style={{ display: "none" }}
                 onChange={(e) => {
                   const f = e.target.files?.[0] ?? null;
@@ -3099,7 +2407,7 @@ export function ScreeningDetailPage() {
                     <>Drop your file here or click to browse</>
                   )}
                 </div>
-                <div className="dropSub">Supports CSV and Excel files</div>
+                <div className="dropSub">Supports CSV and XLSX files</div>
                 <div className="dropSub">
                   <strong>Max File Size: {MAX_UPLOAD_DISPLAY_MB} MB</strong> <span className="muted">(system limit: {MAX_UPLOAD_VALIDATION_MB} MB)</span>
                 </div>
@@ -3107,7 +2415,7 @@ export function ScreeningDetailPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,.xlsx,.xls"
+                  accept=".csv,.xlsx"
                   style={{ display: "none" }}
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;

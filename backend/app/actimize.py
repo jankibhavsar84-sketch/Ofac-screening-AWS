@@ -3,11 +3,13 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
 import re
 from threading import Lock
 import time
 from datetime import datetime
 from typing import Any
+from urllib.parse import parse_qsl
 from uuid import uuid4
 
 import jwt
@@ -17,6 +19,23 @@ from .config import settings
 from .models import EntityExample
 
 ACTIMIZE_POST_MAX_ATTEMPTS = 3
+# Use Uvicorn's logger so backend API calls reach CloudWatch without extra app logging config.
+logger = logging.getLogger("uvicorn.error")
+_REDACTED = "***redacted***"
+_SENSITIVE_LOG_KEYS = {
+    "access_token",
+    "api_key",
+    "apikey",
+    "authorization",
+    "bearer_token",
+    "client_assertion",
+    "client_secret",
+    "id_token",
+    "private_key",
+    "refresh_token",
+    "token",
+    "x-api-key",
+}
 
 
 class ExternalApiCallError(RuntimeError):
@@ -214,6 +233,8 @@ class ActimizeClient:
         self.source_system = _sanitize_source_system(settings.actimize_source_system)
         self.default_requester_name = settings.actimize_requester_name.strip() or "SCREENING_SYSTEM"
         self.timeout_s = settings.actimize_timeout_s
+        self.log_raw_api_io = settings.actimize_log_raw_api_io
+        self.raw_api_log_max_chars = max(settings.actimize_raw_api_log_max_chars, 1000)
         self._cached_access_token = ""
         self._cached_access_token_expires_at = 0.0
         self._token_lock = Lock()
@@ -238,9 +259,10 @@ class ActimizeClient:
 
         endpoint = f"{self.base_url}/entity-screenings"
         payload = self._build_entity_screening_request(query, requester_name=requester_name)
+        headers = self._build_headers()
         response = self._post_entity_screening_with_retry(
             endpoint=endpoint,
-            headers=self._build_headers(),
+            headers=headers,
             payload=payload,
             screening_type=screening_type,
         )
@@ -267,8 +289,8 @@ class ActimizeClient:
             ) from exc
 
         logical_status_code: int | None = None
-        if isinstance(body, dict) and "status_code" in body and "body" in body:
-            raw_status = str(body.get("status_code") or "").strip()
+        if isinstance(body, dict) and "body" in body:
+            raw_status = str(body.get("status_code") or body.get("statusCode") or "").strip()
             try:
                 logical_status_code = int(raw_status) if raw_status else None
             except ValueError:
@@ -306,6 +328,15 @@ class ActimizeClient:
         last_response: requests.Response | None = None
 
         for attempt in range(1, ACTIMIZE_POST_MAX_ATTEMPTS + 1):
+            self._log_api_request(
+                operation="entity-screenings",
+                endpoint=endpoint,
+                headers=headers,
+                payload=payload,
+                screening_type=screening_type,
+                attempt=attempt,
+                party_key=str(payload.get("partyKey") or "").strip(),
+            )
             try:
                 response = requests.post(
                     endpoint,
@@ -315,6 +346,16 @@ class ActimizeClient:
                 )
             except requests.RequestException as exc:
                 last_request_error = exc
+                self._log_api_exception(
+                    operation="entity-screenings",
+                    endpoint=endpoint,
+                    headers=headers,
+                    payload=payload,
+                    exception=exc,
+                    screening_type=screening_type,
+                    attempt=attempt,
+                    party_key=str(payload.get("partyKey") or "").strip(),
+                )
                 if attempt < ACTIMIZE_POST_MAX_ATTEMPTS:
                     time.sleep(min(0.5 * (2 ** (attempt - 1)), 2.0))
                     continue
@@ -327,6 +368,16 @@ class ActimizeClient:
                 ) from exc
 
             last_response = response
+            self._log_api_response(
+                operation="entity-screenings",
+                endpoint=endpoint,
+                headers=headers,
+                payload=payload,
+                response=response,
+                screening_type=screening_type,
+                attempt=attempt,
+                party_key=str(payload.get("partyKey") or "").strip(),
+            )
             if response.status_code in {429, 500, 502, 503, 504} and attempt < ACTIMIZE_POST_MAX_ATTEMPTS:
                 time.sleep(min(0.5 * (2 ** (attempt - 1)), 2.0))
                 continue
@@ -452,15 +503,44 @@ class ActimizeClient:
             if self.scope:
                 payload["scope"] = self.scope
 
+            self._log_api_request(
+                operation="oauth_token",
+                endpoint=self.token_url,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                payload=payload,
+                screening_type=None,
+                attempt=1,
+                party_key="",
+            )
             try:
                 response = requests.post(self.token_url, data=payload, timeout=self.timeout_s)
             except requests.RequestException as exc:
+                self._log_api_exception(
+                    operation="oauth_token",
+                    endpoint=self.token_url,
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    payload=payload,
+                    exception=exc,
+                    screening_type=None,
+                    attempt=1,
+                    party_key="",
+                )
                 raise ExternalApiCallError(
                     provider=self.provider,
                     operation="oauth_token",
                     endpoint=self.token_url,
                     message=str(exc),
                 ) from exc
+            self._log_api_response(
+                operation="oauth_token",
+                endpoint=self.token_url,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                payload=payload,
+                response=response,
+                screening_type=None,
+                attempt=1,
+                party_key="",
+            )
             if response.status_code >= 400:
                 raise ExternalApiCallError(
                     provider=self.provider,
@@ -714,6 +794,135 @@ class ActimizeClient:
                     return str(value)
             return str(body)[:500]
         return str(body)[:500]
+
+    def _log_api_request(
+        self,
+        *,
+        operation: str,
+        endpoint: str,
+        headers: dict[str, Any] | None,
+        payload: Any,
+        screening_type: str | None,
+        attempt: int,
+        party_key: str,
+    ) -> None:
+        if not self.log_raw_api_io:
+            return
+        logger.info(
+            "actimize api request operation=%s endpoint=%s screening_type=%s party_key=%s attempt=%s headers=%s payload=%s",
+            operation,
+            endpoint,
+            screening_type or "Sanction",
+            party_key or "-",
+            attempt,
+            self._format_for_log(headers),
+            self._format_for_log(payload),
+        )
+
+    def _log_api_response(
+        self,
+        *,
+        operation: str,
+        endpoint: str,
+        headers: dict[str, Any] | None,
+        payload: Any,
+        response: requests.Response,
+        screening_type: str | None,
+        attempt: int,
+        party_key: str,
+    ) -> None:
+        if not self.log_raw_api_io:
+            return
+
+        logger.info(
+            "actimize api response operation=%s endpoint=%s screening_type=%s party_key=%s attempt=%s http_status=%s reason=%s headers=%s payload=%s raw_response=%s",
+            operation,
+            endpoint,
+            screening_type or "Sanction",
+            party_key or "-",
+            attempt,
+            int(response.status_code),
+            response.reason,
+            self._format_for_log(headers),
+            self._format_for_log(payload),
+            self._format_for_log(response.text),
+        )
+
+    def _log_api_exception(
+        self,
+        *,
+        operation: str,
+        endpoint: str,
+        headers: dict[str, Any] | None,
+        payload: Any,
+        exception: Exception,
+        screening_type: str | None,
+        attempt: int,
+        party_key: str,
+    ) -> None:
+        if not self.log_raw_api_io:
+            return
+
+        logger.warning(
+            "actimize api exception operation=%s endpoint=%s screening_type=%s party_key=%s attempt=%s headers=%s payload=%s error=%s",
+            operation,
+            endpoint,
+            screening_type or "Sanction",
+            party_key or "-",
+            attempt,
+            self._format_for_log(headers),
+            self._format_for_log(payload),
+            self._truncate_for_log(str(exception)),
+        )
+
+    def _format_for_log(self, value: Any) -> str:
+        sanitized = self._sanitize_for_log(value)
+        if isinstance(sanitized, str):
+            return self._truncate_for_log(sanitized)
+        try:
+            rendered = json.dumps(sanitized, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+        except TypeError:
+            rendered = str(sanitized)
+        return self._truncate_for_log(rendered)
+
+    def _truncate_for_log(self, raw_text: str) -> str:
+        safe_raw = str(raw_text or "").strip()
+        if len(safe_raw) > self.raw_api_log_max_chars:
+            return f"{safe_raw[:self.raw_api_log_max_chars]}...(truncated)"
+        return safe_raw
+
+    def _sanitize_for_log(self, value: Any, parent_key: str = "") -> Any:
+        key_name = str(parent_key or "").strip().lower()
+        if key_name in _SENSITIVE_LOG_KEYS:
+            return _REDACTED
+        if isinstance(value, dict):
+            return {str(k): self._sanitize_for_log(v, str(k)) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._sanitize_for_log(item, parent_key) for item in value]
+        if isinstance(value, tuple):
+            return [self._sanitize_for_log(item, parent_key) for item in value]
+        if isinstance(value, bytes):
+            return self._truncate_for_log(value.decode("utf-8", errors="replace"))
+        if isinstance(value, str):
+            stripped = value.strip()
+            if key_name in _SENSITIVE_LOG_KEYS:
+                return _REDACTED
+            if stripped.startswith("{") or stripped.startswith("["):
+                try:
+                    parsed = json.loads(stripped)
+                except Exception:  # noqa: BLE001
+                    parsed = None
+                if parsed is not None:
+                    return self._sanitize_for_log(parsed, parent_key)
+            if "=" in stripped and "&" in stripped:
+                try:
+                    parsed_form = dict(parse_qsl(stripped, keep_blank_values=True))
+                except Exception:  # noqa: BLE001
+                    parsed_form = None
+                if parsed_form is not None:
+                    return self._sanitize_for_log(parsed_form, parent_key)
+            return stripped
+        return value
 
     def _normalize_prudential(self, body: dict[str, Any], query: EntityExample, screening_type: str | None = None) -> dict[str, Any]:
         status_value = str(body.get("status") or "").strip().upper()

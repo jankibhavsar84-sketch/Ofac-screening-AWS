@@ -1,0 +1,34 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SnsScheduleNotificationAccess",
+      "Effect": "Allow",
+      "Action": [
+        "sns:CreateTopic",
+        "sns:GetTopicAttributes",
+        "sns:Publish",
+        "sns:Subscribe",
+        "sns:ListSubscriptionsByTopic"
+      ],
+      "Resource": "arn:aws:sns:us-east-2:279930135954:ofac-screening-schedule*"
+    },
+    {
+      "Sid": "SnsUnsubscribeAccess",
+      "Effect": "Allow",
+      "Action": [
+        "sns:Unsubscribe"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SesEmailDeliveryAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

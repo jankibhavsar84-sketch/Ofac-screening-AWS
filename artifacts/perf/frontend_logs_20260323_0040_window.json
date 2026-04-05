@@ -1,0 +1,1875 @@
+﻿{
+    "events": [
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226441831,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:41 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226444688,
+            "eventId": "39566571803768745188043012694702481537259936594046877696"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226441856,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:41 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226444688,
+            "eventId": "39566571804326263818006278273240874494076145631696388097"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456857,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138859742541164156037541181961599942208975798272"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456857,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138859742541164156037541181961599942208975798273"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456857,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138859742541164156037541181961599942208975798274"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456858,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138882043286362686660682717679872590570481778691"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456858,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138882043286362686660682717679872590570481778692"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456859,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138904344031561217283824253398145238931987759109"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456861,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138948945521958278530107324834690535654999719942"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456862,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138971246267156809153248860552963184016505700359"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456862,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138971246267156809153248860552963184016505700360"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456862,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138971246267156809153248860552963184016505700361"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456863,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138993547012355339776390396271235832378011680778"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456863,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572138993547012355339776390396271235832378011680779"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456864,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572139015847757553870399531931989508480739517661196"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456865,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572139038148502752401022673467707781129101023641613"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456871,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572139171952973943584761522682017417019270059524110"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456873,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572139216554464340646007805753453962315993071484943"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456876,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572139283456699936237877230360608780261077589426192"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456878,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572139328058190333299123513432045325557800601387025"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456879,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572139350358935531829746654967763598206162107367442"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456879,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /index.html HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572139350358935531829746654967763598206162107367443"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456922,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140309290979068646541741003649322085706864525332"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456948,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140889110354230442743420932324410943106020016149"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456948,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140889110354230442743420932324410943106020016150"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456948,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140889110354230442743420932324410943106020016151"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456948,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140889110354230442743420932324410943106020016152"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456948,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140889110354230442743420932324410943106020016153"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456948,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140889110354230442743420932324410943106020016154"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456949,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140911411099428973366562468042683591467525996571"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456949,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140911411099428973366562468042683591467525996572"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456949,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140911411099428973366562468042683591467525996573"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456950,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140933711844627503989704003760956239829031976990"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456950,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140933711844627503989704003760956239829031976991"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456950,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140933711844627503989704003760956239829031976992"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456950,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140933711844627503989704003760956239829031976993"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456951,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140956012589826034612845539479228888190537957410"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456951,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140956012589826034612845539479228888190537957411"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456951,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140956012589826034612845539479228888190537957412"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456952,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140978313335024565235987075197501536552043937829"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456952,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572140978313335024565235987075197501536552043937830"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456953,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141000614080223095859128610915774184913549918247"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456956,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141067516315818687728553218070592129998067859496"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456963,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141223621532208402090543968098500668528609722409"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456963,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141223621532208402090543968098500668528609722410"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456963,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141223621532208402090543968098500668528609722411"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456963,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141223621532208402090543968098500668528609722412"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456964,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141245922277406932713685503816773316890115702829"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456964,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141245922277406932713685503816773316890115702830"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456964,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141245922277406932713685503816773316890115702831"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456964,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141245922277406932713685503816773316890115702832"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456965,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141268223022605463336827039535045965251621683249"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456965,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141268223022605463336827039535045965251621683250"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456965,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141268223022605463336827039535045965251621683251"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456965,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141268223022605463336827039535045965251621683252"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456965,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141268223022605463336827039535045965251621683253"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456965,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141268223022605463336827039535045965251621683254"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456966,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141290523767803993959968575253318613613127663671"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456967,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141312824513002524583110110971591261974633644088"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456967,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141312824513002524583110110971591261974633644089"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456967,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141312824513002524583110110971591261974633644090"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456967,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141312824513002524583110110971591261974633644091"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456967,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141312824513002524583110110971591261974633644092"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456967,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141312824513002524583110110971591261974633644093"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456967,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141312824513002524583110110971591261974633644094"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456967,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141312824513002524583110110971591261974633644095"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456967,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141312824513002524583110110971591261974633644096"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456967,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141312824513002524583110110971591261974633644097"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456968,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141335125258201055206251646689863910336139624514"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456968,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141335125258201055206251646689863910336139624515"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456968,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141335125258201055206251646689863910336139624516"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456968,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141335125258201055206251646689863910336139624517"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456968,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-BfZm38e4.css HTTP/1.1\" 200 44300 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141335125258201055206251646689863910336139624518"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456968,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141335125258201055206251646689863910336139624519"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456969,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141357426003399585829393182408136558697645604936"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456969,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141357426003399585829393182408136558697645604937"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456969,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141357426003399585829393182408136558697645604938"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456970,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141379726748598116452534718126409207059151585355"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456970,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141379726748598116452534718126409207059151585356"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456970,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /app-config.js HTTP/1.1\" 200 581 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141379726748598116452534718126409207059151585357"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456971,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141402027493796647075676253844681855420657565774"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226456972,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:40:56 +0000] \"GET /assets/index-CXzmxeeU.js HTTP/1.1\" 200 571596 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226459679,
+            "eventId": "39566572141424328238995177698817789562954503782163546191"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226461552,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:01 +0000] \"GET /index.html?code=d708e474-34bd-41c0-9421-683934e2f023&state=9d5bad27804649438878de6398224cae HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572243561741248265431693083764770687020891240988672"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226461570,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:01 +0000] \"GET /index.html?code=d010029e-74f3-464a-b47b-4954861ee9cb&state=872db8bbfe5648ec8b371e77ef0951d5 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572243963154661838982909631407699594691398348636161"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226461753,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:01 +0000] \"GET /index.html?code=a03b842c-2f1f-4bc1-91d7-7bf998bd8658&state=b058236dd4a74521b8557e4a1b1f9210 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572248044191033170086944532444143489341553943052290"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226461757,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:01 +0000] \"GET /index.html?code=7ad8bb7a-80cc-43d1-8de9-a4362cb8c356&state=579750e1b1d34150b7fb5dbd2b078a27 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572248133394013964209437098587016579934999966973955"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226461929,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:01 +0000] \"GET /index.html?code=0af57dbe-afc7-44ab-8816-da9425b5fdf9&state=7ec9cf0b8ffa4b70857b258f51765220 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572251969122188111476617442730559475453178995605508"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226461967,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:01 +0000] \"GET /index.html?code=714b04d1-c737-4128-a7fe-b29c9d730eae&state=f1654f0b143547bf85580aae60194775 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572252816550505655640296821087853836090916222861317"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462059,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=155e1a1e-1920-4924-9e69-a6a0d0e658c6&state=ecb90cf136a2438385bb42867eec06a8 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572254868219063920457625842373934919740174773059590"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462105,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=935b6f6a-86fe-42e1-963c-72f7894abeec&state=4a00cadcb9354d74a7237caa1fd051cb HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572255894053343052866290353016975461564804048158727"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462147,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=58f85f5a-33ab-4594-ba4f-8fa269218fef&state=79a7ddf97fd044e79f508ba4b3d532a4 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572256830684641391152462297517142912795987299336200"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462148,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=921cb608-c4f7-4129-964d-086c297d7c05&state=82effaa648ee4f18a9dfbcb9acfd8409 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572256852985386589683085439052861185444348805316617"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462163,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=874e3f8b-4379-4225-a69b-a04d8bd0e9d6&state=799ff7c0776647299e087dd0735d4b7d HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572257187496564567642432562088635275169771395022858"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462393,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=9ac8145c-8c3a-44a7-810f-b911acddd565&state=c1ef0241a0694150b4b54e0e3f3681c6 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572262316667960229685755115303837984292917770518539"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462462,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=25c25ccd-2b88-4716-8ee2-987de7bd952c&state=5cca93d55dab4f6f9a0633ed41abef4c HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572263855419378928298751881268398797029861683167244"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462466,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572263944622359722421244447411271887623307707088909"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462474,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:02 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572264123028321310666229579697018068810199754932238"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462482,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572264301434282898911214711982764249997091802775567"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462499,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=5ece5a34-135e-4d84-aabc-6579f2d48e11&state=4fdc95ae48f347f9bb195bfab06f76f4 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572264680546951273931808118089974885019237404442640"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462499,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=c7309f21-e194-445b-bfa2-98cc5afaf841&state=a558d0491df54c1fb4169257fae2a4ab HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572264680546951273931808118089974885019237404442641"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462499,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=3a88954c-8bac-49c7-9a50-3f6b88ddbb3e&state=6d85a5c1db8f4f6eb1f21bb34ecf8427 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572264680546951273931808118089974885019237404442642"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462522,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:02 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572265193464090840136140373411495155931552041992211"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462524,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=bb5dad7f-4938-4ab2-8331-be48d427257c&state=73c157697cab48a9afbefec7da00ca17 HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572265238065581237197386656482931701228275053953044"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462549,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=bae4dec7-9c02-4c56-a09e-81bdeec95bba&state=6567244b870b467caa5f1f038cab550f HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572265795584211200462965194875888517437312703463445"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462614,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572267245132649104953469394697576239580810592190486"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462633,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572267668846807877035309083876223419899679205818391"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462646,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572267958756495457933409923840560964328378783563800"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462734,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:02 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572269921222072928628246378983768957384191309840409"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462827,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=eeba7ff4-0d32-4dc8-ba60-852072fb51c8&state=6fe34b13aa4d466a80ddfcfa83344f9d HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572271995191376391976198541805568313681811366019098"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462861,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:02 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572272753416713142017385354019989583726102569353243"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462893,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /index.html?code=2349856b-5ca9-4c96-bdd2-ab34739edd70&state=3d3537e7c3be4414a08ab24983f77a8d HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572273467040559494997325883162974308473670760726556"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462941,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572274537476329024467236676877451395595023047786525"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226462959,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:02 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572274938889742598018453224520380303265530155434014"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463043,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572276812152339274590797113520715205727896657788959"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463106,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:03 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572278217099286782020055030270966382574671534555168"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463129,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:03 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572278730016426348224387285592486653486986172104737"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463147,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:03 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572279131429839921775603833235415561157493279752226"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463207,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572280469474551833612992325378511920059183638577187"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463248,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:03 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572281383805104973368541128342961098642005383774244"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463256,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572281562211066561613526260628707279828897431617573"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463272,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572281919022989738103496525200199642202681527304230"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463273,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572281941323734936634119666735917914851043033284647"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463274,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572281963624480135164742808271636187499404539265064"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463285,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:03 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572282208932677319001597365164537186631381105049641"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463295,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572282431940129304307828780521719913114996164853802"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463562,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:03 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572288386239097311984207570558498710227518261624875"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463562,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:03 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572288386239097311984207570558498710227518261624876"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463667,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:03 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572290727817343157699637431808917338305476389568557"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463687,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572291173832247128312100262523282791272706509176878"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463688,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572291196132992326842723404059001063921068015157295"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463713,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572291753651622290108301942451957880130105664667696"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463745,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:03 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572292467275468643088242471594942604877673856041009"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463755,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572292690282920628394473886952125331361288915845170"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463807,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:03 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572293849921670951986877246809475509076087226826803"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226463984,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:03 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572297797153571091907173298631609767836073785360436"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464005,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:04 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572298265469220261050259270881693493451665410949173"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464007,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:04 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572298310070710658111505553953130038748388422910006"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464010,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:04 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572298376972946253703374978560284856693472940851255"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464044,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:04 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572299135198283003744561790774706126737764144185400"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464051,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:04 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572299291303499393458923781524734035276294686048313"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464166,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:04 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572301855889197224480585058132335389837867873796154"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464190,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:04 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572302391107081989215540454989573933398544017326139"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464264,
+            "message": "2026/03/23 00:41:04 [warn] 44#44: *437 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/5/06/0000000065 while reading upstream, client: 172.31.15.52, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572304041362226680481652928632726109377295459876924"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464275,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:04 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 814060 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572304286670423864318507485525627108509272025661501"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464355,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:04 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572306070730039746768358808383088920378192504094782"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464363,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:04 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572306249136001335013343940668835101565084551938111"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464449,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:04 +0000] \"GET /pru-t-icon.svg HTTP/1.1\" 200 906 \"https://d3ppga4y8wg1ck.cloudfront.net/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572308167000088408646934112740606549324174066253888"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226464473,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:04 +0000] \"GET /screening HTTP/1.1\" 200 517 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226464669,
+            "eventId": "39566572308702217973173381889509597845092884850209783873"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226465366,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:05 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1699303 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572328616783435461228360942308891952792336761946112"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226465653,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:05 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572335017097307439517202563060036202872088978325505"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226465656,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:05 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572335083999543035109071987667191020817173496266754"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226465657,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:05 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1740724 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572335106300288233639695129202909293465535002247171"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226465870,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:05 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572339856359015520662424276310901367566535776075780"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226466459,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:06 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572352991497937455199454640848963957451462798540805"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226468060,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:08 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572388694991000302727104239533918467478233873186822"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226468060,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:08 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572388694991000302727104239533918467478233873186823"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226468060,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:08 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572388694991000302727104239533918467478233873186824"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226468074,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:08 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 599730 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572389007201433082155828221033974284555294956912649"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226468364,
+            "message": "2026/03/23 00:41:08 [warn] 44#44: *454 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/6/06/0000000066 while reading upstream, client: 172.31.15.52, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572395474417540656036539266392273352580131691233290"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226468656,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:08 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572401986235138626978496594822008965901691437514763"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226468659,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:08 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1699303 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226469666,
+            "eventId": "39566572402053137374222570366019429163783846775955456012"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226469663,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:09 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572424443085553547316006167865420248961833545826304"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226470067,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:10 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1700329 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572433452586613753687755348295602398899881961914369"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226470067,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:10 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.68\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572433452586613753687755348295602398899881961914370"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226470067,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:10 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572433452586613753687755348295602398899881961914371"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226470072,
+            "message": "2026/03/23 00:41:10 [warn] 44#44: *459 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/7/06/0000000067 while reading upstream, client: 172.31.29.128, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572433564090339746340871055974193762141689491816452"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226470370,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:10 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572440209712408908466567233618239011353418273980421"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226470371,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:10 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1737690 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572440232013154106997190375153957284001779779960838"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226470449,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:10 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1699303 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572441971471279592385795414939982550573977246433287"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226471256,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:11 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572459968172654806598670634264628577801712572629000"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226471258,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:11 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1699303 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572460012774145203659916917336065123098435584589833"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226471470,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:11 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572464740532127292152022922908338924551074852438026"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226471470,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:11 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572464740532127292152022922908338924551074852438027"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226471518,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:11 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 331571 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572465810967896821621933716622816011672427139497996"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226471566,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:11 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572466881403666351091844510337293098793779426557965"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226471566,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:11 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572466881403666351091844510337293098793779426557966"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226471580,
+            "message": "2026/03/23 00:41:11 [warn] 44#44: *458 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/8/06/0000000068 while reading upstream, client: 172.31.29.128, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572467193614099130520568491837348915870840510283791"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226471855,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:11 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572473326319028726441932414159873894170254654898192"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226471887,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:11 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572474039942875079421872943302858618917822846271505"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226472070,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:12 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572478120979246410525907844339302513567978440687634"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226472070,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:12 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572478120979246410525907844339302513567978440687635"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226472071,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:12 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1739048 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.113\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572478143279991609056530985875020786216339946668052"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473049,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:13 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572499953408795772005963407807491436313892795514901"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473051,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:13 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572499998010286169067209690878927981610615807475734"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473055,
+            "message": "2026/03/23 00:41:13 [warn] 45#45: *509 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/9/06/0000000069 while reading upstream, client: 172.31.15.52, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572500087213266963189702257021801072204061831397399"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473055,
+            "message": "2026/03/23 00:41:13 [warn] 45#45: *507 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/0/07/0000000070 while reading upstream, client: 172.31.15.52, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572500087213266963189702257021801072204061831397400"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473153,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:13 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572502272686296419190770127522191791743489417478169"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473156,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:13 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1772779 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572502339588532014782639552129346609688573935419418"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473367,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:13 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1699303 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572507045045768904744122416165902138492851697287195"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473651,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:13 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572513378457405287441094612309891570627519395725340"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473651,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:13 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572513378457405287441094612309891570627519395725341"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473758,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:13 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572515764637141530217770756631746744002200535629854"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226473879,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:13 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 331571 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572518463027310552423170882453657734453942759260191"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226474661,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:14 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226474668,
+            "eventId": "39566572535902210055803370467563385346945472640435945504"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226474669,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:14 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572536080616017391615458741615779976113556559495168"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226474670,
+            "message": "2026/03/23 00:41:14 [warn] 45#45: *523 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/1/07/0000000071 while reading upstream, client: 172.31.15.52, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572536102916762590146081883151498248761918065475585"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226474751,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:14 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572537909277123671126556347544678333279200049889282"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226474751,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:14 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572537909277123671126556347544678333279200049889283"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226474751,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:14 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572537909277123671126556347544678333279200049889284"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475257,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:15 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1699303 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572549193454194127621865964618124293350122075979781"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475261,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:15 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1766518 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.116\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572549282657174921744358530760997383943568099901446"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475651,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:15 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572557979947802348687383729691123716804555432263687"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475651,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:15 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572557979947802348687383729691123716804555432263688"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475656,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:15 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.87\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572558091451528341340499437369715080046362962165769"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475658,
+            "message": "2026/03/23 00:41:15 [warn] 45#45: *528 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/2/07/0000000072 while reading upstream, client: 172.31.15.52, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572558136053018738401745720441151625343085974126602"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475658,
+            "message": "2026/03/23 00:41:15 [warn] 45#45: *533 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/3/07/0000000073 while reading upstream, client: 172.31.29.128, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572558136053018738401745720441151625343085974126603"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475663,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:15 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572558247556744731054861428119742988584893504028684"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475663,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:15 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572558247556744731054861428119742988584893504028685"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475668,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:15 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 573194 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.100\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572558359060470723707977135798334351826701033930766"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226475709,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:15 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1593139 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572559273391023863463525938762783530409522779127823"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226476064,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:16 +0000] \"GET /api/v1/business-units HTTP/1.1\" 200 188 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.74\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572567190155569341834741183942770320577857402175504"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226476075,
+            "message": "2026/03/23 00:41:16 [warn] 45#45: *537 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/4/07/0000000074 while reading upstream, client: 172.31.29.128, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572567435463766525671595740835671319709833967960081"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226476076,
+            "message": "2026/03/23 00:41:16 [warn] 44#44: *547 an upstream response is buffered to a temporary file /var/cache/nginx/proxy_temp/5/07/0000000075 while reading upstream, client: 172.31.29.128, server: _, request: \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\", upstream: \"http://172.31.34.154:8000/api/v1/screenings/submissions?limit=500\", host: \"d3ppga4y8wg1ck.cloudfront.net\", referrer: \"https://d3ppga4y8wg1ck.cloudfront.net/screening\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572567457764511724202218882371389592358195473940498"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226476087,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:16 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 504140 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572567703072708908039073439264290591490172039725075"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226476100,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:16 +0000] \"GET /api/v1/screenings/submissions?limit=500 HTTP/1.1\" 200 1219658 \"https://d3ppga4y8wg1ck.cloudfront.net/screening\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36\" \"67.80.246.149, 3.172.45.81\"",
+            "ingestionTime": 1774226479669,
+            "eventId": "39566572567992982396488937174279228628135918871617470484"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488551,
+            "message": "2026/03/23 00:41:28 [warn] 45#45: *440 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000076, client: 172.31.29.128, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572845659560863393725921649043092109257491138609152"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488553,
+            "message": "2026/03/23 00:41:28 [warn] 45#45: *541 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000077, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572845704162353790787167932114528654554214150569985"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488553,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *549 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000078, client: 172.31.29.128, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572845704162353790787167932114528654554214150569986"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488555,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *543 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000079, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572845748763844187848414215185965199850937162530819"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488600,
+            "message": "2026/03/23 00:41:28 [warn] 45#45: *441 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000080, client: 172.31.29.128, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572846752297378121726455584293287469027204931649540"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488604,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *502 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000081, client: 172.31.29.128, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572846841500358915848948150436160559620650955571205"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488610,
+            "message": "2026/03/23 00:41:28 [warn] 45#45: *507 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000082, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572846975304830107032686999650470195510819991453702"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488615,
+            "message": "2026/03/23 00:41:28 [warn] 45#45: *504 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000083, client: 172.31.29.128, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572847086808556099685802707329061558752627521355783"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488644,
+            "message": "2026/03/23 00:41:28 [warn] 45#45: *505 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000084, client: 172.31.29.128, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572847733530166857073873811864891465555111194787848"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488669,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *455 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000085, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572848291048796820339452350257848281764148844298249"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488670,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *466 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000086, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572848313349542018870075491793566554412510350278666"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488679,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *436 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000087, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572848514056248805645683765615031008247763904102411"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488687,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *443 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000088, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572848692462210393890668897900777189434655951945740"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488693,
+            "message": "2026/03/23 00:41:28 [warn] 45#45: *445 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000089, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572848826266681585074407747115086825324824987828237"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488694,
+            "message": "2026/03/23 00:41:28 [warn] 45#45: *446 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000090, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572848848567426783605030888650805097973186493808654"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488707,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *465 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000091, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572849138477114364503131728615142642401886071554063"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488716,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *435 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000092, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572849339183821151278740002436607096237139625377808"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488720,
+            "message": "2026/03/23 00:41:28 [warn] 45#45: *520 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000093, client: 172.31.29.128, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572849428386801945401232568579480186830585649299473"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488723,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *545 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000094, client: 172.31.15.52, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572849495289037540993101993186635004775670167240722"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226488740,
+            "message": "2026/03/23 00:41:28 [warn] 44#44: *449 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000095, client: 172.31.29.128, server: _, request: \"POST /api/v1/screenings/batch-upload HTTP/1.1\", host: \"d3ppga4y8wg1ck.cloudfront.net\"",
+            "ingestionTime": 1774226489685,
+            "eventId": "39566572849874401705916013695399293845639797815768907795"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226493512,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:33 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226494670,
+            "eventId": "39566572956293557793304147332834493637205427446137421824"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226501885,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:41 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226504680,
+            "eventId": "39566573143017697340601054909014557351432869817605619712"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226501912,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:41 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226504680,
+            "eventId": "39566573143619817460961381733836021744794375578267090945"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226505458,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:41:45 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226509668,
+            "eventId": "39566573222698259934950971399751449998689318108515991552"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226510068,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:50 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226514669,
+            "eventId": "39566573325504695300177144088276854526723004186770341888"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226514296,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:54 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226514669,
+            "eventId": "39566573419792245999564618730689871383480276634055540737"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226517686,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:41:57 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226519665,
+            "eventId": "39566573495391772222583431186536033209326533562880622592"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226521448,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:42:01 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226524667,
+            "eventId": "39566573579287175659455635451040205071763226054022922240"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226525079,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:42:05 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226529670,
+            "eventId": "39566573660261181475320328084004678169763988862301503488"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226528781,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:42:08 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226529670,
+            "eventId": "39566573742818540200280694953969907215108223157441003521"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226531916,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:42:11 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226534667,
+            "eventId": "39566573812731376397674198508725571562074907486063493120"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226531943,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:42:11 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226534667,
+            "eventId": "39566573813333496518034525333547035955436413246724964353"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226532159,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:42:12 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226534667,
+            "eventId": "39566573818150457480917139932118751102328459332016734210"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226535869,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:42:15 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226539666,
+            "eventId": "39566573900886222167465751793259443905465697582676705280"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226539209,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:42:19 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226539666,
+            "eventId": "39566573975370711130558033085988742936111225012651294721"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226542906,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:42:22 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226544669,
+            "eventId": "39566574057816566129525746846294630246702574573433454592"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226546331,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:42:26 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 200 102642 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226549669,
+            "eventId": "39566574134196618434493131112099460046612976480981024768"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226549919,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:42:29 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 499 0 \"-\" \"node\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226554669,
+            "eventId": "39566574214211692206821006949974034363904492391242596352"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226549923,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:42:29 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 499 0 \"-\" \"node\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226554669,
+            "eventId": "39566574214300895187615129442540177236995085837266518017"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226549970,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:42:29 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 499 0 \"-\" \"node\" \"67.80.246.149, 3.172.45.84\"",
+            "ingestionTime": 1774226554669,
+            "eventId": "39566574215349030211946068730192355995809558828047597570"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226549990,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:42:29 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 499 0 \"-\" \"node\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226554669,
+            "eventId": "39566574215795045115916681193023070361262526058167205891"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226550192,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:42:30 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 499 0 \"-\" \"node\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226554669,
+            "eventId": "39566574220299795646019867067613285452337495082375249924"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226550242,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:42:30 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 499 0 \"-\" \"node\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226554669,
+            "eventId": "39566574221414832905946398224690071365969913157674270725"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226550387,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:42:30 +0000] \"POST /api/v1/screenings/batch-upload HTTP/1.1\" 499 0 \"-\" \"node\" \"67.80.246.149, 3.172.45.104\"",
+            "ingestionTime": 1774226554669,
+            "eventId": "39566574224648440959733338580212750515503925576041431046"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226561947,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:42:41 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226564683,
+            "eventId": "39566574482445055454747342108471633078973648915637796864"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226561974,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:42:41 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226564683,
+            "eventId": "39566574483047175575107668933293097472335154676299268097"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226591962,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:43:11 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226594682,
+            "eventId": "39566575151801922588643995737933062406467947128116084736"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226592005,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:43:12 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226594682,
+            "eventId": "39566575152760854632180812533019098292191826672873242625"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226621992,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:43:41 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226624683,
+            "eventId": "39566575821493300900518608714519689926926360973919322112"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226622006,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:43:42 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226624683,
+            "eventId": "39566575821805511333298037438501189982743438035003047937"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226651996,
+            "message": "172.31.29.128 - - [23/Mar/2026:00:44:11 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226654682,
+            "eventId": "39566576490604859837231425489423985540630133673339060224"
+        },
+        {
+            "logStreamName": "ecs/frontend/af47ab646405441ca00c6a696533b645",
+            "timestamp": 1774226652036,
+            "message": "172.31.15.52 - - [23/Mar/2026:00:44:12 +0000] \"GET / HTTP/1.1\" 200 517 \"-\" \"ELB-HealthChecker/2.0\" \"-\"",
+            "ingestionTime": 1774226654682,
+            "eventId": "39566576491496889645172650415085414271536068133578276865"
+        }
+    ],
+    "searchedLogStreams": [],
+    "nextToken": "Bxkq6kVGFtq2y_MoigeqscPOdhXVbhiVtLoAmXb5jCoQbZMfd_nArL4UtRmBEbYulOko3gcOuFhUgEcXF6ly5m-ik_EsaA_tDrcpCIdnjm5NybQL1gsr9kC-oQGPjh-Pw49XmLpp5rF66dqny2nVVsEM8tTC2gG9C5CkkYjlwSer-U5RI4WHmhIV4uzV38WrH4M80BjZFgd8dPu2oT0eTTN2aP7nN_j_DaISc_HZDtmRcd4kaj6-DnU_dtRUw9HRGJ31VeIRzdC7_wavFq-xMYx8_b0hkhp7jhiMs7cPnFNDHPuP-A_W3C7BcYBWOO8DihGSJnQqPgvKTcM2NBOSTh9H8B0yIsbvg2rIMONl8uY"
+}

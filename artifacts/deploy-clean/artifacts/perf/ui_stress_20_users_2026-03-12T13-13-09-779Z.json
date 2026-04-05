@@ -1,0 +1,41 @@
+{
+  "summary": {
+    "baseUrl": "http://localhost:8080",
+    "vus": 20,
+    "iterationsPerVu": 3,
+    "startedAt": "2026-03-12T13:12:24.851Z",
+    "finishedAt": "2026-03-12T13:13:09.778Z",
+    "durationMs": 44927,
+    "completedVus": 0,
+    "successfulVus": 0,
+    "failedVus": 20,
+    "fatalErrors": [
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n",
+      "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /Entity Screening Workbench/i }) to be visible\u001b[22m\n"
+    ],
+    "totalSteps": 0,
+    "avgStepMs": 0,
+    "p95StepMs": 0,
+    "p99StepMs": 0,
+    "maxStepMs": 0
+  },
+  "completed": []
+}

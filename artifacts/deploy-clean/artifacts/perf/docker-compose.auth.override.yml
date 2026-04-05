@@ -1,0 +1,10 @@
+services:
+  frontend:
+    environment:
+      - BACKEND_UPSTREAM=http://172.18.0.4:8000
+      - VITE_AUTH_ENABLED=true
+      - VITE_OIDC_AUTHORITY=http://localhost:8081/realms/screening-local
+      - VITE_OIDC_CLIENT_ID=screening-frontend
+      - VITE_OIDC_REDIRECT_URI=http://localhost:8080/
+      - VITE_OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:8080/signed-out
+      - VITE_OIDC_SCOPE=openid profile email roles
