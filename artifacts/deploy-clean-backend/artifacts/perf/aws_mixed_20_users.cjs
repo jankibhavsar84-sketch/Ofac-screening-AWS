@@ -77,38 +77,32 @@ async function login(page, cred) {
   }
 
   await page.waitForURL(
-    (url) => /realms\/screening-local/i.test(url.href) || /amazoncognito\.com/i.test(url.hostname),
+    (url) => /amazoncognito\.com/i.test(url.hostname) || !url.href.startsWith(BASE_URL),
     { timeout: STEP_TIMEOUT_MS, waitUntil: 'domcontentloaded' }
   );
 
-  if (/realms\/screening-local/i.test(page.url())) {
-    await page.fill('#username', cred.username, { timeout: STEP_TIMEOUT_MS });
-    await page.fill('#password', cred.password, { timeout: STEP_TIMEOUT_MS });
-    await page.click('#kc-login', { timeout: STEP_TIMEOUT_MS });
-  } else {
-    const usernameInput = page.locator('input[name="username"]').first();
-    await usernameInput.waitFor({ timeout: STEP_TIMEOUT_MS });
-    await usernameInput.fill(cred.username, { timeout: STEP_TIMEOUT_MS });
+  const usernameInput = page.locator('input[name="username"]').first();
+  await usernameInput.waitFor({ timeout: STEP_TIMEOUT_MS });
+  await usernameInput.fill(cred.username, { timeout: STEP_TIMEOUT_MS });
 
-    const passwordInput = page.locator('input[name="password"]').first();
-    if (!(await passwordInput.isVisible({ timeout: 2000 }).catch(() => false))) {
-      const nextBtn = page.getByRole('button', { name: /next|continue|sign in/i }).first();
-      await nextBtn.click({ timeout: STEP_TIMEOUT_MS });
-    }
-
-    if (!(await passwordInput.isVisible({ timeout: 12000 }).catch(() => false))) {
-      const usePassword = page.getByRole('button', { name: /password|use password|try another way/i }).first();
-      if (await usePassword.isVisible({ timeout: 4000 }).catch(() => false)) {
-        await usePassword.click({ timeout: STEP_TIMEOUT_MS });
-      }
-    }
-
-    await passwordInput.waitFor({ timeout: STEP_TIMEOUT_MS });
-    await passwordInput.fill(cred.password, { timeout: STEP_TIMEOUT_MS });
-
-    const signInBtn = page.getByRole('button', { name: /sign in|continue/i }).first();
-    await signInBtn.click({ timeout: STEP_TIMEOUT_MS });
+  const passwordInput = page.locator('input[name="password"]').first();
+  if (!(await passwordInput.isVisible({ timeout: 2000 }).catch(() => false))) {
+    const nextBtn = page.getByRole('button', { name: /next|continue|sign in/i }).first();
+    await nextBtn.click({ timeout: STEP_TIMEOUT_MS });
   }
+
+  if (!(await passwordInput.isVisible({ timeout: 12000 }).catch(() => false))) {
+    const usePassword = page.getByRole('button', { name: /password|use password|try another way/i }).first();
+    if (await usePassword.isVisible({ timeout: 4000 }).catch(() => false)) {
+      await usePassword.click({ timeout: STEP_TIMEOUT_MS });
+    }
+  }
+
+  await passwordInput.waitFor({ timeout: STEP_TIMEOUT_MS });
+  await passwordInput.fill(cred.password, { timeout: STEP_TIMEOUT_MS });
+
+  const signInBtn = page.getByRole('button', { name: /sign in|continue/i }).first();
+  await signInBtn.click({ timeout: STEP_TIMEOUT_MS });
 
   const base = new URL(BASE_URL);
   await page.waitForURL(

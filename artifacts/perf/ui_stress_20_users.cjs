@@ -59,49 +59,41 @@ async function clickIfEnabled(locator) {
 async function login(page, cred) {
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: TIMEOUT_MS });
 
-  if (!/realms\/screening-local/i.test(page.url())) {
-    const signInButton = page.getByRole('button', { name: /sign in/i }).first();
-    try {
-      if (await signInButton.isVisible({ timeout: 6000 })) {
-        await signInButton.click({ timeout: 6000 });
-      }
-    } catch {
-      // optional, app may auto-redirect to IdP
+  const signInButton = page.getByRole('button', { name: /sign in/i }).first();
+  try {
+    if (await signInButton.isVisible({ timeout: 6000 })) {
+      await signInButton.click({ timeout: 6000 });
     }
+  } catch {
+    // optional, app may auto-redirect to IdP
   }
 
   await page.waitForURL(
-    (url) => /realms\/screening-local/i.test(url.href) || /amazoncognito\.com/i.test(url.hostname),
+    (url) => /amazoncognito\.com/i.test(url.hostname) || !url.href.startsWith(BASE_URL),
     { timeout: TIMEOUT_MS, waitUntil: 'domcontentloaded' }
   );
 
-  if (/realms\/screening-local/i.test(page.url())) {
-    await page.fill('#username', cred.username, { timeout: TIMEOUT_MS });
-    await page.fill('#password', cred.password, { timeout: TIMEOUT_MS });
-    await page.click('#kc-login', { timeout: TIMEOUT_MS });
-  } else {
-    const usernameField = page.locator('input[name="username"]').first();
-    await usernameField.waitFor({ timeout: TIMEOUT_MS });
-    await usernameField.fill(cred.username, { timeout: TIMEOUT_MS });
+  const usernameField = page.locator('input[name="username"]').first();
+  await usernameField.waitFor({ timeout: TIMEOUT_MS });
+  await usernameField.fill(cred.username, { timeout: TIMEOUT_MS });
 
-    const nextButton = page.getByRole('button', { name: /next|continue|sign in/i }).first();
-    await nextButton.click({ timeout: TIMEOUT_MS });
+  const nextButton = page.getByRole('button', { name: /next|continue|sign in/i }).first();
+  await nextButton.click({ timeout: TIMEOUT_MS });
 
-    const passwordField = page.locator('input[name="password"]').first();
-    const passwordVisible = await passwordField.isVisible({ timeout: 12000 }).catch(() => false);
-    if (!passwordVisible) {
-      const usePasswordButton = page.getByRole('button', { name: /password|use password|try another way/i }).first();
-      if (await usePasswordButton.isVisible({ timeout: 4000 }).catch(() => false)) {
-        await usePasswordButton.click({ timeout: TIMEOUT_MS });
-      }
+  const passwordField = page.locator('input[name="password"]').first();
+  const passwordVisible = await passwordField.isVisible({ timeout: 12000 }).catch(() => false);
+  if (!passwordVisible) {
+    const usePasswordButton = page.getByRole('button', { name: /password|use password|try another way/i }).first();
+    if (await usePasswordButton.isVisible({ timeout: 4000 }).catch(() => false)) {
+      await usePasswordButton.click({ timeout: TIMEOUT_MS });
     }
-
-    await passwordField.waitFor({ timeout: TIMEOUT_MS });
-    await passwordField.fill(cred.password, { timeout: TIMEOUT_MS });
-
-    const signInButton = page.getByRole('button', { name: /sign in|continue/i }).first();
-    await signInButton.click({ timeout: TIMEOUT_MS });
   }
+
+  await passwordField.waitFor({ timeout: TIMEOUT_MS });
+  await passwordField.fill(cred.password, { timeout: TIMEOUT_MS });
+
+  const submitButton = page.getByRole('button', { name: /sign in|continue/i }).first();
+  await submitButton.click({ timeout: TIMEOUT_MS });
 
   const base = new URL(BASE_URL);
   await page.waitForURL(

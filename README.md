@@ -142,12 +142,11 @@ Frontend (`.env`, see `.env.example`):
 - `VITE_SCREENING_POLL_INTERVAL_MS` default `750`
 - `VITE_SCREENING_JOB_TIMEOUT_MS` default `90000`
 - `VITE_AUTH_ENABLED` default `true` (`false` disables OIDC and uses local admin mode)
-- `VITE_OIDC_AUTHORITY` ex Keycloak: `http://localhost:8081/realms/screening-local`
-- `VITE_OIDC_AUTHORITY` ex Cognito: `https://cognito-idp.<region>.amazonaws.com/<user_pool_id>`
-- `VITE_OIDC_CLIENT_ID` ex: `screening-frontend` (Keycloak) or `<cognito_app_client_id>`
+- `VITE_OIDC_AUTHORITY` ex: `https://cognito-idp.<region>.amazonaws.com/<user_pool_id>`
+- `VITE_OIDC_CLIENT_ID` ex: `<oidc_app_client_id>`
 - `VITE_OIDC_REDIRECT_URI` ex: `http://localhost:8080/`
 - `VITE_OIDC_POST_LOGOUT_REDIRECT_URI` ex: `http://localhost:8080/signed-out`
-- `VITE_OIDC_SCOPE` ex: `openid profile email` (Cognito)
+- `VITE_OIDC_SCOPE` ex: `openid profile email`
 - `VITE_OIDC_IDLE_TIMEOUT_MS` ex: `900000` (15 minutes; set `0` to disable idle auto-logout)
 - `VITE_OIDC_CLEAR_SESSION_ON_CLOSE` ex: `true` (stores OIDC session in `sessionStorage`; clears on tab/browser close)
 - `VITE_ACTIMIZE_REVIEW_ALERT_URL` ex: `http://actimizeuat/` (optional; controls the `Review Alert` link in Screening Results)
@@ -175,48 +174,34 @@ Backend/Worker (`backend/.env.example`):
 - `DAILY_SCREENING_HOUR=0`
 - `DAILY_SCREENING_MINUTE=5`
 - `AUTH_ENABLED=true`
-- `AUTH_ISSUER=http://localhost:8081/realms/screening-local`
-- `AUTH_JWKS_URL=http://localhost:8081/realms/screening-local/protocol/openid-connect/certs`
+- `AUTH_ISSUER=https://cognito-idp.<region>.amazonaws.com/<user_pool_id>`
+- `AUTH_JWKS_URL=https://cognito-idp.<region>.amazonaws.com/<user_pool_id>/.well-known/jwks.json`
 - `AUTH_AUDIENCE=` (optional; leave blank to skip audience validation in local simulation)
 - `AUTH_ALGORITHMS=RS256`
 - `AWS_S3_UPLOAD_BUCKET=<bucket_name>` to store uploaded batch source files
 - `AWS_S3_UPLOAD_PREFIX=screening-input` to control S3 key prefix for uploaded files
-- Cognito backend example:
+- OIDC backend example:
   - `AUTH_ISSUER=https://cognito-idp.<region>.amazonaws.com/<user_pool_id>`
   - `AUTH_JWKS_URL=https://cognito-idp.<region>.amazonaws.com/<user_pool_id>/.well-known/jwks.json`
-  - `AUTH_AUDIENCE=<cognito_app_client_id>`
+  - `AUTH_AUDIENCE=<oidc_app_client_id>`
 
-## OIDC/OAuth2 Local Simulation (Keycloak)
+## Local Development Authentication
 
-1. Start the stack (includes Keycloak):
+1. Start the local stack:
    ```bash
    docker compose up --build
    ```
-2. Keycloak realm is auto-imported from `docs/keycloak/realm-screening-local.json`.
-3. Keycloak admin console: `http://localhost:8081` (admin/admin).
-4. Preloaded test users:
-   - `screening.admin` / `Admin123!` (read + write + admin)
-   - `screening.analyst` / `Analyst123!` (read + write)
-   - `screening.viewer` / `Viewer123!` (read only)
-5. If you prefer manual setup, create realm/client with:
-   - Realm: `screening-local`
-   - Client: `screening-frontend` (Public, Standard Flow ON, PKCE S256 ON)
-   - Redirect URIs: `http://localhost:8080/*` and `http://localhost:5173/*`
-   - Web Origins: `http://localhost:8080`, `http://localhost:5173`
-6. Add realm roles (or equivalent scopes in your IdP mapping):
-   - `screening.read`
-   - `screening.write`
-   - `screening.admin`
-7. Start app with env from `.env.example` and `backend/.env.example`.
-
-Legacy manual Keycloak bootstrap:
-1. Start only Keycloak:
-   ```bash
-   docker run --name keycloak -p 8081:8080 \
-     -e KEYCLOAK_ADMIN=admin \
-     -e KEYCLOAK_ADMIN_PASSWORD=admin \
-     quay.io/keycloak/keycloak:latest start-dev
-   ```
+2. Local Docker Compose now runs with auth disabled by default:
+   - frontend: `VITE_AUTH_ENABLED=false`
+   - backend/worker: `AUTH_ENABLED=false`
+3. If you want real OIDC locally, point the app to your IdP by setting:
+   - `VITE_OIDC_AUTHORITY`
+   - `VITE_OIDC_CLIENT_ID`
+   - `VITE_OIDC_REDIRECT_URI`
+   - `AUTH_ISSUER`
+   - `AUTH_JWKS_URL`
+   - `AUTH_AUDIENCE`
+4. Start app with env from `.env.example` and `backend/.env.example`.
 
 Authorization behavior:
 - Frontend requires OIDC sign-in before app access.

@@ -17,21 +17,22 @@ const { chromium } = require('playwright');
   console.log('after sign-in attempt', page.url());
   await page.screenshot({ path: 'artifacts/perf/login_step1.png', fullPage: true });
 
-  if (!/realms\/screening-local/i.test(page.url())) {
-    try {
-      await page.waitForURL(/realms\/screening-local/i, { timeout: 60000, waitUntil: 'domcontentloaded' });
-    } catch (e) {
-      console.log('wait keycloak failed', e.message);
-      await page.screenshot({ path: 'artifacts/perf/login_fail_before_form.png', fullPage: true });
-      throw e;
-    }
+  try {
+    await page.waitForURL((url) => /amazoncognito\.com/i.test(url.hostname) || !url.href.startsWith('http://localhost:8080'), {
+      timeout: 60000,
+      waitUntil: 'domcontentloaded',
+    });
+  } catch (e) {
+    console.log('wait hosted sign-in failed', e.message);
+    await page.screenshot({ path: 'artifacts/perf/login_fail_before_form.png', fullPage: true });
+    throw e;
   }
-  console.log('at keycloak', page.url());
-  await page.fill('#username', 'screening.admin');
-  await page.fill('#password', 'Admin123!');
+  console.log('at hosted sign-in', page.url());
+  await page.fill('input[name="username"]', 'screening.admin');
+  await page.fill('input[name="password"]', 'Admin123!');
   await page.screenshot({ path: 'artifacts/perf/login_filled.png', fullPage: true });
-  await page.click('#kc-login');
-  console.log('clicked kc login');
+  await page.getByRole('button', { name: /sign in|continue/i }).first().click();
+  console.log('submitted hosted sign-in form');
   for (let i=0;i<20;i++) {
     await page.waitForTimeout(1000);
     const u = page.url();

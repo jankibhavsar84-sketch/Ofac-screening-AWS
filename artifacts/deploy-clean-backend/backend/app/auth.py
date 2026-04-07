@@ -115,17 +115,6 @@ def _normalize_role(role: str) -> str:
 def _extract_roles(payload: dict[str, Any]) -> set[str]:
     roles_raw: set[str] = set()
 
-    realm_access = payload.get("realm_access")
-    if isinstance(realm_access, dict):
-        roles_raw.update(_to_string_list(realm_access.get("roles")))
-
-    resource_access = payload.get("resource_access")
-    if isinstance(resource_access, dict):
-        for _, client_access in resource_access.items():
-            if not isinstance(client_access, dict):
-                continue
-            roles_raw.update(_to_string_list(client_access.get("roles")))
-
     roles_raw.update(_to_string_list(payload.get("roles")))
     roles_raw.update(_to_string_list(payload.get("groups")))
     roles_raw.update(_to_string_list(payload.get("cognito:groups")))

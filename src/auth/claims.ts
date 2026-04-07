@@ -58,22 +58,6 @@ function parseScopes(profile: Record<string, unknown>): Set<string> {
 function parseRoles(profile: Record<string, unknown>): Set<string> {
   const roles = new Set<string>();
 
-  const realmAccess = profile.realm_access;
-  if (realmAccess && typeof realmAccess === "object" && !Array.isArray(realmAccess)) {
-    const realmRoles = toStringArray((realmAccess as Record<string, unknown>).roles);
-    realmRoles.forEach((r) => roles.add(normalizeRole(r)));
-  }
-
-  const resourceAccess = profile.resource_access;
-  if (resourceAccess && typeof resourceAccess === "object" && !Array.isArray(resourceAccess)) {
-    Object.values(resourceAccess as Record<string, unknown>).forEach((clientAccess) => {
-      if (clientAccess && typeof clientAccess === "object" && !Array.isArray(clientAccess)) {
-        const clientRoles = toStringArray((clientAccess as Record<string, unknown>).roles);
-        clientRoles.forEach((r) => roles.add(normalizeRole(r)));
-      }
-    });
-  }
-
   toStringArray(profile.roles).forEach((r) => roles.add(normalizeRole(r)));
   toStringArray(profile.groups).forEach((r) => roles.add(normalizeRole(r)));
   toStringArray(profile["cognito:groups"]).forEach((r) => roles.add(normalizeRole(r)));

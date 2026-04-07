@@ -23,18 +23,14 @@ function envBool(name: string, fallback: boolean): boolean {
 export const oidcAuthEnabled = envBool("VITE_AUTH_ENABLED", true);
 export const signedOutPath = "/signed-out";
 
-const authority = env(
-  "VITE_OIDC_AUTHORITY",
-  oidcAuthEnabled ? "http://localhost:8081/realms/screening-local" : "http://127.0.0.1/oidc-disabled"
-);
+const authority = env("VITE_OIDC_AUTHORITY", oidcAuthEnabled ? "http://127.0.0.1/oidc-placeholder" : "http://127.0.0.1/oidc-disabled");
 const clientId = env("VITE_OIDC_CLIENT_ID", "screening-frontend");
 
 const redirectUri = env("VITE_OIDC_REDIRECT_URI", `${window.location.origin}/`);
 const explicitPostLogoutRedirectUri = appEnv("VITE_OIDC_POST_LOGOUT_REDIRECT_URI", "").trim();
 const postLogoutRedirectUri = explicitPostLogoutRedirectUri || `${window.location.origin}${signedOutPath}`;
 export const oidcUseRpInitiatedLogout = explicitPostLogoutRedirectUri.length > 0;
-// Cognito does not support `roles` default scope. Use standard OIDC scopes by default.
-const defaultScope = authority.includes("amazoncognito.com") ? "openid profile email" : "openid profile email roles";
+const defaultScope = "openid profile email";
 const scope = env("VITE_OIDC_SCOPE", defaultScope);
 export const oidcIdleTimeoutMs = envInt("VITE_OIDC_IDLE_TIMEOUT_MS", 15 * 60 * 1000);
 export const oidcClearSessionOnClose = envBool("VITE_OIDC_CLEAR_SESSION_ON_CLOSE", true);
@@ -58,7 +54,7 @@ export const oidcConfig: AuthProviderProps = {
 };
 
 if (oidcAuthEnabled && !appEnv("VITE_OIDC_AUTHORITY", "").trim()) {
-  console.warn("VITE_OIDC_AUTHORITY is not set. Using local default authority:", authority);
+  console.warn("VITE_OIDC_AUTHORITY is not set. Using placeholder authority:", authority);
 }
 if (oidcAuthEnabled && !appEnv("VITE_OIDC_CLIENT_ID", "").trim()) {
   console.warn("VITE_OIDC_CLIENT_ID is not set. Using local default client_id:", clientId);
