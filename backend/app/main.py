@@ -448,6 +448,9 @@ async def create_batch_job_with_upload(
     file = form.get("file")
     if not isinstance(file, StarletteUploadFile) or not str(getattr(file, "filename", "") or "").strip():
         raise HTTPException(status_code=400, detail="file is required")
+    safe_file_name = str(file.filename or "").strip()
+    if not re.search(r"\.(csv|xlsx)\Z", safe_file_name, re.IGNORECASE):
+        raise HTTPException(status_code=400, detail="Only CSV and XLSX batch files are supported")
 
     screening_types_json = _form_str("screening_types_json", "[]") or "[]"
     batch_name = _form_str("batch_name", "") or ""
@@ -476,37 +479,29 @@ async def create_batch_job_with_upload(
     body = await file.read()
     if not body:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
-    try:
-        from .batch_upload_parser import BatchUploadValidationError, parse_batch_upload
+    is_scheduled_upload = bool(daily_screening or (schedule_id or "").strip())
+    parsed_upload = None
+    parsed_queries: dict[str, Any] = {}
+    if is_scheduled_upload:
+        try:
+            from .batch_upload_parser import BatchUploadValidationError, parse_batch_upload
 
-        parsed_upload = parse_batch_upload(file.filename, body)
-    except BatchUploadValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    parsed_queries = parsed_upload.queries
-    queries_json = json.dumps(
-        {item_key: query.model_dump(mode="json") for item_key, query in parsed_queries.items()},
-        separators=(",", ":"),
-    )
+            parsed_upload = parse_batch_upload(safe_file_name, body)
+        except BatchUploadValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        parsed_queries = parsed_upload.queries
 
     upload_id = str(uuid4())
     file_hash = hashlib.sha256(body).hexdigest()
     s3_info: dict[str, str] = {}
-    queries_s3_info: dict[str, str] = {}
     if file_store.is_enabled():
         try:
             s3_info = file_store.upload_source_file(
                 job_id=upload_id,
                 user_id=principal.user_id,
-                original_filename=file.filename,
+                original_filename=safe_file_name,
                 body=body,
                 content_type=file.content_type,
-            )
-            queries_s3_info = file_store.upload_source_file(
-                job_id=upload_id,
-                user_id=principal.user_id,
-                original_filename="queries.json",
-                body=queries_json.encode("utf-8"),
-                content_type="application/json",
             )
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=500, detail=f"Failed to upload file to S3: {exc}") from exc
@@ -516,7 +511,7 @@ async def create_batch_job_with_upload(
 
     repository.register_batch_file_upload(
         upload_id=upload_id,
-        file_name=file.filename,
+        file_name=safe_file_name,
         user_id=principal.user_id,
         user_name=actor_user_name,
         record_count=len(parsed_queries),
@@ -524,14 +519,11 @@ async def create_batch_job_with_upload(
         s3_bucket=s3_info.get("bucket"),
         s3_key=s3_info.get("key"),
         s3_uri=s3_info.get("s3_uri"),
-        queries_s3_bucket=queries_s3_info.get("bucket"),
-        queries_s3_key=queries_s3_info.get("key"),
-        queries_s3_uri=queries_s3_info.get("s3_uri"),
         schedule_id=(schedule_id or "").strip() or None,
     )
 
     # Scheduled/daily batch jobs should not execute immediately; preserve existing behavior.
-    if daily_screening or (schedule_id or "").strip():
+    if is_scheduled_upload:
         payload = MatchJobRequest(
             queries=parsed_queries,
             screening_types=screening_types,
@@ -561,7 +553,7 @@ async def create_batch_job_with_upload(
         if not repository.user_has_business_unit(principal.user_id, safe_bu):
             raise HTTPException(status_code=400, detail="Selected Business Unit is not mapped to this user")
 
-        if not file_store.is_enabled() or not queries_s3_info.get("bucket") or not queries_s3_info.get("key"):
+        if not file_store.is_enabled() or not s3_info.get("bucket") or not s3_info.get("key"):
             raise HTTPException(
                 status_code=500,
                 detail="Batch dispatch requires S3 storage to be enabled (AWS_S3_UPLOAD_BUCKET).",
@@ -570,7 +562,7 @@ async def create_batch_job_with_upload(
         job_id = str(uuid4())
         submitted_at = repository.create_job(
             job_id=job_id,
-            total_items=len(parsed_queries),
+            total_items=0,
             status=JobStatus.queued,
             source_upload_id=upload_id,
             user_id=principal.user_id,
@@ -580,7 +572,7 @@ async def create_batch_job_with_upload(
             job_id=job_id,
             status=JobStatus.queued,
             submitted_at=submitted_at,
-            total_items=len(parsed_queries),
+            total_items=0,
             business_unit_code=safe_bu or None,
             daily_schedule_id=None,
             screened_item_keys=[],
@@ -610,7 +602,7 @@ async def create_batch_job_with_upload(
         screening_types=screening_types,
         mock_screening=bool(mock_screening),
         batch_name=(batch_name or "").strip() or None,
-        file_name=file.filename,
+        file_name=safe_file_name,
         daily_screening=bool(daily_screening),
         schedule_frequency=schedule_frequency if daily_screening else None,
         daily_schedule_id=accepted.daily_schedule_id,
@@ -622,7 +614,7 @@ async def create_batch_job_with_upload(
         repository.attach_upload_to_schedule(
             schedule_id=accepted.daily_schedule_id,
             upload_id=upload_id,
-            file_name=file.filename,
+            file_name=safe_file_name,
             s3_uri=s3_info.get("s3_uri"),
         )
 
@@ -649,10 +641,10 @@ async def create_batch_job_with_upload(
         entity_type="batch_file_upload",
         entity_id=upload_id,
         details={
-            "file_name": file.filename,
+            "file_name": safe_file_name,
             "record_count": len(parsed_queries),
+            "record_count_pending": not is_scheduled_upload,
             "s3_uri": s3_info.get("s3_uri"),
-            "queries_s3_uri": queries_s3_info.get("s3_uri"),
             "job_id": accepted.job_id,
             "daily_schedule_id": accepted.daily_schedule_id,
             "schedule_frequency": schedule_frequency,
@@ -672,7 +664,7 @@ async def create_batch_job_with_upload(
         daily_schedule_id=accepted.daily_schedule_id,
         screened_item_keys=accepted.screened_item_keys,
         source_upload_id=upload_id,
-        file_name=file.filename,
+        file_name=safe_file_name,
         s3_uri=s3_info.get("s3_uri"),
         schedule_frequency=schedule_frequency if daily_screening else None,
         row_meta=[
@@ -681,7 +673,7 @@ async def create_batch_job_with_upload(
                 "display_name": row.display_name,
                 "ui_type": row.ui_type,
             }
-            for row in parsed_upload.row_meta
+            for row in (parsed_upload.row_meta if parsed_upload else [])
         ],
     )
 

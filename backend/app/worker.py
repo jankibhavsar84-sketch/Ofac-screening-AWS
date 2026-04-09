@@ -12,6 +12,7 @@ from uuid import uuid4
 import boto3
 
 from .actimize import ActimizeClient, ExternalApiCallError
+from .batch_upload_parser import BatchUploadValidationError, parse_batch_upload
 from .config import settings
 from .models import EntityExample, MatchJobRequest, ScreeningQueueMessage
 from .queue import SqsQueue
@@ -41,6 +42,49 @@ def _download_s3_text(s3: object, bucket: str, key: str) -> str:
     if isinstance(body, bytes):
         return body.decode("utf-8", errors="replace")
     return str(body)
+
+
+def _download_s3_bytes(s3: object, bucket: str, key: str) -> bytes:
+    obj = s3.get_object(Bucket=bucket, Key=key)  # type: ignore[attr-defined]
+    body = obj["Body"].read()  # type: ignore[index]
+    if isinstance(body, bytes):
+        return body
+    return str(body).encode("utf-8")
+
+
+def _load_batch_queries(
+    *,
+    repository: JobRepository,
+    upload_id: str,
+    upload: dict[str, Any],
+    s3: object,
+) -> dict[str, dict[str, Any]]:
+    queries_bucket = str(upload.get("queries_s3_bucket") or "").strip()
+    queries_key = str(upload.get("queries_s3_key") or "").strip()
+    if queries_bucket and queries_key:
+        raw = _download_s3_text(s3, queries_bucket, queries_key)
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict) or not parsed:
+            raise RuntimeError("queries.json must be a non-empty object")
+        repository.update_batch_file_upload_record_count(upload_id, len(parsed))
+        return parsed
+
+    source_bucket = str(upload.get("s3_bucket") or "").strip()
+    source_key = str(upload.get("s3_key") or "").strip()
+    source_file_name = str(upload.get("file_name") or "").strip() or "upload.csv"
+    if not source_bucket or not source_key:
+        raise RuntimeError("Source upload file was not stored in S3 for this upload")
+
+    raw_body = _download_s3_bytes(s3, source_bucket, source_key)
+    parsed_upload = parse_batch_upload(source_file_name, raw_body)
+    parsed = {
+        item_key: query.model_dump(mode="json")
+        for item_key, query in parsed_upload.queries.items()
+    }
+    if not parsed:
+        raise RuntimeError("Uploaded batch file did not contain any valid screening rows")
+    repository.update_batch_file_upload_record_count(upload_id, len(parsed))
+    return parsed
 
 
 def _handle_job_dispatch(
@@ -79,24 +123,20 @@ def _handle_job_dispatch(
         repository.mark_job_failed(job_id, "Batch upload record not found")
         return
 
-    bucket = str(upload.get("queries_s3_bucket") or "").strip()
-    key = str(upload.get("queries_s3_key") or "").strip()
-    if not bucket or not key:
+    s3 = _s3_client()
+    try:
+        parsed = _load_batch_queries(repository=repository, upload_id=upload_id, upload=upload, s3=s3)
+    except BatchUploadValidationError as exc:
         repository.add_audit_event(
             action="BATCH_DISPATCH_FAILED",
             user_id=message.user_id,
             user_name=message.user_name,
             entity_type="batch_file_upload",
             entity_id=upload_id,
-            details={"job_id": job_id, "error": "queries.json was not stored in S3 for this upload"},
+            details={"job_id": job_id, "error": str(exc)},
         )
-        repository.mark_job_failed(job_id, "queries.json was not stored for this upload")
+        repository.mark_job_failed(job_id, str(exc))
         return
-
-    s3 = _s3_client()
-    try:
-        raw = _download_s3_text(s3, bucket, key)
-        parsed = json.loads(raw)
     except Exception as exc:  # noqa: BLE001
         repository.add_audit_event(
             action="BATCH_DISPATCH_FAILED",
@@ -104,13 +144,9 @@ def _handle_job_dispatch(
             user_name=message.user_name,
             entity_type="batch_file_upload",
             entity_id=upload_id,
-            details={"job_id": job_id, "error": f"Failed to load/parse queries.json: {exc}"},
+            details={"job_id": job_id, "error": f"Failed to load/parse batch payload: {exc}"},
         )
-        repository.mark_job_failed(job_id, f"Failed to parse queries.json: {exc}")
-        return
-
-    if not isinstance(parsed, dict) or not parsed:
-        repository.mark_job_failed(job_id, "queries.json must be a non-empty object")
+        repository.mark_job_failed(job_id, f"Failed to parse batch payload: {exc}")
         return
 
     expected_total = len(parsed)
