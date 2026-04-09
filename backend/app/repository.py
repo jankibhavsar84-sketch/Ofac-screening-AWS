@@ -2108,6 +2108,22 @@ class JobRepository:
             ).fetchone()
         return dict(row) if row else None
 
+    def update_batch_file_upload_record_count(self, upload_id: str, record_count: int) -> bool:
+        safe_upload_id = (upload_id or "").strip()
+        if not safe_upload_id:
+            return False
+        with self._connect() as conn:
+            cur = self._execute(
+                conn,
+                """
+                UPDATE batch_file_uploads
+                SET record_count = ?
+                WHERE upload_id = ?
+                """,
+                (max(int(record_count), 0), safe_upload_id),
+            )
+            return cur.rowcount > 0
+
     def update_job_total_items(self, job_id: str, total_items: int) -> None:
         safe_job_id = (job_id or "").strip()
         if not safe_job_id:

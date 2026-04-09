@@ -5,11 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>OFAC Screening - Architecture and API Flow</title>
   <style>
+    @page {
+      size: A3 landscape;
+      margin: 10mm;
+    }
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      margin: 24px;
+      margin: 0;
       color: #111827;
-      background: #ffffff;
+      background: #eef2ff;
     }
     h1, h2 {
       margin: 0 0 10px 0;
@@ -30,9 +34,11 @@
     .panel {
       border: 1px solid #d1d5db;
       border-radius: 10px;
-      padding: 12px;
+      padding: 14px;
       margin-top: 10px;
       page-break-inside: avoid;
+      background: #ffffff;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
     }
     svg {
       width: 100%;
@@ -51,11 +57,43 @@
       font-size: 12px;
       color: #6b7280;
     }
+    .page {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 24px;
+      margin: 0 0 18px 0;
+      break-after: page;
+      page-break-after: always;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+    }
+    .page:last-child {
+      break-after: auto;
+      page-break-after: auto;
+    }
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .intro {
+      max-width: 980px;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
+  <div class="page">
+  <div class="eyebrow">Architecture Overview</div>
   <h1>OFAC Screening Enterprise - Architecture and API Flow</h1>
-  <p class="small">Updated for the current implementation on 2026-03-23.</p>
+  <p class="small">Updated for the current implementation on 2026-04-09.</p>
+  <p class="intro">This graphical document is designed specifically for PDF export. Each page contains a rendered SVG diagram so the deployed architecture, API flow, and database relationships remain visible without requiring Mermaid support in the PDF viewer.</p>
 
   <h2>1) Deployed Architecture</h2>
   <div class="panel">
@@ -153,7 +191,10 @@
       Immediate large batch uploads are now file-only from the browser; the backend parses the file, stores the source plus generated `queries.json`, and dispatches async work through SQS.
     </div>
   </div>
+  </div>
 
+  <div class="page">
+  <div class="eyebrow">Flow View</div>
   <h2>2) API Flow Patterns</h2>
   <div class="panel">
     <svg viewBox="0 0 1400 920" xmlns="http://www.w3.org/2000/svg">
@@ -244,7 +285,10 @@
       Under load, the client can still time out at the gateway while the backend completes the job creation path, so job existence must be confirmed server-side for support cases.
     </div>
   </div>
+  </div>
 
+  <div class="page">
+  <div class="eyebrow">Data Model</div>
   <h2>3) Database Design (Core Tables)</h2>
   <div class="panel">
     <svg viewBox="0 0 1400 760" xmlns="http://www.w3.org/2000/svg">
@@ -335,6 +379,7 @@
     <div class="legend">
       The execution core is `jobs` plus `job_items`, with `job_metadata` carrying UI/history fields. Scheduled runs, uploads, business-unit authorization, and audit/ops telemetry are stored in dedicated tables so each concern can be queried and retained independently.
     </div>
+  </div>
   </div>
 </body>
 </html>
