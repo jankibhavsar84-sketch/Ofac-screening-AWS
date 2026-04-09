@@ -511,11 +511,11 @@ export async function listDailySchedules(): Promise<DailySchedule[]> {
 export async function listMyBusinessUnits(): Promise<BusinessUnit[]> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
   const transientStatuses = new Set([429, 500, 502, 503, 504]);
-  const maxAttempts = 3;
+  const maxAttempts = 4;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
     try {
       const resp = await fetch(`${baseUrl}/business-units`, {
         headers: withAuthHeaders(),
@@ -529,14 +529,14 @@ export async function listMyBusinessUnits(): Promise<BusinessUnit[]> {
       const parsedError = await parseApiError(resp);
       const isRetryable = transientStatuses.has(resp.status);
       if (attempt < maxAttempts && isRetryable) {
-        await sleep(300 * attempt);
+        await sleep(500 * attempt);
         continue;
       }
       throw new Error(`Failed to load business units: ${parsedError}`);
     } catch (error: any) {
       const isAbort = error?.name === "AbortError";
       if (attempt < maxAttempts && isAbort) {
-        await sleep(300 * attempt);
+        await sleep(500 * attempt);
         continue;
       }
       throw error;

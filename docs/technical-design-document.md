@@ -1,10 +1,21 @@
 # Technical Design Document (TDD): OFAC / Watchlist Screening Platform
 
-**Version:** 1.4  
-**Date:** 2026-03-25  
+**Version:** 1.5  
+**Date:** 2026-04-09  
 **Repo:** `ofac-screening-aws`  
 
 This document describes the technical design for the OFAC / watchlist screening platform deployed on AWS. It includes AWS architecture, API flows, process flows, and component responsibilities.
+
+## Revision Summary
+
+- Batch upload is now fully **backend-parsed**: the frontend submits only the source file plus metadata, and the backend validates/normalizes rows into `EntityExample` payloads before job creation.
+- The batch upload response now returns `row_meta` so the UI can render placeholder/result rows without duplicating client-side parsing logic.
+- The screening dashboard is split into two backend APIs:
+  - `GET /api/v1/screenings/summary` for full-history aggregate cards
+  - `GET /api/v1/screenings/results` for newest-first result rows capped to `300`
+- Large immediate uploads continue to use the S3-backed `JOB_DISPATCH` pattern so the worker expands queued work asynchronously instead of performing per-record dispatch in the request thread.
+- Audit operations now support paged admin retrieval, and raw Actimize/Prudential request/response troubleshooting logs can be enabled with redaction.
+- Authentication wording is aligned to the current AWS deployment baseline: OIDC via AWS Cognito (with optional enterprise federation), with old local Keycloak references removed from the active design baseline.
 
 ## 1. System Overview
 
@@ -1233,6 +1244,38 @@ sequenceDiagram
 - Use small Fargate tasks (256/512) for dev.
 - Use minimal RDS instance for dev and stop when not needed (per environment policy).
 - Active batch-performance deployments may intentionally pin the worker service above zero and override `SCREENING_PARALLEL_MESSAGES`; this is an operational deployment choice, not a config default.
+
+### 8.6 Performance Validation Snapshot (2026-04-08)
+
+Latest retained batch-upload performance artifact:
+- `artifacts/perf/batch_upload_same_file_20_users_2026-04-08T17-23-25-021Z.json`
+
+Test profile:
+- `20` concurrent authenticated browser users
+- Shared CloudFront endpoint: `https://d3ppga4y8wg1ck.cloudfront.net`
+- Same uploaded Excel file for all users
+- File size/workload represented `1000` screening rows per successful submission
+- Objective: validate whether the large-batch upload flow can return the accepted/queued response before CloudFront times out
+
+Observed result summary:
+
+| Metric | Result |
+|---|---|
+| Test start | `2026-04-08T17:23:26.672Z` |
+| Concurrent users | `20` |
+| Successful submissions | `11` |
+| Failed submissions | `9` |
+| Overall success rate | `55.0%` |
+| Successful submit latency | `17.6s` min / `42.6s` p50 / `49.2s` p95 / `52.1s` max |
+| All-attempt latency | `17.6s` min / `46.0s` p50 / `60.3s` p95 / `60.3s` max |
+| CloudFront `504` failures | `7` |
+| Non-HTTP test/setup failures | `2` (`No Business Unit option available`) |
+
+Interpretation:
+- The April 8, 2026 run shows the large-batch dispatch design is **partially effective**: more than half of users received a successful queued response for a `1000`-row upload without waiting for per-item screening completion.
+- The remaining primary failure mode is still **front-door request timeout during submission**, evidenced by `7` CloudFront `504 Gateway Timeout` responses clustered around `60s`.
+- Two failures were not backend timeout failures; they were test-session/setup issues where the UI reported `No Business Unit option available`.
+- Based on these timings, the current architecture reduces but does **not yet fully eliminate** request-time bottlenecks for concurrent large uploads. Additional reduction in synchronous pre-queue processing time may still be required for reliable `20 x 1000-row` parallel submissions through CloudFront.
 
 ## 9. Deployment Artifacts
 

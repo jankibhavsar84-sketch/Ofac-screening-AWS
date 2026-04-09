@@ -57,6 +57,10 @@ const RECENT_RESULTS_CACHE_MS = 2 * 60 * 1000;
 const RECENT_RESULTS_LIMIT = 300;
 const RECENT_RESULT_ROWS_STORAGE_KEY = "ofac-screening:recent-result-rows";
 const RECENT_RESULT_SUMMARY_STORAGE_KEY = "ofac-screening:recent-result-summary";
+const BUSINESS_UNITS_CACHE_MS = 15 * 60 * 1000;
+const BUSINESS_UNITS_STORAGE_KEY_PREFIX = "ofac-screening:business-units:";
+const BUSINESS_UNIT_EMPTY_RETRY_DELAYS_MS = [1000, 2500, 5000];
+const BUSINESS_UNIT_ERROR_RETRY_DELAYS_MS = [1500, 3500, 7000];
 
 function FormSelect<T extends string>({
   value,
@@ -163,6 +167,47 @@ function clearLocalStorageKey(storageKey: string) {
   } catch {
     // Ignore browser policy errors.
   }
+}
+
+function businessUnitsStorageKey(userId: string): string {
+  return `${BUSINESS_UNITS_STORAGE_KEY_PREFIX}${safeTrim(userId)}`;
+}
+
+function normalizeBusinessUnits(rows: BusinessUnit[]): BusinessUnit[] {
+  return Array.isArray(rows)
+    ? rows.map((row) => ({
+        business_unit_code: safeTrim(String(row.business_unit_code || "")).toUpperCase(),
+        business_unit_name: safeTrim(String(row.business_unit_name || "")),
+        is_active: Boolean(row.is_active),
+        created_at: row.created_at ?? null,
+        updated_at: row.updated_at ?? null,
+      }))
+    : [];
+}
+
+function readCachedBusinessUnits(userId: string): BusinessUnit[] {
+  const safeUserId = safeTrim(userId);
+  if (!safeUserId) return [];
+  const cached = readLocalStorageJson<{ loadedAt?: string; rows?: BusinessUnit[] } | null>(
+    businessUnitsStorageKey(safeUserId),
+    null
+  );
+  const loadedAt = safeTrim(String(cached?.loadedAt ?? ""));
+  const rows = normalizeBusinessUnits(Array.isArray(cached?.rows) ? cached.rows : []);
+  if (!loadedAt || !rows.length) return [];
+  const parsed = new Date(loadedAt);
+  if (Number.isNaN(parsed.getTime())) return [];
+  if (Date.now() - parsed.getTime() > BUSINESS_UNITS_CACHE_MS) return [];
+  return rows;
+}
+
+function writeCachedBusinessUnits(userId: string, rows: BusinessUnit[]) {
+  const safeUserId = safeTrim(userId);
+  if (!safeUserId || !rows.length) return;
+  writeLocalStorageJson(businessUnitsStorageKey(safeUserId), {
+    loadedAt: new Date().toISOString(),
+    rows: normalizeBusinessUnits(rows),
+  });
 }
 
 function formatSubmittedDateTime(value: unknown): string {
@@ -797,6 +842,7 @@ export function ScreeningDetailPage() {
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [businessUnitsError, setBusinessUnitsError] = useState<string | null>(null);
   const [businessUnitsLoading, setBusinessUnitsLoading] = useState(false);
+  const [businessUnitsResolved, setBusinessUnitsResolved] = useState(false);
   const selectedEntityType: UiType = names[0]?.uiType ?? "Individual";
   const primaryName = names[0];
   const aliasNames = names.slice(1);
@@ -862,7 +908,7 @@ export function ScreeningDetailPage() {
 
   const businessUnitOptions = useMemo(
     () =>
-      [...businessUnits]
+      [...normalizeBusinessUnits(businessUnits)]
         .map((row) => ({
           code: safeTrim(String(row.business_unit_code || "")).toUpperCase(),
           name: safeTrim(String(row.business_unit_name || "")),
@@ -872,29 +918,116 @@ export function ScreeningDetailPage() {
     [businessUnits]
   );
 
-  const reloadBusinessUnits = useCallback(async () => {
-    if (!currentUser?.id) return;
+  const businessUnitsRetryTimerRef = useRef<number | null>(null);
+
+  const clearBusinessUnitsRetry = useCallback(() => {
+    if (businessUnitsRetryTimerRef.current !== null) {
+      window.clearTimeout(businessUnitsRetryTimerRef.current);
+      businessUnitsRetryTimerRef.current = null;
+    }
+  }, []);
+
+  const reloadBusinessUnits = useCallback(async (attempt = 1, silent = false) => {
+    const activeUserId = safeTrim(currentUser?.id || "");
+    if (!activeUserId) return;
+    clearBusinessUnitsRetry();
     const requestSeq = businessUnitsRequestSeqRef.current + 1;
     businessUnitsRequestSeqRef.current = requestSeq;
-    setBusinessUnitsLoading(true);
-    setBusinessUnitsError(null);
+    if (!silent) {
+      setBusinessUnitsLoading(true);
+    }
+    if (attempt === 1) {
+      setBusinessUnitsError(null);
+      setBusinessUnitsResolved(false);
+    }
+
+    let willRetry = false;
     try {
-      const rows = await listMyBusinessUnits();
+      const rows = normalizeBusinessUnits(await listMyBusinessUnits());
       if (requestSeq !== businessUnitsRequestSeqRef.current) return;
-      setBusinessUnits(Array.isArray(rows) ? rows : []);
+      if (rows.length > 0) {
+        setBusinessUnits(rows);
+        setBusinessUnitsError(null);
+        setBusinessUnitsResolved(true);
+        writeCachedBusinessUnits(activeUserId, rows);
+        return;
+      }
+
+      const cachedRows = readCachedBusinessUnits(activeUserId);
+      if (cachedRows.length > 0) {
+        setBusinessUnits(cachedRows);
+        setBusinessUnitsError(null);
+        setBusinessUnitsResolved(true);
+        return;
+      }
+
+      const retryDelay = BUSINESS_UNIT_EMPTY_RETRY_DELAYS_MS[attempt - 1];
+      if (retryDelay) {
+        willRetry = true;
+        businessUnitsRetryTimerRef.current = window.setTimeout(() => {
+          void reloadBusinessUnits(attempt + 1, true);
+        }, retryDelay);
+        return;
+      }
+
+      setBusinessUnits([]);
+      setBusinessUnitsResolved(true);
     } catch (error: unknown) {
       if (requestSeq !== businessUnitsRequestSeqRef.current) return;
+      const cachedRows = readCachedBusinessUnits(activeUserId);
+      if (cachedRows.length > 0) {
+        setBusinessUnits(cachedRows);
+        setBusinessUnitsResolved(true);
+      }
+
+      const retryDelay = BUSINESS_UNIT_ERROR_RETRY_DELAYS_MS[attempt - 1];
+      if (retryDelay) {
+        willRetry = true;
+        businessUnitsRetryTimerRef.current = window.setTimeout(() => {
+          void reloadBusinessUnits(attempt + 1, true);
+        }, retryDelay);
+        return;
+      }
+
       setBusinessUnitsError(toFriendlyBusinessUnitError(error));
+      setBusinessUnitsResolved(true);
     } finally {
-      if (requestSeq === businessUnitsRequestSeqRef.current) {
+      if (requestSeq === businessUnitsRequestSeqRef.current && !willRetry) {
         setBusinessUnitsLoading(false);
       }
     }
-  }, [currentUser?.id]);
+  }, [clearBusinessUnitsRetry, currentUser?.id]);
 
   useEffect(() => {
-    void reloadBusinessUnits();
-  }, [reloadBusinessUnits]);
+    const activeUserId = safeTrim(currentUser?.id || "");
+    clearBusinessUnitsRetry();
+    setBusinessUnitsError(null);
+    if (!activeUserId) {
+      setBusinessUnits([]);
+      setBusinessUnitsResolved(false);
+      setBusinessUnitsLoading(false);
+      return;
+    }
+
+    const cachedRows = readCachedBusinessUnits(activeUserId);
+    if (cachedRows.length > 0) {
+      setBusinessUnits(cachedRows);
+      setBusinessUnitsResolved(true);
+      setBusinessUnitsLoading(false);
+      void reloadBusinessUnits(1, true);
+      return;
+    }
+
+    setBusinessUnits([]);
+    setBusinessUnitsResolved(false);
+    void reloadBusinessUnits(1, false);
+  }, [clearBusinessUnitsRetry, currentUser?.id, reloadBusinessUnits]);
+
+  useEffect(() => {
+    return () => {
+      clearBusinessUnitsRetry();
+    };
+  }, [clearBusinessUnitsRetry]);
 
   useEffect(() => {
     const validCodes = new Set(businessUnitOptions.map((row) => row.code));
@@ -990,13 +1123,24 @@ export function ScreeningDetailPage() {
     if (hasFreshCachedResults) {
       return;
     }
+    if (!businessUnitsResolved && !businessUnitOptions.length) {
+      return;
+    }
     void loadRecentResults({
       silent: hasCachedResultsForUser,
       updateTimestamp: true,
       resetPage: !hasCachedResultsForUser,
       requestUserId: userId,
     });
-  }, [currentUser?.id, loadRecentResults, recentResultRows.length, resultsLastRefreshedAt, setScreeningResultsMeta]);
+  }, [
+    businessUnitOptions.length,
+    businessUnitsResolved,
+    currentUser?.id,
+    loadRecentResults,
+    recentResultRows.length,
+    resultsLastRefreshedAt,
+    setScreeningResultsMeta,
+  ]);
 
   function toggleScreeningType(
     value: ScreeningType,
@@ -1766,13 +1910,13 @@ export function ScreeningDetailPage() {
                 <div className="errorBox" role="alert" aria-live="assertive">
                   {businessUnitsError}
                   <div style={{ marginTop: 8 }}>
-                    <button type="button" className="btnGhostSmall" onClick={reloadBusinessUnits} disabled={businessUnitsLoading}>
+                    <button type="button" className="btnGhostSmall" onClick={() => void reloadBusinessUnits()} disabled={businessUnitsLoading}>
                       Retry
                     </button>
                   </div>
                 </div>
               ) : null}
-              {!businessUnitsLoading && currentUser && !businessUnitOptions.length && !businessUnitsError ? (
+              {businessUnitsResolved && currentUser && !businessUnitOptions.length && !businessUnitsError ? (
                 <div className="errorBox" role="alert" aria-live="polite">
                   No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
                 </div>
@@ -2220,13 +2364,13 @@ export function ScreeningDetailPage() {
               <div className="errorBox" role="alert" aria-live="assertive">
                 {businessUnitsError}
                 <div style={{ marginTop: 8 }}>
-                  <button type="button" className="btnGhostSmall" onClick={reloadBusinessUnits} disabled={businessUnitsLoading}>
+                  <button type="button" className="btnGhostSmall" onClick={() => void reloadBusinessUnits()} disabled={businessUnitsLoading}>
                     Retry
                   </button>
                 </div>
               </div>
             ) : null}
-            {!businessUnitsLoading && currentUser && !businessUnitOptions.length && !businessUnitsError ? (
+            {businessUnitsResolved && currentUser && !businessUnitOptions.length && !businessUnitsError ? (
               <div className="errorBox" role="alert" aria-live="polite">
                 No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
               </div>
@@ -2438,17 +2582,17 @@ export function ScreeningDetailPage() {
                 <div className="errorBox" role="alert" aria-live="assertive">
                   {businessUnitsError}
                   <div style={{ marginTop: 8 }}>
-                    <button type="button" className="btnGhostSmall" onClick={reloadBusinessUnits} disabled={businessUnitsLoading}>
+                    <button type="button" className="btnGhostSmall" onClick={() => void reloadBusinessUnits()} disabled={businessUnitsLoading}>
                       Retry
                     </button>
                   </div>
                 </div>
               ) : null}
-              {!businessUnitsLoading && currentUser && !businessUnitOptions.length && !businessUnitsError ? (
-                <div className="errorBox" role="alert" aria-live="polite">
-                  No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
-                </div>
-              ) : null}
+            {businessUnitsResolved && currentUser && !businessUnitOptions.length && !businessUnitsError ? (
+              <div className="errorBox" role="alert" aria-live="polite">
+                No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
+              </div>
+            ) : null}
               {scheduleError ? <div className="errorBox" role="alert" aria-live="assertive">{scheduleError}</div> : null}
               <button className="btnBatchWide" type="submit" disabled={scheduleSubmitting}>
                 {scheduleSubmitting ? "Starting..." : "Create Scheduled Screening"}
