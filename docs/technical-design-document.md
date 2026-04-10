@@ -1,6 +1,6 @@
 # Technical Design Document (TDD): OFAC / Watchlist Screening Platform
 
-**Version:** 1.5  
+**Version:** 1.6  
 **Date:** 2026-04-09  
 **Repo:** `ofac-screening-aws`  
 
@@ -13,6 +13,7 @@ This document describes the technical design for the OFAC / watchlist screening 
 - The screening dashboard is split into two backend APIs:
   - `GET /api/v1/screenings/summary` for full-history aggregate cards
   - `GET /api/v1/screenings/results` for newest-first result rows capped to `300`
+- The TDD now explicitly documents the browser/API trust boundary: frontend calls only the backend container for application APIs, while the worker remains SQS-driven with no browser-facing API.
 - Large immediate uploads continue to use the S3-backed `JOB_DISPATCH` pattern so the worker expands queued work asynchronously instead of performing per-record dispatch in the request thread.
 - Audit operations now support paged admin retrieval, and raw Actimize/Prudential request/response troubleshooting logs can be enabled with redaction.
 - Authentication wording is aligned to the current AWS deployment baseline: OIDC via AWS Cognito (with optional enterprise federation), with old local Keycloak references removed from the active design baseline.
@@ -124,6 +125,7 @@ flowchart LR
 - Frontend stores session per configuration (including session-storage mode for tab-close logout behavior).
 - Frontend sends `Authorization: Bearer <access_token>` with API requests.
 - Frontend permissions are a UX concern only: buttons/tabs may be hidden or disabled, but enforcement remains in the backend container.
+- Frontend does **not** call the worker container directly. All browser API calls terminate at the backend API under `/api/v1/*` and are reverse-proxied by Nginx.
 
 ### 3.2 Backend Container Authorization (`backend`)
 
@@ -144,10 +146,18 @@ Backend validates JWT signature using JWKS and checks:
 - algorithm matches allowed list
 - audience compatibility for Cognito access tokens:
   - accept app client id in `aud` OR `client_id` OR `azp`
+- bearer token presence from `Authorization: Bearer <JWT>`
+- token expiration and basic claim shape before request processing continues
 
 Auth audit behavior:
 - API `401`/`403` outcomes are written to `audit_events` and `api_access_logs`.
 - Identity-provider login attempts (hosted by Cognito/enterprise IdP) remain in IdP-native audit logs; this app records API-layer authentication outcomes.
+
+### 3.4 Worker Trust Boundary (`worker`)
+
+- Worker has no browser-facing HTTP API.
+- Worker trusts only internal work handed off by the backend through SQS.
+- End-user authentication is enforced before work is enqueued; worker authorization is service-to-service and infrastructure-based (ECS task role, SQS access, DB access), not browser-token based.
 
 ## 4. Component Responsibilities and Functional Ownership
 
@@ -168,6 +178,12 @@ Runtime configuration:
 - `VITE_*` values are injected at container startup into `app-config.js`.
 - Nginx config is generated at startup; `/api/` is reverse-proxied to `BACKEND_UPSTREAM`.
 
+Frontend API boundary:
+- Browser -> `frontend` container for static assets and SPA routes
+- Browser -> `backend` container for all application API calls via `/api/v1/*`
+- Browser -> OIDC provider directly for login/logout/token exchange
+- Browser -> `worker` container: none
+
 ### 4.2 Backend API (FastAPI)
 
 Responsibilities:
@@ -184,6 +200,7 @@ Responsibilities:
 - Run middleware-based API access logging (method/path/status/latency/user/auth state).
 - Generate and return request correlation id (`X-Correlation-ID`) and propagate to downstream screening flows.
 - Validate database schema at startup, but do not run DDL automatically in runtime API processes.
+- Serve as the only browser-facing application API container; no frontend calls bypass backend to reach the worker.
 
 ### 4.3 Worker (SQS Consumer + Daily Scheduler Loop)
 
@@ -198,6 +215,7 @@ Responsibilities:
 - Emit high-risk audit alerts when external API failures exceed configured threshold/window.
 - Use pooled PostgreSQL connections with retry/backoff for transient DB acquisition failures.
 - Emit detailed CloudWatch logs for async screening start/success/failure, including raw external API request/response payloads with redaction.
+- Process backend-enqueued work only; it does not expose REST endpoints to the frontend.
 
 ### 4.4 Screening Engine Adapter (Actimize Watchlist Adapter)
 
@@ -370,9 +388,15 @@ Base path: `/api/v1` (except health endpoint).
 
 ### 6.1 Cross-Cutting API Behavior
 
+Browser-to-container routing model:
+- Frontend SPA calls only the `backend` container for application APIs.
+- The `worker` container is not part of the browser request path.
+- Nginx in the `frontend` container reverse-proxies `/api/*` to the backend service-discovery hostname.
+
 - AuthN/AuthZ:
   - `/api/v1/*` uses bearer JWT validation when `AUTH_ENABLED=true`.
   - Authorization uses role/scopes with permissions (`screening.read`, `screening.write`, `screening.daily`, `screening.admin`, `screening.useradmin`, `screening.single.mock`).
+  - Backend reads `Authorization: Bearer <JWT>` on incoming requests and performs signature + claim validation before executing protected handlers.
 - Correlation and access audit:
   - Every API response includes `X-Correlation-ID`.
   - Every `/api/v1/*` request is written to `api_access_logs` with method, path, status, latency, auth state, and user context.
