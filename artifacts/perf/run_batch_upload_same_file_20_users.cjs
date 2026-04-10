@@ -81,19 +81,46 @@ async function login(page, cred) {
 
 async function selectFirstBusinessUnit(selectLocator) {
   await selectLocator.waitFor({ timeout: STEP_TIMEOUT_MS });
-  for (let attempt = 1; attempt <= 10; attempt += 1) {
-    const value = await selectLocator.evaluate((el) => {
+  const startedAt = Date.now();
+  const pollMs = 1000;
+
+  while (Date.now() - startedAt < STEP_TIMEOUT_MS) {
+    const details = await selectLocator.evaluate((el) => {
       const select = el;
-      const option = Array.from(select.options).find((o) => String(o.value || '').trim());
-      return option ? String(option.value) : '';
+      const options = Array.from(select.options).map((option) => ({
+        value: String(option.value || "").trim(),
+        label: String(option.textContent || "").trim(),
+      }));
+      const selectable = options.find((option) => option.value);
+      return {
+        disabled: Boolean(select.disabled),
+        value: selectable ? selectable.value : "",
+        labels: options.map((option) => option.label).filter(Boolean),
+      };
     });
-    if (value) {
-      await selectLocator.selectOption(value);
-      return value;
+
+    if (!details.disabled && details.value) {
+      await selectLocator.selectOption(details.value);
+      return details.value;
     }
-    await pageWait(750);
+
+    await pageWait(pollMs);
   }
-  throw new Error('No Business Unit option available');
+
+  const finalState = await selectLocator.evaluate((el) => {
+    const select = el;
+    return {
+      disabled: Boolean(select.disabled),
+      options: Array.from(select.options).map((option) => ({
+        value: String(option.value || "").trim(),
+        label: String(option.textContent || "").trim(),
+      })),
+    };
+  });
+
+  throw new Error(
+    `No Business Unit option available after waiting ${Math.round(STEP_TIMEOUT_MS / 1000)}s: ${JSON.stringify(finalState)}`
+  );
 }
 
 async function pageWait(ms) {

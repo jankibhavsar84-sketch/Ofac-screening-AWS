@@ -2135,6 +2135,12 @@ class JobRepository:
                 (max(int(total_items), 0), now_iso(), safe_job_id),
             )
 
+    def refresh_job_status(self, job_id: str) -> None:
+        safe_job_id = (job_id or "").strip()
+        if not safe_job_id:
+            return
+        self._refresh_job_status(safe_job_id)
+
     def mark_job_failed(self, job_id: str, error_text: str) -> None:
         safe_job_id = (job_id or "").strip()
         if not safe_job_id:

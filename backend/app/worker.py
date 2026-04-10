@@ -124,6 +124,8 @@ def _handle_job_dispatch(
         return
 
     s3 = _s3_client()
+    skipped_existing_records = 0
+    record_hashes: dict[str, str] = {}
     try:
         parsed = _load_batch_queries(repository=repository, upload_id=upload_id, upload=upload, s3=s3)
     except BatchUploadValidationError as exc:
@@ -149,6 +151,12 @@ def _handle_job_dispatch(
         repository.mark_job_failed(job_id, f"Failed to parse batch payload: {exc}")
         return
 
+    if message.source_schedule_id:
+        parsed, record_hashes, skipped_existing_records = repository.filter_unscreened_schedule_queries(
+            message.source_schedule_id,
+            parsed,
+        )
+
     expected_total = len(parsed)
     repository.update_job_total_items(job_id, expected_total)
     repository.upsert_job_metadata(job_id=job_id, query_count=expected_total)
@@ -162,6 +170,7 @@ def _handle_job_dispatch(
             "job_id": job_id,
             "source_upload_id": upload_id,
             "total_items": expected_total,
+            "skipped_existing_records": skipped_existing_records,
             "queue_name": settings.aws_sqs_queue_name,
         },
     )
@@ -170,7 +179,7 @@ def _handle_job_dispatch(
     correlation_id = str(message.correlation_id or "").strip() or str(uuid4())
 
     # Expand and enqueue in chunks to keep memory bounded.
-    batch: list[tuple[str, dict[str, object], EntityExample]] = []
+    batch: list[tuple[str, dict[str, object], EntityExample, str | None]] = []
     dispatched_items = 0
     for item_key, raw_query in parsed.items():
         safe_key = str(item_key or "").strip()
@@ -192,7 +201,7 @@ def _handle_job_dispatch(
             )
             continue
         request_payload = query.model_dump(mode="json")
-        batch.append((safe_key, request_payload, query))
+        batch.append((safe_key, request_payload, query, record_hashes.get(safe_key)))
         dispatched_items += 1
         if len(batch) >= 500:
             _flush_dispatch_batch(
@@ -220,6 +229,8 @@ def _handle_job_dispatch(
     if dispatched_items != expected_total:
         repository.update_job_total_items(job_id, dispatched_items)
         repository.upsert_job_metadata(job_id=job_id, query_count=dispatched_items)
+    if dispatched_items == 0:
+        repository.refresh_job_status(job_id)
 
     repository.add_audit_event(
         action="BATCH_DISPATCH_COMPLETED",
@@ -227,7 +238,12 @@ def _handle_job_dispatch(
         user_name=message.user_name,
         entity_type="screening_job",
         entity_id=job_id,
-        details={"job_id": job_id, "source_upload_id": upload_id, "total_items": dispatched_items},
+        details={
+            "job_id": job_id,
+            "source_upload_id": upload_id,
+            "total_items": dispatched_items,
+            "skipped_existing_records": skipped_existing_records,
+        },
     )
 
 
@@ -239,11 +255,11 @@ def _flush_dispatch_batch(
     submitted_at: str,
     correlation_id: str,
     message: ScreeningQueueMessage,
-    items: list[tuple[str, dict[str, object], EntityExample]],
+    items: list[tuple[str, dict[str, object], EntityExample, str | None]],
 ) -> None:
-    next_items: list[tuple[str, dict[str, object], EntityExample]] = []
+    next_items: list[tuple[str, dict[str, object], EntityExample, str | None]] = []
     bulk_payloads: list[tuple[str, dict[str, object]]] = []
-    for item_key, payload, query in items:
+    for item_key, payload, query, record_hash in items:
         props = query.properties if isinstance(query.properties, dict) else {}
         has_party_key = bool(str(props.get("partyKey") or "").strip() or str(props.get("party_key") or "").strip())
         if item_key and not has_party_key:
@@ -257,14 +273,14 @@ def _flush_dispatch_batch(
             payload = dict(payload)
             payload["properties"] = payload_props
 
-        next_items.append((item_key, payload, query))
+        next_items.append((item_key, payload, query, record_hash))
         bulk_payloads.append((item_key, payload))
 
     repository.add_job_items_bulk(job_id, bulk_payloads)
 
     # Enqueue per-item screening tasks to allow parallelism across workers.
     pending: list[ScreeningQueueMessage] = []
-    for item_key, _payload, query in next_items:
+    for item_key, _payload, query, record_hash in next_items:
         pending.append(
             ScreeningQueueMessage(
                 message_type="SCREEN_ITEM",
@@ -278,6 +294,7 @@ def _flush_dispatch_batch(
                 user_name=message.user_name,
                 correlation_id=correlation_id,
                 source_schedule_id=message.source_schedule_id,
+                source_record_hash=record_hash,
                 source_upload_id=message.source_upload_id,
             )
         )

@@ -50,6 +50,10 @@ server {
     set \$backend_upstream ${BACKEND_UPSTREAM};
     proxy_pass \$backend_upstream;
     proxy_http_version 1.1;
+    proxy_connect_timeout 120s;
+    proxy_send_timeout 120s;
+    proxy_read_timeout 120s;
+    send_timeout 120s;
     proxy_set_header Host \$host;
     proxy_set_header X-Real-IP \$remote_addr;
     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;

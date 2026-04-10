@@ -480,16 +480,6 @@ async def create_batch_job_with_upload(
     if not body:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
     is_scheduled_upload = bool(daily_screening or (schedule_id or "").strip())
-    parsed_upload = None
-    parsed_queries: dict[str, Any] = {}
-    if is_scheduled_upload:
-        try:
-            from .batch_upload_parser import BatchUploadValidationError, parse_batch_upload
-
-            parsed_upload = parse_batch_upload(safe_file_name, body)
-        except BatchUploadValidationError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        parsed_queries = parsed_upload.queries
 
     upload_id = str(uuid4())
     file_hash = hashlib.sha256(body).hexdigest()
@@ -514,7 +504,7 @@ async def create_batch_job_with_upload(
         file_name=safe_file_name,
         user_id=principal.user_id,
         user_name=actor_user_name,
-        record_count=len(parsed_queries),
+        record_count=0,
         file_hash=file_hash,
         s3_bucket=s3_info.get("bucket"),
         s3_key=s3_info.get("key"),
@@ -525,7 +515,7 @@ async def create_batch_job_with_upload(
     # Scheduled/daily batch jobs should not execute immediately; preserve existing behavior.
     if is_scheduled_upload:
         payload = MatchJobRequest(
-            queries=parsed_queries,
+            queries={},
             screening_types=screening_types,
             mock_screening=bool(mock_screening),
             business_unit_code=_normalize_business_unit_code(business_unit_code),
@@ -606,7 +596,7 @@ async def create_batch_job_with_upload(
         daily_screening=bool(daily_screening),
         schedule_frequency=schedule_frequency if daily_screening else None,
         daily_schedule_id=accepted.daily_schedule_id,
-        query_count=len(parsed_queries),
+        query_count=0,
         deferred_until=deferred_until if (accepted.total_items == 0 and daily_screening and accepted.daily_schedule_id) else None,
         business_unit_code=_normalize_business_unit_code(business_unit_code),
     )
@@ -642,8 +632,8 @@ async def create_batch_job_with_upload(
         entity_id=upload_id,
         details={
             "file_name": safe_file_name,
-            "record_count": len(parsed_queries),
-            "record_count_pending": not is_scheduled_upload,
+            "record_count": 0,
+            "record_count_pending": True,
             "s3_uri": s3_info.get("s3_uri"),
             "job_id": accepted.job_id,
             "daily_schedule_id": accepted.daily_schedule_id,
@@ -673,7 +663,7 @@ async def create_batch_job_with_upload(
                 "display_name": row.display_name,
                 "ui_type": row.ui_type,
             }
-            for row in (parsed_upload.row_meta if parsed_upload else [])
+            for row in ()
         ],
     )
 

@@ -774,6 +774,11 @@ export function ScreeningDetailPage() {
         : null,
     [identity]
   );
+  const businessUnitsCacheKey = useMemo(() => {
+    const profile = auth.user?.profile as Record<string, unknown> | undefined;
+    const fallback = profile?.sub ?? profile?.email ?? profile?.preferred_username ?? "";
+    return safeTrim(String(currentUser?.id || fallback || ""));
+  }, [auth.user?.profile, currentUser?.id]);
 
   useEffect(() => {
     screeningResultsMetaRef.current = screeningResultsMeta;
@@ -921,6 +926,12 @@ export function ScreeningDetailPage() {
   );
   const businessUnitsPending = !authReady || businessUnitsLoading || (!businessUnitsResolved && businessUnitOptions.length === 0);
   const businessUnitsAvailable = businessUnitOptions.length > 0;
+  const businessUnitsSelectDisabled = businessUnitsPending || !businessUnitsAvailable;
+  const businessUnitsPlaceholderLabel = businessUnitsPending
+    ? "Loading Business Units..."
+    : businessUnitsAvailable
+      ? "Select Business Unit"
+      : "No Business Unit options are currently available.";
 
   const businessUnitsRetryTimerRef = useRef<number | null>(null);
 
@@ -932,8 +943,7 @@ export function ScreeningDetailPage() {
   }, []);
 
   const reloadBusinessUnits = useCallback(async (attempt = 1, silent = false) => {
-    const activeUserId = safeTrim(currentUser?.id || "");
-    if (!activeUserId || !authReady) return;
+    if (!authReady) return;
     clearBusinessUnitsRetry();
     const requestSeq = businessUnitsRequestSeqRef.current + 1;
     businessUnitsRequestSeqRef.current = requestSeq;
@@ -953,11 +963,13 @@ export function ScreeningDetailPage() {
         setBusinessUnits(rows);
         setBusinessUnitsError(null);
         setBusinessUnitsResolved(true);
-        writeCachedBusinessUnits(activeUserId, rows);
+        if (businessUnitsCacheKey) {
+          writeCachedBusinessUnits(businessUnitsCacheKey, rows);
+        }
         return;
       }
 
-      const cachedRows = readCachedBusinessUnits(activeUserId);
+      const cachedRows = businessUnitsCacheKey ? readCachedBusinessUnits(businessUnitsCacheKey) : [];
       if (cachedRows.length > 0) {
         setBusinessUnits(cachedRows);
         setBusinessUnitsError(null);
@@ -978,7 +990,7 @@ export function ScreeningDetailPage() {
       setBusinessUnitsResolved(true);
     } catch (error: unknown) {
       if (requestSeq !== businessUnitsRequestSeqRef.current) return;
-      const cachedRows = readCachedBusinessUnits(activeUserId);
+      const cachedRows = businessUnitsCacheKey ? readCachedBusinessUnits(businessUnitsCacheKey) : [];
       if (cachedRows.length > 0) {
         setBusinessUnits(cachedRows);
         setBusinessUnitsResolved(true);
@@ -1000,10 +1012,9 @@ export function ScreeningDetailPage() {
         setBusinessUnitsLoading(false);
       }
     }
-  }, [authReady, clearBusinessUnitsRetry, currentUser?.id]);
+  }, [authReady, businessUnitsCacheKey, clearBusinessUnitsRetry]);
 
   useEffect(() => {
-    const activeUserId = safeTrim(currentUser?.id || "");
     clearBusinessUnitsRetry();
     setBusinessUnitsError(null);
     if (!authReady) {
@@ -1012,14 +1023,8 @@ export function ScreeningDetailPage() {
       setBusinessUnitsLoading(true);
       return;
     }
-    if (!activeUserId) {
-      setBusinessUnits([]);
-      setBusinessUnitsResolved(false);
-      setBusinessUnitsLoading(false);
-      return;
-    }
 
-    const cachedRows = readCachedBusinessUnits(activeUserId);
+    const cachedRows = businessUnitsCacheKey ? readCachedBusinessUnits(businessUnitsCacheKey) : [];
     if (cachedRows.length > 0) {
       setBusinessUnits(cachedRows);
       setBusinessUnitsResolved(true);
@@ -1031,7 +1036,7 @@ export function ScreeningDetailPage() {
     setBusinessUnits([]);
     setBusinessUnitsResolved(false);
     void reloadBusinessUnits(1, false);
-  }, [authReady, clearBusinessUnitsRetry, currentUser?.id, reloadBusinessUnits]);
+  }, [authReady, businessUnitsCacheKey, clearBusinessUnitsRetry, reloadBusinessUnits]);
 
   useEffect(() => {
     return () => {
@@ -1896,25 +1901,20 @@ export function ScreeningDetailPage() {
                 </div>
                 <div className="field singleEntityTypeField">
                   <label>Business Unit <span className="requiredMark">*</span></label>
-                  {businessUnitsAvailable ? (
-                    <select
-                      value={singleBusinessUnitCode}
-                      onChange={(e) => setSingleBusinessUnitCode(e.target.value)}
-                      required
-                      disabled={businessUnitsPending}
-                    >
-                      <option value="">Select Business Unit</option>
-                      {businessUnitOptions.map((row) => (
-                        <option key={row.code} value={row.code}>
-                          {row.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="infoBox" role="status" aria-live="polite" style={{ marginTop: 8, marginBottom: 0 }}>
-                      {businessUnitsPending ? "Loading Business Units..." : "No Business Unit options are currently available."}
-                    </div>
-                  )}
+                  <select
+                    value={singleBusinessUnitCode}
+                    onChange={(e) => setSingleBusinessUnitCode(e.target.value)}
+                    required
+                    disabled={businessUnitsSelectDisabled}
+                    aria-busy={businessUnitsPending}
+                  >
+                    <option value="">{businessUnitsPlaceholderLabel}</option>
+                    {businessUnitOptions.map((row) => (
+                      <option key={row.code} value={row.code}>
+                        {row.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -2297,25 +2297,20 @@ export function ScreeningDetailPage() {
 
             <div className="field" style={{ marginTop: 10 }}>
               <label>Business Unit <span className="requiredMark">*</span></label>
-              {businessUnitsAvailable ? (
-                <select
-                  required
-                  value={batchBusinessUnitCode}
-                  onChange={(e) => setBatchBusinessUnitCode(e.target.value)}
-                  disabled={businessUnitsPending}
-                >
-                  <option value="">Select Business Unit</option>
-                  {businessUnitOptions.map((row) => (
-                    <option key={row.code} value={row.code}>
-                      {row.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="infoBox" role="status" aria-live="polite" style={{ marginTop: 8, marginBottom: 0 }}>
-                  {businessUnitsPending ? "Loading Business Units..." : "No Business Unit options are currently available."}
-                </div>
-              )}
+              <select
+                required
+                value={batchBusinessUnitCode}
+                onChange={(e) => setBatchBusinessUnitCode(e.target.value)}
+                disabled={businessUnitsSelectDisabled}
+                aria-busy={businessUnitsPending}
+              >
+                <option value="">{businessUnitsPlaceholderLabel}</option>
+                {businessUnitOptions.map((row) => (
+                  <option key={row.code} value={row.code}>
+                    {row.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <ScreeningTypeCards
@@ -2449,25 +2444,20 @@ export function ScreeningDetailPage() {
 
               <div className="field" style={{ marginTop: 10 }}>
                 <label>Business Unit <span className="requiredMark">*</span></label>
-                {businessUnitsAvailable ? (
-                  <select
-                    required
-                    value={scheduleBusinessUnitCode}
-                    onChange={(e) => setScheduleBusinessUnitCode(e.target.value)}
-                    disabled={businessUnitsPending}
-                  >
-                    <option value="">Select Business Unit</option>
-                    {businessUnitOptions.map((row) => (
-                      <option key={row.code} value={row.code}>
-                        {row.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="infoBox" role="status" aria-live="polite" style={{ marginTop: 8, marginBottom: 0 }}>
-                    {businessUnitsPending ? "Loading Business Units..." : "No Business Unit options are currently available."}
-                  </div>
-                )}
+                <select
+                  required
+                  value={scheduleBusinessUnitCode}
+                  onChange={(e) => setScheduleBusinessUnitCode(e.target.value)}
+                  disabled={businessUnitsSelectDisabled}
+                  aria-busy={businessUnitsPending}
+                >
+                  <option value="">{businessUnitsPlaceholderLabel}</option>
+                  {businessUnitOptions.map((row) => (
+                    <option key={row.code} value={row.code}>
+                      {row.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <ScreeningTypeCards

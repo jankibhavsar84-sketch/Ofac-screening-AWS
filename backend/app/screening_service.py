@@ -87,7 +87,8 @@ class ScreeningService:
         return users
 
     def submit_job(self, payload: MatchJobRequest) -> MatchJobAccepted:
-        if not payload.queries:
+        has_deferred_batch_source = bool((payload.source_upload_id or "").strip())
+        if not payload.queries and not has_deferred_batch_source:
             raise ValueError("At least one query is required")
         if payload.daily_screening and not (payload.batch_name and payload.batch_name.strip()):
             raise ValueError("batch_name is required when daily_screening is enabled")
@@ -209,6 +210,73 @@ class ScreeningService:
             return MatchJobAccepted(
                 job_id=job_id,
                 status=JobStatus.completed,
+                submitted_at=submitted_at,
+                total_items=0,
+                business_unit_code=business_unit_code or None,
+                daily_schedule_id=daily_schedule_id,
+                screened_item_keys=[],
+            )
+
+        if not base_queries and source_upload_id:
+            job_id = str(uuid4())
+            submitted_at = self.repository.create_job(
+                job_id=job_id,
+                total_items=0,
+                status=JobStatus.queued,
+                source_schedule_id=source_schedule_id,
+                source_upload_id=source_upload_id,
+                user_id=payload.user_id,
+                user_name=payload.user_name,
+            )
+            self.repository.upsert_job_metadata(
+                job_id=job_id,
+                mode=inferred_mode,
+                screening_types=payload.screening_types,
+                mock_screening=payload.mock_screening,
+                batch_name=payload.batch_name,
+                daily_screening=bool(payload.daily_screening or source_schedule_id),
+                schedule_frequency=schedule_frequency if (payload.daily_screening or source_schedule_id) else None,
+                daily_schedule_id=source_schedule_id,
+                query_count=0,
+                business_unit_code=business_unit_code,
+            )
+            self.queue.enqueue(
+                ScreeningQueueMessage(
+                    message_type="JOB_DISPATCH",
+                    job_id=job_id,
+                    submitted_at=submitted_at,
+                    screening_types=payload.screening_types,
+                    mock_screening=payload.mock_screening,
+                    user_id=payload.user_id,
+                    user_name=payload.user_name,
+                    correlation_id=correlation_id,
+                    source_schedule_id=source_schedule_id,
+                    source_upload_id=source_upload_id,
+                )
+            )
+            self.repository.add_audit_event(
+                action="SCREENING_JOB_SUBMITTED",
+                user_id=payload.user_id,
+                user_name=payload.user_name,
+                entity_type="screening_job",
+                entity_id=job_id,
+                details={
+                    "total_items": 0,
+                    "screening_types": payload.screening_types,
+                    "daily_screening": payload.daily_screening,
+                    "batch_name": payload.batch_name,
+                    "mock_screening": payload.mock_screening,
+                    "source_schedule_id": source_schedule_id,
+                    "source_upload_id": source_upload_id,
+                    "skipped_existing_records": 0,
+                    "business_unit_code": business_unit_code,
+                    "correlation_id": correlation_id,
+                    "dispatch_mode": "DEFERRED_SOURCE_UPLOAD",
+                },
+            )
+            return MatchJobAccepted(
+                job_id=job_id,
+                status=JobStatus.queued,
                 submitted_at=submitted_at,
                 total_items=0,
                 business_unit_code=business_unit_code or None,
@@ -965,29 +1033,35 @@ class ScreeningService:
 
     def list_daily_schedules(self) -> list[DailyScheduleInfo]:
         schedules = self.repository.list_active_daily_schedules()
-        return [
-            DailyScheduleInfo(
-                schedule_id=s["schedule_id"],
-                batch_name=s["batch_name"],
-                user_id=s.get("user_id"),
-                user_name=s.get("user_name"),
-                business_unit_code=s.get("business_unit_code"),
-                screening_types=s["screening_types"] if isinstance(s["screening_types"], list) else [],
-                schedule_frequency=s.get("schedule_frequency", "DAILY"),
-                timezone=s["timezone"],
-                run_hour=int(s["run_hour"]),
-                run_minute=int(s["run_minute"]),
-                created_at=s["created_at"],
-                last_run_at=s["last_run_at"],
-                next_run_at=s["next_run_at"],
-                total_items=len(s["queries"]) if isinstance(s["queries"], dict) else 0,
-                is_active=bool(s["is_active"]),
-                source_file_name=s.get("source_file_name"),
-                source_s3_uri=s.get("source_s3_uri"),
-                source_upload_id=s.get("source_upload_id"),
+        items: list[DailyScheduleInfo] = []
+        for s in schedules:
+            total_items = len(s["queries"]) if isinstance(s["queries"], dict) else 0
+            if total_items == 0 and str(s.get("source_upload_id") or "").strip():
+                upload = self.repository.get_batch_file_upload(str(s.get("source_upload_id") or "").strip())
+                total_items = int((upload or {}).get("record_count") or 0)
+            items.append(
+                DailyScheduleInfo(
+                    schedule_id=s["schedule_id"],
+                    batch_name=s["batch_name"],
+                    user_id=s.get("user_id"),
+                    user_name=s.get("user_name"),
+                    business_unit_code=s.get("business_unit_code"),
+                    screening_types=s["screening_types"] if isinstance(s["screening_types"], list) else [],
+                    schedule_frequency=s.get("schedule_frequency", "DAILY"),
+                    timezone=s["timezone"],
+                    run_hour=int(s["run_hour"]),
+                    run_minute=int(s["run_minute"]),
+                    created_at=s["created_at"],
+                    last_run_at=s["last_run_at"],
+                    next_run_at=s["next_run_at"],
+                    total_items=total_items,
+                    is_active=bool(s["is_active"]),
+                    source_file_name=s.get("source_file_name"),
+                    source_s3_uri=s.get("source_s3_uri"),
+                    source_upload_id=s.get("source_upload_id"),
+                )
             )
-            for s in schedules
-        ]
+        return items
 
     def remove_daily_schedule(self, schedule_id: str, user_id: str | None = None, user_name: str | None = None) -> bool:
         removed = self.repository.deactivate_daily_schedule(schedule_id)
