@@ -1,0 +1,106 @@
+{
+    "family":  "ofac-screening-frontend",
+    "taskRoleArn":  "arn:aws:iam::279930135954:role/ofac-screening-task-role",
+    "executionRoleArn":  "arn:aws:iam::279930135954:role/ofac-screening-task-execution-role",
+    "networkMode":  "awsvpc",
+    "containerDefinitions":  [
+                                 {
+                                     "name":  "frontend",
+                                     "image":  "279930135954.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260411080757",
+                                     "cpu":  0,
+                                     "portMappings":  [
+                                                          {
+                                                              "containerPort":  80,
+                                                              "hostPort":  80,
+                                                              "protocol":  "tcp"
+                                                          }
+                                                      ],
+                                     "essential":  true,
+                                     "command":  [
+                                                     "/entrypoint.sh"
+                                                 ],
+                                     "environment":  [
+                                                         {
+                                                             "name":  "VITE_OIDC_CLIENT_ID",
+                                                             "value":  "2ul9mdnt44kl60hgiihbc7o5sk"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_POST_LOGOUT_REDIRECT_URI",
+                                                             "value":  ""
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_IDLE_TIMEOUT_MS",
+                                                             "value":  "900000"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_SCREENING_POLL_INTERVAL_MS",
+                                                             "value":  "750"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_AUTHORITY",
+                                                             "value":  "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_ptvmAe35M"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_CLEAR_SESSION_ON_CLOSE",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "BACKEND_UPSTREAM",
+                                                             "value":  "http://backend.screening.internal:8000"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_SCREENING_JOB_TIMEOUT_MS",
+                                                             "value":  "90000"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_SCOPE",
+                                                             "value":  "openid profile email"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_SCREENING_API_BASE_URL",
+                                                             "value":  "/api/v1"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_AUTH_ENABLED",
+                                                             "value":  "true"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_ACTIMIZE_REVIEW_ALERT_URL",
+                                                             "value":  "http://actimizeuat/"
+                                                         },
+                                                         {
+                                                             "name":  "VITE_OIDC_REDIRECT_URI",
+                                                             "value":  ""
+                                                         }
+                                                     ],
+                                     "mountPoints":  [
+
+                                                     ],
+                                     "volumesFrom":  [
+
+                                                     ],
+                                     "logConfiguration":  {
+                                                              "logDriver":  "awslogs",
+                                                              "options":  {
+                                                                              "awslogs-group":  "/ecs/ofac-screening-frontend",
+                                                                              "awslogs-region":  "us-east-2",
+                                                                              "awslogs-stream-prefix":  "ecs"
+                                                                          }
+                                                          },
+                                     "systemControls":  [
+
+                                                        ]
+                                 }
+                             ],
+    "volumes":  [
+
+                ],
+    "placementConstraints":  [
+
+                             ],
+    "requiresCompatibilities":  [
+                                    "FARGATE"
+                                ],
+    "cpu":  "256",
+    "memory":  "512"
+}

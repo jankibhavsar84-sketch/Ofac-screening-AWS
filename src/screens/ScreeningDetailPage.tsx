@@ -10,19 +10,17 @@ import {
 } from "../state/submissions";
 import {
   getScreeningSummary,
-  listMyBusinessUnits,
   listRecentScreeningResults,
   matchSync,
   uploadBatchAndSubmitJob,
-  type BusinessUnit,
   type EntityExample,
   type RecentScreeningResultRow,
   type ScreeningSummaryCounts,
 } from "../api/screeningApi";
 import { buildIdentity, getPrimaryRole, hasPermission } from "../auth/claims";
-import { oidcAuthEnabled } from "../auth/oidc";
 import { CountryAutosuggest } from "../components/CountryAutoSuggest";
 import { IsoDateInput } from "../components/IsoDateInput";
+import { useBusinessUnits } from "../context/BusinessUnitsContext";
 
 type Mode = "SINGLE" | "BATCH" | "SCHEDULE";
 type UiType = "Individual" | "Organization" | "Unknown" | "Vessel" | "Aircraft";
@@ -58,10 +56,6 @@ const RECENT_RESULTS_CACHE_MS = 2 * 60 * 1000;
 const RECENT_RESULTS_LIMIT = 300;
 const RECENT_RESULT_ROWS_STORAGE_KEY = "ofac-screening:recent-result-rows";
 const RECENT_RESULT_SUMMARY_STORAGE_KEY = "ofac-screening:recent-result-summary";
-const BUSINESS_UNITS_CACHE_MS = 15 * 60 * 1000;
-const BUSINESS_UNITS_STORAGE_KEY_PREFIX = "ofac-screening:business-units:";
-const BUSINESS_UNIT_EMPTY_RETRY_DELAYS_MS = [1000, 2500, 5000];
-const BUSINESS_UNIT_ERROR_RETRY_DELAYS_MS = [1500, 3500, 7000];
 
 function FormSelect<T extends string>({
   value,
@@ -170,47 +164,6 @@ function clearLocalStorageKey(storageKey: string) {
   }
 }
 
-function businessUnitsStorageKey(userId: string): string {
-  return `${BUSINESS_UNITS_STORAGE_KEY_PREFIX}${safeTrim(userId)}`;
-}
-
-function normalizeBusinessUnits(rows: BusinessUnit[]): BusinessUnit[] {
-  return Array.isArray(rows)
-    ? rows.map((row) => ({
-        business_unit_code: safeTrim(String(row.business_unit_code || "")).toUpperCase(),
-        business_unit_name: safeTrim(String(row.business_unit_name || "")),
-        is_active: Boolean(row.is_active),
-        created_at: row.created_at ?? null,
-        updated_at: row.updated_at ?? null,
-      }))
-    : [];
-}
-
-function readCachedBusinessUnits(userId: string): BusinessUnit[] {
-  const safeUserId = safeTrim(userId);
-  if (!safeUserId) return [];
-  const cached = readLocalStorageJson<{ loadedAt?: string; rows?: BusinessUnit[] } | null>(
-    businessUnitsStorageKey(safeUserId),
-    null
-  );
-  const loadedAt = safeTrim(String(cached?.loadedAt ?? ""));
-  const rows = normalizeBusinessUnits(Array.isArray(cached?.rows) ? cached.rows : []);
-  if (!loadedAt || !rows.length) return [];
-  const parsed = new Date(loadedAt);
-  if (Number.isNaN(parsed.getTime())) return [];
-  if (Date.now() - parsed.getTime() > BUSINESS_UNITS_CACHE_MS) return [];
-  return rows;
-}
-
-function writeCachedBusinessUnits(userId: string, rows: BusinessUnit[]) {
-  const safeUserId = safeTrim(userId);
-  if (!safeUserId || !rows.length) return;
-  writeLocalStorageJson(businessUnitsStorageKey(safeUserId), {
-    loadedAt: new Date().toISOString(),
-    rows: normalizeBusinessUnits(rows),
-  });
-}
-
 function formatSubmittedDateTime(value: unknown): string {
   const raw = safeTrim(String(value ?? ""));
   if (!raw) return "\u2014";
@@ -255,15 +208,6 @@ function parseSubscriptionEmails(value: string): string[] {
       out.push(email);
     });
   return out;
-}
-
-function toFriendlyBusinessUnitError(error: unknown): string {
-  const text = safeTrim(String((error as any)?.message ?? ""));
-  if (!text) return "Failed to load Business Units.";
-  if (text.includes("502") || text.includes("503") || text.includes("504")) {
-    return "Business Unit service is temporarily unavailable. Please retry in a moment.";
-  }
-  return text;
 }
 
 function uiTypeIcon(type: UiType): string {
@@ -730,7 +674,6 @@ function ScreeningTypeCards({
 export function ScreeningDetailPage() {
   const auth = useAuth();
   const identity = useMemo(() => buildIdentity(auth.user), [auth.user]);
-  const authReady = !oidcAuthEnabled || Boolean(auth.user?.access_token) || Boolean(identity);
   const primaryRole = useMemo(() => getPrimaryRole(identity), [identity]);
   const canSingleScreen = hasPermission(identity, "screening.write", "screening.single.mock", "screening.admin");
   const canRunNonMockSingle = hasPermission(identity, "screening.write", "screening.admin");
@@ -749,8 +692,15 @@ export function ScreeningDetailPage() {
   const [resultsRefreshing, setResultsRefreshing] = useState(false);
   const [resultsRefreshError, setResultsRefreshError] = useState<string | null>(null);
   const recentResultsRefreshInFlightRef = useRef(false);
-  const businessUnitsRequestSeqRef = useRef(0);
   const screeningResultsMetaRef = useRef(screeningResultsMeta);
+  const {
+    businessUnitOptions,
+    businessUnitsAvailable,
+    businessUnitsError,
+    businessUnitsPending,
+    businessUnitsResolved,
+    reloadBusinessUnits,
+  } = useBusinessUnits();
   const resultsLastRefreshedAt = useMemo(() => {
     const raw = safeTrim(screeningResultsMeta.lastRefreshedAt || "");
     if (!raw) return null;
@@ -774,11 +724,6 @@ export function ScreeningDetailPage() {
         : null,
     [identity]
   );
-  const businessUnitsCacheKey = useMemo(() => {
-    const profile = auth.user?.profile as Record<string, unknown> | undefined;
-    const fallback = profile?.sub ?? profile?.email ?? profile?.preferred_username ?? "";
-    return safeTrim(String(currentUser?.id || fallback || ""));
-  }, [auth.user?.profile, currentUser?.id]);
 
   useEffect(() => {
     screeningResultsMetaRef.current = screeningResultsMeta;
@@ -846,10 +791,6 @@ export function ScreeningDetailPage() {
   const [singleSubmitting, setSingleSubmitting] = useState(false);
   const [batchSubmitting, setBatchSubmitting] = useState(false);
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
-  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
-  const [businessUnitsError, setBusinessUnitsError] = useState<string | null>(null);
-  const [businessUnitsLoading, setBusinessUnitsLoading] = useState(false);
-  const [businessUnitsResolved, setBusinessUnitsResolved] = useState(false);
   const selectedEntityType: UiType = names[0]?.uiType ?? "Individual";
   const primaryName = names[0];
   const aliasNames = names.slice(1);
@@ -912,146 +853,33 @@ export function ScreeningDetailPage() {
       updateScreeningWorkspace({ mode: "SINGLE" });
     }
   }, [canDailyScreening, mode, updateScreeningWorkspace]);
-
-  const businessUnitOptions = useMemo(
+  const fallbackBusinessUnitCode = safeTrim(appEnv("VITE_DEFAULT_BUSINESS_UNIT_CODE", "US_PRU_HR")).toUpperCase();
+  const fallbackBusinessUnitName = safeTrim(appEnv("VITE_DEFAULT_BUSINESS_UNIT_NAME", "Human Resources"));
+  const selectableBusinessUnitOptions = useMemo(
     () =>
-      [...normalizeBusinessUnits(businessUnits)]
-        .map((row) => ({
-          code: safeTrim(String(row.business_unit_code || "")).toUpperCase(),
-          name: safeTrim(String(row.business_unit_name || "")),
-        }))
-        .filter((row) => row.code && row.name)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [businessUnits]
+      businessUnitOptions.length > 0
+        ? businessUnitOptions
+        : fallbackBusinessUnitCode
+          ? [{ code: fallbackBusinessUnitCode, name: fallbackBusinessUnitName || fallbackBusinessUnitCode }]
+          : [],
+    [businessUnitOptions, fallbackBusinessUnitCode, fallbackBusinessUnitName]
   );
-  const businessUnitsPending = !authReady || businessUnitsLoading || (!businessUnitsResolved && businessUnitOptions.length === 0);
-  const businessUnitsAvailable = businessUnitOptions.length > 0;
-  const businessUnitsSelectDisabled = businessUnitsPending || !businessUnitsAvailable;
-  const businessUnitsPlaceholderLabel = businessUnitsPending
+  const businessUnitsEffectiveAvailable = selectableBusinessUnitOptions.length > 0;
+  const businessUnitsSelectDisabled = !businessUnitsEffectiveAvailable;
+  const businessUnitsPlaceholderLabel = businessUnitsPending && !businessUnitsAvailable
     ? "Loading Business Units..."
-    : businessUnitsAvailable
+    : businessUnitsEffectiveAvailable
       ? "Select Business Unit"
       : "No Business Unit options are currently available.";
 
-  const businessUnitsRetryTimerRef = useRef<number | null>(null);
-
-  const clearBusinessUnitsRetry = useCallback(() => {
-    if (businessUnitsRetryTimerRef.current !== null) {
-      window.clearTimeout(businessUnitsRetryTimerRef.current);
-      businessUnitsRetryTimerRef.current = null;
-    }
-  }, []);
-
-  const reloadBusinessUnits = useCallback(async (attempt = 1, silent = false) => {
-    if (!authReady) return;
-    clearBusinessUnitsRetry();
-    const requestSeq = businessUnitsRequestSeqRef.current + 1;
-    businessUnitsRequestSeqRef.current = requestSeq;
-    if (!silent) {
-      setBusinessUnitsLoading(true);
-    }
-    if (attempt === 1) {
-      setBusinessUnitsError(null);
-      setBusinessUnitsResolved(false);
-    }
-
-    let willRetry = false;
-    try {
-      const rows = normalizeBusinessUnits(await listMyBusinessUnits());
-      if (requestSeq !== businessUnitsRequestSeqRef.current) return;
-      if (rows.length > 0) {
-        setBusinessUnits(rows);
-        setBusinessUnitsError(null);
-        setBusinessUnitsResolved(true);
-        if (businessUnitsCacheKey) {
-          writeCachedBusinessUnits(businessUnitsCacheKey, rows);
-        }
-        return;
-      }
-
-      const cachedRows = businessUnitsCacheKey ? readCachedBusinessUnits(businessUnitsCacheKey) : [];
-      if (cachedRows.length > 0) {
-        setBusinessUnits(cachedRows);
-        setBusinessUnitsError(null);
-        setBusinessUnitsResolved(true);
-        return;
-      }
-
-      const retryDelay = BUSINESS_UNIT_EMPTY_RETRY_DELAYS_MS[attempt - 1];
-      if (retryDelay) {
-        willRetry = true;
-        businessUnitsRetryTimerRef.current = window.setTimeout(() => {
-          void reloadBusinessUnits(attempt + 1, true);
-        }, retryDelay);
-        return;
-      }
-
-      setBusinessUnits([]);
-      setBusinessUnitsResolved(true);
-    } catch (error: unknown) {
-      if (requestSeq !== businessUnitsRequestSeqRef.current) return;
-      const cachedRows = businessUnitsCacheKey ? readCachedBusinessUnits(businessUnitsCacheKey) : [];
-      if (cachedRows.length > 0) {
-        setBusinessUnits(cachedRows);
-        setBusinessUnitsResolved(true);
-      }
-
-      const retryDelay = BUSINESS_UNIT_ERROR_RETRY_DELAYS_MS[attempt - 1];
-      if (retryDelay) {
-        willRetry = true;
-        businessUnitsRetryTimerRef.current = window.setTimeout(() => {
-          void reloadBusinessUnits(attempt + 1, true);
-        }, retryDelay);
-        return;
-      }
-
-      setBusinessUnitsError(toFriendlyBusinessUnitError(error));
-      setBusinessUnitsResolved(true);
-    } finally {
-      if (requestSeq === businessUnitsRequestSeqRef.current && !willRetry) {
-        setBusinessUnitsLoading(false);
-      }
-    }
-  }, [authReady, businessUnitsCacheKey, clearBusinessUnitsRetry]);
-
   useEffect(() => {
-    clearBusinessUnitsRetry();
-    setBusinessUnitsError(null);
-    if (!authReady) {
-      setBusinessUnits([]);
-      setBusinessUnitsResolved(false);
-      setBusinessUnitsLoading(true);
-      return;
-    }
-
-    const cachedRows = businessUnitsCacheKey ? readCachedBusinessUnits(businessUnitsCacheKey) : [];
-    if (cachedRows.length > 0) {
-      setBusinessUnits(cachedRows);
-      setBusinessUnitsResolved(true);
-      setBusinessUnitsLoading(false);
-      void reloadBusinessUnits(1, true);
-      return;
-    }
-
-    setBusinessUnits([]);
-    setBusinessUnitsResolved(false);
-    void reloadBusinessUnits(1, false);
-  }, [authReady, businessUnitsCacheKey, clearBusinessUnitsRetry, reloadBusinessUnits]);
-
-  useEffect(() => {
-    return () => {
-      clearBusinessUnitsRetry();
-    };
-  }, [clearBusinessUnitsRetry]);
-
-  useEffect(() => {
-    const validCodes = new Set(businessUnitOptions.map((row) => row.code));
-    const firstCode = businessUnitOptions[0]?.code ?? "";
+    const validCodes = new Set(selectableBusinessUnitOptions.map((row) => row.code));
+    const firstCode = selectableBusinessUnitOptions[0]?.code ?? "";
 
     if (!validCodes.has(singleBusinessUnitCode)) setSingleBusinessUnitCode(firstCode);
     if (!validCodes.has(batchBusinessUnitCode)) setBatchBusinessUnitCode(firstCode);
     if (!validCodes.has(scheduleBusinessUnitCode)) setScheduleBusinessUnitCode(firstCode);
-  }, [businessUnitOptions, singleBusinessUnitCode, batchBusinessUnitCode, scheduleBusinessUnitCode]);
+  }, [selectableBusinessUnitOptions, singleBusinessUnitCode, batchBusinessUnitCode, scheduleBusinessUnitCode]);
 
   const loadRecentResults = useCallback(
     async ({
@@ -1909,7 +1737,7 @@ export function ScreeningDetailPage() {
                     aria-busy={businessUnitsPending}
                   >
                     <option value="">{businessUnitsPlaceholderLabel}</option>
-                    {businessUnitOptions.map((row) => (
+                    {selectableBusinessUnitOptions.map((row) => (
                       <option key={row.code} value={row.code}>
                         {row.name}
                       </option>
@@ -1933,7 +1761,7 @@ export function ScreeningDetailPage() {
                   </div>
                 </div>
               ) : null}
-              {businessUnitsResolved && currentUser && !businessUnitsAvailable && !businessUnitsError ? (
+              {businessUnitsResolved && currentUser && !businessUnitsEffectiveAvailable && !businessUnitsError ? (
                 <div className="errorBox" role="alert" aria-live="polite">
                   No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
                 </div>
@@ -2247,7 +2075,7 @@ export function ScreeningDetailPage() {
               </div>
 
               {singleError ? <div className="errorBox" role="alert" aria-live="assertive">{singleError}</div> : null}
-              <button className="btnRunWide" type="submit" disabled={singleSubmitting || businessUnitsPending || !businessUnitsAvailable}>
+              <button className="btnRunWide" type="submit" disabled={singleSubmitting || !businessUnitsEffectiveAvailable}>
                 {singleSubmitting ? "Running..." : "Run OFAC Screening"}
               </button>
             </form>
@@ -2305,7 +2133,7 @@ export function ScreeningDetailPage() {
                 aria-busy={businessUnitsPending}
               >
                 <option value="">{businessUnitsPlaceholderLabel}</option>
-                {businessUnitOptions.map((row) => (
+                {selectableBusinessUnitOptions.map((row) => (
                   <option key={row.code} value={row.code}>
                     {row.name}
                   </option>
@@ -2388,14 +2216,14 @@ export function ScreeningDetailPage() {
                 </div>
               </div>
             ) : null}
-            {businessUnitsResolved && currentUser && !businessUnitsAvailable && !businessUnitsError ? (
+            {businessUnitsResolved && currentUser && !businessUnitsEffectiveAvailable && !businessUnitsError ? (
               <div className="errorBox" role="alert" aria-live="polite">
                 No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
               </div>
             ) : null}
             {batchError ? <div className="errorBox" role="alert" aria-live="assertive">{batchError}</div> : null}
             <form onSubmit={submitBatch}>
-              <button className="btnBatchWide" type="submit" disabled={batchSubmitting || businessUnitsPending || !businessUnitsAvailable}>
+              <button className="btnBatchWide" type="submit" disabled={batchSubmitting || !businessUnitsEffectiveAvailable}>
                 {batchSubmitting ? "Starting..." : "Start Batch Screening"}
               </button>
             </form>
@@ -2452,7 +2280,7 @@ export function ScreeningDetailPage() {
                   aria-busy={businessUnitsPending}
                 >
                   <option value="">{businessUnitsPlaceholderLabel}</option>
-                  {businessUnitOptions.map((row) => (
+                  {selectableBusinessUnitOptions.map((row) => (
                     <option key={row.code} value={row.code}>
                       {row.name}
                     </option>
@@ -2607,13 +2435,13 @@ export function ScreeningDetailPage() {
                   </div>
                 </div>
               ) : null}
-              {businessUnitsResolved && currentUser && !businessUnitsAvailable && !businessUnitsError ? (
+              {businessUnitsResolved && currentUser && !businessUnitsEffectiveAvailable && !businessUnitsError ? (
                 <div className="errorBox" role="alert" aria-live="polite">
                   No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
                 </div>
               ) : null}
               {scheduleError ? <div className="errorBox" role="alert" aria-live="assertive">{scheduleError}</div> : null}
-              <button className="btnBatchWide" type="submit" disabled={scheduleSubmitting || businessUnitsPending || !businessUnitsAvailable}>
+              <button className="btnBatchWide" type="submit" disabled={scheduleSubmitting || !businessUnitsEffectiveAvailable}>
                 {scheduleSubmitting ? "Starting..." : "Create Scheduled Screening"}
               </button>
             </form>

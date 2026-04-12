@@ -1,0 +1,17 @@
+{
+  "TargetValue": 500.0,
+  "CustomizedMetricSpecification": {
+    "MetricName": "ApproximateNumberOfMessagesVisible",
+    "Namespace": "AWS/SQS",
+    "Dimensions": [
+      {
+        "Name": "QueueName",
+        "Value": "screening-requests"
+      }
+    ],
+    "Statistic": "Average",
+    "Unit": "Count"
+  },
+  "ScaleOutCooldown": 30,
+  "ScaleInCooldown": 180
+}

@@ -1,0 +1,676 @@
+{
+  "base_url": "https://d3ppga4y8wg1ck.cloudfront.net",
+  "batch_input_file": "C:\\Users\\Tapan Bhavsar\\Documents\\OFAC Screening Project\\sample_generated_populated_2603230001.xlsx",
+  "schedule_input_file": "C:\\Users\\Tapan Bhavsar\\Documents\\OFAC Screening Project\\sample_generated_populated_2603230040.xlsx",
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_30.json",
+  "started_at": "2026-04-11T12:12:04.758Z",
+  "finished_at": "2026-04-11T12:15:01.861Z",
+  "total_users": 20,
+  "total_success": 17,
+  "total_failed": 3,
+  "response_time_ms": {
+    "min": 11899,
+    "p50": 41234,
+    "p90": 120294,
+    "max": 158340,
+    "avg": 64284.2
+  },
+  "cohorts": {
+    "batch": {
+      "total": 7,
+      "success": 7,
+      "failed": 0
+    },
+    "schedule": {
+      "total": 7,
+      "success": 4,
+      "failed": 3,
+      "cleanup_success": 3,
+      "cleanup_failed": 1
+    },
+    "single": {
+      "total": 6,
+      "success": 6,
+      "failed": 0
+    }
+  },
+  "http_status_counts": {
+    "200": 17,
+    "504": 3
+  },
+  "page_errors": 0,
+  "error_boxes": 3,
+  "results": [
+    {
+      "username": "perf_load_user_01",
+      "action": "batch",
+      "started_at": "2026-04-11T12:12:05.046Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 94276,
+      "response_body": {
+        "job_id": "eb9ec60a-e445-4417-837a-f710d0b95be0",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-11T12:13:31.127803+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "00056ecf-677e-4f25-84eb-7c32960b32b7",
+        "file_name": "sample_generated_populated_2603230001.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/f1dbe5a0-0061-7028-ebec-f1ef2adc1f04/00056ecf-677e-4f25-84eb-7c32960b32b7/20260411_121317_sample_generated_populated_2603230001.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-11T12-12-04-639Z_01",
+      "finished_at": "2026-04-11T12:13:58.601Z",
+      "since_global_start_ms": 113843
+    },
+    {
+      "username": "perf_load_user_02",
+      "action": "batch",
+      "started_at": "2026-04-11T12:12:05.001Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 24708,
+      "response_body": {
+        "job_id": "92423c09-b07e-46da-bee4-fd809e1a9d9f",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-11T12:12:48.189917+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "a7097cda-e418-4423-bb8e-bfeeda594557",
+        "file_name": "sample_generated_populated_2603230001.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/114b2560-f0c1-70a3-91d7-e92bec88b368/a7097cda-e418-4423-bb8e-bfeeda594557/20260411_121245_sample_generated_populated_2603230001.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-11T12-12-04-639Z_02",
+      "finished_at": "2026-04-11T12:12:50.229Z",
+      "since_global_start_ms": 45471
+    },
+    {
+      "username": "perf_load_user_03",
+      "action": "batch",
+      "started_at": "2026-04-11T12:12:04.999Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 91728,
+      "response_body": {
+        "job_id": "67563b58-9bda-4fcf-b8b4-70d6499ff4f2",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-11T12:13:30.693827+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "f157792a-1d34-4968-af52-d0f8c40878aa",
+        "file_name": "sample_generated_populated_2603230001.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/81ab2550-d071-70b2-dddd-fe10891b8f68/f157792a-1d34-4968-af52-d0f8c40878aa/20260411_121317_sample_generated_populated_2603230001.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-11T12-12-04-639Z_03",
+      "finished_at": "2026-04-11T12:13:53.189Z",
+      "since_global_start_ms": 108431
+    },
+    {
+      "username": "perf_load_user_04",
+      "action": "batch",
+      "started_at": "2026-04-11T12:12:05.023Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 11899,
+      "response_body": {
+        "job_id": "385bd1a3-1c38-4a8e-9fde-3cba186ba728",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-11T12:12:26.154199+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "bca3e340-6186-4f4d-9ef9-3a47ed7e2244",
+        "file_name": "sample_generated_populated_2603230001.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/816b2540-5001-7044-3c1c-dce36787c117/bca3e340-6186-4f4d-9ef9-3a47ed7e2244/20260411_121223_sample_generated_populated_2603230001.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-11T12-12-04-639Z_04",
+      "finished_at": "2026-04-11T12:12:36.419Z",
+      "since_global_start_ms": 31661
+    },
+    {
+      "username": "perf_load_user_05",
+      "action": "batch",
+      "started_at": "2026-04-11T12:12:05.098Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 58154,
+      "response_body": {
+        "job_id": "198515bb-83b2-4349-a10a-d4f06ebf8480",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-11T12:12:59.840951+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "a9d05f4c-48d2-4d36-ace5-0d8bcdab73f1",
+        "file_name": "sample_generated_populated_2603230001.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/61bb05c0-a041-7042-220f-e8499c65428a/a9d05f4c-48d2-4d36-ace5-0d8bcdab73f1/20260411_121252_sample_generated_populated_2603230001.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-11T12-12-04-639Z_05",
+      "finished_at": "2026-04-11T12:13:18.771Z",
+      "since_global_start_ms": 74013
+    },
+    {
+      "username": "perf_load_user_06",
+      "action": "batch",
+      "started_at": "2026-04-11T12:12:05.135Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 68205,
+      "response_body": {
+        "job_id": "a53494be-6b98-46c7-aec6-6b986da26296",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-11T12:12:54.388144+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "6f397ad0-2e40-4cd4-8462-685458586ad5",
+        "file_name": "sample_generated_populated_2603230001.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/b15bc560-d051-70a0-f7f8-54f5d575e0f7/6f397ad0-2e40-4cd4-8462-685458586ad5/20260411_121247_sample_generated_populated_2603230001.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-11T12-12-04-639Z_06",
+      "finished_at": "2026-04-11T12:13:32.762Z",
+      "since_global_start_ms": 88004
+    },
+    {
+      "username": "perf_load_user_07",
+      "action": "batch",
+      "started_at": "2026-04-11T12:12:05.133Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 94872,
+      "response_body": {
+        "job_id": "d7b60479-9592-447a-b927-57613e8b79c9",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-11T12:12:51.044648+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "ede72f4e-fcb2-4637-8e63-127b4c7752a8",
+        "file_name": "sample_generated_populated_2603230001.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/318b35d0-f041-7012-8500-7d7eaed4db27/ede72f4e-fcb2-4637-8e63-127b4c7752a8/20260411_121245_sample_generated_populated_2603230001.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-11T12-12-04-639Z_07",
+      "finished_at": "2026-04-11T12:13:58.594Z",
+      "since_global_start_ms": 113836
+    },
+    {
+      "username": "perf_load_user_08",
+      "action": "schedule",
+      "started_at": "2026-04-11T12:12:05.275Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 17286,
+      "response_body": {
+        "job_id": "4e538b19-0df6-4b2d-b662-1e5a1e021236",
+        "status": "COMPLETED",
+        "submitted_at": "2026-04-11T12:12:26.896182+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": "de5ef23e-ea1a-4eb4-b7f5-3bee53f6e7a5",
+        "screened_item_keys": [],
+        "source_upload_id": "c19dc1b8-6fc5-4cac-985b-d74e5d640be4",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/41ab0540-50a1-7019-3a35-89c0d4db6da1/c19dc1b8-6fc5-4cac-985b-d74e5d640be4/20260411_121223_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": "DAILY",
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": {
+        "ok": true,
+        "status": 200,
+        "body": "{\"status\":\"removed\",\"schedule_id\":\"de5ef23e-ea1a-4eb4-b7f5-3bee53f6e7a5\"}"
+      },
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-11T12-12-04-639Z_08",
+      "finished_at": "2026-04-11T12:14:09.849Z",
+      "since_global_start_ms": 125091
+    },
+    {
+      "username": "perf_load_user_09",
+      "action": "schedule",
+      "started_at": "2026-04-11T12:12:05.270Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 29916,
+      "response_body": {
+        "job_id": "cd8ca45d-7491-4bef-9ed9-c4065c8389ea",
+        "status": "COMPLETED",
+        "submitted_at": "2026-04-11T12:12:28.033773+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": "ea722751-e4ca-4eda-92fd-2bce8c0cf10e",
+        "screened_item_keys": [],
+        "source_upload_id": "688d24aa-2784-4417-a3a5-5077a53ef31e",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/d1bb0520-10a1-702c-d04c-1f2bfafc2f5a/688d24aa-2784-4417-a3a5-5077a53ef31e/20260411_121219_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": "DAILY",
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": {
+        "ok": false,
+        "status": 404,
+        "body": "{\"detail\":\"Daily schedule ea722751-e4ca-4eda-92fd-2bce8c0cf10e not found\"}"
+      },
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-11T12-12-04-639Z_09",
+      "finished_at": "2026-04-11T12:14:56.150Z",
+      "since_global_start_ms": 171392
+    },
+    {
+      "username": "perf_load_user_10",
+      "action": "schedule",
+      "started_at": "2026-04-11T12:12:05.276Z",
+      "ok": false,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 504,
+      "response_ms": 120294,
+      "response_body": "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">\n<HTML><HEAD><META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">\n<TITLE>ERROR: The request could not be satisfied</TITLE>\n</HEAD><BODY>\n<H1>504 Gateway Timeout ERROR</H1>\n<H2>The request could not be satisfied.</H2>\n<HR noshade size=\"1px\">\nWe can't connect to the server for this app or website at this time. There might be too much traffic or a configuration error. Try again later, or contact the app or website owner.\n<BR clear=\"all\">\nIf you provide content to customers through CloudFront, you can find steps to troubleshoot and help prevent this error by reviewing the CloudFront documentation.\n<BR clear=\"all\">\n<HR noshade size=\"1px\">\n<PRE>\nGenerated by cloudfront (CloudFront) HTTP3 Server\nRequest ID: UN2pENr5KQ_d0IUx0CQ-T2_xYYDR5XTMf7Sg0E7W5x4Up-PwpjbH3Q&#x3D;&#x3D;\n</PRE>\n<ADDRESS>\n</ADDRESS>\n</BODY></HTML>",
+      "error_box": "Failed to submit batch upload: 504: Gateway Timeout. Please retry in a moment (your upload may still be processing).",
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-11T12-12-04-639Z_10",
+      "finished_at": "2026-04-11T12:14:24.668Z",
+      "since_global_start_ms": 139910
+    },
+    {
+      "username": "perf_load_user_11",
+      "action": "schedule",
+      "started_at": "2026-04-11T12:12:05.305Z",
+      "ok": false,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 504,
+      "response_ms": 120624,
+      "response_body": "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">\n<HTML><HEAD><META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">\n<TITLE>ERROR: The request could not be satisfied</TITLE>\n</HEAD><BODY>\n<H1>504 Gateway Timeout ERROR</H1>\n<H2>The request could not be satisfied.</H2>\n<HR noshade size=\"1px\">\nWe can't connect to the server for this app or website at this time. There might be too much traffic or a configuration error. Try again later, or contact the app or website owner.\n<BR clear=\"all\">\nIf you provide content to customers through CloudFront, you can find steps to troubleshoot and help prevent this error by reviewing the CloudFront documentation.\n<BR clear=\"all\">\n<HR noshade size=\"1px\">\n<PRE>\nGenerated by cloudfront (CloudFront) HTTP3 Server\nRequest ID: rSag0SuZ9kst4k0rEVY5EcX6SaOWye0oXFFXQ9F9YNyXaODHWWInlQ&#x3D;&#x3D;\n</PRE>\n<ADDRESS>\n</ADDRESS>\n</BODY></HTML>",
+      "error_box": "Failed to submit batch upload: 504: Gateway Timeout. Please retry in a moment (your upload may still be processing).",
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-11T12-12-04-639Z_11",
+      "finished_at": "2026-04-11T12:14:24.305Z",
+      "since_global_start_ms": 139547
+    },
+    {
+      "username": "perf_load_user_12",
+      "action": "schedule",
+      "started_at": "2026-04-11T12:12:05.354Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 17517,
+      "response_body": {
+        "job_id": "f3ff68d6-3948-4258-89b9-a6de11b67496",
+        "status": "COMPLETED",
+        "submitted_at": "2026-04-11T12:12:33.951173+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": "01af218c-df02-43e6-903d-3a1ae39ef91a",
+        "screened_item_keys": [],
+        "source_upload_id": "8a70c890-2f1d-4786-8e38-d615df1c6336",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/118be5f0-a0a1-70ab-0c82-04d0b4a21b7d/8a70c890-2f1d-4786-8e38-d615df1c6336/20260411_121231_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": "DAILY",
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": {
+        "ok": true,
+        "status": 200,
+        "body": "{\"status\":\"removed\",\"schedule_id\":\"01af218c-df02-43e6-903d-3a1ae39ef91a\"}"
+      },
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-11T12-12-04-639Z_12",
+      "finished_at": "2026-04-11T12:13:53.340Z",
+      "since_global_start_ms": 108582
+    },
+    {
+      "username": "perf_load_user_13",
+      "action": "schedule",
+      "started_at": "2026-04-11T12:12:05.399Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 24142,
+      "response_body": {
+        "job_id": "8ffc3505-ffd5-451c-89fc-4587ea546f19",
+        "status": "COMPLETED",
+        "submitted_at": "2026-04-11T12:12:26.247911+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": "ede48853-dc45-4962-96cf-739e3d5878af",
+        "screened_item_keys": [],
+        "source_upload_id": "e0e3c631-e9ec-4f20-baa0-adcf9c11a644",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/f1eb75e0-4091-703c-787f-b8335e0ae14e/e0e3c631-e9ec-4f20-baa0-adcf9c11a644/20260411_121220_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": "DAILY",
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": {
+        "ok": true,
+        "status": 200,
+        "body": "{\"status\":\"removed\",\"schedule_id\":\"ede48853-dc45-4962-96cf-739e3d5878af\"}"
+      },
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-11T12-12-04-639Z_13",
+      "finished_at": "2026-04-11T12:13:04.018Z",
+      "since_global_start_ms": 59260
+    },
+    {
+      "username": "perf_load_user_14",
+      "action": "schedule",
+      "started_at": "2026-04-11T12:12:05.418Z",
+      "ok": false,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 504,
+      "response_ms": 120239,
+      "response_body": "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">\n<HTML><HEAD><META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">\n<TITLE>ERROR: The request could not be satisfied</TITLE>\n</HEAD><BODY>\n<H1>504 Gateway Timeout ERROR</H1>\n<H2>The request could not be satisfied.</H2>\n<HR noshade size=\"1px\">\nWe can't connect to the server for this app or website at this time. There might be too much traffic or a configuration error. Try again later, or contact the app or website owner.\n<BR clear=\"all\">\nIf you provide content to customers through CloudFront, you can find steps to troubleshoot and help prevent this error by reviewing the CloudFront documentation.\n<BR clear=\"all\">\n<HR noshade size=\"1px\">\n<PRE>\nGenerated by cloudfront (CloudFront) HTTP3 Server\nRequest ID: CXo2BMUuxrSgXpvNfHUcPRc1BdLm2gu1k6Rm8nhVEwxeQ6vYXESkjQ&#x3D;&#x3D;\n</PRE>\n<ADDRESS>\n</ADDRESS>\n</BODY></HTML>",
+      "error_box": "Failed to submit batch upload: 504: Gateway Timeout. Please retry in a moment (your upload may still be processing).",
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-11T12-12-04-639Z_14",
+      "finished_at": "2026-04-11T12:14:24.995Z",
+      "since_global_start_ms": 140237
+    },
+    {
+      "username": "perf_load_user_15",
+      "action": "single",
+      "started_at": "2026-04-11T12:12:05.452Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 158340,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf15 Single1775909543377"
+                ],
+                "partyKey": "AMLP_E233E78D9FF551EF"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-11T12:15:01.785Z",
+      "since_global_start_ms": 177027
+    },
+    {
+      "username": "perf_load_user_16",
+      "action": "single",
+      "started_at": "2026-04-11T12:12:05.469Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 102540,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf16 Single1775909543377"
+                ],
+                "partyKey": "AMLP_313F6D2382A09B63"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-11T12:14:05.987Z",
+      "since_global_start_ms": 121230
+    },
+    {
+      "username": "perf_load_user_17",
+      "action": "single",
+      "started_at": "2026-04-11T12:12:05.514Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 24309,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf17 Single1775909542153"
+                ],
+                "partyKey": "AMLP_5DABBA0D46D83017"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-11T12:12:46.529Z",
+      "since_global_start_ms": 41771
+    },
+    {
+      "username": "perf_load_user_18",
+      "action": "single",
+      "started_at": "2026-04-11T12:12:05.666Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 40006,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf18 Single1775909545584"
+                ],
+                "partyKey": "AMLP_BD0DC3CCF05345B0"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-11T12:13:05.622Z",
+      "since_global_start_ms": 60864
+    },
+    {
+      "username": "perf_load_user_19",
+      "action": "single",
+      "started_at": "2026-04-11T12:12:05.663Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 25395,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf19 Single1775909541081"
+                ],
+                "partyKey": "AMLP_0CCAAD6478F84D14"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-11T12:12:46.532Z",
+      "since_global_start_ms": 41774
+    },
+    {
+      "username": "perf_load_user_20",
+      "action": "single",
+      "started_at": "2026-04-11T12:12:05.662Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 41234,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf20 Single1775909544234"
+                ],
+                "partyKey": "AMLP_D6422F945751E6CE"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-11T12:13:05.618Z",
+      "since_global_start_ms": 60860
+    }
+  ]
+}

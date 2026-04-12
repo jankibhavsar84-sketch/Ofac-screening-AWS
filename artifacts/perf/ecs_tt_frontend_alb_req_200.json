@@ -1,0 +1,9 @@
+{
+  "TargetValue": 200.0,
+  "PredefinedMetricSpecification": {
+    "PredefinedMetricType": "ALBRequestCountPerTarget",
+    "ResourceLabel": "app/ofac-screening-alb/f7c1e961311e3086/targetgroup/ofac-screening-frontend-tg/7f77135829e7ef7e"
+  },
+  "ScaleOutCooldown": 60,
+  "ScaleInCooldown": 180
+}

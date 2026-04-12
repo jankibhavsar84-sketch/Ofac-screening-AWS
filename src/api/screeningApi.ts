@@ -386,6 +386,7 @@ export async function matchSync(
   businessUnitCode?: string
 ): Promise<EntityMatchResponse> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const syncTimeoutMs = Math.max(15000, Number(env("VITE_SYNC_SCREENING_TIMEOUT_MS", "120000")));
   const body: EntityMatchQuery = { queries };
   if (screeningTypes.length) body.screening_types = screeningTypes;
   body.mock_screening = Boolean(mockScreening);
@@ -397,7 +398,7 @@ export async function matchSync(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
+    const timeoutId = window.setTimeout(() => controller.abort(), syncTimeoutMs);
     try {
       const resp = await fetch(`${baseUrl}/screenings/match`, {
         method: "POST",
@@ -423,6 +424,11 @@ export async function matchSync(
       if (attempt < maxAttempts && isAbort) {
         await sleep(300 * attempt);
         continue;
+      }
+      if (isAbort) {
+        throw new Error(
+          `Synchronous screening timed out after ${Math.round(syncTimeoutMs / 1000)} seconds. Please retry.`
+        );
       }
       throw error;
     } finally {
@@ -510,12 +516,13 @@ export async function listDailySchedules(): Promise<DailySchedule[]> {
 
 export async function listMyBusinessUnits(): Promise<BusinessUnit[]> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
-  const transientStatuses = new Set([429, 500, 502, 503, 504]);
-  const maxAttempts = 4;
+  const transientStatuses = new Set([401, 429, 500, 502, 503, 504]);
+  const maxAttempts = 1;
+  const requestTimeoutMs = Math.max(5000, Number(env("VITE_BUSINESS_UNITS_TIMEOUT_MS", "45000")));
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
+    const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
     try {
       const resp = await fetch(`${baseUrl}/business-units`, {
         headers: withAuthHeaders(),

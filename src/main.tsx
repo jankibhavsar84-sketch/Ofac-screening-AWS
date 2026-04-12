@@ -6,6 +6,7 @@ import { AuthProvider } from "react-oidc-context";
 import { routeTree } from "./routeTree.gen";
 import { AuthGate } from "./components/AuthGate";
 import { clearSigninQueryParams, oidcConfig } from "./auth/oidc";
+import { BusinessUnitsProvider } from "./context/BusinessUnitsContext";
 import "./styles.css";
 
 const router = createRouter({ routeTree });
@@ -21,7 +22,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <AuthProvider {...oidcConfig} onSigninCallback={clearSigninQueryParams}>
       <AuthGate>
         <RecoilRoot>
-          <RouterProvider router={router} />
+          <BusinessUnitsProvider>
+            <RouterProvider router={router} />
+          </BusinessUnitsProvider>
         </RecoilRoot>
       </AuthGate>
     </AuthProvider>

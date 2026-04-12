@@ -1,0 +1,170 @@
+[
+  {
+    "timestamp": "2026-04-11 13:04:07.943",
+    "party_key": "AMLP_I_2603230001070469",
+    "http_status": "500",
+    "tracking_id": "b94b3e0f-f827-4d86-9374-4114d33c20e5",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "b94b3e0f-f827-4d86-9374-4114d33c20e5",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:04:07.959",
+    "party_key": "AMLP_E_2603230001070110",
+    "http_status": "500",
+    "tracking_id": "933f50ab-4241-4cae-a1c5-89bf193a9e94",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "933f50ab-4241-4cae-a1c5-89bf193a9e94",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:04:07.969",
+    "party_key": "AMLP_I_2603230001070445",
+    "http_status": "500",
+    "tracking_id": "365a79ad-ece3-4305-99d9-b86b069b20a3",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "365a79ad-ece3-4305-99d9-b86b069b20a3",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:04:07.999",
+    "party_key": "AMLP_E_2603230001070731",
+    "http_status": "500",
+    "tracking_id": "445ebb4c-6375-456b-980b-873a3ae1c0ba",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "445ebb4c-6375-456b-980b-873a3ae1c0ba",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:04:08.002",
+    "party_key": "AMLP_E_2603230001070743",
+    "http_status": "500",
+    "tracking_id": "5dbe0963-fb94-454b-81ed-4225e06ed18b",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "5dbe0963-fb94-454b-81ed-4225e06ed18b",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:07:41.586",
+    "party_key": "AMLP_U_2603230001070345",
+    "http_status": "500",
+    "tracking_id": "a1300a43-aa05-4ab4-84ad-989ed4e00f3f",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "a1300a43-aa05-4ab4-84ad-989ed4e00f3f",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:07:46.284",
+    "party_key": "AMLP_E_2603230001070620",
+    "http_status": "500",
+    "tracking_id": "9ced263b-d1de-4196-9055-ae41c03b69ec",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "9ced263b-d1de-4196-9055-ae41c03b69ec",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:07:46.300",
+    "party_key": "AMLP_I_2603230001070385",
+    "http_status": "500",
+    "tracking_id": "d63c1ccc-7428-4506-a355-633f9ae7e729",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "d63c1ccc-7428-4506-a355-633f9ae7e729",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:07:46.314",
+    "party_key": "AMLP_I_2603230001070634",
+    "http_status": "500",
+    "tracking_id": "0f606ee8-e15b-4b9e-b22d-ffd0806cdb0f",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "0f606ee8-e15b-4b9e-b22d-ffd0806cdb0f",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:07:46.328",
+    "party_key": "AMLP_E_2603230001070830",
+    "http_status": "500",
+    "tracking_id": "ee3c7840-09c4-4f63-8d66-213c90e76af7",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "ee3c7840-09c4-4f63-8d66-213c90e76af7",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:07:46.489",
+    "party_key": "AMLP_U_2603230001070609",
+    "http_status": "500",
+    "tracking_id": "3fa7cfe9-c900-4570-8f6e-da376f8b44af",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "3fa7cfe9-c900-4570-8f6e-da376f8b44af",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  },
+  {
+    "timestamp": "2026-04-11 13:07:46.557",
+    "party_key": "AMLP_E_2603230001070584",
+    "http_status": "500",
+    "tracking_id": "8041ea27-89de-4c43-9f00-6818ef07fb0b",
+    "raw_response": {
+      "code": 500,
+      "documentationUrl": "",
+      "message": "Internal Server Error",
+      "trackingId": "8041ea27-89de-4c43-9f00-6818ef07fb0b",
+      "transient": true,
+      "usermessage": "Internal Server Error"
+    }
+  }
+]
