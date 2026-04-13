@@ -161,6 +161,9 @@ Backend/Worker (`backend/.env.example`):
 - Backend and worker validate schema at startup, but they do not run DDL automatically. Initialize schema explicitly with `python -m app.init_db` as part of setup/deployment.
 - `SCREENING_TPS=32` caps outbound screening API request rate
 - `SCREENING_PARALLEL_MESSAGES=1` controls how many SQS messages the worker processes concurrently
+- `SCREENING_ITEM_RETRY_MAX_ATTEMPTS=2` retries transient upstream failures before marking an item failed
+- `SCREENING_ITEM_RETRY_INITIAL_DELAY_S=3` base delay for item retry backoff
+- `SCREENING_ITEM_RETRY_MAX_DELAY_S=60` cap for item retry delay
 - `ACTIMIZE_MOCK` is ignored; backend always calls Actimize
 - `ACTIMIZE_PROVIDER=prudential` (default and only supported provider)
 - Set `ACTIMIZE_BASE_URL=<.../financial-governance/sanctions-screening/v1>`

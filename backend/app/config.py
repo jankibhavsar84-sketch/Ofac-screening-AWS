@@ -105,6 +105,9 @@ class Settings:
     screening_poll_interval_ms: int
     screening_sync_timeout_s: int
     screening_result_limit: int
+    screening_item_retry_max_attempts: int
+    screening_item_retry_initial_delay_s: int
+    screening_item_retry_max_delay_s: int
     daily_screening_timezone: str
     daily_screening_hour: int
     daily_screening_minute: int
@@ -188,6 +191,9 @@ def load_settings() -> Settings:
         screening_poll_interval_ms=_to_int(os.getenv("SCREENING_POLL_INTERVAL_MS"), 750),
         screening_sync_timeout_s=_to_int(os.getenv("SCREENING_SYNC_TIMEOUT_S"), 60),
         screening_result_limit=_to_int(os.getenv("SCREENING_RESULT_LIMIT"), 5),
+        screening_item_retry_max_attempts=_to_int(os.getenv("SCREENING_ITEM_RETRY_MAX_ATTEMPTS"), 2),
+        screening_item_retry_initial_delay_s=_to_int(os.getenv("SCREENING_ITEM_RETRY_INITIAL_DELAY_S"), 3),
+        screening_item_retry_max_delay_s=_to_int(os.getenv("SCREENING_ITEM_RETRY_MAX_DELAY_S"), 60),
         daily_screening_timezone=os.getenv("DAILY_SCREENING_TIMEZONE", "America/New_York").strip() or "America/New_York",
         daily_screening_hour=_to_int(os.getenv("DAILY_SCREENING_HOUR"), 0),
         daily_screening_minute=_to_int(os.getenv("DAILY_SCREENING_MINUTE"), 5),

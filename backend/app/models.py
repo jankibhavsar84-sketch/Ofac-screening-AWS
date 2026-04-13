@@ -121,11 +121,13 @@ class ScreeningQueueMessage(BaseModel):
     source_schedule_id: str | None = None
     source_record_hash: str | None = None
     source_upload_id: str | None = None
+    retry_attempt: int = 0
 
     @model_validator(mode="after")
     def _validate_shape(self) -> "ScreeningQueueMessage":
         safe_type = str(self.message_type or "").strip().upper() or "SCREEN_ITEM"
         self.message_type = safe_type
+        self.retry_attempt = max(int(self.retry_attempt or 0), 0)
 
         if safe_type == "JOB_DISPATCH":
             # JOB_DISPATCH messages must not carry a query payload and may omit item_key.

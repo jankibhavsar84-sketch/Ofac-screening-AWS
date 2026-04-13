@@ -47,14 +47,26 @@
                                                              "name":  "SCREENING_TPS",
                                                              "value":  "26"
                                                          },
-                                                         {
-                                                             "name":  "SCREENING_PARALLEL_MESSAGES",
-                                                             "value":  "15"
-                                                         },
-                                                         {
-                                                             "name":  "DAILY_SCREENING_TIMEZONE",
-                                                             "value":  "America/New_York"
-                                                         },
+                                                          {
+                                                              "name":  "SCREENING_PARALLEL_MESSAGES",
+                                                              "value":  "15"
+                                                          },
+                                                          {
+                                                              "name":  "SCREENING_ITEM_RETRY_MAX_ATTEMPTS",
+                                                              "value":  "2"
+                                                          },
+                                                          {
+                                                              "name":  "SCREENING_ITEM_RETRY_INITIAL_DELAY_S",
+                                                              "value":  "3"
+                                                          },
+                                                          {
+                                                              "name":  "SCREENING_ITEM_RETRY_MAX_DELAY_S",
+                                                              "value":  "60"
+                                                          },
+                                                          {
+                                                              "name":  "DAILY_SCREENING_TIMEZONE",
+                                                              "value":  "America/New_York"
+                                                          },
                                                          {
                                                              "name":  "DAILY_SCREENING_HOUR",
                                                              "value":  "0"

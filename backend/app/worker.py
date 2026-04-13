@@ -22,6 +22,7 @@ from .sns_notifier import SnsNotifier
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("screening-worker")
+_RETRYABLE_EXTERNAL_STATUS_CODES = {429, 500, 502, 503, 504}
 
 def _s3_client() -> object:
     client_kwargs: dict[str, object] = {
@@ -368,6 +369,17 @@ def _resolve_external_api_context(exc: Exception) -> tuple[str, str, str, int | 
     )
 
 
+def _is_retryable_external_failure(status_code: int | None) -> bool:
+    return status_code in _RETRYABLE_EXTERNAL_STATUS_CODES
+
+
+def _compute_item_retry_delay_s(current_attempt: int) -> int:
+    base_delay = max(int(settings.screening_item_retry_initial_delay_s), 1)
+    max_delay = max(int(settings.screening_item_retry_max_delay_s), base_delay)
+    # Exponential backoff capped by max delay.
+    return min(base_delay * (2 ** max(int(current_attempt), 0)), max_delay)
+
+
 def _resolve_requester_name(message: ScreeningQueueMessage, repository: JobRepository) -> str | None:
     candidate = str(message.user_name or "").strip()
     if candidate:
@@ -619,12 +631,14 @@ def _process_received_message(
         return
 
     correlation_id = str(message.correlation_id or "").strip() or str(uuid4())
+    retry_attempt = max(int(message.retry_attempt or 0), 0)
     request_payload = message.query.model_dump(mode="json")
     logger.info(
-        "screening item started job=%s key=%s correlation_id=%s screening_types=%s mock=%s schedule_id=%s",
+        "screening item started job=%s key=%s correlation_id=%s retry_attempt=%s screening_types=%s mock=%s schedule_id=%s",
         message.job_id,
         message.item_key,
         correlation_id,
+        retry_attempt,
         message.screening_types,
         message.mock_screening,
         message.source_schedule_id,
@@ -681,10 +695,11 @@ def _process_received_message(
         provider, operation, endpoint, status_code, api_details = _resolve_external_api_context(exc)
 
         logger.error(
-            "screening item failed job=%s key=%s correlation_id=%s provider=%s operation=%s endpoint=%s status_code=%s screening_types=%s mock=%s schedule_id=%s request=%s details=%s error=%s",
+            "screening item failed job=%s key=%s correlation_id=%s retry_attempt=%s provider=%s operation=%s endpoint=%s status_code=%s screening_types=%s mock=%s schedule_id=%s request=%s details=%s error=%s",
             message.job_id,
             message.item_key,
             correlation_id,
+            retry_attempt,
             provider,
             operation,
             endpoint,
@@ -696,6 +711,49 @@ def _process_received_message(
             json.dumps(api_details or {}, ensure_ascii=True, sort_keys=True),
             str(exc),
         )
+
+        max_retry_attempts = max(int(settings.screening_item_retry_max_attempts), 0)
+        if _is_retryable_external_failure(status_code) and retry_attempt < max_retry_attempts:
+            next_attempt = retry_attempt + 1
+            delay_seconds = _compute_item_retry_delay_s(retry_attempt)
+            retry_message = message.model_copy(
+                update={
+                    "retry_attempt": next_attempt,
+                    "correlation_id": correlation_id,
+                }
+            )
+            queue.enqueue(retry_message, delay_seconds=delay_seconds)
+            repository.add_audit_event(
+                action="SCREENING_ITEM_REQUEUED",
+                user_id=message.user_id,
+                user_name=message.user_name,
+                entity_type="screening_job",
+                entity_id=message.job_id,
+                details={
+                    "item_key": message.item_key,
+                    "correlation_id": correlation_id,
+                    "provider": provider,
+                    "operation": operation,
+                    "endpoint": endpoint,
+                    "status_code": status_code,
+                    "retry_attempt": retry_attempt,
+                    "next_retry_attempt": next_attempt,
+                    "delay_seconds": delay_seconds,
+                    "max_retry_attempts": max_retry_attempts,
+                },
+            )
+            logger.warning(
+                "requeued screening item job=%s key=%s correlation_id=%s status_code=%s attempt=%s/%s delay_s=%s",
+                message.job_id,
+                message.item_key,
+                correlation_id,
+                status_code,
+                next_attempt,
+                max_retry_attempts,
+                delay_seconds,
+            )
+            return
+
         repository.mark_item_failed(message.job_id, message.item_key, str(exc))
         if message.source_schedule_id:
             created_notifications = repository.maybe_publish_schedule_job_notification(

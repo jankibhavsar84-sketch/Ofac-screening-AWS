@@ -31,9 +31,16 @@ class SqsQueue:
         self.queue_url = str(created["QueueUrl"])
         return self.queue_url
 
-    def enqueue(self, message: ScreeningQueueMessage) -> None:
+    def enqueue(self, message: ScreeningQueueMessage, delay_seconds: int = 0) -> None:
         queue_url = self.ensure_queue()
-        self.client.send_message(QueueUrl=queue_url, MessageBody=message.model_dump_json())
+        params: dict[str, Any] = {
+            "QueueUrl": queue_url,
+            "MessageBody": message.model_dump_json(),
+        }
+        safe_delay = max(0, min(int(delay_seconds), 900))
+        if safe_delay:
+            params["DelaySeconds"] = safe_delay
+        self.client.send_message(**params)
 
     def enqueue_batch(self, messages: list[ScreeningQueueMessage]) -> None:
         if not messages:

@@ -1,0 +1,1013 @@
+{
+  "base_url": "https://d3ppga4y8wg1ck.cloudfront.net",
+  "input_file": "C:\\Users\\Tapan Bhavsar\\Documents\\OFAC Screening Project\\sample_generated_populated_2603230040.xlsx",
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_30.json",
+  "distribution": {
+    "batch_users": 20,
+    "schedule_users": 5,
+    "single_users": 5
+  },
+  "started_at": "2026-04-12T21:45:59.731Z",
+  "finished_at": "2026-04-12T21:47:24.662Z",
+  "total_users": 30,
+  "total_success": 30,
+  "total_failed": 0,
+  "response_time_ms": {
+    "min": 3245,
+    "p50": 5715,
+    "p90": 53090,
+    "max": 60887,
+    "avg": 21212.63
+  },
+  "cohorts": {
+    "batch": {
+      "total": 20,
+      "success": 20,
+      "failed": 0
+    },
+    "schedule": {
+      "total": 5,
+      "success": 5,
+      "failed": 0,
+      "cleanup_success": 4,
+      "cleanup_failed": 1
+    },
+    "single": {
+      "total": 5,
+      "success": 5,
+      "failed": 0
+    }
+  },
+  "http_status_counts": {
+    "200": 30
+  },
+  "page_errors": 0,
+  "error_boxes": 0,
+  "results": [
+    {
+      "username": "perf_load_user_01",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.007Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 5715,
+      "response_body": {
+        "job_id": "ec395689-8979-4439-ac94-5561673627f4",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:22.787485+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "d201a1a5-ec78-4e86-807f-bf3c27643d65",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/f1dbe5a0-0061-7028-ebec-f1ef2adc1f04/d201a1a5-ec78-4e86-807f-bf3c27643d65/20260412_214617_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_01",
+      "finished_at": "2026-04-12T21:46:22.985Z",
+      "since_global_start_ms": 23254
+    },
+    {
+      "username": "perf_load_user_02",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.066Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 3572,
+      "response_body": {
+        "job_id": "c6299924-22e0-4012-b3b2-15ad3a303d28",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:23.680179+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "3e6440af-8292-47b9-83be-8011ae4a6a03",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/114b2560-f0c1-70a3-91d7-e92bec88b368/3e6440af-8292-47b9-83be-8011ae4a6a03/20260412_214623_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_02",
+      "finished_at": "2026-04-12T21:46:24.370Z",
+      "since_global_start_ms": 24639
+    },
+    {
+      "username": "perf_load_user_03",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.072Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 14691,
+      "response_body": {
+        "job_id": "45f1d925-6c7d-4aa8-b071-7ad0c90c4a4d",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:36.075407+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "c845d785-2f08-4759-8d3d-28dce4a1c225",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/81ab2550-d071-70b2-dddd-fe10891b8f68/c845d785-2f08-4759-8d3d-28dce4a1c225/20260412_214636_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_03",
+      "finished_at": "2026-04-12T21:46:36.295Z",
+      "since_global_start_ms": 36564
+    },
+    {
+      "username": "perf_load_user_04",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.104Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 5090,
+      "response_body": {
+        "job_id": "0a65e200-2459-4c8d-85d9-e4b280659202",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:22.694388+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "ce0d2bde-030e-4ff7-aa92-43499e46e24a",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/816b2540-5001-7044-3c1c-dce36787c117/ce0d2bde-030e-4ff7-aa92-43499e46e24a/20260412_214622_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_04",
+      "finished_at": "2026-04-12T21:46:22.887Z",
+      "since_global_start_ms": 23156
+    },
+    {
+      "username": "perf_load_user_05",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.131Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 7469,
+      "response_body": {
+        "job_id": "f2d2aec3-5194-4932-9cc5-4455dc86b9fa",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:22.181032+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "af81e007-1f18-441b-86c7-21bd29c748b4",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/61bb05c0-a041-7042-220f-e8499c65428a/af81e007-1f18-441b-86c7-21bd29c748b4/20260412_214622_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_05",
+      "finished_at": "2026-04-12T21:46:22.409Z",
+      "since_global_start_ms": 22678
+    },
+    {
+      "username": "perf_load_user_06",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.200Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 5030,
+      "response_body": {
+        "job_id": "00b03f6b-bc86-411f-805e-f09762dedabf",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:22.586997+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "5743e74d-b2f0-4178-8e1f-70cc7b19b81b",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/b15bc560-d051-70a0-f7f8-54f5d575e0f7/5743e74d-b2f0-4178-8e1f-70cc7b19b81b/20260412_214622_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_06",
+      "finished_at": "2026-04-12T21:46:22.811Z",
+      "since_global_start_ms": 23080
+    },
+    {
+      "username": "perf_load_user_07",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.347Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 4553,
+      "response_body": {
+        "job_id": "a0ea1522-57ac-475e-bf4b-f14dfc8473a8",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:22.811967+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "27791342-892d-4bc7-b506-241aaa074248",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/318b35d0-f041-7012-8500-7d7eaed4db27/27791342-892d-4bc7-b506-241aaa074248/20260412_214622_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_07",
+      "finished_at": "2026-04-12T21:46:23.465Z",
+      "since_global_start_ms": 23734
+    },
+    {
+      "username": "perf_load_user_08",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.408Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 3245,
+      "response_body": {
+        "job_id": "5921803c-2733-43d4-8ae2-c7884781fb3d",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:23.317396+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "90132d0d-afb5-4426-bc92-5c2921a8ebf4",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/41ab0540-50a1-7019-3a35-89c0d4db6da1/90132d0d-afb5-4426-bc92-5c2921a8ebf4/20260412_214623_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_08",
+      "finished_at": "2026-04-12T21:46:23.522Z",
+      "since_global_start_ms": 23791
+    },
+    {
+      "username": "perf_load_user_09",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.458Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 53090,
+      "response_body": {
+        "job_id": "680248fc-545f-4b05-a3e4-fe8308ed1e47",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:47:16.797438+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "cfa63ac0-0c1d-4dec-8db0-195479a226aa",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/d1bb0520-10a1-702c-d04c-1f2bfafc2f5a/cfa63ac0-0c1d-4dec-8db0-195479a226aa/20260412_214716_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_09",
+      "finished_at": "2026-04-12T21:47:17.098Z",
+      "since_global_start_ms": 77367
+    },
+    {
+      "username": "perf_load_user_10",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.503Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 57466,
+      "response_body": {
+        "job_id": "8e3a2b0f-f7a4-4e0b-99c7-995c4f1ef667",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:47:16.945748+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "ff113ea4-1550-4227-ab65-73a663d11407",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/115bb550-60e1-70a4-7464-0ce700a53adf/ff113ea4-1550-4227-ab65-73a663d11407/20260412_214716_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_10",
+      "finished_at": "2026-04-12T21:47:21.625Z",
+      "since_global_start_ms": 81894
+    },
+    {
+      "username": "perf_load_user_11",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.523Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 3466,
+      "response_body": {
+        "job_id": "bcfb0d38-fbad-4422-b6bc-48f329f9feb0",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:23.234867+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "96ef4af5-5dc4-4e47-ac8a-aefb35d3bbd9",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/c1dbf570-e051-700c-0533-a96a30d95bd1/96ef4af5-5dc4-4e47-ac8a-aefb35d3bbd9/20260412_214623_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_11",
+      "finished_at": "2026-04-12T21:46:23.505Z",
+      "since_global_start_ms": 23774
+    },
+    {
+      "username": "perf_load_user_12",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.688Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 7365,
+      "response_body": {
+        "job_id": "57b132af-e7dd-4773-ba22-00a51f797e7d",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:21.676720+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "f652d1bf-f02f-4092-89a5-0e6f52f67119",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/118be5f0-a0a1-70ab-0c82-04d0b4a21b7d/f652d1bf-f02f-4092-89a5-0e6f52f67119/20260412_214614_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_12",
+      "finished_at": "2026-04-12T21:46:21.979Z",
+      "since_global_start_ms": 22248
+    },
+    {
+      "username": "perf_load_user_13",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:00.708Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 7340,
+      "response_body": {
+        "job_id": "e39b407a-54af-49f5-a142-f9ac090f4c66",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:22.100010+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "aba96f08-dc59-43bb-a4ce-7e0d26461e9b",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/f1eb75e0-4091-703c-787f-b8335e0ae14e/aba96f08-dc59-43bb-a4ce-7e0d26461e9b/20260412_214622_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_13",
+      "finished_at": "2026-04-12T21:46:22.397Z",
+      "since_global_start_ms": 22666
+    },
+    {
+      "username": "perf_load_user_14",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:01.439Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 24829,
+      "response_body": {
+        "job_id": "0a50113f-5899-47b6-a466-a6e2c6083753",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:39.991190+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "62541323-4520-42e1-ada2-7c46ba1beaca",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/e15b2550-b0a1-7096-4188-0cdd3a579811/62541323-4520-42e1-ada2-7c46ba1beaca/20260412_214630_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_14",
+      "finished_at": "2026-04-12T21:46:47.334Z",
+      "since_global_start_ms": 47603
+    },
+    {
+      "username": "perf_load_user_15",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:01.438Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 4077,
+      "response_body": {
+        "job_id": "0d43e4a1-d46c-4837-bc78-f46e107348b7",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:23.435720+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "3ff9a33b-886b-441a-977c-6d6596caeaf6",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/f11b05b0-3001-70e5-1670-7ce0b73872c4/3ff9a33b-886b-441a-977c-6d6596caeaf6/20260412_214623_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_15",
+      "finished_at": "2026-04-12T21:46:23.760Z",
+      "since_global_start_ms": 24029
+    },
+    {
+      "username": "perf_load_user_16",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:01.546Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 4522,
+      "response_body": {
+        "job_id": "58eaccca-0084-4f4b-9b02-b22899b2e9f5",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:22.969274+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "83ccced1-fdb0-40bd-8f20-b23fed08d8ba",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/915b1570-50b1-70de-09ee-0c553746bebd/83ccced1-fdb0-40bd-8f20-b23fed08d8ba/20260412_214622_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_16",
+      "finished_at": "2026-04-12T21:46:23.422Z",
+      "since_global_start_ms": 23691
+    },
+    {
+      "username": "perf_load_user_17",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:01.615Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 5441,
+      "response_body": {
+        "job_id": "8676b88b-4599-4bf5-88bd-555b3ea92986",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:22.345860+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "22d05ba4-e090-409f-a2af-59d6e5a1bdd6",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/f1db9530-10d1-70a2-ef08-8338dab89cc6/22d05ba4-e090-409f-a2af-59d6e5a1bdd6/20260412_214622_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_17",
+      "finished_at": "2026-04-12T21:46:22.697Z",
+      "since_global_start_ms": 22966
+    },
+    {
+      "username": "perf_load_user_18",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:01.702Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 4588,
+      "response_body": {
+        "job_id": "51cad072-3313-48bd-a328-a1eb1188ee6d",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:22.884907+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "69e7bd1c-9634-4dfc-934b-0165d4f9caad",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/31bba520-a091-709d-725a-3e8647364309/69e7bd1c-9634-4dfc-934b-0165d4f9caad/20260412_214622_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_18",
+      "finished_at": "2026-04-12T21:46:23.412Z",
+      "since_global_start_ms": 23681
+    },
+    {
+      "username": "perf_load_user_19",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:01.791Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 3960,
+      "response_body": {
+        "job_id": "f0eba9ea-3434-472d-830e-d919d069d326",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:46:23.331925+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "3b58231c-2256-4740-90f9-253c28396005",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/e17b6530-9051-70c9-1129-4e9630d9c816/3b58231c-2256-4740-90f9-253c28396005/20260412_214623_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_19",
+      "finished_at": "2026-04-12T21:46:23.670Z",
+      "since_global_start_ms": 23939
+    },
+    {
+      "username": "perf_load_user_20",
+      "action": "batch",
+      "started_at": "2026-04-12T21:46:01.903Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 53430,
+      "response_body": {
+        "job_id": "206bf93d-9dbe-40ea-a208-0d7b2ccc3e87",
+        "status": "QUEUED",
+        "submitted_at": "2026-04-12T21:47:16.680487+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": null,
+        "screened_item_keys": [],
+        "source_upload_id": "91d84209-5ee7-4b10-b015-a19e959a18d6",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/818bd5f0-5041-7044-c260-551428c1d413/91d84209-5ee7-4b10-b015-a19e959a18d6/20260412_214716_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": null,
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "batch_name": "MIXED_BATCH_2026-04-12T21-45-59-602Z_20",
+      "finished_at": "2026-04-12T21:47:16.906Z",
+      "since_global_start_ms": 77175
+    },
+    {
+      "username": "perf_load_user_21",
+      "action": "schedule",
+      "started_at": "2026-04-12T21:46:01.907Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 4250,
+      "response_body": {
+        "job_id": "3ca88ff2-5259-48a1-89ec-36d18ea7787a",
+        "status": "COMPLETED",
+        "submitted_at": "2026-04-12T21:46:23.041938+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": "1093de1b-83be-4c62-bf32-40a830c7030a",
+        "screened_item_keys": [],
+        "source_upload_id": "c3259362-c779-4dc7-b24d-ce1ec4bc39c9",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/916bb540-4041-7015-ea45-4e72a93b818c/c3259362-c779-4dc7-b24d-ce1ec4bc39c9/20260412_214622_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": "DAILY",
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": {
+        "ok": true,
+        "status": 200,
+        "body": "{\"status\":\"removed\",\"schedule_id\":\"1093de1b-83be-4c62-bf32-40a830c7030a\"}"
+      },
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-12T21-45-59-602Z_21",
+      "finished_at": "2026-04-12T21:47:16.588Z",
+      "since_global_start_ms": 76857
+    },
+    {
+      "username": "perf_load_user_22",
+      "action": "schedule",
+      "started_at": "2026-04-12T21:46:01.904Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 52327,
+      "response_body": {
+        "job_id": "4a7be678-f497-49ba-ac84-835c9ff28052",
+        "status": "COMPLETED",
+        "submitted_at": "2026-04-12T21:47:16.170830+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": "47234cc3-eb28-4106-bfbb-3c0c1bcf564a",
+        "screened_item_keys": [],
+        "source_upload_id": "4f35e1df-f1bc-44dc-b852-f4483bc0b5a4",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/312b1590-8091-701a-c27d-ab3fb8f1ce91/4f35e1df-f1bc-44dc-b852-f4483bc0b5a4/20260412_214712_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": "DAILY",
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": {
+        "ok": false,
+        "status": 502,
+        "body": "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n</body>\r\n</html>\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n"
+      },
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-12T21-45-59-602Z_22",
+      "finished_at": "2026-04-12T21:47:16.821Z",
+      "since_global_start_ms": 77090
+    },
+    {
+      "username": "perf_load_user_23",
+      "action": "schedule",
+      "started_at": "2026-04-12T21:46:02.055Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 3758,
+      "response_body": {
+        "job_id": "1fedc7d1-4fc2-4e3c-a8a5-0244a089c2fd",
+        "status": "COMPLETED",
+        "submitted_at": "2026-04-12T21:46:23.165281+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": "4bbeab8c-fc9c-4961-9bc5-08fbc09f1b1b",
+        "screened_item_keys": [],
+        "source_upload_id": "59699b82-f19e-44f5-8e31-2a751a091e52",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/71bb3540-7001-70b2-2a4f-bd370ac1113b/59699b82-f19e-44f5-8e31-2a751a091e52/20260412_214623_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": "DAILY",
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": {
+        "ok": true,
+        "status": 200,
+        "body": "{\"status\":\"removed\",\"schedule_id\":\"4bbeab8c-fc9c-4961-9bc5-08fbc09f1b1b\"}"
+      },
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-12T21-45-59-602Z_23",
+      "finished_at": "2026-04-12T21:47:21.603Z",
+      "since_global_start_ms": 81872
+    },
+    {
+      "username": "perf_load_user_24",
+      "action": "schedule",
+      "started_at": "2026-04-12T21:46:02.145Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 5369,
+      "response_body": {
+        "job_id": "6b101d98-fdd2-4f3c-89d7-7f7fe9db6745",
+        "status": "COMPLETED",
+        "submitted_at": "2026-04-12T21:46:22.505632+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": "b636686f-3e6f-4c03-8c5c-4d4dbfcb8d26",
+        "screened_item_keys": [],
+        "source_upload_id": "0c9d1e0c-e8f7-46ff-8438-013bc8984a83",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/81db85f0-3001-70a8-6122-9ef7790c2259/0c9d1e0c-e8f7-46ff-8438-013bc8984a83/20260412_214622_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": "DAILY",
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": {
+        "ok": true,
+        "status": 200,
+        "body": "{\"status\":\"removed\",\"schedule_id\":\"b636686f-3e6f-4c03-8c5c-4d4dbfcb8d26\"}"
+      },
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-12T21-45-59-602Z_24",
+      "finished_at": "2026-04-12T21:47:05.894Z",
+      "since_global_start_ms": 66163
+    },
+    {
+      "username": "perf_load_user_25",
+      "action": "schedule",
+      "started_at": "2026-04-12T21:46:02.763Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 39489,
+      "response_body": {
+        "job_id": "0a48b8ba-eae6-4ebe-9995-b6354220fe7c",
+        "status": "COMPLETED",
+        "submitted_at": "2026-04-12T21:47:01.957968+00:00",
+        "total_items": 0,
+        "business_unit_code": "US_PRU_HR",
+        "daily_schedule_id": "9b73246b-822a-44a1-9f41-8b5f7811b683",
+        "screened_item_keys": [],
+        "source_upload_id": "c4a9d54a-9827-4e2b-868b-9fd4d1dd1bfb",
+        "file_name": "sample_generated_populated_2603230040.xlsx",
+        "s3_uri": "s3://amzn-s3-quickscreen-batch/screening-input/b19b9570-3031-7054-4009-23bdbba38bae/c4a9d54a-9827-4e2b-868b-9fd4d1dd1bfb/20260412_214701_sample_generated_populated_2603230040.xlsx",
+        "schedule_frequency": "DAILY",
+        "row_meta": []
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": {
+        "ok": true,
+        "status": 200,
+        "body": "{\"status\":\"removed\",\"schedule_id\":\"9b73246b-822a-44a1-9f41-8b5f7811b683\"}"
+      },
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "schedule_name": "MIXED_SCHEDULE_2026-04-12T21-45-59-602Z_25",
+      "finished_at": "2026-04-12T21:47:24.370Z",
+      "since_global_start_ms": 84639
+    },
+    {
+      "username": "perf_load_user_26",
+      "action": "single",
+      "started_at": "2026-04-12T21:46:02.673Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 52548,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf26 Single1776030384089"
+                ],
+                "partyKey": "AMLP_8D5D2B9E1509EFD1"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-12T21:47:16.711Z",
+      "since_global_start_ms": 76980
+    },
+    {
+      "username": "perf_load_user_27",
+      "action": "single",
+      "started_at": "2026-04-12T21:46:02.839Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 45632,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf27 Single1776030380067"
+                ],
+                "partyKey": "AMLP_986A3A1ED52A8A4E"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-12T21:47:05.818Z",
+      "since_global_start_ms": 66087
+    },
+    {
+      "username": "perf_load_user_28",
+      "action": "single",
+      "started_at": "2026-04-12T21:46:03.122Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 43607,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf28 Single1776030382015"
+                ],
+                "partyKey": "AMLP_E7B19B863FEB06EF"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-12T21:47:05.815Z",
+      "since_global_start_ms": 66085
+    },
+    {
+      "username": "perf_load_user_29",
+      "action": "single",
+      "started_at": "2026-04-12T21:46:03.133Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 49573,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf29 Single1776030382364"
+                ],
+                "partyKey": "AMLP_B9B9A7C941DAAB62"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-12T21:47:12.045Z",
+      "since_global_start_ms": 72314
+    },
+    {
+      "username": "perf_load_user_30",
+      "action": "single",
+      "started_at": "2026-04-12T21:46:03.137Z",
+      "ok": true,
+      "business_unit_code": "US_PRU_HR",
+      "http_status": 200,
+      "response_ms": 60887,
+      "response_body": {
+        "responses": {
+          "single_1": {
+            "results": [],
+            "total": {
+              "value": 0,
+              "relation": "eq"
+            },
+            "query": {
+              "schema": "Person",
+              "properties": {
+                "name": [
+                  "Perf30 Single1776030383435"
+                ],
+                "partyKey": "AMLP_739D3521DA83F04D"
+              }
+            },
+            "status": 200,
+            "engine_message": null,
+            "error_text": null
+          }
+        },
+        "limit": 5
+      },
+      "error_box": null,
+      "page_error": null,
+      "cleanup": null,
+      "final_url": "https://d3ppga4y8wg1ck.cloudfront.net/screening",
+      "finished_at": "2026-04-12T21:47:24.439Z",
+      "since_global_start_ms": 84709
+    }
+  ]
+}

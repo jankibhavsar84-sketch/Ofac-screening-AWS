@@ -10,8 +10,16 @@ const FILE_PATH =
 const CREDENTIALS_PATH =
   process.env.CREDENTIALS_FILE ||
   path.resolve('artifacts', 'perf', 'aws_perf_users_30.json');
+const BATCH_USERS = Number(process.env.BATCH_USERS || 20);
+const SCHEDULE_USERS = Number(process.env.SCHEDULE_USERS || 5);
+const SINGLE_USERS = Number(process.env.SINGLE_USERS || 5);
+const TOTAL_USERS = BATCH_USERS + SCHEDULE_USERS + SINGLE_USERS;
 const RUN_TAG = new Date().toISOString().replace(/[:.]/g, '-');
-const OUTPUT_PATH = path.resolve('artifacts', 'perf', `mixed_screening_30_users_${RUN_TAG}.json`);
+const OUTPUT_PATH = path.resolve(
+  'artifacts',
+  'perf',
+  `mixed_screening_${BATCH_USERS}b_${SCHEDULE_USERS}sched_${SINGLE_USERS}single_${RUN_TAG}.json`
+);
 
 function nowIso() {
   return new Date().toISOString();
@@ -24,18 +32,18 @@ function ensureDir(dirPath) {
 function readCredentials() {
   const raw = fs.readFileSync(CREDENTIALS_PATH, 'utf8');
   const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed) || parsed.length < 30) {
-    throw new Error(`Expected at least 30 credentials in ${CREDENTIALS_PATH}`);
+  if (!Array.isArray(parsed) || parsed.length < TOTAL_USERS) {
+    throw new Error(`Expected at least ${TOTAL_USERS} credentials in ${CREDENTIALS_PATH}`);
   }
-  return parsed.slice(0, 30).map((item) => ({
+  return parsed.slice(0, TOTAL_USERS).map((item) => ({
     username: String(item.username || '').trim(),
     password: String(item.password || '').trim(),
   }));
 }
 
 function cohortForIndex(index) {
-  if (index < 10) return 'batch';
-  if (index < 20) return 'schedule';
+  if (index < BATCH_USERS) return 'batch';
+  if (index < BATCH_USERS + SCHEDULE_USERS) return 'schedule';
   return 'single';
 }
 
@@ -398,6 +406,9 @@ async function main() {
   if (!fs.existsSync(FILE_PATH)) {
     throw new Error(`Input file not found: ${FILE_PATH}`);
   }
+  if (TOTAL_USERS <= 0) {
+    throw new Error('TOTAL_USERS must be greater than 0');
+  }
 
   const credentials = readCredentials();
   ensureDir(path.dirname(OUTPUT_PATH));
@@ -446,6 +457,11 @@ async function main() {
     base_url: BASE_URL,
     input_file: FILE_PATH,
     credentials_file: CREDENTIALS_PATH,
+    distribution: {
+      batch_users: BATCH_USERS,
+      schedule_users: SCHEDULE_USERS,
+      single_users: SINGLE_USERS,
+    },
     started_at: new Date(globalStartedAt).toISOString(),
     finished_at: nowIso(),
     total_users: results.length,

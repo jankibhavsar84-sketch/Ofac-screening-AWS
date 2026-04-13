@@ -58,5 +58,7 @@
       "RestrictionType": "none",
       "Quantity": 0
     }
-  }
+  },
+  "WebACLId": "arn:aws:wafv2:us-east-1:279930135954:global/webacl/ofac-screening-cf-waf/1b120039-d06b-4dc4-b671-ba4fd44b7319"
+  
 }
