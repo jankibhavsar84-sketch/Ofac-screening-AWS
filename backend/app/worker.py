@@ -722,7 +722,54 @@ def _process_received_message(
                     "correlation_id": correlation_id,
                 }
             )
-            queue.enqueue(retry_message, delay_seconds=delay_seconds)
+            try:
+                queue.enqueue(retry_message, delay_seconds=delay_seconds)
+            except Exception as requeue_exc:  # noqa: BLE001
+                logger.exception(
+                    "failed to requeue screening item job=%s key=%s correlation_id=%s: %s",
+                    message.job_id,
+                    message.item_key,
+                    correlation_id,
+                    requeue_exc,
+                )
+                repository.add_audit_event(
+                    action="SCREENING_ITEM_REQUEUE_FAILED",
+                    user_id=message.user_id,
+                    user_name=message.user_name,
+                    entity_type="screening_job",
+                    entity_id=message.job_id,
+                    details={
+                        "item_key": message.item_key,
+                        "correlation_id": correlation_id,
+                        "provider": provider,
+                        "operation": operation,
+                        "endpoint": endpoint,
+                        "status_code": status_code,
+                        "retry_attempt": retry_attempt,
+                        "next_retry_attempt": next_attempt,
+                        "delay_seconds": delay_seconds,
+                        "max_retry_attempts": max_retry_attempts,
+                        "requeue_error": str(requeue_exc),
+                    },
+                )
+                repository.mark_item_failed(
+                    message.job_id,
+                    message.item_key,
+                    f"{exc}; retry requeue failed: {requeue_exc}",
+                )
+                if message.source_schedule_id:
+                    created_notifications = repository.maybe_publish_schedule_job_notification(
+                        job_id=message.job_id,
+                        schedule_id=message.source_schedule_id,
+                    )
+                    if created_notifications > 0:
+                        _publish_schedule_notification_via_sns(
+                            repository=repository,
+                            notifier=notifier,
+                            schedule_id=message.source_schedule_id,
+                            job_id=message.job_id,
+                        )
+                return
             repository.add_audit_event(
                 action="SCREENING_ITEM_REQUEUED",
                 user_id=message.user_id,

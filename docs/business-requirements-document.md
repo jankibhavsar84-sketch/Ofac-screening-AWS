@@ -4,9 +4,9 @@
 OFAC / Watchlist Screening Application
 
 ## Document Version
-- Version: 1.2
-- Date: April 9, 2026
-- Status: Updated for AWS batch dispatch, dashboard performance split, and operational validation
+- Version: 1.3
+- Date: April 13, 2026
+- Status: Updated for worker retry/requeue hardening, AWS mixed-concurrency validation, and operational resiliency controls
 
 ## 1. Business Purpose
 The application shall allow business users to screen individuals and entities against watchlists, receive immediate results for single requests, process large files in batch mode, maintain a compliant audit trail of all user actions, and support recurring re-screening of selected populations with appropriate operational controls.
@@ -25,7 +25,8 @@ The application shall allow business users to screen individuals and entities ag
 - Large immediate uploads use asynchronous dispatch so the platform can acknowledge accepted work before all individual screening items are expanded and processed.
 - Admin/compliance audit review now supports paged retrieval of audit activity.
 - Scheduled screening supports subscription-based completion notifications.
-- Current operational validation results from April 8, 2026 are captured in this BRD for business readiness visibility.
+- Worker now applies bounded delayed retry/requeue for transient upstream screening failures (`429/500/502/503/504`) before terminally failing an item.
+- Current operational validation results from April 8, 2026 and April 13, 2026 are captured in this BRD for business readiness visibility.
 
 ## 3. Scope
 ### In Scope
@@ -41,6 +42,7 @@ The application shall allow business users to screen individuals and entities ag
 - API access logging with request/response metadata.
 - Correlation ID traceability across API, queue, and worker processing.
 - Operational retention and risk alerting controls for audit/error data.
+- Transient upstream screening failure handling via delayed queue retry and bounded retry attempts.
 
 ### Out of Scope
 - Case management and adjudication workflow after match.
@@ -114,12 +116,14 @@ The application shall allow business users to screen individuals and entities ag
 | BR-AU-008 | Sensitive request attributes in operational logs shall be masked or redacted. | Must | Access logs do not persist raw secrets/tokens/password-like values. |
 | BR-AU-009 | The platform shall support configurable retention windows for audit/access/error logs. | Must | Worker applies retention policy and records purge actions in audit trail. |
 | BR-AU-010 | Authorized audit users shall be able to review audit activity using paged retrieval suitable for large audit volumes. | Must | Audit review supports page-based retrieval without requiring full-history download. |
+| BR-AU-011 | Queue retry lifecycle events shall be auditable for asynchronous screening troubleshooting. | Must | Retry enqueue success/failure events are written to audit logs with item key, correlation id, and retry metadata. |
 
 ## Component H: Operational Risk Controls
 | ID | Business Requirement | Priority | Acceptance Criteria |
 |---|---|---|---|
 | BR-OR-001 | The platform shall trigger a high-risk audit alert when external API failures exceed threshold within a configurable window. | Must | Alert event is recorded once per provider/operation window when threshold is crossed. |
 | BR-OR-002 | Correlation id shall be propagated from inbound API request through queue message to worker execution events. | Must | A single correlation id can be used to trace one screening request across API, SQS, worker, and failure logs. |
+| BR-OR-003 | For transient upstream screening failures, asynchronous item processing shall automatically retry with bounded backoff before final failure. | Must | Worker requeues retryable failures with delay and bounded retry count; item is only terminally failed after retry budget is exhausted (or retry enqueue fails). |
 
 ## Component G: Throughput and Service Levels
 | ID | Business Requirement | Priority | Acceptance Criteria |
@@ -129,6 +133,7 @@ The application shall allow business users to screen individuals and entities ag
 | BR-SL-003 | Batch processing shall provide eventual completion with visible progress status. | Must | Batch requests transition from In Progress to final states without manual re-submission. |
 | BR-SL-004 | Large batch upload design shall prioritize returning a queued acknowledgement within the front-door request window. | Must | Accepted large uploads return queued confirmation without waiting for row-level screening completion. |
 | BR-SL-005 | The platform shall preserve dashboard and results usability as submission history grows. | Must | Users can access summary metrics and recent results without performance degradation caused by loading all history at once. |
+| BR-SL-006 | Temporary upstream screening instability shall not require end-user re-submission for each affected item. | Must | Retryable upstream failures are automatically retried asynchronously via queue-based reprocessing. |
 
 ## 5. Business Success Metrics
 1. 100% of screening submissions are attributable to a user identity.
@@ -140,9 +145,10 @@ The application shall allow business users to screen individuals and entities ag
 7. 100% of screening external API failures are persisted with context and correlation id.
 8. 100% of accepted batch uploads are server-validated before asynchronous processing begins.
 9. Dashboard summary cards remain usable for high-history users without loading the full result history into the initial grid.
+10. Retryable upstream screening failures are retried automatically and auditable without requiring manual user re-submission.
 
 ## 6. Current Validation Snapshot
-### April 8, 2026 Batch Upload Validation
+### April 8, 2026 Batch Upload Baseline
 - Concurrent users: `20`
 - Successful submissions: `11`
 - Failed submissions: `9`
@@ -154,6 +160,20 @@ The application shall allow business users to screen individuals and entities ag
 Business interpretation:
 - The large-batch asynchronous dispatch design shows measurable improvement because more than half of concurrent users received a queued response for the `1000`-row upload test without waiting for full screening completion.
 - The current business readiness risk is that front-door timeout behavior still exists under parallel high-volume submission, so additional optimization may be required before treating this scenario as fully production-ready at the tested concurrency.
+
+### April 13, 2026 Mixed Concurrency Validation (Post Retry/Queue Hardening)
+- Mix: `20` straight batch uploads + `5` scheduled batch uploads + `5` single screenings (`30` total concurrent sessions)
+- Successful submissions: `30`
+- Failed submissions: `0`
+- Overall success rate: `100%`
+- Submission HTTP status distribution: `200` for all `30` sessions
+- Page-level failures: `0`
+- Error-box failures: `0`
+- Submission latency profile: `0.403s` minimum, `42.463s` p50, `51.450s` p90, `73.117s` maximum
+
+Business interpretation:
+- The current mixed submission workload met the tested concurrency target with full submission success after retry/requeue hardening.
+- This snapshot validates submission-path resiliency; batch item processing continues asynchronously and remains dependent on upstream screening API health.
 
 ## 7. Assumptions
 1. Actimize remains the system of record for screening decision inputs.

@@ -1,7 +1,7 @@
 # Technical Design Document (TDD): OFAC / Watchlist Screening Platform
 
-**Version:** 1.6  
-**Date:** 2026-04-09  
+**Version:** 1.7  
+**Date:** 2026-04-13  
 **Repo:** `ofac-screening-aws`  
 
 This document describes the technical design for the OFAC / watchlist screening platform deployed on AWS. It includes AWS architecture, API flows, process flows, and component responsibilities.
@@ -17,6 +17,7 @@ This document describes the technical design for the OFAC / watchlist screening 
 - Large immediate uploads continue to use the S3-backed `JOB_DISPATCH` pattern so the worker expands queued work asynchronously instead of performing per-record dispatch in the request thread.
 - Audit operations now support paged admin retrieval, and raw Actimize/Prudential request/response troubleshooting logs can be enabled with redaction.
 - Authentication wording is aligned to the current AWS deployment baseline: OIDC via AWS Cognito (with optional enterprise federation), with old local Keycloak references removed from the active design baseline.
+- Worker-side transient external API hardening now includes delayed SQS requeue for retryable upstream failures (`429/500/502/503/504`) with bounded exponential backoff, per-item retry-attempt tracking, and explicit audit events for successful requeue vs requeue failure.
 
 ## 1. System Overview
 
@@ -209,6 +210,7 @@ Responsibilities:
 - Handle `JOB_DISPATCH` messages for large immediate batch uploads by downloading `queries.json` from S3, creating job items in bulk, and enqueuing per-record `SCREEN_ITEM` tasks using `SendMessageBatch` (10 at a time).
 - Enforce screening throughput and execute screening calls for selected types.
 - Enforce throughput constraint via fixed-rate limiter (`SCREENING_TPS`) and concurrency cap (`SCREENING_PARALLEL_MESSAGES`) per worker task.
+- For transient upstream screening failures (`429/500/502/503/504`), requeue the same item with incremented `retry_attempt` and delayed retry using bounded exponential backoff.
 - Persist item results (completed/failed) into the database.
 - Periodically check due daily schedules and trigger new batch jobs.
 - Apply retention policy cleanup for audit/access/error stores.
@@ -1141,6 +1143,9 @@ sequenceDiagram
   API-->>UI: progress + results when terminal
 ```
 
+Retry behavior note:
+- If worker receives a transient upstream `429/500/502/503/504` for an item, it requeues the message with a delay and increments `retry_attempt` (bounded by configured max attempts) instead of immediately marking the item as failed.
+
 #### 7.2.3 Batch Upload (Async - Large Batch Dispatch)
 
 ```mermaid
@@ -1237,6 +1242,10 @@ sequenceDiagram
 - Messages are deleted after processing to avoid duplicates (at-least-once queue semantics should be accounted for by idempotent writes).
 - Daily schedule trigger uses a claim step to reduce duplicate schedule runs.
 - Prudential/Actimize HTTP `429/500/502/503/504` responses are retried with exponential backoff.
+- For async worker items, retry is implemented as delayed SQS requeue (`retry_attempt` on queue message) to keep worker threads available and avoid blocking a message handler during backoff.
+- Requeue outcomes are explicitly audited:
+  - `SCREENING_ITEM_REQUEUED` when delayed retry enqueue succeeds
+  - `SCREENING_ITEM_REQUEUE_FAILED` when retry enqueue fails (item is then marked failed)
 - Prudential wrapped responses are normalized whether they use `status_code/body` or `statusCode/body`.
 - Repository uses a shared PostgreSQL connection pool per process and retries transient DB acquisition failures.
 - Runtime API/worker processes validate schema only; schema creation/migration is an explicit deployment/setup step via `python -m app.init_db`.
@@ -1250,6 +1259,7 @@ sequenceDiagram
 - Raw Prudential/Actimize request and response payloads are logged to CloudWatch when `ACTIMIZE_LOG_RAW_API_IO=true`.
 - Sensitive fields such as bearer tokens, client assertions, secrets, and access tokens are redacted before logging.
 - Worker troubleshooting logs now capture the same raw wrapped Prudential success/error payload shapes seen by sync screening, which is important when batch and sync behavior diverge because of parser-version drift.
+- Worker logs include `retry_attempt` for per-item processing and requeue operations to support troubleshooting of transient upstream instability.
 
 ### 8.4 Data Store Retention and Risk Alerting
 
@@ -1383,6 +1393,9 @@ Backend and worker share the same settings (see `backend/app/config.py` and `bac
 | `ACTIMIZE_RAW_API_LOG_MAX_CHARS` | `20000` | Max raw request/response characters retained per log entry. |
 | `SCREENING_TPS` | `32` | Worker outbound throughput cap (TPS). |
 | `SCREENING_PARALLEL_MESSAGES` | `1` | Max in-flight SQS screening items processed concurrently per worker task. |
+| `SCREENING_ITEM_RETRY_MAX_ATTEMPTS` | `2` | Additional retry attempts for transient upstream (`429/500/502/503/504`) item failures before terminal item failure. |
+| `SCREENING_ITEM_RETRY_INITIAL_DELAY_S` | `3` | Initial delay (seconds) for worker delayed requeue of retryable item failures. |
+| `SCREENING_ITEM_RETRY_MAX_DELAY_S` | `60` | Maximum delay (seconds) cap for retry requeue exponential backoff. |
 | `SCREENING_POLL_INTERVAL_MS` | `750` | Intended poll interval (ms) used by clients/UX; backend uses it for any internal timing where applicable. |
 | `SCREENING_SYNC_TIMEOUT_S` | `60` | Timeout budget (seconds) for synchronous screening request flows. |
 | `SCREENING_RESULT_LIMIT` | `5` | Default max number of matches returned per item. |
