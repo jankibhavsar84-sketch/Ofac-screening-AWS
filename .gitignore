@@ -43,3 +43,4 @@ artifacts/**/db-secrets.json
 artifacts/**/db-url.txt
 artifacts/**/backend-taskdef-live.json
 artifacts/**/worker-taskdef-live.json
+artifacts/**/*-config-secret.json

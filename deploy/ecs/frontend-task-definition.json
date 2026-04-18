@@ -17,54 +17,7 @@
                                                      "/entrypoint.sh"
                                                  ],
                                      "environment":  [
-                                                         {
-                                                             "name":  "BACKEND_UPSTREAM",
-                                                             "value":  "http://backend.screening.internal:8000"
-                                                         },
-                                                         {
-                                                             "name":  "VITE_SCREENING_API_BASE_URL",
-                                                             "value":  "/api/v1"
-                                                         },
-                                                         {
-                                                             "name":  "VITE_SCREENING_POLL_INTERVAL_MS",
-                                                             "value":  "750"
-                                                         },
-                                                         {
-                                                             "name":  "VITE_SCREENING_JOB_TIMEOUT_MS",
-                                                             "value":  "90000"
-                                                         },
-                                                         {
-                                                             "name":  "VITE_AUTH_ENABLED",
-                                                             "value":  "true"
-                                                         },
-                                                         {
-                                                             "name":  "VITE_OIDC_AUTHORITY",
-                                                             "value":  "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_ptvmAe35M"
-                                                         },
-                                                         {
-                                                             "name":  "VITE_OIDC_CLIENT_ID",
-                                                             "value":  "2ul9mdnt44kl60hgiihbc7o5sk"
-                                                         },
-                                                         {
-                                                             "name":  "VITE_OIDC_REDIRECT_URI",
-                                                             "value":  ""
-                                                         },
-                                                         {
-                                                             "name":  "VITE_OIDC_POST_LOGOUT_REDIRECT_URI",
-                                                             "value":  ""
-                                                         },
-                                                         {
-                                                             "name":  "VITE_OIDC_SCOPE",
-                                                             "value":  "openid profile email"
-                                                         },
-                                                         {
-                                                             "name":  "VITE_OIDC_IDLE_TIMEOUT_MS",
-                                                             "value":  "900000"
-                                                         },
-                                                         {
-                                                             "name":  "VITE_OIDC_CLEAR_SESSION_ON_CLOSE",
-                                                             "value":  "true"
-                                                         }
+
                                                      ],
                                      "portMappings":  [
                                                           {
@@ -80,7 +33,57 @@
                                                                               "awslogs-region":  "us-east-2",
                                                                               "awslogs-stream-prefix":  "ecs"
                                                                           }
-                                                          }
+                                                          },
+                                     "secrets":  [
+                                                     {
+                                                         "name":  "BACKEND_UPSTREAM",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:BACKEND_UPSTREAM::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_SCREENING_API_BASE_URL",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_SCREENING_API_BASE_URL::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_SCREENING_POLL_INTERVAL_MS",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_SCREENING_POLL_INTERVAL_MS::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_SCREENING_JOB_TIMEOUT_MS",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_SCREENING_JOB_TIMEOUT_MS::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_AUTH_ENABLED",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_AUTH_ENABLED::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_AUTHORITY",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_OIDC_AUTHORITY::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_CLIENT_ID",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_OIDC_CLIENT_ID::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_REDIRECT_URI",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_OIDC_REDIRECT_URI::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_POST_LOGOUT_REDIRECT_URI",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_OIDC_POST_LOGOUT_REDIRECT_URI::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_SCOPE",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_OIDC_SCOPE::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_IDLE_TIMEOUT_MS",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_OIDC_IDLE_TIMEOUT_MS::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_CLEAR_SESSION_ON_CLOSE",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/frontend-config:VITE_OIDC_CLEAR_SESSION_ON_CLOSE::"
+                                                     }
+                                                 ]
                                  }
                              ]
 }

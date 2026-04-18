@@ -31,118 +31,7 @@
                                                           }
                                                       ],
                                      "environment":  [
-                                                         {
-                                                             "name":  "APP_DB_PATH",
-                                                             "value":  "/tmp/screening.db"
-                                                         },
-                                                         {
-                                                             "name":  "CORS_ALLOW_ORIGINS",
-                                                             "value":  "*"
-                                                         },
-                                                         {
-                                                             "name":  "AWS_REGION",
-                                                             "value":  "us-east-2"
-                                                         },
-                                                         {
-                                                             "name":  "AWS_SQS_QUEUE_NAME",
-                                                             "value":  "screening-requests"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_MOCK",
-                                                             "value":  "false"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_LOG_RAW_API_IO",
-                                                             "value":  "true"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_RAW_API_LOG_MAX_CHARS",
-                                                             "value":  "20000"
-                                                         },
-                                                         {
-                                                             "name":  "AUTH_ENABLED",
-                                                             "value":  "true"
-                                                         },
-                                                         {
-                                                             "name":  "AUTH_ISSUER",
-                                                             "value":  "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_ptvmAe35M"
-                                                         },
-                                                         {
-                                                             "name":  "AUTH_JWKS_URL",
-                                                             "value":  "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_ptvmAe35M/.well-known/jwks.json"
-                                                         },
-                                                         {
-                                                             "name":  "AUTH_AUDIENCE",
-                                                             "value":  "2ul9mdnt44kl60hgiihbc7o5sk"
-                                                         },
-                                                         {
-                                                             "name":  "AUTH_ALGORITHMS",
-                                                             "value":  "RS256"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_BASE_URL",
-                                                             "value":  "https://us-dev.apis.prudential.com/financial-governance/sanctions-screening/v1"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_ALERT_REVIEW_URL",
-                                                             "value":  ""
-                                                         },
-                                                         {
-                                                             "name":  "AWS_S3_UPLOAD_BUCKET",
-                                                             "value":  "amzn-s3-quickscreen-batch"
-                                                         },
-                                                         {
-                                                             "name":  "AWS_S3_UPLOAD_PREFIX",
-                                                             "value":  "screening-input"
-                                                         },
-                                                         {
-                                                             "name":  "AWS_SNS_NOTIFICATIONS_ENABLED",
-                                                             "value":  "true"
-                                                         },
-                                                         {
-                                                             "name":  "AWS_SNS_SCHEDULE_TOPIC_PREFIX",
-                                                             "value":  "ofac-screening-schedule"
-                                                         },
-                                                         {
-                                                             "name":  "AWS_NOTIFICATION_DELIVERY_MODE",
-                                                             "value":  "SES"
-                                                         },
-                                                         {
-                                                             "name":  "AWS_SES_SENDER_EMAIL",
-                                                             "value":  "no-reply@prudential.com"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_PROVIDER",
-                                                             "value":  "prudential"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_SOURCE_SYSTEM",
-                                                             "value":  "AMLP"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_TOKEN_URL",
-                                                             "value":  "https://us-dev.apis.prudential.com/utility/identity-management/v2/oauth2/token"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_CLIENT_ID",
-                                                             "value":  "ZiPqKLBeUjxysmwyh3LbMT7plYzeIEuy"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_SCOPE",
-                                                             "value":  "api://api-dev.pruvpcaws066.pruaws.prudential.com/sanction_screening_api_v1/.default"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_CLIENT_ASSERTION_TYPE",
-                                                             "value":  "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_CLIENT_ASSERTION_ALGORITHM",
-                                                             "value":  "RS256"
-                                                         },
-                                                         {
-                                                             "name":  "ACTIMIZE_CLIENT_ASSERTION_AUDIENCE",
-                                                             "value":  "https://sso.dev.prudential.com:443/am/oauth2"
-                                                         }
+
                                                      ],
                                      "logConfiguration":  {
                                                               "logDriver":  "awslogs",
@@ -154,36 +43,148 @@
                                                           },
                                      "secrets":  [
                                                      {
+                                                         "name":  "APP_DB_PATH",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:APP_DB_PATH::"
+                                                     },
+                                                     {
+                                                         "name":  "CORS_ALLOW_ORIGINS",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:CORS_ALLOW_ORIGINS::"
+                                                     },
+                                                     {
+                                                         "name":  "AWS_REGION",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_REGION::"
+                                                     },
+                                                     {
+                                                         "name":  "AWS_SQS_QUEUE_NAME",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_SQS_QUEUE_NAME::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_MOCK",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_MOCK::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_LOG_RAW_API_IO",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_LOG_RAW_API_IO::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_RAW_API_LOG_MAX_CHARS",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_RAW_API_LOG_MAX_CHARS::"
+                                                     },
+                                                     {
+                                                         "name":  "AUTH_ENABLED",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AUTH_ENABLED::"
+                                                     },
+                                                     {
+                                                         "name":  "AUTH_ISSUER",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AUTH_ISSUER::"
+                                                     },
+                                                     {
+                                                         "name":  "AUTH_JWKS_URL",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AUTH_JWKS_URL::"
+                                                     },
+                                                     {
+                                                         "name":  "AUTH_AUDIENCE",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AUTH_AUDIENCE::"
+                                                     },
+                                                     {
+                                                         "name":  "AUTH_ALGORITHMS",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AUTH_ALGORITHMS::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_BASE_URL",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_BASE_URL::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_ALERT_REVIEW_URL",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_ALERT_REVIEW_URL::"
+                                                     },
+                                                     {
+                                                         "name":  "AWS_S3_UPLOAD_BUCKET",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_S3_UPLOAD_BUCKET::"
+                                                     },
+                                                     {
+                                                         "name":  "AWS_S3_UPLOAD_PREFIX",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_S3_UPLOAD_PREFIX::"
+                                                     },
+                                                     {
+                                                         "name":  "AWS_SNS_NOTIFICATIONS_ENABLED",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_SNS_NOTIFICATIONS_ENABLED::"
+                                                     },
+                                                     {
+                                                         "name":  "AWS_SNS_SCHEDULE_TOPIC_PREFIX",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_SNS_SCHEDULE_TOPIC_PREFIX::"
+                                                     },
+                                                     {
+                                                         "name":  "AWS_NOTIFICATION_DELIVERY_MODE",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_NOTIFICATION_DELIVERY_MODE::"
+                                                     },
+                                                     {
+                                                         "name":  "AWS_SES_SENDER_EMAIL",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_SES_SENDER_EMAIL::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_PROVIDER",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_PROVIDER::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_SOURCE_SYSTEM",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_SOURCE_SYSTEM::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_TOKEN_URL",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_TOKEN_URL::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_CLIENT_ID",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_CLIENT_ID::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_SCOPE",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_SCOPE::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_CLIENT_ASSERTION_TYPE",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_CLIENT_ASSERTION_TYPE::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_CLIENT_ASSERTION_ALGORITHM",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_CLIENT_ASSERTION_ALGORITHM::"
+                                                     },
+                                                     {
+                                                         "name":  "ACTIMIZE_CLIENT_ASSERTION_AUDIENCE",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_CLIENT_ASSERTION_AUDIENCE::"
+                                                     },
+                                                     {
                                                          "name":  "APP_DB_URL",
-                                                         "valueFrom":  "ofac-screening/app-secrets:APP_DB_URL::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:APP_DB_URL::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_SECRET",
-                                                         "valueFrom":  "ofac-screening/app-secrets:ACTIMIZE_CLIENT_SECRET::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_CLIENT_SECRET::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_API_KEY",
-                                                         "valueFrom":  "ofac-screening/app-secrets:ACTIMIZE_API_KEY::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_API_KEY::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_BEARER_TOKEN",
-                                                         "valueFrom":  "ofac-screening/app-secrets:ACTIMIZE_BEARER_TOKEN::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_BEARER_TOKEN::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64",
-                                                         "valueFrom":  "ofac-screening/app-secrets:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY",
-                                                         "valueFrom":  "ofac-screening/app-secrets:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH",
-                                                         "valueFrom":  "ofac-screening/app-secrets:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_KID",
-                                                         "valueFrom":  "ofac-screening/app-secrets:ACTIMIZE_CLIENT_ASSERTION_KID::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:ACTIMIZE_CLIENT_ASSERTION_KID::"
                                                      }
                                                  ]
                                  }
