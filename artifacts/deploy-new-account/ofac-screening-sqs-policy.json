@@ -1,0 +1,27 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowCreateScreeningQueue",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:CreateQueue"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowScreeningQueueAccess",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes",
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:ChangeMessageVisibility"
+      ],
+      "Resource": "arn:aws:sqs:us-east-2:981450247094:screening-requests"
+    }
+  ]
+}
+

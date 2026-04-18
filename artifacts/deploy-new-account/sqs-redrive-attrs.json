@@ -1,0 +1,1 @@
+{"RedrivePolicy":"{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-2:981450247094:screening-requests-dlq\",\"maxReceiveCount\":\"5\"}"}

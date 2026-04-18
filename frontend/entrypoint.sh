@@ -18,6 +18,7 @@ json_escape() {
 : "${VITE_OIDC_IDLE_TIMEOUT_MS:=900000}"
 : "${VITE_OIDC_CLEAR_SESSION_ON_CLOSE:=true}"
 : "${VITE_ACTIMIZE_REVIEW_ALERT_URL:=}"
+: "${NGINX_DNS_RESOLVER:=169.254.169.253}"
 : "${NGINX_CLIENT_MAX_BODY_SIZE:=25m}"
 
 cat >/usr/share/nginx/html/app-config.js <<EOF
@@ -46,7 +47,7 @@ server {
 
   location /api/ {
     client_max_body_size ${NGINX_CLIENT_MAX_BODY_SIZE};
-    resolver 169.254.169.253 ipv6=off valid=10s;
+    resolver ${NGINX_DNS_RESOLVER} ipv6=off valid=10s;
     set \$backend_upstream ${BACKEND_UPSTREAM};
     proxy_pass \$backend_upstream;
     proxy_http_version 1.1;

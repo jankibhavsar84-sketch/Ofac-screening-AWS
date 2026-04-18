@@ -1,0 +1,21 @@
+{
+    "Version":  "2012-10-17",
+    "Statement":  [
+                      {
+                          "Effect":  "Allow",
+                          "Resource":  "arn:aws:s3:::amzn-s3-quickscreen-batch-981450247094",
+                          "Action":  [
+                                         "s3:ListBucket"
+                                     ]
+                      },
+                      {
+                          "Effect":  "Allow",
+                          "Resource":  "arn:aws:s3:::amzn-s3-quickscreen-batch-981450247094/screening-input/*",
+                          "Action":  [
+                                         "s3:PutObject",
+                                         "s3:GetObject",
+                                         "s3:DeleteObject"
+                                     ]
+                      }
+                  ]
+}

@@ -1,0 +1,21 @@
+{
+    "account":  "981450247094",
+    "region":  "us-east-2",
+    "alb_dns":  "ofac-screening-alb-203446696.us-east-2.elb.amazonaws.com",
+    "app_base_url":  "http://ofac-screening-alb-203446696.us-east-2.elb.amazonaws.com",
+    "queue_url":  "https://sqs.us-east-2.amazonaws.com/981450247094/screening-requests",
+    "s3_bucket":  "amzn-s3-quickscreen-batch-981450247094",
+    "rds_endpoint":  "screening-postgres-dev.czqoaymkk4o6.us-east-2.rds.amazonaws.com",
+    "rds_publicly_accessible":  "False",
+    "ecs_cluster":  "Screening",
+    "frontend_service":  "ofac-screening-frontend-svc",
+    "backend_service":  "ofac-screening-backend-svc",
+    "worker_service":  "ofac-screening-worker-svc",
+    "backend_taskdef":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-backend:1",
+    "frontend_taskdef":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:4",
+    "worker_taskdef":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-worker:1",
+    "image_tag_backend_worker":  "20260417184912",
+    "image_tag_frontend":  "20260417190152",
+    "callback_test":  "POST /api/v1/integrations/actimize/alerts/callback returned 200",
+    "notes":  "Frontend BACKEND_UPSTREAM is pinned to current backend private IP in taskdef:4. If backend task is replaced, register a new frontend task definition with updated BACKEND_UPSTREAM."
+}

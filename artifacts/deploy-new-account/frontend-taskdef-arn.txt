@@ -1,0 +1,1 @@
+arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:2

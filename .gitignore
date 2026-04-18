@@ -38,3 +38,8 @@ artifacts/dependency-check-data/
 artifacts/**/dependency-check-data/
 artifacts/*.tar
 artifacts/**/*.tar
+artifacts/**/app-secrets.json
+artifacts/**/db-secrets.json
+artifacts/**/db-url.txt
+artifacts/**/backend-taskdef-live.json
+artifacts/**/worker-taskdef-live.json
