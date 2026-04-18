@@ -164,6 +164,44 @@ class BatchUploadAccepted(BaseModel):
     row_meta: list[BatchUploadRowMeta] = Field(default_factory=list)
 
 
+class ActimizeAlertCallbackRequest(BaseModel):
+    unique_key: str
+    alert_id: str
+    screening_cd: str | None = None
+    status_cd: str
+    update_timestamp: str | None = None
+    source_system_cd: str | None = None
+    tenant_cd: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_and_normalize(self) -> "ActimizeAlertCallbackRequest":
+        self.unique_key = str(self.unique_key or "").strip()
+        self.alert_id = str(self.alert_id or "").strip()
+        self.screening_cd = str(self.screening_cd or "").strip() or None
+        self.status_cd = str(self.status_cd or "").strip().upper()
+        self.update_timestamp = str(self.update_timestamp or "").strip() or None
+        self.source_system_cd = str(self.source_system_cd or "").strip() or None
+        self.tenant_cd = str(self.tenant_cd or "").strip() or None
+
+        if not self.unique_key:
+            raise ValueError("unique_key is required")
+        if not self.alert_id:
+            raise ValueError("alert_id is required")
+        if self.status_cd not in {"F", "T"}:
+            raise ValueError("status_cd must be F or T")
+        return self
+
+
+class ActimizeAlertCallbackAccepted(BaseModel):
+    status: str = "ACCEPTED"
+    callback_id: int
+    unique_key: str
+    alert_id: str
+    status_cd: str
+    matched_items: int = 0
+    processed_at: str
+
+
 class BusinessUnit(BaseModel):
     business_unit_code: str
     business_unit_name: str

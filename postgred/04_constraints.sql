@@ -14,6 +14,8 @@ ALTER TABLE ONLY dbacd."daily_schedules" ADD CONSTRAINT "daily_schedules_pkey" P
 
 ALTER TABLE ONLY dbacd."external_api_errors" ADD CONSTRAINT "external_api_errors_pkey" PRIMARY KEY (error_id);
 
+ALTER TABLE ONLY dbacd."actimize_alert_callbacks" ADD CONSTRAINT "actimize_alert_callbacks_pkey" PRIMARY KEY (callback_id);
+
 ALTER TABLE ONLY dbacd."job_items" ADD CONSTRAINT "job_items_pkey" PRIMARY KEY (job_id, item_key);
 ALTER TABLE ONLY dbacd."job_items" ADD CONSTRAINT "job_items_job_id_fkey" FOREIGN KEY (job_id) REFERENCES jobs(job_id) ON DELETE CASCADE;
 

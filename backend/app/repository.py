@@ -73,6 +73,7 @@ REQUIRED_TABLES: tuple[str, ...] = (
     "audit_events",
     "api_access_logs",
     "external_api_errors",
+    "actimize_alert_callbacks",
     "schedule_notifications",
     "business_units",
     "user_business_units",
@@ -89,6 +90,8 @@ REQUIRED_INDEXES: tuple[str, ...] = (
     "idx_audit_events_user_event",
     "idx_external_api_errors_created_at",
     "idx_external_api_errors_job_item",
+    "idx_actimize_callbacks_unique_key_created_at",
+    "idx_actimize_callbacks_alert_id",
     "idx_api_access_logs_created_at",
     "idx_api_access_logs_correlation",
     "idx_api_access_logs_user",
@@ -600,6 +603,26 @@ class JobRepository:
                 )
                 self._ensure_table(
                     conn,
+                    "actimize_alert_callbacks",
+                    """
+                    CREATE TABLE IF NOT EXISTS actimize_alert_callbacks (
+                      callback_id BIGSERIAL PRIMARY KEY,
+                      created_at TEXT NOT NULL,
+                      unique_key TEXT NOT NULL,
+                      normalized_unique_key TEXT NOT NULL,
+                      alert_id TEXT NOT NULL,
+                      screening_cd TEXT,
+                      status_cd TEXT NOT NULL,
+                      update_timestamp TEXT,
+                      source_system_cd TEXT,
+                      tenant_cd TEXT,
+                      matched_count INTEGER NOT NULL DEFAULT 0,
+                      details_json TEXT
+                    );
+                    """,
+                )
+                self._ensure_table(
+                    conn,
                     "schedule_notifications",
                     """
                     CREATE TABLE IF NOT EXISTS schedule_notifications (
@@ -671,6 +694,26 @@ class JobRepository:
                       job_id TEXT,
                       item_key TEXT,
                       error_text TEXT NOT NULL,
+                      details_json TEXT
+                    );
+                    """,
+                )
+                self._ensure_table(
+                    conn,
+                    "actimize_alert_callbacks",
+                    """
+                    CREATE TABLE IF NOT EXISTS actimize_alert_callbacks (
+                      callback_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      created_at TEXT NOT NULL,
+                      unique_key TEXT NOT NULL,
+                      normalized_unique_key TEXT NOT NULL,
+                      alert_id TEXT NOT NULL,
+                      screening_cd TEXT,
+                      status_cd TEXT NOT NULL,
+                      update_timestamp TEXT,
+                      source_system_cd TEXT,
+                      tenant_cd TEXT,
+                      matched_count INTEGER NOT NULL DEFAULT 0,
                       details_json TEXT
                     );
                     """,
@@ -801,6 +844,22 @@ class JobRepository:
                 """
                 CREATE INDEX IF NOT EXISTS idx_external_api_errors_job_item
                 ON external_api_errors(job_id, item_key, created_at);
+                """,
+            )
+            self._ensure_index(
+                conn,
+                "idx_actimize_callbacks_unique_key_created_at",
+                """
+                CREATE INDEX IF NOT EXISTS idx_actimize_callbacks_unique_key_created_at
+                ON actimize_alert_callbacks(normalized_unique_key, created_at);
+                """,
+            )
+            self._ensure_index(
+                conn,
+                "idx_actimize_callbacks_alert_id",
+                """
+                CREATE INDEX IF NOT EXISTS idx_actimize_callbacks_alert_id
+                ON actimize_alert_callbacks(alert_id, created_at);
                 """,
             )
             self._ensure_index(
@@ -1544,6 +1603,247 @@ class JobRepository:
                 (JobStatus.failed.value, error_text[:2000], ts, job_id, item_key),
             )
         self._refresh_job_status(job_id)
+
+    @staticmethod
+    def _normalize_actimize_party_key(party_key: str | None) -> str:
+        safe_key = str(party_key or "").strip()
+        if not safe_key:
+            return ""
+        canonical_prefix = "AMLP_"
+        upper_key = safe_key.upper()
+        if upper_key.startswith("AMLP"):
+            remainder = safe_key[4:].lstrip(" _-")
+            return f"{canonical_prefix}{remainder}" if remainder else canonical_prefix
+        return f"{canonical_prefix}{safe_key}"
+
+    @staticmethod
+    def _extract_party_key_from_request_payload(request_payload: dict[str, Any] | None, fallback: str = "") -> str:
+        props = (request_payload or {}).get("properties")
+        if isinstance(props, dict):
+            for key in ("partyKey", "party_key", "party key", "PartyKey"):
+                value = props.get(key)
+                if isinstance(value, list):
+                    for list_item in value:
+                        safe_item = str(list_item or "").strip()
+                        if safe_item:
+                            return safe_item
+                elif isinstance(value, str):
+                    safe_value = value.strip()
+                    if safe_value:
+                        return safe_value
+        safe_fallback = str(fallback or "").strip()
+        return safe_fallback
+
+    @staticmethod
+    def _parse_json_object(raw: Any) -> dict[str, Any] | None:
+        if isinstance(raw, dict):
+            return raw
+        if not isinstance(raw, str):
+            return None
+        safe_raw = raw.strip()
+        if not safe_raw:
+            return None
+        try:
+            parsed = json.loads(safe_raw)
+        except Exception:  # noqa: BLE001
+            return None
+        return parsed if isinstance(parsed, dict) else None
+
+    def apply_actimize_alert_callback(
+        self,
+        *,
+        unique_key: str,
+        alert_id: str,
+        screening_cd: str | None = None,
+        status_cd: str,
+        update_timestamp: str | None = None,
+        source_system_cd: str | None = None,
+        tenant_cd: str | None = None,
+        correlation_id: str | None = None,
+        raw_payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        safe_unique_key = str(unique_key or "").strip()
+        if not safe_unique_key:
+            raise ValueError("unique_key is required")
+
+        normalized_unique_key = self._normalize_actimize_party_key(safe_unique_key)
+        if not normalized_unique_key:
+            raise ValueError("unique_key is required")
+
+        safe_alert_id = str(alert_id or "").strip()
+        if not safe_alert_id:
+            raise ValueError("alert_id is required")
+
+        safe_status_cd = str(status_cd or "").strip().upper()
+        if safe_status_cd not in {"F", "T"}:
+            raise ValueError("status_cd must be F or T")
+
+        safe_screening_cd = str(screening_cd or "").strip() or None
+        safe_update_timestamp = str(update_timestamp or "").strip() or None
+        safe_source_system_cd = str(source_system_cd or "").strip() or None
+        safe_tenant_cd = str(tenant_cd or "").strip() or None
+        safe_correlation_id = str(correlation_id or "").strip() or None
+        safe_raw_payload = raw_payload if isinstance(raw_payload, dict) else {}
+
+        candidate_tokens: set[str] = set()
+        for token in (safe_unique_key, normalized_unique_key):
+            safe_token = str(token or "").strip()
+            if safe_token:
+                candidate_tokens.add(safe_token)
+        if normalized_unique_key.upper().startswith("AMLP_"):
+            suffix = normalized_unique_key[5:].strip()
+            if suffix:
+                candidate_tokens.add(suffix)
+
+        where_clauses: list[str] = []
+        where_params: list[Any] = []
+        for token in sorted(candidate_tokens):
+            where_clauses.append("ji.request_json LIKE ?")
+            where_params.append(f"%{token}%")
+            where_clauses.append("ji.item_key = ?")
+            where_params.append(token)
+        where_sql = " OR ".join(where_clauses) if where_clauses else "1 = 0"
+
+        processed_at = now_iso()
+        matched_items: list[dict[str, str]] = []
+        callback_id = 0
+
+        with self._connect() as conn:
+            candidate_rows = self._execute(
+                conn,
+                f"""
+                SELECT ji.job_id, ji.item_key, ji.request_json, ji.response_json
+                FROM job_items ji
+                WHERE {where_sql}
+                ORDER BY ji.updated_at DESC
+                """,
+                tuple(where_params),
+            ).fetchall()
+
+            for row in candidate_rows:
+                request_payload = self._parse_json_object(row["request_json"]) or {}
+                item_key = str(row["item_key"] or "").strip()
+                resolved_party_key = self._extract_party_key_from_request_payload(request_payload, fallback=item_key)
+                normalized_resolved_party_key = self._normalize_actimize_party_key(resolved_party_key)
+                if normalized_resolved_party_key != normalized_unique_key:
+                    continue
+
+                response_payload = self._parse_json_object(row["response_json"]) or {
+                    "results": [],
+                    "total": {"value": 0, "relation": "eq"},
+                    "query": request_payload,
+                    "status": 200,
+                }
+                existing_alert = response_payload.get("actimize_alert")
+                merged_alert = dict(existing_alert) if isinstance(existing_alert, dict) else {}
+                merged_alert.update(
+                    {
+                        "unique_key": safe_unique_key,
+                        "normalized_unique_key": normalized_unique_key,
+                        "alert_id": safe_alert_id,
+                        "screening_cd": safe_screening_cd,
+                        "status_cd": safe_status_cd,
+                        "update_timestamp": safe_update_timestamp,
+                        "source_system_cd": safe_source_system_cd,
+                        "tenant_cd": safe_tenant_cd,
+                        "received_at": processed_at,
+                    }
+                )
+                response_payload["actimize_alert"] = merged_alert
+                response_payload["actimize_alert_id"] = safe_alert_id
+                response_payload["actimize_alert_status_cd"] = safe_status_cd
+                response_payload["actimize_alert_status"] = "FALSE_POSITIVE" if safe_status_cd == "F" else "TRUE_POSITIVE"
+                response_payload["manual_status_cd"] = safe_status_cd
+                response_payload["manual_match"] = safe_status_cd == "T"
+                response_payload["engine_message"] = "NM" if safe_status_cd == "F" else "PM"
+                if safe_screening_cd:
+                    response_payload["actimize_alert_screening_cd"] = safe_screening_cd
+                if safe_update_timestamp:
+                    response_payload["actimize_alert_update_timestamp"] = safe_update_timestamp
+                if safe_source_system_cd:
+                    response_payload["actimize_alert_source_system_cd"] = safe_source_system_cd
+                if safe_tenant_cd:
+                    response_payload["actimize_alert_tenant_cd"] = safe_tenant_cd
+
+                self._execute(
+                    conn,
+                    """
+                    UPDATE job_items
+                    SET response_json = ?, updated_at = ?
+                    WHERE job_id = ? AND item_key = ?
+                    """,
+                    (json.dumps(response_payload), processed_at, row["job_id"], row["item_key"]),
+                )
+                matched_items.append({"job_id": str(row["job_id"]), "item_key": item_key})
+
+            callback_details = {
+                "correlation_id": safe_correlation_id,
+                "normalized_unique_key": normalized_unique_key,
+                "matched_items": matched_items[:200],
+                "matched_count": len(matched_items),
+                "raw_payload": safe_raw_payload,
+            }
+
+            if self.is_postgres:
+                cur = self._execute(
+                    conn,
+                    """
+                    INSERT INTO actimize_alert_callbacks(
+                      created_at, unique_key, normalized_unique_key, alert_id, screening_cd,
+                      status_cd, update_timestamp, source_system_cd, tenant_cd, matched_count, details_json
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    RETURNING callback_id
+                    """,
+                    (
+                        processed_at,
+                        safe_unique_key,
+                        normalized_unique_key,
+                        safe_alert_id,
+                        safe_screening_cd,
+                        safe_status_cd,
+                        safe_update_timestamp,
+                        safe_source_system_cd,
+                        safe_tenant_cd,
+                        len(matched_items),
+                        json.dumps(callback_details),
+                    ),
+                )
+                row = cur.fetchone()
+                callback_id = int(row["callback_id"]) if row else 0
+            else:
+                cur = self._execute(
+                    conn,
+                    """
+                    INSERT INTO actimize_alert_callbacks(
+                      created_at, unique_key, normalized_unique_key, alert_id, screening_cd,
+                      status_cd, update_timestamp, source_system_cd, tenant_cd, matched_count, details_json
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        processed_at,
+                        safe_unique_key,
+                        normalized_unique_key,
+                        safe_alert_id,
+                        safe_screening_cd,
+                        safe_status_cd,
+                        safe_update_timestamp,
+                        safe_source_system_cd,
+                        safe_tenant_cd,
+                        len(matched_items),
+                        json.dumps(callback_details),
+                    ),
+                )
+                callback_id = int(cur.lastrowid)
+
+        return {
+            "callback_id": callback_id,
+            "unique_key": safe_unique_key,
+            "normalized_unique_key": normalized_unique_key,
+            "alert_id": safe_alert_id,
+            "status_cd": safe_status_cd,
+            "matched_items": len(matched_items),
+            "processed_at": processed_at,
+        }
 
     def _refresh_job_status(self, job_id: str) -> None:
         snapshot = self.get_job_snapshot(job_id)

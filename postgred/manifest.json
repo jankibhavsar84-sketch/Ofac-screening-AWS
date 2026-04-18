@@ -2,10 +2,10 @@
   "schema": "dbacd",
   "generated_at_utc": "2026-03-14T23:19:29.088112+00:00",
   "counts": {
-    "tables": 14,
+    "tables": 15,
     "custom_types": 0,
-    "sequences": 4,
-    "indexes_non_constraint": 12,
+    "sequences": 5,
+    "indexes_non_constraint": 14,
     "views_and_matviews": 0,
     "routines": 0,
     "triggers": 0

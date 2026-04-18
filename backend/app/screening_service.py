@@ -9,6 +9,8 @@ import boto3
 
 from .config import settings
 from .models import (
+    ActimizeAlertCallbackAccepted,
+    ActimizeAlertCallbackRequest,
     AdminUserOption,
     AuditEvent,
     AuditEventPage,
@@ -750,7 +752,9 @@ class ScreeningService:
         error_text = str(row.get("item_error_text") or "").strip()
         matches = self._build_matches_payload(item_status, request_payload, response_payload, error_text)
         engine_status = self._engine_status_from_matches(matches)
-        ui_status = self._ui_status_from_engine(engine_status)
+        manual_status_cd = str(matches.get("manual_status_cd") or "").strip().upper()
+        manual_match = bool(matches.get("manual_match") is True or manual_status_cd == "T")
+        ui_status = self._ui_status_from_engine(engine_status, manual_match=manual_match)
         ui_type = self._query_to_ui_type(request_payload)
         display_name = self._display_name_from_query(request_payload, item_key)
         party_key = self._extract_party_key_from_query(request_payload, item_key)
@@ -817,7 +821,7 @@ class ScreeningService:
             "type": ui_type,
             "country": self._extract_country_from_query(request_payload),
             "engineStatus": engine_status,
-            "manualMatch": False,
+            "manualMatch": manual_match,
             "uiStatus": ui_status,
             "matchingScore": self._top_matching_score(matches),
             "submittedAt": submitted_at,
@@ -826,6 +830,48 @@ class ScreeningService:
             "dailyScheduleActive": daily_schedule_active,
             "raw": raw,
         }
+
+    def handle_actimize_alert_callback(
+        self,
+        payload: ActimizeAlertCallbackRequest,
+        correlation_id: str | None = None,
+    ) -> ActimizeAlertCallbackAccepted:
+        callback_result = self.repository.apply_actimize_alert_callback(
+            unique_key=payload.unique_key,
+            alert_id=payload.alert_id,
+            screening_cd=payload.screening_cd,
+            status_cd=payload.status_cd,
+            update_timestamp=payload.update_timestamp,
+            source_system_cd=payload.source_system_cd,
+            tenant_cd=payload.tenant_cd,
+            correlation_id=correlation_id,
+            raw_payload=payload.model_dump(mode="json"),
+        )
+
+        self.repository.add_audit_event(
+            action="ACTIMIZE_ALERT_CALLBACK_RECEIVED",
+            entity_type="actimize_alert",
+            entity_id=payload.alert_id,
+            details={
+                "unique_key": payload.unique_key,
+                "normalized_unique_key": callback_result.get("normalized_unique_key"),
+                "status_cd": payload.status_cd,
+                "screening_cd": payload.screening_cd,
+                "source_system_cd": payload.source_system_cd,
+                "tenant_cd": payload.tenant_cd,
+                "matched_items": int(callback_result.get("matched_items") or 0),
+                "correlation_id": correlation_id,
+            },
+        )
+
+        return ActimizeAlertCallbackAccepted(
+            callback_id=int(callback_result.get("callback_id") or 0),
+            unique_key=payload.unique_key,
+            alert_id=payload.alert_id,
+            status_cd=payload.status_cd,
+            matched_items=int(callback_result.get("matched_items") or 0),
+            processed_at=str(callback_result.get("processed_at") or ""),
+        )
 
     def list_user_recent_results(self, user_id: str | None, user_name: str | None, limit: int = 300) -> list[dict[str, Any]]:
         rows = self.repository.list_recent_result_items(user_id=user_id, user_name=user_name, limit=limit)

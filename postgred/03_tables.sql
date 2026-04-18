@@ -94,6 +94,21 @@ CREATE TABLE IF NOT EXISTS dbacd."external_api_errors" (
     "details_json" text
 );
 
+CREATE TABLE IF NOT EXISTS dbacd."actimize_alert_callbacks" (
+    "callback_id" bigint DEFAULT nextval('actimize_alert_callbacks_callback_id_seq'::regclass) NOT NULL,
+    "created_at" text NOT NULL,
+    "unique_key" text NOT NULL,
+    "normalized_unique_key" text NOT NULL,
+    "alert_id" text NOT NULL,
+    "screening_cd" text,
+    "status_cd" text NOT NULL,
+    "update_timestamp" text,
+    "source_system_cd" text,
+    "tenant_cd" text,
+    "matched_count" integer DEFAULT 0 NOT NULL,
+    "details_json" text
+);
+
 CREATE TABLE IF NOT EXISTS dbacd."job_items" (
     "job_id" text NOT NULL,
     "item_key" text NOT NULL,

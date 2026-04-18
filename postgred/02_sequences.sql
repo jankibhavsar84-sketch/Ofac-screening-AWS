@@ -29,6 +29,15 @@ CREATE SEQUENCE IF NOT EXISTS dbacd."external_api_errors_error_id_seq"
     CACHE 1
     NO CYCLE;
 
+CREATE SEQUENCE IF NOT EXISTS dbacd."actimize_alert_callbacks_callback_id_seq"
+    AS bigint
+    INCREMENT BY 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    START WITH 1
+    CACHE 1
+    NO CYCLE;
+
 CREATE SEQUENCE IF NOT EXISTS dbacd."schedule_notifications_notification_id_seq"
     AS bigint
     INCREMENT BY 1
@@ -41,4 +50,5 @@ CREATE SEQUENCE IF NOT EXISTS dbacd."schedule_notifications_notification_id_seq"
 ALTER SEQUENCE dbacd."api_access_logs_access_id_seq" OWNED BY dbacd."api_access_logs"."access_id";
 ALTER SEQUENCE dbacd."audit_events_event_id_seq" OWNED BY dbacd."audit_events"."event_id";
 ALTER SEQUENCE dbacd."external_api_errors_error_id_seq" OWNED BY dbacd."external_api_errors"."error_id";
+ALTER SEQUENCE dbacd."actimize_alert_callbacks_callback_id_seq" OWNED BY dbacd."actimize_alert_callbacks"."callback_id";
 ALTER SEQUENCE dbacd."schedule_notifications_notification_id_seq" OWNED BY dbacd."schedule_notifications"."notification_id";

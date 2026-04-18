@@ -9,6 +9,8 @@ CREATE INDEX idx_api_access_logs_user ON dbacd.api_access_logs USING btree (user
 CREATE INDEX idx_daily_schedules_next_run ON dbacd.daily_schedules USING btree (next_run_at);
 CREATE INDEX idx_external_api_errors_created_at ON dbacd.external_api_errors USING btree (created_at);
 CREATE INDEX idx_external_api_errors_job_item ON dbacd.external_api_errors USING btree (job_id, item_key, created_at);
+CREATE INDEX idx_actimize_callbacks_unique_key_created_at ON dbacd.actimize_alert_callbacks USING btree (normalized_unique_key, created_at);
+CREATE INDEX idx_actimize_callbacks_alert_id ON dbacd.actimize_alert_callbacks USING btree (alert_id, created_at);
 CREATE INDEX idx_notifications_email ON dbacd.schedule_notifications USING btree (email, created_at);
 CREATE INDEX idx_notifications_user ON dbacd.schedule_notifications USING btree (user_id, created_at);
 CREATE UNIQUE INDEX idx_schedule_subscriptions_unique ON dbacd.schedule_subscriptions USING btree (schedule_id, email);

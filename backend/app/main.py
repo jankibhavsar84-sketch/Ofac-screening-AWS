@@ -18,6 +18,8 @@ from .auth import AuthPrincipal, clear_audit_principal, get_audit_principal, pri
 from .config import settings
 from .file_store import S3FileStore
 from .models import (
+    ActimizeAlertCallbackAccepted,
+    ActimizeAlertCallbackRequest,
     AdminUserOption,
     AuditEvent,
     AuditEventPage,
@@ -391,6 +393,19 @@ def _resolve_external_api_context(exc: Exception) -> tuple[str, str, str, int | 
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/api/v1/integrations/actimize/alerts/callback", response_model=ActimizeAlertCallbackAccepted)
+def receive_actimize_alert_callback(
+    payload: ActimizeAlertCallbackRequest,
+    request: Request,
+    svc: ScreeningService = Depends(get_service),
+) -> ActimizeAlertCallbackAccepted:
+    try:
+        correlation_id = _request_correlation_id(request)
+        return svc.handle_actimize_alert_callback(payload, correlation_id=correlation_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/v1/screenings/jobs", response_model=MatchJobAccepted)
