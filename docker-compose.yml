@@ -37,8 +37,8 @@ services:
   worker:
     build:
       context: .
-      dockerfile: backend/Dockerfile
-    command: python -m app.worker
+      dockerfile: worker/Dockerfile
+    command: python -m worker_app.worker
     environment:
       - APP_DB_PATH=/data/screening.db
       - AWS_REGION=us-east-1

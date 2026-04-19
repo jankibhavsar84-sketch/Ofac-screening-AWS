@@ -109,7 +109,7 @@ PDF version of these diagrams: `docs/architecture-api-flow.pdf`
 
 - Frontend API client: `src/api/screeningApi.ts`
 - FastAPI app: `backend/app/main.py`
-- SQS worker: `backend/app/worker.py`
+- SQS worker runtime: `worker/worker_app/worker.py`
 - Actimize adapter: `backend/app/actimize.py`
 - Persistence: `backend/app/repository.py`
 - Local stack orchestration: `docker-compose.yml`
