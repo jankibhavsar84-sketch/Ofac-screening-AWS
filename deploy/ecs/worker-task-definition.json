@@ -44,15 +44,15 @@
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_MOCK",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_MOCK::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_MOCK::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_LOG_RAW_API_IO",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_LOG_RAW_API_IO::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_LOG_RAW_API_IO::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_RAW_API_LOG_MAX_CHARS",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_RAW_API_LOG_MAX_CHARS::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_RAW_API_LOG_MAX_CHARS::"
                                                      },
                                                      {
                                                          "name":  "SCREENING_TPS",
@@ -92,11 +92,11 @@
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_BASE_URL",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_BASE_URL::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_BASE_URL::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_ALERT_REVIEW_URL",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_ALERT_REVIEW_URL::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_ALERT_REVIEW_URL::"
                                                      },
                                                      {
                                                          "name":  "AWS_S3_UPLOAD_BUCKET",
@@ -124,35 +124,35 @@
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_PROVIDER",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_PROVIDER::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_PROVIDER::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_SOURCE_SYSTEM",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_SOURCE_SYSTEM::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_SOURCE_SYSTEM::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_TOKEN_URL",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_TOKEN_URL::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_TOKEN_URL::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ID",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_CLIENT_ID::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_CLIENT_ID::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_SCOPE",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_SCOPE::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_SCOPE::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_TYPE",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_CLIENT_ASSERTION_TYPE::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_CLIENT_ASSERTION_TYPE::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_ALGORITHM",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_CLIENT_ASSERTION_ALGORITHM::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_CLIENT_ASSERTION_ALGORITHM::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_AUDIENCE",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_CLIENT_ASSERTION_AUDIENCE::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_CLIENT_ASSERTION_AUDIENCE::"
                                                      },
                                                      {
                                                          "name":  "APP_DB_URL",
@@ -160,31 +160,31 @@
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_SECRET",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_CLIENT_SECRET::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_CLIENT_SECRET::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_API_KEY",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_API_KEY::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_API_KEY::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_BEARER_TOKEN",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_BEARER_TOKEN::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_BEARER_TOKEN::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_ASSERTION_KID",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/worker-config:ACTIMIZE_CLIENT_ASSERTION_KID::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_CLIENT_ASSERTION_KID::"
                                                      }
                                                  ]
                                  }
