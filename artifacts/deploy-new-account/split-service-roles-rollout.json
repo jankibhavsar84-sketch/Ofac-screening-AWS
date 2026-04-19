@@ -1,0 +1,20 @@
+[
+    {
+        "service":  "ofac-screening-backend-svc",
+        "task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-backend:6",
+        "task_role":  "arn:aws:iam::981450247094:role/ofac-screening-backend-task-role",
+        "execution_role":  "arn:aws:iam::981450247094:role/ofac-screening-backend-task-execution-role"
+    },
+    {
+        "service":  "ofac-screening-worker-svc",
+        "task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-worker:5",
+        "task_role":  "arn:aws:iam::981450247094:role/ofac-screening-worker-task-role",
+        "execution_role":  "arn:aws:iam::981450247094:role/ofac-screening-worker-task-execution-role"
+    },
+    {
+        "service":  "ofac-screening-frontend-svc",
+        "task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:8",
+        "task_role":  "arn:aws:iam::981450247094:role/ofac-screening-frontend-task-role",
+        "execution_role":  "arn:aws:iam::981450247094:role/ofac-screening-frontend-task-execution-role"
+    }
+]
