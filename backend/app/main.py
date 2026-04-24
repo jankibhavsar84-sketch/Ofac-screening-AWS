@@ -47,7 +47,7 @@ repository = JobRepository(settings.app_db_path, settings.app_db_url)
 queue = SqsQueue()
 notifier = SnsNotifier()
 service = ScreeningService(repository=repository, queue=queue, notifier=notifier)
-actimize = ActimizeClient()
+actimize = ActimizeClient(repository=repository)
 file_store = S3FileStore()
 
 app = FastAPI(title=settings.app_name, version=settings.app_version)

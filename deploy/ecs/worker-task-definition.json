@@ -18,6 +18,16 @@
                                                          "-m",
                                                          "worker_app.worker"
                                                      ],
+                                     "healthCheck":  {
+                                                         "command":  [
+                                                                         "CMD-SHELL",
+                                                                         "python -m app.healthcheck worker"
+                                                                     ],
+                                                         "interval":  30,
+                                                         "timeout":  5,
+                                                         "retries":  3,
+                                                         "startPeriod":  45
+                                                     },
                                      "environment":  [
 
                                                      ],

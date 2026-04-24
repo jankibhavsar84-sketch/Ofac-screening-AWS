@@ -21,6 +21,16 @@
                                                      "--port",
                                                      "8000"
                                                  ],
+                                     "healthCheck":  {
+                                                         "command":  [
+                                                                         "CMD-SHELL",
+                                                                         "python -m app.healthcheck backend"
+                                                                     ],
+                                                         "interval":  30,
+                                                         "timeout":  5,
+                                                         "retries":  3,
+                                                         "startPeriod":  30
+                                                     },
                                      "portMappings":  [
                                                           {
                                                               "name":  "api",

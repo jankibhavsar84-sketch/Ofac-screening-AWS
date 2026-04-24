@@ -1485,6 +1485,34 @@ The JSON payload is derived from `EntityExample` roughly as follows:
 | `properties.birthLocation[]` | `countryofBirth` | Uses ISO3 country code when possible; otherwise passes through raw value. |
 | `properties.gender[]` | `gender` | Uppercased before submission (`Female` -> `FEMALE`). |
 | `properties.title[]` | `title` | Passed through when present. |
+| Selected screening type (`screening_types[]`) | `screeningType` | Mapped values: `Sanction -> SD_US_Customers_Sanctions`, `PEP -> SD_US_Customers_PEP_RCS_International`, `AME -> SD_US_Customers_AME`, `Fincen 314(a) -> SD_US_Customers_314(a)` (plus common FinCEN 314(a) input variants); unknown values pass through unchanged. |
+| `mock_screening` | `mock` | Boolean flag forwarded to Actimize payload as `true`/`false`. |
+
+`screeningType` mapping is table-driven via `actimize_screening_type_mappings` (`normalized_source_type` -> `target_screening_type`), so mappings can be updated in DB without code deployment.
+To reduce per-request DB lookups, each backend/worker task keeps an in-memory TTL cache of mapping lookups (instance-local, not shared across tasks). Tune via:
+- `ACTIMIZE_SCREENING_TYPE_CACHE_TTL_S` (default `60`; set `0` to disable cache)
+- `ACTIMIZE_SCREENING_TYPE_CACHE_MAX_ENTRIES` (default `512`)
+
+Example DB updates (no backend redeploy needed):
+
+```sql
+-- Change an existing mapping target
+UPDATE actimize_screening_type_mappings
+SET target_screening_type = 'SD_US_Customers_Sanctions_V2', updated_at = NOW()
+WHERE normalized_source_type = 'sanction';
+
+-- Add a new mapping
+INSERT INTO actimize_screening_type_mappings(
+  normalized_source_type, source_screening_type, target_screening_type, is_active, created_at, updated_at
+) VALUES(
+  'custom screening', 'Custom Screening', 'SD_US_Customers_Custom', TRUE, NOW(), NOW()
+)
+ON CONFLICT (normalized_source_type) DO UPDATE
+SET source_screening_type = EXCLUDED.source_screening_type,
+    target_screening_type = EXCLUDED.target_screening_type,
+    is_active = EXCLUDED.is_active,
+    updated_at = EXCLUDED.updated_at;
+```
 
 ### 11.4 Current Result Classification Rules
 

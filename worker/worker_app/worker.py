@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import logging
+from pathlib import Path
 from threading import Lock
 import time
 from datetime import datetime, timezone
@@ -23,6 +24,20 @@ from app.sns_notifier import SnsNotifier
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("screening-worker")
 _RETRYABLE_EXTERNAL_STATUS_CODES = {429, 500, 502, 503, 504}
+
+
+def _write_worker_heartbeat(path: str) -> None:
+    safe_path = str(path or "").strip()
+    if not safe_path:
+        return
+    try:
+        heartbeat_path = Path(safe_path)
+        heartbeat_path.parent.mkdir(parents=True, exist_ok=True)
+        heartbeat_path.write_text(f"{time.time():.6f}", encoding="ascii")
+    except Exception:  # noqa: BLE001
+        # Health check heartbeat failures should not crash worker processing.
+        return
+
 
 def _s3_client() -> object:
     client_kwargs: dict[str, object] = {
@@ -830,7 +845,7 @@ def run() -> None:
     repository = JobRepository(settings.app_db_path, settings.app_db_url)
     notifier = SnsNotifier()
     service = ScreeningService(repository=repository, queue=queue, notifier=notifier)
-    actimize = ActimizeClient()
+    actimize = ActimizeClient(repository=repository)
     limiter = FixedRateLimiter(settings.screening_tps)
     last_schedule_check = 0.0
     last_cleanup_run = 0.0
@@ -841,9 +856,11 @@ def run() -> None:
         settings.screening_tps,
         max_parallel_messages,
     )
+    _write_worker_heartbeat(settings.worker_heartbeat_path)
 
     with ThreadPoolExecutor(max_workers=max_parallel_messages) as executor:
         while True:
+            _write_worker_heartbeat(settings.worker_heartbeat_path)
             messages = _receive_message_batch(queue, max_parallel_messages)
             if messages:
                 futures = [
@@ -882,6 +899,7 @@ def run() -> None:
                     )
                     logger.info("operational data cleanup completed: %s", deleted)
                 last_cleanup_run = now_monotonic
+            _write_worker_heartbeat(settings.worker_heartbeat_path)
 
 
 def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningService, notifier: SnsNotifier) -> None:

@@ -60,6 +60,15 @@ DEFAULT_BUSINESS_UNITS: list[tuple[str, str]] = [
     ("US_PRU_PGIM_LATAM", "PGIM LATAM"),
 ]
 DEFAULT_FALLBACK_BUSINESS_UNIT_CODE = "US_PRU_OPES"
+DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str], ...] = (
+    ("Sanction", "SD_US_Customers_Sanctions"),
+    ("PEP", "SD_US_Customers_PEP_RCS_International"),
+    ("AME", "SD_US_Customers_AME"),
+    ("Fincen 314(a)", "SD_US_Customers_314(a)"),
+    ("Fincen 314a", "SD_US_Customers_314(a)"),
+    ("Fincen314(a)", "SD_US_Customers_314(a)"),
+    ("Fincen314a", "SD_US_Customers_314(a)"),
+)
 
 REQUIRED_TABLES: tuple[str, ...] = (
     "jobs",
@@ -77,6 +86,7 @@ REQUIRED_TABLES: tuple[str, ...] = (
     "schedule_notifications",
     "business_units",
     "user_business_units",
+    "actimize_screening_type_mappings",
 )
 
 REQUIRED_INDEXES: tuple[str, ...] = (
@@ -123,6 +133,13 @@ REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
         "business_unit_code",
     ),
     "batch_file_uploads": ("queries_s3_bucket", "queries_s3_key", "queries_s3_uri"),
+    "actimize_screening_type_mappings": (
+        "source_screening_type",
+        "target_screening_type",
+        "is_active",
+        "created_at",
+        "updated_at",
+    ),
 }
 
 
@@ -212,6 +229,10 @@ class JobRepository:
         conn.row_factory = sqlite3.Row
         try:
             yield conn
+            conn.commit()
+        except Exception:  # noqa: BLE001
+            conn.rollback()
+            raise
         finally:
             conn.close()
 
@@ -765,6 +786,20 @@ class JobRepository:
                 );
                 """,
             )
+            self._ensure_table(
+                conn,
+                "actimize_screening_type_mappings",
+                """
+                CREATE TABLE IF NOT EXISTS actimize_screening_type_mappings (
+                  normalized_source_type TEXT PRIMARY KEY,
+                  source_screening_type TEXT NOT NULL,
+                  target_screening_type TEXT NOT NULL,
+                  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL
+                );
+                """,
+            )
 
             self._ensure_index(
                 conn,
@@ -923,8 +958,14 @@ class JobRepository:
             self._ensure_column(conn, "batch_file_uploads", "queries_s3_bucket", "TEXT")
             self._ensure_column(conn, "batch_file_uploads", "queries_s3_key", "TEXT")
             self._ensure_column(conn, "batch_file_uploads", "queries_s3_uri", "TEXT")
+            self._ensure_column(conn, "actimize_screening_type_mappings", "source_screening_type", "TEXT NOT NULL")
+            self._ensure_column(conn, "actimize_screening_type_mappings", "target_screening_type", "TEXT NOT NULL")
+            self._ensure_column(conn, "actimize_screening_type_mappings", "is_active", "BOOLEAN NOT NULL DEFAULT TRUE")
+            self._ensure_column(conn, "actimize_screening_type_mappings", "created_at", "TEXT NOT NULL")
+            self._ensure_column(conn, "actimize_screening_type_mappings", "updated_at", "TEXT NOT NULL")
 
             self._seed_default_business_units(conn)
+            self._seed_default_actimize_screening_type_mappings(conn)
 
     def _ensure_column(self, conn: Any, table_name: str, column_name: str, column_def: str) -> None:
         if self._column_exists(conn, table_name, column_name):
@@ -939,6 +980,10 @@ class JobRepository:
     @staticmethod
     def _normalize_business_unit_code(value: str | None) -> str:
         return str(value or "").strip().upper()
+
+    @staticmethod
+    def _normalize_screening_type_key(value: str | None) -> str:
+        return re.sub(r"\s+", " ", str(value or "").strip()).lower()
 
     def _get_business_unit_row(self, business_unit_code: str, include_inactive: bool = False) -> dict[str, Any] | None:
         safe_code = self._normalize_business_unit_code(business_unit_code)
@@ -994,6 +1039,75 @@ class JobRepository:
                     """,
                     (safe_code, safe_name, ts, ts),
                 )
+
+    def _seed_default_actimize_screening_type_mappings(self, conn: Any) -> None:
+        ts = now_iso()
+        for source_type, target_type in DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS:
+            safe_source = str(source_type or "").strip()
+            safe_target = str(target_type or "").strip()
+            normalized_source = self._normalize_screening_type_key(safe_source)
+            if not normalized_source or not safe_target:
+                continue
+
+            if self.is_postgres:
+                self._execute(
+                    conn,
+                    """
+                    INSERT INTO actimize_screening_type_mappings(
+                      normalized_source_type,
+                      source_screening_type,
+                      target_screening_type,
+                      is_active,
+                      created_at,
+                      updated_at
+                    ) VALUES(?, ?, ?, TRUE, ?, ?)
+                    ON CONFLICT(normalized_source_type) DO NOTHING
+                    """,
+                    (normalized_source, safe_source, safe_target, ts, ts),
+                )
+            else:
+                self._execute(
+                    conn,
+                    """
+                    INSERT OR IGNORE INTO actimize_screening_type_mappings(
+                      normalized_source_type,
+                      source_screening_type,
+                      target_screening_type,
+                      is_active,
+                      created_at,
+                      updated_at
+                    ) VALUES(?, ?, ?, TRUE, ?, ?)
+                    """,
+                    (normalized_source, safe_source, safe_target, ts, ts),
+                )
+
+    def resolve_actimize_screening_type(self, source_screening_type: str | None) -> str:
+        safe_source = str(source_screening_type or "").strip()
+        if not safe_source:
+            return ""
+
+        normalized_source = self._normalize_screening_type_key(safe_source)
+        if not normalized_source:
+            return safe_source
+
+        with self._connect() as conn:
+            row = self._execute(
+                conn,
+                """
+                SELECT target_screening_type
+                FROM actimize_screening_type_mappings
+                WHERE normalized_source_type = ?
+                  AND is_active = TRUE
+                LIMIT 1
+                """,
+                (normalized_source,),
+            ).fetchone()
+
+        if not row:
+            return safe_source
+
+        mapped = str(row["target_screening_type"] or "").strip()
+        return mapped or safe_source
 
     @staticmethod
     def normalize_schedule_frequency(value: str | None) -> str:

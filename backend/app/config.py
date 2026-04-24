@@ -99,12 +99,16 @@ class Settings:
     actimize_mock: bool
     actimize_log_raw_api_io: bool
     actimize_raw_api_log_max_chars: int
+    actimize_screening_type_cache_ttl_s: int
+    actimize_screening_type_cache_max_entries: int
 
     screening_tps: int
     screening_parallel_messages: int
     screening_poll_interval_ms: int
     screening_sync_timeout_s: int
     screening_result_limit: int
+    worker_heartbeat_path: str
+    worker_health_max_age_s: int
     screening_item_retry_max_attempts: int
     screening_item_retry_initial_delay_s: int
     screening_item_retry_max_delay_s: int
@@ -186,11 +190,16 @@ def load_settings() -> Settings:
             os.getenv("ACTIMIZE_RAW_API_LOG_MAX_CHARS"),
             _to_int(os.getenv("ACTIMIZE_RAW_SUCCESS_LOG_MAX_CHARS"), 20000),
         ),
+        actimize_screening_type_cache_ttl_s=_to_int(os.getenv("ACTIMIZE_SCREENING_TYPE_CACHE_TTL_S"), 60),
+        actimize_screening_type_cache_max_entries=_to_int(os.getenv("ACTIMIZE_SCREENING_TYPE_CACHE_MAX_ENTRIES"), 512),
         screening_tps=_to_int(os.getenv("SCREENING_TPS"), 32),
         screening_parallel_messages=_to_int(os.getenv("SCREENING_PARALLEL_MESSAGES"), 1),
         screening_poll_interval_ms=_to_int(os.getenv("SCREENING_POLL_INTERVAL_MS"), 750),
         screening_sync_timeout_s=_to_int(os.getenv("SCREENING_SYNC_TIMEOUT_S"), 60),
         screening_result_limit=_to_int(os.getenv("SCREENING_RESULT_LIMIT"), 5),
+        worker_heartbeat_path=os.getenv("WORKER_HEARTBEAT_PATH", "/tmp/ofac-worker-heartbeat").strip()
+        or "/tmp/ofac-worker-heartbeat",
+        worker_health_max_age_s=_to_int(os.getenv("WORKER_HEALTH_MAX_AGE_S"), 180),
         screening_item_retry_max_attempts=_to_int(os.getenv("SCREENING_ITEM_RETRY_MAX_ATTEMPTS"), 2),
         screening_item_retry_initial_delay_s=_to_int(os.getenv("SCREENING_ITEM_RETRY_INITIAL_DELAY_S"), 3),
         screening_item_retry_max_delay_s=_to_int(os.getenv("SCREENING_ITEM_RETRY_MAX_DELAY_S"), 60),

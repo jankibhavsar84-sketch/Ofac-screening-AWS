@@ -1,0 +1,1 @@
+arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-backend-tg/9c43c4771463f154

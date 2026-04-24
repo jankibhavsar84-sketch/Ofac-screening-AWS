@@ -8,4 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app ./app
 COPY worker/worker_app ./worker_app
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 CMD ["python", "-m", "app.healthcheck", "worker"]
+
 CMD ["python", "-m", "worker_app.worker"]

@@ -213,10 +213,30 @@ def _sanitize_source_system(value: str | None) -> str:
     return safe or "ZIP"
 
 
+_SCREENING_TYPE_MAP: dict[str, str] = {
+    "sanction": "SD_US_Customers_Sanctions",
+    "pep": "SD_US_Customers_PEP_RCS_International",
+    "ame": "SD_US_Customers_AME",
+    "fincen 314(a)": "SD_US_Customers_314(a)",
+    "fincen 314a": "SD_US_Customers_314(a)",
+    "fincen314(a)": "SD_US_Customers_314(a)",
+    "fincen314a": "SD_US_Customers_314(a)",
+}
+
+
+def _map_screening_type_fallback(screening_type: str | None) -> str:
+    safe = str(screening_type or "").strip()
+    if not safe:
+        return ""
+    normalized = re.sub(r"\s+", " ", safe).strip().lower()
+    return _SCREENING_TYPE_MAP.get(normalized, safe)
+
+
 class ActimizeClient:
-    def __init__(self) -> None:
+    def __init__(self, repository: Any | None = None) -> None:
         self.base_url = settings.actimize_base_url.rstrip("/")
         self.provider = settings.actimize_provider.strip().lower() or "prudential"
+        self.repository = repository
         self.api_key = settings.actimize_api_key
         self.bearer_token = settings.actimize_bearer_token
         self.token_url = settings.actimize_token_url
@@ -235,9 +255,14 @@ class ActimizeClient:
         self.timeout_s = settings.actimize_timeout_s
         self.log_raw_api_io = settings.actimize_log_raw_api_io
         self.raw_api_log_max_chars = max(settings.actimize_raw_api_log_max_chars, 1000)
+        self.screening_type_cache_ttl_s = max(int(settings.actimize_screening_type_cache_ttl_s), 0)
+        self.screening_type_cache_max_entries = max(int(settings.actimize_screening_type_cache_max_entries), 1)
         self._cached_access_token = ""
         self._cached_access_token_expires_at = 0.0
         self._token_lock = Lock()
+        self._screening_type_cache: dict[str, tuple[str, float]] = {}
+        self._screening_type_cache_lock = Lock()
+        self._screening_type_mapping_lookup_failed = False
 
     def screen_single(
         self,
@@ -246,19 +271,30 @@ class ActimizeClient:
         mock_screening: bool = False,
         requester_name: str | None = None,
     ) -> dict[str, Any]:
-        return self._screen_via_prudential_api(query, screening_type=screening_type, requester_name=requester_name)
+        return self._screen_via_prudential_api(
+            query,
+            screening_type=screening_type,
+            mock_screening=mock_screening,
+            requester_name=requester_name,
+        )
 
     def _screen_via_prudential_api(
         self,
         query: EntityExample,
         screening_type: str | None = None,
+        mock_screening: bool = False,
         requester_name: str | None = None,
     ) -> dict[str, Any]:
         if not self.base_url:
             raise RuntimeError("ACTIMIZE_BASE_URL is required")
 
         endpoint = f"{self.base_url}/entity-screenings"
-        payload = self._build_entity_screening_request(query, requester_name=requester_name)
+        payload = self._build_entity_screening_request(
+            query,
+            screening_type=screening_type,
+            mock_screening=mock_screening,
+            requester_name=requester_name,
+        )
         headers = self._build_headers()
         response = self._post_entity_screening_with_retry(
             endpoint=endpoint,
@@ -607,9 +643,73 @@ class ActimizeClient:
                 return handle.read()
         return ""
 
+    @staticmethod
+    def _normalize_screening_type_key(value: str | None) -> str:
+        return re.sub(r"\s+", " ", str(value or "").strip()).lower()
+
+    def _get_cached_screening_type(self, normalized_source: str) -> str | None:
+        if self.screening_type_cache_ttl_s <= 0 or not normalized_source:
+            return None
+        now = time.monotonic()
+        with self._screening_type_cache_lock:
+            cached = self._screening_type_cache.get(normalized_source)
+            if cached is None:
+                return None
+            mapped_value, expires_at = cached
+            if now >= expires_at:
+                self._screening_type_cache.pop(normalized_source, None)
+                return None
+            return mapped_value
+
+    def _cache_screening_type(self, normalized_source: str, mapped_value: str) -> None:
+        if self.screening_type_cache_ttl_s <= 0 or not normalized_source:
+            return
+        with self._screening_type_cache_lock:
+            if len(self._screening_type_cache) >= self.screening_type_cache_max_entries:
+                if normalized_source not in self._screening_type_cache and self._screening_type_cache:
+                    self._screening_type_cache.pop(next(iter(self._screening_type_cache)))
+            self._screening_type_cache[normalized_source] = (
+                mapped_value,
+                time.monotonic() + float(self.screening_type_cache_ttl_s),
+            )
+
+    def _map_screening_type(self, screening_type: str | None) -> str:
+        safe = str(screening_type or "").strip()
+        if not safe:
+            return ""
+
+        normalized_source = self._normalize_screening_type_key(safe)
+        cached = self._get_cached_screening_type(normalized_source)
+        if cached:
+            return cached
+
+        mapped_value = ""
+        if self.repository is not None and hasattr(self.repository, "resolve_actimize_screening_type"):
+            try:
+                mapped = str(self.repository.resolve_actimize_screening_type(safe) or "").strip()
+                if mapped:
+                    self._screening_type_mapping_lookup_failed = False
+                    mapped_value = mapped
+            except Exception as exc:  # noqa: BLE001
+                if not self._screening_type_mapping_lookup_failed:
+                    logger.warning(
+                        "actimize screeningType mapping lookup failed; using fallback map source=%s error=%s",
+                        safe,
+                        exc,
+                    )
+                self._screening_type_mapping_lookup_failed = True
+
+        if not mapped_value:
+            mapped_value = _map_screening_type_fallback(safe)
+
+        self._cache_screening_type(normalized_source, mapped_value)
+        return mapped_value
+
     def _build_entity_screening_request(
         self,
         query: EntityExample,
+        screening_type: str | None = None,
+        mock_screening: bool = False,
         requester_name: str | None = None,
     ) -> dict[str, Any]:
         props = query.properties if isinstance(query.properties, dict) else {}
@@ -630,7 +730,11 @@ class ActimizeClient:
             "names": {},
             "sourceSystem": self.source_system,
             "requesterName": (requester_name or "").strip() or self.default_requester_name,
+            "mock": bool(mock_screening),
         }
+        mapped_screening_type = self._map_screening_type(screening_type)
+        if mapped_screening_type:
+            payload["screeningType"] = mapped_screening_type
 
         if party_type == "I":
             first_name = _first_non_empty(_as_list(props.get("firstName")))
