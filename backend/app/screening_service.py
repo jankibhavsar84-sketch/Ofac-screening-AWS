@@ -252,6 +252,7 @@ class ScreeningService:
                     user_id=payload.user_id,
                     user_name=payload.user_name,
                     correlation_id=correlation_id,
+                    business_unit_code=business_unit_code or None,
                     source_schedule_id=source_schedule_id,
                     source_upload_id=source_upload_id,
                 )
@@ -387,6 +388,22 @@ class ScreeningService:
                     next_payload["properties"] = next_payload_props
                     query_payload = next_payload
 
+            safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
+            if safe_business_unit_code:
+                props_for_bu = query.properties if isinstance(query.properties, dict) else {}
+                next_props_for_bu = dict(props_for_bu)
+                next_props_for_bu["businessUnit"] = safe_business_unit_code
+                query = query.model_copy(update={"properties": next_props_for_bu})
+                if isinstance(query_payload, dict):
+                    next_payload = dict(query_payload)
+                    next_payload_props = (
+                        next_payload.get("properties") if isinstance(next_payload.get("properties"), dict) else {}
+                    )
+                    next_payload_props = dict(next_payload_props)
+                    next_payload_props["businessUnit"] = safe_business_unit_code
+                    next_payload["properties"] = next_payload_props
+                    query_payload = next_payload
+
             self.repository.add_job_item(job_id=job_id, item_key=item_key, request_payload=query_payload)
             queue_message = ScreeningQueueMessage(
                 job_id=job_id,
@@ -398,6 +415,7 @@ class ScreeningService:
                 user_id=payload.user_id,
                 user_name=payload.user_name,
                 correlation_id=correlation_id,
+                business_unit_code=safe_business_unit_code or None,
                 source_schedule_id=source_schedule_id,
                 source_record_hash=record_hashes.get(item_key),
             )

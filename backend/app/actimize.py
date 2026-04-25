@@ -179,15 +179,6 @@ def _extract_name(query: EntityExample) -> str:
     return "Unknown"
 
 
-def _split_person_name(full_name: str) -> tuple[str, str]:
-    tokens = [token for token in str(full_name or "").strip().split() if token]
-    if not tokens:
-        return "UNKNOWN", "UNKNOWN"
-    if len(tokens) == 1:
-        return tokens[0], tokens[0]
-    return tokens[0], " ".join(tokens[1:])
-
-
 def _to_party_type(schema_name: str | None) -> str:
     normalized = str(schema_name or "").strip().lower()
     if normalized in {"person", "individual"}:
@@ -722,7 +713,6 @@ class ActimizeClient:
         party_key = self._normalize_party_key(explicit_party_key or self._build_party_key(query))
         party_type = _to_party_type(query.schema)
         names = _as_list(props.get("name"))
-        primary_name = _first_non_empty(names) or "Unknown"
 
         payload: dict[str, Any] = {
             "partyKey": party_key,
@@ -735,38 +725,77 @@ class ActimizeClient:
         mapped_screening_type = self._map_screening_type(screening_type)
         if mapped_screening_type:
             payload["screeningType"] = mapped_screening_type
+        business_unit = _first_non_empty(
+            _as_list(props.get("businessUnit"))
+            + _as_list(props.get("business_unit"))
+            + _as_list(props.get("businessUnitCode"))
+            + _as_list(props.get("business_unit_code"))
+        )
+        if business_unit:
+            payload["businessUnit"] = business_unit
 
         if party_type == "I":
             first_name = _first_non_empty(_as_list(props.get("firstName")))
             last_name = _first_non_empty(_as_list(props.get("lastName")))
             middle_name = _first_non_empty(_as_list(props.get("middleName")))
+            maiden_name = _first_non_empty(_as_list(props.get("maidenName")))
+            full_name = _first_non_empty(_as_list(props.get("fullName")) + names)
 
-            derived_first, derived_last = _split_person_name(primary_name)
-            first_name = first_name or derived_first
-            last_name = last_name or derived_last
-
-            payload["names"] = {
-                "firstName": first_name,
-                "lastName": last_name,
-                "fullName": primary_name,
-            }
+            payload_names: dict[str, str] = {}
+            if first_name:
+                payload_names["firstName"] = first_name
             if middle_name:
-                payload["names"]["middleName"] = middle_name
+                payload_names["middleName"] = middle_name
+            if last_name:
+                payload_names["lastName"] = last_name
+            if maiden_name:
+                payload_names["maidenName"] = maiden_name
+            if full_name:
+                payload_names["fullName"] = full_name
+            if not payload_names:
+                payload_names["fullName"] = "Unknown"
+            payload["names"] = payload_names
         else:
-            payload["names"] = {"fullName": primary_name}
+            full_name = _first_non_empty(_as_list(props.get("fullName")) + names) or "Unknown"
+            payload["names"] = {"fullName": full_name}
 
-        aliases = _as_list(props.get("alias")) + _as_list(props.get("aliases")) + names[1:]
-        unique_aliases = _dedupe(aliases)
-        if unique_aliases:
-            payload_aliases: list[dict[str, str]] = []
-            for alias in unique_aliases[:10]:
-                alias_entry: dict[str, str] = {"fullName": alias}
-                if party_type == "I":
-                    alias_first, alias_last = _split_person_name(alias)
-                    alias_entry["firstName"] = alias_first
-                    alias_entry["lastName"] = alias_last
-                payload_aliases.append(alias_entry)
-            payload["aliases"] = payload_aliases
+        payload_aliases: list[dict[str, str]] = []
+        seen_alias_keys: set[str] = set()
+
+        def _append_alias(alias_entry: dict[str, str]) -> None:
+            compact = {k: v for k, v in alias_entry.items() if str(v).strip()}
+            if not compact:
+                return
+            alias_key = json.dumps(compact, sort_keys=True, ensure_ascii=False).casefold()
+            if alias_key in seen_alias_keys:
+                return
+            seen_alias_keys.add(alias_key)
+            payload_aliases.append(compact)
+
+        for alias in _dedupe(_as_list(props.get("alias")) + names[1:]):
+            _append_alias({"fullName": alias})
+
+        raw_aliases = props.get("aliases")
+        if isinstance(raw_aliases, list):
+            for raw_alias in raw_aliases:
+                if isinstance(raw_alias, str):
+                    safe_alias = raw_alias.strip()
+                    if safe_alias:
+                        _append_alias({"fullName": safe_alias})
+                    continue
+                if isinstance(raw_alias, dict):
+                    _append_alias(
+                        {
+                            "firstName": _first_non_empty(_as_list(raw_alias.get("firstName"))),
+                            "middleName": _first_non_empty(_as_list(raw_alias.get("middleName"))),
+                            "lastName": _first_non_empty(_as_list(raw_alias.get("lastName"))),
+                            "maidenName": _first_non_empty(_as_list(raw_alias.get("maidenName"))),
+                            "fullName": _first_non_empty(_as_list(raw_alias.get("fullName"))),
+                        }
+                    )
+
+        if payload_aliases:
+            payload["aliases"] = payload_aliases[:10]
 
         countries_raw = _as_list(props.get("nationality")) + _as_list(props.get("country")) + _as_list(props.get("jurisdiction"))
         countries: list[str] = []

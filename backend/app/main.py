@@ -593,6 +593,7 @@ async def create_batch_job_with_upload(
             user_id=principal.user_id,
             user_name=actor_user_name,
             correlation_id=correlation_id,
+            business_unit_code=safe_bu or None,
             source_upload_id=upload_id,
         )
         queue.enqueue(dispatch)
@@ -993,6 +994,8 @@ def match_sync(
         query_for_screening = query.model_copy(deep=True)
         request_props = dict(query_for_screening.properties if isinstance(query_for_screening.properties, dict) else {})
         request_props["partyKey"] = actimize.resolve_party_key(query_for_screening)
+        if normalized_business_unit_code:
+            request_props["businessUnit"] = normalized_business_unit_code
         query_for_screening.properties = request_props
         request_payload = query_for_screening.model_dump(mode="json")
         repository.add_job_item(job_id=job_id, item_key=item_key, request_payload=request_payload)

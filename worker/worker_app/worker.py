@@ -126,6 +126,13 @@ def _handle_job_dispatch(
         )
         return
 
+    safe_business_unit_code = str(message.business_unit_code or "").strip().upper()
+    if not safe_business_unit_code:
+        metadata = repository.get_job_metadata(job_id) or {}
+        safe_business_unit_code = str(metadata.get("business_unit_code") or "").strip().upper()
+        if safe_business_unit_code:
+            message = message.model_copy(update={"business_unit_code": safe_business_unit_code})
+
     upload = repository.get_batch_file_upload(upload_id)
     if not upload:
         repository.add_audit_event(
@@ -289,6 +296,18 @@ def _flush_dispatch_batch(
             payload = dict(payload)
             payload["properties"] = payload_props
 
+        safe_business_unit_code = str(message.business_unit_code or "").strip().upper()
+        if safe_business_unit_code:
+            next_props = dict(query.properties if isinstance(query.properties, dict) else {})
+            next_props["businessUnit"] = safe_business_unit_code
+            query = query.model_copy(update={"properties": next_props})
+
+            payload_props = payload.get("properties") if isinstance(payload.get("properties"), dict) else {}
+            payload_props = dict(payload_props)
+            payload_props["businessUnit"] = safe_business_unit_code
+            payload = dict(payload)
+            payload["properties"] = payload_props
+
         next_items.append((item_key, payload, query, record_hash))
         bulk_payloads.append((item_key, payload))
 
@@ -309,6 +328,7 @@ def _flush_dispatch_batch(
                 user_id=message.user_id,
                 user_name=message.user_name,
                 correlation_id=correlation_id,
+                business_unit_code=message.business_unit_code,
                 source_schedule_id=message.source_schedule_id,
                 source_record_hash=record_hash,
                 source_upload_id=message.source_upload_id,
@@ -647,6 +667,12 @@ def _process_received_message(
 
     correlation_id = str(message.correlation_id or "").strip() or str(uuid4())
     retry_attempt = max(int(message.retry_attempt or 0), 0)
+    safe_business_unit_code = str(message.business_unit_code or "").strip().upper()
+    if safe_business_unit_code:
+        query_props = message.query.properties if isinstance(message.query.properties, dict) else {}
+        next_props = dict(query_props)
+        next_props["businessUnit"] = safe_business_unit_code
+        message = message.model_copy(update={"query": message.query.model_copy(update={"properties": next_props})})
     request_payload = message.query.model_dump(mode="json")
     logger.info(
         "screening item started job=%s key=%s correlation_id=%s retry_attempt=%s screening_types=%s mock=%s schedule_id=%s",
