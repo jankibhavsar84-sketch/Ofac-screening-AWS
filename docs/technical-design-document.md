@@ -1462,7 +1462,7 @@ The backend treats the `PartyKey` as the canonical record identifier and ensures
 | `PartyId1Type` | `idType` | `properties.ids[].idType` | Parsed and forwarded when present; adapter still applies defaults if missing. |
 | `PartyId1IDCountry` | `idCountry` | `properties.ids[].idCountry` | Parsed and forwarded when present; adapter still falls back to first mapped country if missing. |
 | `Title` | `title` | `properties.title[]` | Forwarded when present. |
-| `Notes` | *(none)* | *(not mapped)* | Ignored. |
+| `Notes` | `notes` | `properties.notes[]` | Forwarded when present and mapped to Actimize `screeningNotes`. |
 
 ### 11.3 Mapping from `queries_json` (`EntityExample`) to Actimize `POST /entity-screenings`
 
@@ -1485,6 +1485,7 @@ The JSON payload is derived from `EntityExample` roughly as follows:
 | `properties.birthLocation[]` | `countryofBirth` | Uses ISO3 country code when possible; otherwise passes through raw value. |
 | `properties.gender[]` | `gender` | Uppercased before submission (`Female` -> `FEMALE`). |
 | `properties.title[]` | `title` | Passed through when present. |
+| `properties.notes[]` | `screeningNotes` | Passed through when present (first non-empty note value). |
 | Selected screening type (`screening_types[]`) | `screeningType` | Mapped values: `Sanction -> SD_US_Customers_Sanctions`, `PEP -> SD_US_Customers_PEP_RCS_International`, `AME -> SD_US_Customers_AME`, `Fincen 314(a) -> SD_US_Customers_314(a)` (plus common FinCEN 314(a) input variants); unknown values pass through unchanged. |
 | `mock_screening` | `mock` | Boolean flag forwarded to Actimize payload as `true`/`false`. |
 

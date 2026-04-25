@@ -851,6 +851,15 @@ class ActimizeClient:
         if title:
             payload["title"] = title
 
+        screening_notes = _first_non_empty(
+            _as_list(props.get("screeningNotes"))
+            + _as_list(props.get("screening_notes"))
+            + _as_list(props.get("notes"))
+            + _as_list(props.get("Notes"))
+        )
+        if screening_notes:
+            payload["screeningNotes"] = screening_notes
+
         return payload
 
     @staticmethod

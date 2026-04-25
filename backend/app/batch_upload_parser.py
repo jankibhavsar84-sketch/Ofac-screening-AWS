@@ -77,6 +77,7 @@ def _map_parsed_row(values: dict[str, Any]) -> dict[str, str]:
             ["partyType", "party type", "party_type", "partyTypeCode", "party type code"],
         ),
         "title": _get_by_aliases(values, ["title"]),
+        "notes": _get_by_aliases(values, ["notes", "screeningNotes", "screening notes"]),
         "gender": _get_by_aliases(values, ["gender", "genderCode", "gender code", "gender_code"]),
         "primaryFirstName": _get_by_aliases(values, ["primaryFirstName"]),
         "primaryMiddleName": _get_by_aliases(values, ["primaryMiddleName"]),
@@ -345,6 +346,9 @@ def _build_entity_example(item: dict[str, Any]) -> EntityExample:
     title = _safe_trim(item.get("title"))
     if title:
         properties["title"] = [title]
+    notes = _safe_trim(item.get("notes"))
+    if notes:
+        properties["notes"] = [notes]
 
     return EntityExample(schema=schema, properties=properties)
 
@@ -562,6 +566,7 @@ def parse_batch_upload(filename: str, body: bytes) -> ParsedBatchUpload:
             "birthLocation": _safe_trim(row.get("birthLocation") or row.get("birthCountry")),
             "gender": normalized_gender,
             "title": _safe_trim(row.get("title")),
+            "notes": _safe_trim(row.get("notes")),
         }
 
         display_name = (
