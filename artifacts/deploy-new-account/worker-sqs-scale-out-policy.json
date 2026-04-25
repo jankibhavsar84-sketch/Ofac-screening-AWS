@@ -1,0 +1,21 @@
+{
+  "AdjustmentType": "ChangeInCapacity",
+  "Cooldown": 60,
+  "MetricAggregationType": "Average",
+  "StepAdjustments": [
+    {
+      "MetricIntervalLowerBound": 0.0,
+      "MetricIntervalUpperBound": 50.0,
+      "ScalingAdjustment": 1
+    },
+    {
+      "MetricIntervalLowerBound": 50.0,
+      "MetricIntervalUpperBound": 200.0,
+      "ScalingAdjustment": 2
+    },
+    {
+      "MetricIntervalLowerBound": 200.0,
+      "ScalingAdjustment": 4
+    }
+  ]
+}

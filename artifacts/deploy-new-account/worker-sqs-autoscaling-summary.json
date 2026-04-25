@@ -1,0 +1,23 @@
+{
+    "resource_id":  "service/Screening/ofac-screening-worker-svc",
+    "queue_name":  "screening-requests",
+    "scalable_target":  {
+                            "min":  0,
+                            "max":  4
+                        },
+    "policies":  {
+                     "scale_out":  {
+                                       "name":  "ofac-screening-worker-sqs-scale-out",
+                                       "arn":  "arn:aws:autoscaling:us-east-2:981450247094:scalingPolicy:48da1f7f-e72a-49a2-90e2-e87e4487d2d3:resource/ecs/service/Screening/ofac-screening-worker-svc:policyName/ofac-screening-worker-sqs-scale-out"
+                                   },
+                     "scale_in":  {
+                                      "name":  "ofac-screening-worker-sqs-scale-in",
+                                      "arn":  "arn:aws:autoscaling:us-east-2:981450247094:scalingPolicy:48da1f7f-e72a-49a2-90e2-e87e4487d2d3:resource/ecs/service/Screening/ofac-screening-worker-svc:policyName/ofac-screening-worker-sqs-scale-in"
+                                  }
+                 },
+    "alarms":  [
+                   "ofac-screening-worker-sqs-visible-scale-out",
+                   "ofac-screening-worker-sqs-empty-scale-in"
+               ],
+    "updated_at_utc":  "2026-04-24T23:24:53Z"
+}

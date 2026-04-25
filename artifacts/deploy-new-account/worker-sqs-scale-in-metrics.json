@@ -1,0 +1,34 @@
+[
+  {
+    "Id": "m1",
+    "MetricStat": {
+      "Metric": {
+        "Namespace": "AWS/SQS",
+        "MetricName": "ApproximateNumberOfMessagesVisible",
+        "Dimensions": [{"Name": "QueueName", "Value": "screening-requests"}]
+      },
+      "Period": 60,
+      "Stat": "Average"
+    },
+    "ReturnData": false
+  },
+  {
+    "Id": "m2",
+    "MetricStat": {
+      "Metric": {
+        "Namespace": "AWS/SQS",
+        "MetricName": "ApproximateNumberOfMessagesNotVisible",
+        "Dimensions": [{"Name": "QueueName", "Value": "screening-requests"}]
+      },
+      "Period": 60,
+      "Stat": "Average"
+    },
+    "ReturnData": false
+  },
+  {
+    "Id": "e1",
+    "Expression": "m1 + m2",
+    "Label": "TotalQueueBacklog",
+    "ReturnData": true
+  }
+]
