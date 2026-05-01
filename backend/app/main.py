@@ -157,6 +157,52 @@ def _extract_response_detail(response: Response | None) -> str | None:
     return None
 
 
+def _trim_screening_match_payload(
+    payload: dict[str, Any],
+    limit: int,
+    fallback_query: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    safe_limit = max(int(limit or 0), 0)
+    safe_payload = dict(payload) if isinstance(payload, dict) else {}
+
+    raw_results = safe_payload.get("results")
+    results = raw_results if isinstance(raw_results, list) else []
+    trimmed_results = results[:safe_limit] if safe_limit > 0 else []
+    safe_payload["results"] = trimmed_results
+    safe_payload["total"] = {"value": len(trimmed_results), "relation": "eq"}
+    if not isinstance(safe_payload.get("status"), int):
+        safe_payload["status"] = 200
+    if not isinstance(safe_payload.get("query"), dict):
+        safe_payload["query"] = fallback_query or {}
+
+    raw_mapping = safe_payload.get("responses_by_screening_type")
+    if isinstance(raw_mapping, dict):
+        trimmed_mapping: dict[str, dict[str, Any]] = {}
+        for key, value in raw_mapping.items():
+            if not isinstance(value, dict):
+                continue
+            trimmed_mapping[str(key)] = _trim_screening_match_payload(value, safe_limit, fallback_query=fallback_query)
+        safe_payload["responses_by_screening_type"] = trimmed_mapping
+    return safe_payload
+
+
+def _count_match_candidates(payload: dict[str, Any]) -> int:
+    if not isinstance(payload, dict):
+        return 0
+    raw_mapping = payload.get("responses_by_screening_type")
+    if isinstance(raw_mapping, dict):
+        total = 0
+        for value in raw_mapping.values():
+            if not isinstance(value, dict):
+                continue
+            results = value.get("results")
+            if isinstance(results, list):
+                total += len(results)
+        return total
+    results = payload.get("results")
+    return len(results) if isinstance(results, list) else 0
+
+
 @app.middleware("http")
 async def audit_api_access(request: Request, call_next: Any) -> Response:
     clear_audit_principal()
@@ -1055,16 +1101,12 @@ def match_sync(
                 payload.mock_screening,
                 requester_name=actor_user_name,
             )
-            raw_results = screened.get("results", [])
-            results = raw_results if isinstance(raw_results, list) else []
-            trimmed_results = results[: settings.screening_result_limit]
-
-            responses[item_key] = {
-                "results": trimmed_results,
-                "total": {"value": len(trimmed_results), "relation": "eq"},
-                "query": request_payload,
-                "status": int(screened.get("status", 200) or 200),
-            }
+            normalized_payload = _trim_screening_match_payload(
+                screened,
+                settings.screening_result_limit,
+                fallback_query=request_payload,
+            )
+            responses[item_key] = normalized_payload
             repository.mark_item_completed(job_id=job_id, item_key=item_key, response_payload=responses[item_key])
             repository.add_audit_event(
                 action="SYNC_SCREENING_API_CALL_SUCCEEDED",
@@ -1081,7 +1123,7 @@ def match_sync(
                     "mock_screening": payload.mock_screening,
                     "business_unit_code": normalized_business_unit_code,
                     "correlation_id": correlation_id,
-                    "result_count": len(trimmed_results),
+                    "result_count": _count_match_candidates(normalized_payload),
                     "result": responses[item_key],
                 },
             )

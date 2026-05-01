@@ -1761,6 +1761,55 @@ class JobRepository:
             return None
         return parsed if isinstance(parsed, dict) else None
 
+    @staticmethod
+    def _normalize_screening_type_key(value: str | None) -> str:
+        return re.sub(r"\s+", " ", str(value or "").strip()).lower()
+
+    @staticmethod
+    def _apply_actimize_alert_to_response_payload(
+        response_payload: dict[str, Any],
+        *,
+        unique_key: str,
+        normalized_unique_key: str,
+        alert_id: str,
+        status_cd: str,
+        screening_cd: str | None,
+        update_timestamp: str | None,
+        source_system_cd: str | None,
+        tenant_cd: str | None,
+        processed_at: str,
+    ) -> None:
+        existing_alert = response_payload.get("actimize_alert")
+        merged_alert = dict(existing_alert) if isinstance(existing_alert, dict) else {}
+        merged_alert.update(
+            {
+                "unique_key": unique_key,
+                "normalized_unique_key": normalized_unique_key,
+                "alert_id": alert_id,
+                "screening_cd": screening_cd,
+                "status_cd": status_cd,
+                "update_timestamp": update_timestamp,
+                "source_system_cd": source_system_cd,
+                "tenant_cd": tenant_cd,
+                "received_at": processed_at,
+            }
+        )
+        response_payload["actimize_alert"] = merged_alert
+        response_payload["actimize_alert_id"] = alert_id
+        response_payload["actimize_alert_status_cd"] = status_cd
+        response_payload["actimize_alert_status"] = "FALSE_POSITIVE" if status_cd == "F" else "TRUE_POSITIVE"
+        response_payload["manual_status_cd"] = status_cd
+        response_payload["manual_match"] = status_cd == "T"
+        response_payload["engine_message"] = "NM" if status_cd == "F" else "PM"
+        if screening_cd:
+            response_payload["actimize_alert_screening_cd"] = screening_cd
+        if update_timestamp:
+            response_payload["actimize_alert_update_timestamp"] = update_timestamp
+        if source_system_cd:
+            response_payload["actimize_alert_source_system_cd"] = source_system_cd
+        if tenant_cd:
+            response_payload["actimize_alert_tenant_cd"] = tenant_cd
+
     def apply_actimize_alert_callback(
         self,
         *,
@@ -1846,36 +1895,55 @@ class JobRepository:
                     "query": request_payload,
                     "status": 200,
                 }
-                existing_alert = response_payload.get("actimize_alert")
-                merged_alert = dict(existing_alert) if isinstance(existing_alert, dict) else {}
-                merged_alert.update(
-                    {
-                        "unique_key": safe_unique_key,
-                        "normalized_unique_key": normalized_unique_key,
-                        "alert_id": safe_alert_id,
-                        "screening_cd": safe_screening_cd,
-                        "status_cd": safe_status_cd,
-                        "update_timestamp": safe_update_timestamp,
-                        "source_system_cd": safe_source_system_cd,
-                        "tenant_cd": safe_tenant_cd,
-                        "received_at": processed_at,
-                    }
+                self._apply_actimize_alert_to_response_payload(
+                    response_payload,
+                    unique_key=safe_unique_key,
+                    normalized_unique_key=normalized_unique_key,
+                    alert_id=safe_alert_id,
+                    status_cd=safe_status_cd,
+                    screening_cd=safe_screening_cd,
+                    update_timestamp=safe_update_timestamp,
+                    source_system_cd=safe_source_system_cd,
+                    tenant_cd=safe_tenant_cd,
+                    processed_at=processed_at,
                 )
-                response_payload["actimize_alert"] = merged_alert
-                response_payload["actimize_alert_id"] = safe_alert_id
-                response_payload["actimize_alert_status_cd"] = safe_status_cd
-                response_payload["actimize_alert_status"] = "FALSE_POSITIVE" if safe_status_cd == "F" else "TRUE_POSITIVE"
-                response_payload["manual_status_cd"] = safe_status_cd
-                response_payload["manual_match"] = safe_status_cd == "T"
-                response_payload["engine_message"] = "NM" if safe_status_cd == "F" else "PM"
-                if safe_screening_cd:
-                    response_payload["actimize_alert_screening_cd"] = safe_screening_cd
-                if safe_update_timestamp:
-                    response_payload["actimize_alert_update_timestamp"] = safe_update_timestamp
-                if safe_source_system_cd:
-                    response_payload["actimize_alert_source_system_cd"] = safe_source_system_cd
-                if safe_tenant_cd:
-                    response_payload["actimize_alert_tenant_cd"] = safe_tenant_cd
+
+                responses_by_type = response_payload.get("responses_by_screening_type")
+                if isinstance(responses_by_type, dict) and responses_by_type:
+                    normalized_screening_cd = self._normalize_screening_type_key(safe_screening_cd)
+                    matching_entries: list[dict[str, Any]] = []
+                    for raw_type_key, raw_type_response in responses_by_type.items():
+                        if not isinstance(raw_type_response, dict):
+                            continue
+                        if not normalized_screening_cd:
+                            matching_entries.append(raw_type_response)
+                            continue
+                        candidates = (
+                            str(raw_type_key or "").strip(),
+                            str(raw_type_response.get("requested_screening_type") or "").strip(),
+                            str(raw_type_response.get("actimize_screening_type") or "").strip(),
+                        )
+                        if any(self._normalize_screening_type_key(candidate) == normalized_screening_cd for candidate in candidates):
+                            matching_entries.append(raw_type_response)
+
+                    if not matching_entries and len(responses_by_type) == 1:
+                        first_value = next(iter(responses_by_type.values()))
+                        if isinstance(first_value, dict):
+                            matching_entries.append(first_value)
+
+                    for matched_response in matching_entries:
+                        self._apply_actimize_alert_to_response_payload(
+                            matched_response,
+                            unique_key=safe_unique_key,
+                            normalized_unique_key=normalized_unique_key,
+                            alert_id=safe_alert_id,
+                            status_cd=safe_status_cd,
+                            screening_cd=safe_screening_cd,
+                            update_timestamp=safe_update_timestamp,
+                            source_system_cd=safe_source_system_cd,
+                            tenant_cd=safe_tenant_cd,
+                            processed_at=processed_at,
+                        )
 
                 self._execute(
                     conn,

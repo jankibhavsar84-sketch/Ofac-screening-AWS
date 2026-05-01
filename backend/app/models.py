@@ -29,6 +29,7 @@ class EntityMatches(BaseModel):
     status: int = 200
     engine_message: str | None = None
     error_text: str | None = None
+    responses_by_screening_type: dict[str, dict[str, Any]] | None = None
 
 
 class EntityMatchResponse(BaseModel):

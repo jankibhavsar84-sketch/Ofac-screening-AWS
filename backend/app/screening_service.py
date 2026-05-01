@@ -624,7 +624,50 @@ class ScreeningService:
         return safe_fallback or "Unknown"
 
     @staticmethod
-    def _classify_result_from_matches(matches: dict[str, Any]) -> str:
+    def _normalize_screening_type_key(value: str | None) -> str:
+        return re.sub(r"\s+", " ", str(value or "").strip()).lower()
+
+    @classmethod
+    def _extract_responses_by_screening_type(cls, matches: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+        if not isinstance(matches, dict):
+            return {}
+        raw_mapping = matches.get("responses_by_screening_type")
+        if not isinstance(raw_mapping, dict):
+            raw_mapping = {}
+
+        normalized: dict[str, dict[str, Any]] = {}
+        for raw_key, raw_value in raw_mapping.items():
+            if not isinstance(raw_value, dict):
+                continue
+            candidates = [
+                str(raw_key or "").strip(),
+                str(raw_value.get("requested_screening_type") or "").strip(),
+                str(raw_value.get("actimize_screening_type") or "").strip(),
+            ]
+            for candidate in candidates:
+                normalized_key = cls._normalize_screening_type_key(candidate)
+                if normalized_key and normalized_key not in normalized:
+                    normalized[normalized_key] = raw_value
+        return normalized
+
+    @classmethod
+    def _response_for_screening_type(
+        cls,
+        matches: dict[str, Any],
+        screening_type: str | None,
+    ) -> dict[str, Any]:
+        per_type = cls._extract_responses_by_screening_type(matches)
+        if not per_type:
+            return matches
+        normalized_type = cls._normalize_screening_type_key(screening_type)
+        if normalized_type and normalized_type in per_type:
+            return per_type[normalized_type]
+        if len(per_type) == 1:
+            return next(iter(per_type.values()))
+        return matches
+
+    @staticmethod
+    def _classify_single_result(matches: dict[str, Any]) -> str:
         if not isinstance(matches, dict):
             return "FAILED"
         status = matches.get("status")
@@ -645,6 +688,20 @@ class ScreeningService:
             if isinstance(result, dict) and bool(result.get("match")):
                 return "HIT"
         return "NO_HIT"
+
+    @classmethod
+    def _classify_result_from_matches(cls, matches: dict[str, Any]) -> str:
+        if not isinstance(matches, dict):
+            return "FAILED"
+        per_type = cls._extract_responses_by_screening_type(matches)
+        if per_type:
+            outcomes = [cls._classify_single_result(response) for response in per_type.values()]
+            if any(outcome == "HIT" for outcome in outcomes):
+                return "HIT"
+            if any(outcome == "FAILED" for outcome in outcomes):
+                return "FAILED"
+            return "NO_HIT"
+        return cls._classify_single_result(matches)
 
     @staticmethod
     def _extract_string_list(value: Any) -> list[str]:
@@ -768,11 +825,7 @@ class ScreeningService:
         response_payload = self._parse_json_payload(row.get("response_json"))
         item_status = str(row.get("item_status") or "").strip().upper()
         error_text = str(row.get("item_error_text") or "").strip()
-        matches = self._build_matches_payload(item_status, request_payload, response_payload, error_text)
-        engine_status = self._engine_status_from_matches(matches)
-        manual_status_cd = str(matches.get("manual_status_cd") or "").strip().upper()
-        manual_match = bool(matches.get("manual_match") is True or manual_status_cd == "T")
-        ui_status = self._ui_status_from_engine(engine_status, manual_match=manual_match)
+        item_matches = self._build_matches_payload(item_status, request_payload, response_payload, error_text)
         ui_type = self._query_to_ui_type(request_payload)
         display_name = self._display_name_from_query(request_payload, item_key)
         party_key = self._extract_party_key_from_query(request_payload, item_key)
@@ -811,6 +864,11 @@ class ScreeningService:
         out: list[dict[str, Any]] = []
         for index, screening_type in enumerate(screening_types_for_rows):
             safe_screening_type = str(screening_type or "").strip()
+            matches = self._response_for_screening_type(item_matches, safe_screening_type)
+            engine_status = self._engine_status_from_matches(matches)
+            manual_status_cd = str(matches.get("manual_status_cd") or "").strip().upper()
+            manual_match = bool(matches.get("manual_match") is True or manual_status_cd == "T")
+            ui_status = self._ui_status_from_engine(engine_status, manual_match=manual_match)
             submission_for_row = dict(submission_stub)
             if safe_screening_type:
                 submission_for_row["screeningType"] = safe_screening_type

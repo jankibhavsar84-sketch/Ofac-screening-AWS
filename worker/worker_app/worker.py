@@ -699,8 +699,20 @@ def _process_received_message(
             requester_name=message.user_name,
         )
         repository.mark_item_completed(message.job_id, message.item_key, result)
-        result_items = result.get("results", []) if isinstance(result, dict) else []
-        result_count = len(result_items) if isinstance(result_items, list) else 0
+        result_count = 0
+        if isinstance(result, dict):
+            by_type = result.get("responses_by_screening_type")
+            if isinstance(by_type, dict):
+                for response_payload in by_type.values():
+                    if not isinstance(response_payload, dict):
+                        continue
+                    response_results = response_payload.get("results")
+                    if isinstance(response_results, list):
+                        result_count += len(response_results)
+            else:
+                result_items = result.get("results", [])
+                if isinstance(result_items, list):
+                    result_count = len(result_items)
         logger.info(
             "screening item succeeded job=%s key=%s correlation_id=%s result_count=%s",
             message.job_id,

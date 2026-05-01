@@ -445,45 +445,43 @@ class ActimizeClient:
         if not normalized_types:
             normalized_types = ["Sanction"]
 
-        merged: dict[str, dict[str, Any]] = {}
+        responses_by_screening_type: dict[str, dict[str, Any]] = {}
+        any_hit = False
         for screening_type in normalized_types:
+            mapped_screening_type = self._map_screening_type(screening_type)
             response = self.screen_single(
                 query,
                 screening_type=screening_type,
                 mock_screening=mock_screening,
                 requester_name=requester_name,
             )
-            results = response.get("results", [])
-            if not isinstance(results, list):
-                continue
+            safe_response = dict(response) if isinstance(response, dict) else {}
+            safe_response["requested_screening_type"] = screening_type
+            safe_response["actimize_screening_type"] = mapped_screening_type or screening_type
+            responses_by_screening_type[screening_type] = safe_response
+            if self._response_has_positive_match(safe_response):
+                any_hit = True
 
-            for candidate in results:
-                if not isinstance(candidate, dict):
-                    continue
-
-                key = str(candidate.get("id") or candidate.get("caption") or "")
-                if not key:
-                    key = f"{screening_type}:{len(merged) + 1}"
-
-                existing = merged.get(key)
-                if existing is None:
-                    merged[key] = dict(candidate)
-                    continue
-
-                existing["score"] = max(float(existing.get("score", 0.0) or 0.0), float(candidate.get("score", 0.0) or 0.0))
-                existing["match"] = bool(existing.get("match", False) or candidate.get("match", False))
-
-                datasets = existing.get("datasets") if isinstance(existing.get("datasets"), list) else []
-                next_datasets = candidate.get("datasets") if isinstance(candidate.get("datasets"), list) else []
-                existing["datasets"] = sorted(set([str(x) for x in datasets + next_datasets]))
-
-        merged_results = sorted(merged.values(), key=lambda item: float(item.get("score", 0.0) or 0.0), reverse=True)
         return {
-            "results": merged_results,
-            "total": {"value": len(merged_results), "relation": "eq"},
+            "results": [],
+            "total": {"value": 0, "relation": "eq"},
             "query": query.model_dump(mode="json"),
             "status": 200,
+            "engine_message": "PM" if any_hit else "NM",
+            "responses_by_screening_type": responses_by_screening_type,
         }
+
+    @staticmethod
+    def _response_has_positive_match(response: dict[str, Any]) -> bool:
+        if not isinstance(response, dict):
+            return False
+        engine_message = str(response.get("engine_message") or "").strip().upper()
+        if engine_message == "PM":
+            return True
+        results = response.get("results")
+        if not isinstance(results, list):
+            return False
+        return any(isinstance(result, dict) and bool(result.get("match")) for result in results)
 
     def _build_headers(self) -> dict[str, str]:
         headers: dict[str, str] = {
