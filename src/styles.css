@@ -1753,6 +1753,14 @@ textarea{min-height:90px;resize:vertical}
 
 .tableWrap{border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .table{width:100%;border-collapse:collapse;background:var(--card)}
+.resultsTableWrap{
+  overflow-x:auto;
+  overflow-y:hidden;
+}
+.resultsTable{
+  min-width:1440px;
+  table-layout:fixed;
+}
 .table thead th{
   text-align:left;
   font-size:12px;

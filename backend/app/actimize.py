@@ -204,25 +204,6 @@ def _sanitize_source_system(value: str | None) -> str:
     return safe or "ZIP"
 
 
-_SCREENING_TYPE_MAP: dict[str, str] = {
-    "sanction": "SD_US_Customers_Sanctions",
-    "pep": "SD_US_Customers_PEP_RCS_International",
-    "ame": "SD_US_Customers_AME",
-    "fincen 314(a)": "SD_US_Customers_314(a)",
-    "fincen 314a": "SD_US_Customers_314(a)",
-    "fincen314(a)": "SD_US_Customers_314(a)",
-    "fincen314a": "SD_US_Customers_314(a)",
-}
-
-
-def _map_screening_type_fallback(screening_type: str | None) -> str:
-    safe = str(screening_type or "").strip()
-    if not safe:
-        return ""
-    normalized = re.sub(r"\s+", " ", safe).strip().lower()
-    return _SCREENING_TYPE_MAP.get(normalized, safe)
-
-
 class ActimizeClient:
     def __init__(self, repository: Any | None = None) -> None:
         self.base_url = settings.actimize_base_url.rstrip("/")
@@ -315,22 +296,7 @@ class ActimizeClient:
                 details={"screening_type": screening_type},
             ) from exc
 
-        logical_status_code: int | None = None
-        if isinstance(body, dict) and "body" in body:
-            raw_status = str(body.get("status_code") or body.get("statusCode") or "").strip()
-            try:
-                logical_status_code = int(raw_status) if raw_status else None
-            except ValueError:
-                logical_status_code = None
-
-            nested_body = body.get("body")
-            if isinstance(nested_body, str):
-                try:
-                    nested_body = json.loads(nested_body)
-                except Exception:
-                    nested_body = {"message": nested_body}
-            if isinstance(nested_body, dict):
-                body = nested_body
+        body, logical_status_code = self._unwrap_prudential_payload(body)
 
         if logical_status_code is not None and logical_status_code >= 400:
             raise ExternalApiCallError(
@@ -343,6 +309,46 @@ class ActimizeClient:
             )
 
         return self._normalize_prudential(body, query, screening_type)
+
+    def _unwrap_prudential_payload(self, payload: Any) -> tuple[dict[str, Any], int | None]:
+        logical_status_code: int | None = None
+        current: Any = payload
+
+        for _ in range(5):
+            if isinstance(current, str):
+                safe_current = current.strip()
+                if not safe_current:
+                    break
+                try:
+                    current = json.loads(safe_current)
+                except Exception:
+                    current = {"message": safe_current}
+
+            if not isinstance(current, dict):
+                break
+
+            raw_status = str(current.get("status_code") or current.get("statusCode") or "").strip()
+            if raw_status:
+                try:
+                    logical_status_code = int(raw_status)
+                except ValueError:
+                    pass
+
+            if any(key in current for key in ("message", "detail", "userMessage", "code")):
+                return current, logical_status_code
+
+            nested_body = current.get("body")
+            if nested_body is None:
+                return current, logical_status_code
+            current = nested_body
+
+        if isinstance(current, dict):
+            return current, logical_status_code
+        if isinstance(current, str):
+            safe_current = current.strip()
+            if safe_current:
+                return {"message": safe_current}, logical_status_code
+        return {}, logical_status_code
 
     def _post_entity_screening_with_retry(
         self,
@@ -684,14 +690,14 @@ class ActimizeClient:
             except Exception as exc:  # noqa: BLE001
                 if not self._screening_type_mapping_lookup_failed:
                     logger.warning(
-                        "actimize screeningType mapping lookup failed; using fallback map source=%s error=%s",
+                        "actimize screeningType mapping lookup failed; using passthrough value source=%s error=%s",
                         safe,
                         exc,
                     )
                 self._screening_type_mapping_lookup_failed = True
 
         if not mapped_value:
-            mapped_value = _map_screening_type_fallback(safe)
+            mapped_value = safe
 
         self._cache_screening_type(normalized_source, mapped_value)
         return mapped_value

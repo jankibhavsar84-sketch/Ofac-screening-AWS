@@ -758,11 +758,11 @@ class ScreeningService:
             return None
         return parsed if isinstance(parsed, dict) else None
 
-    def _build_recent_result_row(self, row: dict[str, Any], active_schedule_ids: set[str]) -> dict[str, Any] | None:
+    def _build_recent_result_rows(self, row: dict[str, Any], active_schedule_ids: set[str]) -> list[dict[str, Any]]:
         job_id = str(row.get("job_id") or "").strip()
         item_key = str(row.get("item_key") or "").strip()
         if not job_id or not item_key:
-            return None
+            return []
 
         request_payload = self._parse_json_payload(row.get("request_json")) or {}
         response_payload = self._parse_json_payload(row.get("response_json"))
@@ -807,47 +807,61 @@ class ScreeningService:
             "dailyScheduleActive": daily_schedule_active,
         }
 
-        if mode == "SINGLE":
-            raw = {
-                "submission": submission_stub,
-                "m": {
-                    "key": item_key,
-                    "uiType": ui_type,
-                    "displayName": display_name,
-                },
-                "matches": matches,
-            }
-        else:
-            raw = {
-                "submission": submission_stub,
-                "item": {
-                    "displayName": display_name,
-                    "customerType": "Person" if ui_type == "Individual" else "Entity",
-                    "result": engine_status,
-                    "details": {
-                        "uiType": ui_type,
-                        "matches": matches,
-                    },
-                },
-            }
+        screening_types_for_rows = screening_types if screening_types else [""]
+        out: list[dict[str, Any]] = []
+        for index, screening_type in enumerate(screening_types_for_rows):
+            safe_screening_type = str(screening_type or "").strip()
+            submission_for_row = dict(submission_stub)
+            if safe_screening_type:
+                submission_for_row["screeningType"] = safe_screening_type
 
-        return {
-            "id": f"{job_id}_{item_key}",
-            "entity": display_name,
-            "partyKey": party_key,
-            "mode": mode,
-            "type": ui_type,
-            "country": self._extract_country_from_query(request_payload),
-            "engineStatus": engine_status,
-            "manualMatch": manual_match,
-            "uiStatus": ui_status,
-            "matchingScore": self._top_matching_score(matches),
-            "submittedAt": submitted_at,
-            "batchSubmissionId": None if mode == "SINGLE" else job_id,
-            "dailyScheduleId": daily_schedule_id,
-            "dailyScheduleActive": daily_schedule_active,
-            "raw": raw,
-        }
+            if mode == "SINGLE":
+                raw = {
+                    "submission": submission_for_row,
+                    "m": {
+                        "key": item_key,
+                        "uiType": ui_type,
+                        "displayName": display_name,
+                    },
+                    "matches": matches,
+                }
+            else:
+                raw = {
+                    "submission": submission_for_row,
+                    "item": {
+                        "displayName": display_name,
+                        "customerType": "Person" if ui_type == "Individual" else "Entity",
+                        "result": engine_status,
+                        "details": {
+                            "uiType": ui_type,
+                            "matches": matches,
+                        },
+                    },
+                }
+
+            row_suffix = safe_screening_type or str(index + 1)
+            row_suffix = re.sub(r"[^A-Za-z0-9]+", "_", row_suffix).strip("_") or str(index + 1)
+            out.append(
+                {
+                    "id": f"{job_id}_{item_key}_{row_suffix}",
+                    "entity": display_name,
+                    "partyKey": party_key,
+                    "mode": mode,
+                    "type": ui_type,
+                    "screeningType": safe_screening_type,
+                    "country": self._extract_country_from_query(request_payload),
+                    "engineStatus": engine_status,
+                    "manualMatch": manual_match,
+                    "uiStatus": ui_status,
+                    "matchingScore": self._top_matching_score(matches),
+                    "submittedAt": submitted_at,
+                    "batchSubmissionId": None if mode == "SINGLE" else job_id,
+                    "dailyScheduleId": daily_schedule_id,
+                    "dailyScheduleActive": daily_schedule_active,
+                    "raw": raw,
+                }
+            )
+        return out
 
     def handle_actimize_alert_callback(
         self,
@@ -900,10 +914,12 @@ class ScreeningService:
         }
         recent_rows: list[dict[str, Any]] = []
         for row in rows:
-            mapped = self._build_recent_result_row(row, active_schedule_ids)
-            if mapped is not None:
-                recent_rows.append(mapped)
-        return recent_rows
+            mapped_rows = self._build_recent_result_rows(row, active_schedule_ids)
+            if mapped_rows:
+                recent_rows.extend(mapped_rows)
+            if len(recent_rows) >= limit:
+                break
+        return recent_rows[:limit]
 
     def get_user_result_summary(self, user_id: str | None, user_name: str | None) -> dict[str, int]:
         return self.repository.get_user_result_summary_counts(user_id=user_id, user_name=user_name)

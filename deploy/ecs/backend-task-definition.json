@@ -54,7 +54,7 @@
                                      "secrets":  [
                                                      {
                                                          "name":  "APP_DB_PATH",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:APP_DB_PATH::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/database-config:APP_DB_PATH::"
                                                      },
                                                      {
                                                          "name":  "CORS_ALLOW_ORIGINS",
@@ -62,15 +62,11 @@
                                                      },
                                                      {
                                                          "name":  "AWS_REGION",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_REGION::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/sqs-config:AWS_REGION::"
                                                      },
                                                      {
                                                          "name":  "AWS_SQS_QUEUE_NAME",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_SQS_QUEUE_NAME::"
-                                                     },
-                                                     {
-                                                         "name":  "ACTIMIZE_MOCK",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/actimize-config:ACTIMIZE_MOCK::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/sqs-config:AWS_SQS_QUEUE_NAME::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_LOG_RAW_API_IO",
@@ -110,27 +106,23 @@
                                                      },
                                                      {
                                                          "name":  "AWS_S3_UPLOAD_BUCKET",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_S3_UPLOAD_BUCKET::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/s3-config:AWS_S3_UPLOAD_BUCKET::"
                                                      },
                                                      {
                                                          "name":  "AWS_S3_UPLOAD_PREFIX",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_S3_UPLOAD_PREFIX::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/s3-config:AWS_S3_UPLOAD_PREFIX::"
                                                      },
                                                      {
                                                          "name":  "AWS_SNS_NOTIFICATIONS_ENABLED",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_SNS_NOTIFICATIONS_ENABLED::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/sns-config:AWS_SNS_NOTIFICATIONS_ENABLED::"
                                                      },
                                                      {
                                                          "name":  "AWS_SNS_SCHEDULE_TOPIC_PREFIX",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_SNS_SCHEDULE_TOPIC_PREFIX::"
-                                                     },
-                                                     {
-                                                         "name":  "AWS_NOTIFICATION_DELIVERY_MODE",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_NOTIFICATION_DELIVERY_MODE::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/sns-config:AWS_SNS_SCHEDULE_TOPIC_PREFIX::"
                                                      },
                                                      {
                                                          "name":  "AWS_SES_SENDER_EMAIL",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:AWS_SES_SENDER_EMAIL::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/ses-config:AWS_SES_SENDER_EMAIL::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_PROVIDER",
@@ -166,7 +158,7 @@
                                                      },
                                                      {
                                                          "name":  "APP_DB_URL",
-                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/backend-config:APP_DB_URL::"
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:279930135954:secret:ofac-screening/database-config:APP_DB_URL::"
                                                      },
                                                      {
                                                          "name":  "ACTIMIZE_CLIENT_SECRET",

@@ -62,7 +62,7 @@ DEFAULT_BUSINESS_UNITS: list[tuple[str, str]] = [
 DEFAULT_FALLBACK_BUSINESS_UNIT_CODE = "US_PRU_OPES"
 DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str], ...] = (
     ("Sanction", "SD_US_Customers_Sanctions"),
-    ("PEP", "SD_US_Customers_PEP_RCS_International"),
+    ("PEP", "SD_US_Customers_PEP_RCA_International"),
     ("AME", "SD_US_Customers_AME"),
     ("Fincen 314(a)", "SD_US_Customers_314(a)"),
     ("Fincen 314a", "SD_US_Customers_314(a)"),
@@ -170,7 +170,7 @@ _TRANSIENT_POSTGRES_CONNECT_MARKERS: tuple[str, ...] = (
 
 
 class JobRepository:
-    def __init__(self, db_path: str, db_url: str = "", initialize_schema: bool = False) -> None:
+    def __init__(self, db_path: str, db_url: str = "") -> None:
         self.db_path = db_path
         self.db_url = (db_url or "").strip()
         self.is_postgres = self.db_url.startswith("postgres://") or self.db_url.startswith("postgresql://")
@@ -186,10 +186,7 @@ class JobRepository:
             self._pool = self._build_postgres_pool()
             atexit.register(self.close)
 
-        if initialize_schema:
-            self.initialize_schema()
-        else:
-            self.validate_schema()
+        self.validate_schema()
 
     def close(self) -> None:
         if self._pool is not None:
@@ -413,9 +410,10 @@ class JobRepository:
             )
 
     def initialize_schema(self) -> None:
-        if not self.is_postgres:
-            db_file = Path(self.db_path)
-            db_file.parent.mkdir(parents=True, exist_ok=True)
+        raise RuntimeError(
+            "Database schema management is not supported in backend/worker runtime. "
+            "Run schema migrations separately before starting services."
+        )
 
         with self._connect() as conn:
             self._ensure_table(
@@ -3897,3 +3895,4 @@ class JobRepository:
                 (last_run_at, next_run_at, schedule_id, expected_next_run_at),
             )
             return cur.rowcount > 0
+

@@ -20,10 +20,7 @@ services:
       - AWS_ENDPOINT_URL=http://localstack:4566
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - ACTIMIZE_MOCK=true
       - SCREENING_TPS=32
-      - SCREENING_POLL_INTERVAL_MS=500
-      - SCREENING_SYNC_TIMEOUT_S=90
       - AUTH_ENABLED=false
       - AUTH_AUDIENCE=
       - AUTH_ALGORITHMS=RS256
@@ -46,7 +43,6 @@ services:
       - AWS_ENDPOINT_URL=http://localstack:4566
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - ACTIMIZE_MOCK=true
       - SCREENING_TPS=32
       - AUTH_ENABLED=false
       - AUTH_AUDIENCE=

@@ -6,6 +6,7 @@ import {
   oidcIdleTimeoutMs,
   oidcUseRpInitiatedLogout,
   redirectToSignedOutPage,
+  signoutWithProvider,
   signedOutPath,
 } from "../auth/oidc";
 
@@ -42,7 +43,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           redirectToSignedOutPage();
         } else {
           try {
-            await auth.signoutRedirect();
+            await signoutWithProvider(auth);
           } catch {
             // Some IdPs may not support RP initiated logout; always land on signed-out page.
             redirectToSignedOutPage();

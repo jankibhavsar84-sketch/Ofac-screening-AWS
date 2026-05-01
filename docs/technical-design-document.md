@@ -1,7 +1,7 @@
 # Technical Design Document (TDD): OFAC / Watchlist Screening Platform
 
-**Version:** 1.7  
-**Date:** 2026-04-13  
+**Version:** 1.8  
+**Date:** 2026-04-29  
 **Repo:** `ofac-screening-aws`  
 
 This document describes the technical design for the OFAC / watchlist screening platform deployed on AWS. It includes AWS architecture, API flows, process flows, and component responsibilities.
@@ -18,6 +18,9 @@ This document describes the technical design for the OFAC / watchlist screening 
 - Audit operations now support paged admin retrieval, and raw Actimize/Prudential request/response troubleshooting logs can be enabled with redaction.
 - Authentication wording is aligned to the current AWS deployment baseline: OIDC via AWS Cognito (with optional enterprise federation), with old local Keycloak references removed from the active design baseline.
 - Worker-side transient external API hardening now includes delayed SQS requeue for retryable upstream failures (`429/500/502/503/504`) with bounded exponential backoff, per-item retry-attempt tracking, and explicit audit events for successful requeue vs requeue failure.
+- Actimize request mapping is now explicit for person-name parts end-to-end: `firstName`/`middleName`/`lastName`/`maidenName` are preserved as dedicated fields (not derived from `fullName`) for single and batch flows.
+- Batch parser now preserves structured alias fields (`Alias1*`/`Alias2*`/`Alias3*`) into `properties.aliases[]` so Actimize receives split alias names when provided.
+- Screening definition (`screeningType`) mapping is fully database-driven via `actimize_screening_type_mappings`; code no longer applies hardcoded screening-type fallback mappings.
 
 ## 1. System Overview
 
@@ -1369,8 +1372,7 @@ Backend and worker share the same settings (see `backend/app/config.py` and `bac
 | `AWS_S3_UPLOAD_PREFIX` | `screening-input` | Key prefix for S3 uploads (source files and `queries.json`). |
 | `AWS_SNS_NOTIFICATIONS_ENABLED` | `false` | Enables SNS notifications for scheduled screening completion. |
 | `AWS_SNS_SCHEDULE_TOPIC_PREFIX` | `ofac-screening-schedule` | Prefix used for SNS topics created for schedule/email notifications. |
-| `ACTIMIZE_MOCK` | `false` | If `true`, returns deterministic mock responses instead of calling Actimize. |
-| `ACTIMIZE_BASE_URL` | *(empty)* | Base URL for Actimize screening API (required when not mocking). |
+| `ACTIMIZE_BASE_URL` | *(empty)* | Base URL for Actimize screening API (required for screening requests). |
 | `ACTIMIZE_PROVIDER` | `prudential` | Provider label used in audit/error telemetry. |
 | `ACTIMIZE_API_KEY` | *(empty)* | Optional API key auth (sent via headers when configured). |
 | `ACTIMIZE_BEARER_TOKEN` | *(empty)* | Optional static bearer token auth (sent via headers when configured). |
@@ -1396,8 +1398,6 @@ Backend and worker share the same settings (see `backend/app/config.py` and `bac
 | `SCREENING_ITEM_RETRY_MAX_ATTEMPTS` | `2` | Additional retry attempts for transient upstream (`429/500/502/503/504`) item failures before terminal item failure. |
 | `SCREENING_ITEM_RETRY_INITIAL_DELAY_S` | `3` | Initial delay (seconds) for worker delayed requeue of retryable item failures. |
 | `SCREENING_ITEM_RETRY_MAX_DELAY_S` | `60` | Maximum delay (seconds) cap for retry requeue exponential backoff. |
-| `SCREENING_POLL_INTERVAL_MS` | `750` | Intended poll interval (ms) used by clients/UX; backend uses it for any internal timing where applicable. |
-| `SCREENING_SYNC_TIMEOUT_S` | `60` | Timeout budget (seconds) for synchronous screening request flows. |
 | `SCREENING_RESULT_LIMIT` | `5` | Default max number of matches returned per item. |
 | `DAILY_SCREENING_TIMEZONE` | `America/New_York` | Timezone for schedule calculations. |
 | `DAILY_SCREENING_HOUR` | `0` | Hour-of-day for default daily schedule run time (local to `DAILY_SCREENING_TIMEZONE`). |
@@ -1441,11 +1441,15 @@ The backend treats the `PartyKey` as the canonical record identifier and ensures
 | `PartyKey` | `partyKey` | **Object key**: `queries["<PartyKey>"]` | Required and must be unique within the file; backend also injects this into `properties.partyKey` for traceability. |
 | `PartyType` (`I`/`E`) | `partyType` | `schema` | `I` -> `schema="Person"`; `E` -> `schema="Company"`. If missing, UI infers from `CustomerType` and/or available name fields. |
 | `CustomerType` (`Person`/`Entity`) | `customerType` | `schema` | Used as a fallback when `PartyType` is missing. |
-| `PrimaryFirstName` | `firstName` | `properties.name[]` | Individual only: combined with middle/last to form a primary name string. |
-| `PrimaryMiddleName` | `middleName` | `properties.name[]` | Included in the combined primary name string when present. |
-| `PrimaryLastName` | `lastName` | `properties.name[]` | Individual only: required (with First Name) if `PrimaryFullName` is not provided. |
-| `PrimaryFullName` | `fullName` | `properties.name[]` | Required for Organization/Unknown; for Individual it can be used instead of split names. |
-| `Alias1FullName` | `aliasName` | `properties.alias[]` | Optional; sent as a single alias entry. |
+| `PrimaryFirstName` | `firstName` | `properties.firstName[]` (+ contributes to `properties.name[]`) | Individual only: preserved as explicit split-name field and also used in the combined display-name variant. |
+| `PrimaryMiddleName` | `middleName` | `properties.middleName[]` (+ contributes to `properties.name[]`) | Included in explicit split-name mapping and in the combined display-name variant when present. |
+| `PrimaryLastName` | `lastName` | `properties.lastName[]` (+ contributes to `properties.name[]`) | Individual only: required (with First Name) if `PrimaryFullName` is not provided. |
+| `PrimaryMaidenName` | `maidenName` | `properties.maidenName[]` | Individual only: preserved when present and mapped through to Actimize `names.maidenName`. |
+| `PrimaryFullName` | `fullName` | `properties.fullName[]` (+ contributes to `properties.name[]`) | Required for Organization/Unknown; for Individual it can be used instead of split names. |
+| `AliasName` | `aliasName` | `properties.alias[]` | Optional free-form alias string; mapped as `aliases[].fullName`. |
+| `Alias1FirstName` / `Alias1MiddleName` / `Alias1LastName` / `Alias1MaidenName` / `Alias1FullName` | `alias1*` | `properties.aliases[0]` | Structured alias object, preserving provided split-name fields. |
+| `Alias2FirstName` / `Alias2MiddleName` / `Alias2LastName` / `Alias2MaidenName` / `Alias2FullName` | `alias2*` | `properties.aliases[1]` | Structured alias object, preserving provided split-name fields. |
+| `Alias3FirstName` / `Alias3MiddleName` / `Alias3LastName` / `Alias3MaidenName` / `Alias3FullName` | `alias3*` | `properties.aliases[2]` | Structured alias object, preserving provided split-name fields. |
 | `DateOfBirth` | `dateOfBirth` | `properties.birthDate[]` | Individual only. Accepted as `YYYY-MM-DD`, `YYYY/MM/DD`, `DD/MM/YYYY`, `DD-MM-YYYY`, or `YYYY` (year-only). |
 | `Gender` | `gender` | `properties.gender[]` | Accepts `Male`, `Female`, `Other`, blank, and legacy `M/F/O`; backend normalizes to title case and later uppercases for Actimize. |
 | `Addresses` | `addresses` | `properties.address[]` | Optional comma-separated list of full-address lines. If blank, UI derives a one-line address from `Address1*` fields. |
@@ -1486,7 +1490,7 @@ The JSON payload is derived from `EntityExample` roughly as follows:
 | `properties.gender[]` | `gender` | Uppercased before submission (`Female` -> `FEMALE`). |
 | `properties.title[]` | `title` | Passed through when present. |
 | `properties.notes[]` | `screeningNotes` | Passed through when present (first non-empty note value). |
-| Selected screening type (`screening_types[]`) | `screeningType` | Mapped values: `Sanction -> SD_US_Customers_Sanctions`, `PEP -> SD_US_Customers_PEP_RCS_International`, `AME -> SD_US_Customers_AME`, `Fincen 314(a) -> SD_US_Customers_314(a)` (plus common FinCEN 314(a) input variants); unknown values pass through unchanged. |
+| Selected screening type (`screening_types[]`) | `screeningType` | Resolved from DB table `actimize_screening_type_mappings` (defaults seeded: `Sanction -> SD_US_Customers_Sanctions`, `PEP -> SD_US_Customers_PEP_RCA_International`, `AME -> SD_US_Customers_AME`, `Fincen 314(a)` variants -> `SD_US_Customers_314(a)`). If no active DB mapping exists, the input value is passed through unchanged. |
 | `mock_screening` | `mock` | Boolean flag forwarded to Actimize payload as `true`/`false`. |
 | Selected `business_unit_code` (job-level) | `businessUnit` | Always set from the selected Business Unit for the job and forwarded to Actimize as `businessUnit` (overrides per-item value if present). |
 

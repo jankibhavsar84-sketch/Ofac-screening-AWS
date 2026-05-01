@@ -110,6 +110,7 @@ export type RecentScreeningResultRow = {
   partyKey: string;
   mode: "SINGLE" | "BATCH";
   type: string;
+  screeningType?: string;
   country: string;
   engineStatus: string;
   manualMatch: boolean;

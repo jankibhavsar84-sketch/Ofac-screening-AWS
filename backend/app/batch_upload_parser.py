@@ -215,9 +215,28 @@ def _parse_comma_values(value: Any) -> list[str]:
     return [_safe_trim(token) for token in raw.split(",") if _safe_trim(token)]
 
 
-def _build_structured_name(first: str, middle: str, last: str, maiden: str, full_name: str) -> str:
-    split_name = " ".join(part for part in [_safe_trim(first), _safe_trim(middle), _safe_trim(last), _safe_trim(maiden)] if part)
-    return _safe_trim(full_name) or split_name
+def _build_structured_name(first: str, middle: str, last: str, maiden: str, full_name: str) -> dict[str, str]:
+    safe_first = _safe_trim(first)
+    safe_middle = _safe_trim(middle)
+    safe_last = _safe_trim(last)
+    safe_maiden = _safe_trim(maiden)
+    safe_full_name = _safe_trim(full_name)
+    split_name = " ".join(part for part in [safe_first, safe_middle, safe_last, safe_maiden] if part)
+
+    entry: dict[str, str] = {}
+    if safe_first:
+        entry["firstName"] = safe_first
+    if safe_middle:
+        entry["middleName"] = safe_middle
+    if safe_last:
+        entry["lastName"] = safe_last
+    if safe_maiden:
+        entry["maidenName"] = safe_maiden
+    if safe_full_name:
+        entry["fullName"] = safe_full_name
+    elif split_name:
+        entry["fullName"] = split_name
+    return entry
 
 
 def _build_address_line(
@@ -301,9 +320,52 @@ def _build_entity_example(item: dict[str, Any]) -> EntityExample:
             name_values.append(full_name)
 
     properties: dict[str, Any] = {"name": name_values}
+    if item.get("uiType") == "Individual":
+        first_name = _safe_trim(item.get("firstName"))
+        middle_name = _safe_trim(item.get("middleName"))
+        last_name = _safe_trim(item.get("lastName"))
+        maiden_name = _safe_trim(item.get("maidenName"))
+        full_name = _safe_trim(item.get("fullName"))
+        if first_name:
+            properties["firstName"] = [first_name]
+        if middle_name:
+            properties["middleName"] = [middle_name]
+        if last_name:
+            properties["lastName"] = [last_name]
+        if maiden_name:
+            properties["maidenName"] = [maiden_name]
+        if full_name:
+            properties["fullName"] = [full_name]
+
     alias_name = _safe_trim(item.get("aliasName"))
     if alias_name:
         properties["alias"] = [alias_name]
+    raw_aliases = item.get("aliases")
+    if isinstance(raw_aliases, list):
+        structured_aliases: list[dict[str, str]] = []
+        for raw_alias in raw_aliases:
+            if not isinstance(raw_alias, dict):
+                continue
+            alias_entry: dict[str, str] = {}
+            first_name = _safe_trim(raw_alias.get("firstName"))
+            middle_name = _safe_trim(raw_alias.get("middleName"))
+            last_name = _safe_trim(raw_alias.get("lastName"))
+            maiden_name = _safe_trim(raw_alias.get("maidenName"))
+            full_name = _safe_trim(raw_alias.get("fullName"))
+            if first_name:
+                alias_entry["firstName"] = first_name
+            if middle_name:
+                alias_entry["middleName"] = middle_name
+            if last_name:
+                alias_entry["lastName"] = last_name
+            if maiden_name:
+                alias_entry["maidenName"] = maiden_name
+            if full_name:
+                alias_entry["fullName"] = full_name
+            if alias_entry:
+                structured_aliases.append(alias_entry)
+        if structured_aliases:
+            properties["aliases"] = structured_aliases
 
     date_of_birth = _safe_trim(item.get("dateOfBirth"))
     if item.get("uiType") == "Individual" and date_of_birth:
@@ -414,13 +476,7 @@ def parse_batch_upload(filename: str, body: bytes) -> ParsedBatchUpload:
         last_name = _safe_trim(row.get("primaryLastName") or row.get("lastName"))
         maiden_name = _safe_trim(row.get("primaryMaidenName"))
         split_name = " ".join(part for part in [first_name, middle_name, last_name] if part)
-        explicit_full_name = _build_structured_name(
-            first_name,
-            middle_name,
-            last_name,
-            maiden_name,
-            _safe_trim(row.get("primaryFullName") or row.get("fullName")),
-        )
+        explicit_full_name = _safe_trim(row.get("primaryFullName") or row.get("fullName"))
         has_split_first_last = bool(first_name and last_name)
         has_full_name = bool(explicit_full_name)
         full_name = explicit_full_name or (split_name if ui_type == "Individual" else "")
@@ -527,9 +583,8 @@ def parse_batch_upload(filename: str, body: bytes) -> ParsedBatchUpload:
             _safe_trim(row.get("alias3MaidenName")),
             _safe_trim(row.get("alias3FullName")),
         )
-        merged_alias = ", ".join(
-            value for value in [_safe_trim(row.get("aliasName")), alias_1, alias_2, alias_3] if value
-        )
+        aliases = [alias for alias in [alias_1, alias_2, alias_3] if alias]
+        merged_alias = _safe_trim(row.get("aliasName"))
 
         ids = [
             {
@@ -557,8 +612,10 @@ def parse_batch_upload(filename: str, body: bytes) -> ParsedBatchUpload:
             "firstName": first_name,
             "middleName": middle_name,
             "lastName": last_name,
+            "maidenName": maiden_name,
             "fullName": full_name,
             "aliasName": merged_alias,
+            "aliases": aliases,
             "dateOfBirth": _safe_trim(row.get("dateOfBirth") or row.get("yearOfBirth")),
             "countries": countries,
             "addresses": addresses,

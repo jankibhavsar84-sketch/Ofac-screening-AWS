@@ -196,18 +196,32 @@ function localDateTimeToUtcIso(value: string): string {
   return parsed.toISOString();
 }
 
-function parseSubscriptionEmails(value: string): string[] {
+const SUBSCRIPTION_EMAIL_DOMAIN = "prudential.com";
+const BASIC_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isAllowedSubscriptionEmail(value: string): boolean {
+  const email = safeTrim(value).toLowerCase();
+  if (!email || !BASIC_EMAIL_REGEX.test(email)) return false;
+  return email.endsWith(`@${SUBSCRIPTION_EMAIL_DOMAIN}`);
+}
+
+function parseSubscriptionEmails(value: string): { validEmails: string[]; invalidEmails: string[] } {
   const seen = new Set<string>();
-  const out: string[] = [];
+  const validEmails: string[] = [];
+  const invalidEmails: string[] = [];
   value
     .split(/[\n,;]+/g)
     .map((v) => safeTrim(v).toLowerCase())
     .forEach((email) => {
-      if (!email || !email.includes("@") || seen.has(email)) return;
+      if (!email || seen.has(email)) return;
       seen.add(email);
-      out.push(email);
+      if (isAllowedSubscriptionEmail(email)) {
+        validEmails.push(email);
+      } else {
+        invalidEmails.push(email);
+      }
     });
-  return out;
+  return { validEmails, invalidEmails };
 }
 
 function uiTypeIcon(type: UiType): string {
@@ -298,19 +312,34 @@ function uiTypeToSchema(ui: UiType): EntityExample["schema"] {
 function buildEntityExampleFromNameItem(item: NameItem): EntityExample {
   const schema = uiTypeToSchema(item.uiType);
 
+  const firstName = safeTrim(item.firstName);
+  const middleName = safeTrim(item.middleName);
+  const lastName = safeTrim(item.lastName);
+  const explicitFullName = safeTrim(item.fullName);
+  const splitFullName = [firstName, middleName, lastName].filter(Boolean).join(" ");
+  const resolvedFullName = explicitFullName || splitFullName;
+
   // Name
   const nameValues: string[] = [];
   if (item.uiType === "Individual") {
-    const splitName = [safeTrim(item.firstName), safeTrim(item.middleName), safeTrim(item.lastName)].filter(Boolean).join(" ");
-    const fullName = safeTrim(item.fullName);
+    const splitName = splitFullName;
+    const fullName = resolvedFullName;
     if (splitName) nameValues.push(splitName);
     if (fullName && fullName.toLowerCase() !== splitName.toLowerCase()) nameValues.push(fullName);
   } else {
-    const fullName = safeTrim(item.fullName);
+    const fullName = resolvedFullName;
     if (fullName) nameValues.push(fullName);
   }
 
   const props: Record<string, any> = { name: nameValues };
+
+  // Keep split-name fields explicit so Actimize request can map first/last directly.
+  if (item.uiType === "Individual") {
+    if (firstName) props.firstName = [firstName];
+    if (middleName) props.middleName = [middleName];
+    if (lastName) props.lastName = [lastName];
+    if (resolvedFullName) props.fullName = [resolvedFullName];
+  }
 
   // alias
   if (safeTrim(item.aliasName)) props.alias = [safeTrim(item.aliasName)];
@@ -364,6 +393,7 @@ type ResultRow = {
   partyKey: string;
   mode: ResultMode;
   type: UiType;
+  screeningType: string;
   country: string;
   engineStatus: EngineStatus;
   manualMatch: boolean;
@@ -397,18 +427,42 @@ function normalizeResultRow(row: RecentScreeningResultRow): ResultRow | null {
   const engineStatusRaw = safeTrim(String(row?.engineStatus || "")).toUpperCase();
 
   const allowedTypes = new Set<UiType>(["Individual", "Organization", "Unknown", "Vessel", "Aircraft"]);
-  const allowedStatuses = new Set<UiStatus>(["Clear", "Potential Match", "Pending", "Failed", "Match"]);
   const allowedModes = new Set<ResultMode>(["SINGLE", "BATCH"]);
-  const allowedEngines = new Set<EngineStatus>(["NO_HIT", "HIT", "PROCESSING", "FAILED", "ERROR"]);
+
+  function normalizeEngineStatus(value: string): EngineStatus | null {
+    const safe = safeTrim(value).toUpperCase().replace(/\s+/g, "_");
+    if (!safe) return null;
+    if (safe === "NO_HIT" || safe === "CLEAR") return "NO_HIT";
+    if (safe === "HIT" || safe === "MATCH") return "HIT";
+    if (safe === "PROCESSING" || safe === "PENDING" || safe === "QUEUED" || safe === "IN_PROGRESS") return "PROCESSING";
+    if (safe === "FAILED" || safe === "FAIL" || safe === "ERROR" || safe === "UNKNOWN") return "FAILED";
+    return null;
+  }
+
+  function normalizeUiStatus(value: string, engineStatus: EngineStatus, manualMatch: boolean): UiStatus {
+    if (manualMatch) return "Match";
+    const safe = safeTrim(value).toUpperCase().replace(/\s+/g, "_");
+    if (safe === "MATCH" || safe === "TRUE_POSITIVE") return "Match";
+    if (safe === "CLEAR" || safe === "NO_HIT") return "Clear";
+    if (safe === "POTENTIAL_MATCH" || safe === "POTENTIAL" || safe === "HIT") return "Potential Match";
+    if (safe === "PENDING" || safe === "PROCESSING" || safe === "QUEUED" || safe === "IN_PROGRESS") return "Pending";
+    if (safe === "FAILED" || safe === "FAIL" || safe === "ERROR") return "Failed";
+    if (engineStatus === "NO_HIT") return "Clear";
+    if (engineStatus === "HIT") return "Potential Match";
+    if (engineStatus === "PROCESSING") return "Pending";
+    return "Failed";
+  }
 
   const id = safeTrim(String(row?.id || ""));
   const entity = safeTrim(String(row?.entity || ""));
   const submittedAt = safeTrim(String(row?.submittedAt || ""));
   if (!id || !entity || !submittedAt) return null;
   if (!allowedTypes.has(typeRaw as UiType)) return null;
-  if (!allowedStatuses.has(uiStatusRaw as UiStatus)) return null;
   if (!allowedModes.has(modeRaw as ResultMode)) return null;
-  if (!allowedEngines.has(engineStatusRaw as EngineStatus)) return null;
+  const manualMatch = Boolean(row?.manualMatch === true);
+  const normalizedEngineStatus = normalizeEngineStatus(engineStatusRaw);
+  if (!normalizedEngineStatus) return null;
+  const normalizedUiStatus = normalizeUiStatus(uiStatusRaw, normalizedEngineStatus, manualMatch);
 
   return {
     id,
@@ -416,10 +470,11 @@ function normalizeResultRow(row: RecentScreeningResultRow): ResultRow | null {
     partyKey: safeTrim(String(row?.partyKey || "")),
     mode: modeRaw as ResultMode,
     type: typeRaw as UiType,
+    screeningType: safeTrim(String((row as any)?.screeningType || "")),
     country: safeTrim(String(row?.country || "")),
-    engineStatus: engineStatusRaw as EngineStatus,
-    manualMatch: Boolean(row?.manualMatch === true),
-    uiStatus: uiStatusRaw as UiStatus,
+    engineStatus: normalizedEngineStatus,
+    manualMatch,
+    uiStatus: normalizedUiStatus,
     matchingScore: typeof row?.matchingScore === "number" ? row.matchingScore : null,
     date: formatSubmittedDateTime(submittedAt),
     submittedAt,
@@ -481,6 +536,8 @@ type HitMatch = {
   keywordOrCategory: string;
 };
 
+const DEFAULT_ACTIMIZE_REVIEW_ALERT_URL = "http://actimizeuat";
+
 function asStringList(input: unknown): string[] {
   if (Array.isArray(input)) {
     return input.map((v) => safeTrim(String(v))).filter(Boolean);
@@ -508,6 +565,31 @@ function getResultCandidatesFromRaw(raw: any): any[] {
   const batch = raw?.item?.details?.matches?.results;
   const legacy = raw?.details?.results ?? raw?.details?.matches?.results;
   return Array.isArray(direct) ? direct : Array.isArray(batch) ? batch : Array.isArray(legacy) ? legacy : [];
+}
+
+function normalizeReviewUrl(value: unknown): string {
+  const safe = safeTrim(String(value ?? ""));
+  if (!safe) return "";
+  if (/^https?:\/\//i.test(safe)) return safe;
+  return `https://${safe}`;
+}
+
+function resolveActimizeReviewUrlFromRaw(raw: any): string {
+  const candidates = [
+    raw?.matches?.actimize_alert_review_url,
+    raw?.item?.details?.matches?.actimize_alert_review_url,
+    raw?.details?.matches?.actimize_alert_review_url,
+    raw?.matches?.actimize_alert?.review_url,
+    raw?.item?.details?.matches?.actimize_alert?.review_url,
+    raw?.details?.matches?.actimize_alert?.review_url,
+    raw?.submission?.actimizeAlertReviewUrl,
+    raw?.submission?.actimize_alert_review_url,
+  ];
+  for (const candidate of candidates) {
+    const normalized = normalizeReviewUrl(candidate);
+    if (normalized) return normalized;
+  }
+  return "";
 }
 
 function getHitMatchesFromRaw(raw: any): HitMatch[] {
@@ -560,6 +642,18 @@ function ViewIcon() {
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
       <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 3h7v7" />
+      <path d="M10 14 21 3" />
+      <path d="M21 14v7h-7" />
+      <path d="M3 10V3h7" />
+      <path d="M3 3 14 14" />
     </svg>
   );
 }
@@ -1245,6 +1339,25 @@ export function ScreeningDetailPage() {
         });
 
         const props = (query.properties ?? {}) as Record<string, any>;
+        if (primaryName.uiType === "Individual") {
+          const aliasObjects = akaNames
+            .map((alias) => {
+              const aliasFirstName = safeTrim(alias.firstName);
+              const aliasMiddleName = safeTrim(alias.middleName);
+              const aliasLastName = safeTrim(alias.lastName);
+              const aliasFullName = safeTrim(alias.fullName) || [aliasFirstName, aliasMiddleName, aliasLastName].filter(Boolean).join(" ");
+              const aliasEntry: Record<string, string> = {};
+              if (aliasFirstName) aliasEntry.firstName = aliasFirstName;
+              if (aliasMiddleName) aliasEntry.middleName = aliasMiddleName;
+              if (aliasLastName) aliasEntry.lastName = aliasLastName;
+              if (aliasFullName) aliasEntry.fullName = aliasFullName;
+              return aliasEntry;
+            })
+            .filter((entry) => Object.keys(entry).length > 0);
+          if (aliasObjects.length) {
+            props.aliases = aliasObjects;
+          }
+        }
         const existingNames = Array.isArray(props.name)
           ? props.name.map((v) => safeTrim(String(v))).filter(Boolean)
           : [];
@@ -1260,11 +1373,22 @@ export function ScreeningDetailPage() {
           mergedNames.push(safeValue);
         });
 
-        if (mergedNames.length) {
+        if (mergedNames.length && primaryName.uiType !== "Individual") {
           props.name = mergedNames;
-          query.properties = props;
         }
+        query.properties = props;
       }
+
+      const singleProps = (query.properties ?? {}) as Record<string, any>;
+      const safeSingleBusinessUnitCode = safeTrim(singleBusinessUnitCode).toUpperCase();
+      const safeSingleNotes = safeTrim(notes);
+      if (safeSingleBusinessUnitCode) {
+        singleProps.businessUnit = safeSingleBusinessUnitCode;
+      }
+      if (safeSingleNotes) {
+        singleProps.screeningNotes = [safeSingleNotes];
+      }
+      query.properties = singleProps;
 
       meta.push({ key, uiType: primaryName.uiType, displayName: displayName || "(Item 1)" });
       queries[key] = query;
@@ -1378,7 +1502,14 @@ export function ScreeningDetailPage() {
       return;
     }
 
-    const subscriptionEmails = parseSubscriptionEmails(scheduleSubscriptionEmails);
+    const parsedSubscriptions = parseSubscriptionEmails(scheduleSubscriptionEmails);
+    if (parsedSubscriptions.invalidEmails.length > 0) {
+      const invalidPreview = parsedSubscriptions.invalidEmails.slice(0, 5).join(", ");
+      const suffix = parsedSubscriptions.invalidEmails.length > 5 ? " ..." : "";
+      setScheduleError(`Only @${SUBSCRIPTION_EMAIL_DOMAIN} emails are allowed. Invalid: ${invalidPreview}${suffix}`);
+      return;
+    }
+    const subscriptionEmails = parsedSubscriptions.validEmails;
     setScheduleSubmitting(true);
     try {
       await uploadBatchAndSubmitJob({
@@ -1437,7 +1568,7 @@ export function ScreeningDetailPage() {
 
       // Search on core visible fields to keep filtering fast.
       if (!q) return true;
-      const hay = `${r.entity} ${r.partyKey} ${r.mode} ${r.type} ${r.country} ${r.uiStatus} ${r.date}`.toLowerCase();
+      const hay = `${r.entity} ${r.partyKey} ${r.mode} ${r.type} ${r.screeningType} ${r.country} ${r.uiStatus} ${r.date}`.toLowerCase();
       return hay.includes(q);
     });
   }, [flattened, search, statusFilter, typeFilter]);
@@ -1475,11 +1606,11 @@ export function ScreeningDetailPage() {
       "Party Key",
       "Mode",
       "Type",
+      "Screening Type",
       "Country",
       "Status",
       "Matching Score",
       "Submitted Date/Time",
-      "Screening Types",
       "Daily Screening",
       "Batch Name",
       "Top Hit Name",
@@ -1490,13 +1621,11 @@ export function ScreeningDetailPage() {
 
     const rows = filtered.map((row) => {
       const submission = row.raw?.submission;
-      const screeningTypesRaw =
-        submission?.screeningTypes ??
-        submission?.details?.screeningTypes ??
-        [];
+      const screeningTypesRaw = submission?.screeningTypes ?? submission?.details?.screeningTypes ?? [];
       const screeningTypes = Array.isArray(screeningTypesRaw)
         ? screeningTypesRaw.map((value: unknown) => safeTrim(String(value))).filter(Boolean).join(", ")
         : "";
+      const screeningType = row.screeningType || screeningTypes;
 
       const batchName = safeTrim(String(submission?.fileName ?? ""));
       const hitRows = getHitMatchesFromRaw(row.raw);
@@ -1507,11 +1636,11 @@ export function ScreeningDetailPage() {
         row.partyKey,
         row.mode === "SINGLE" ? "Single" : "Batch",
         row.type,
+        screeningType,
         row.country || "",
         row.uiStatus,
         formatMatchingScore(row.matchingScore),
         row.date,
-        screeningTypes,
         row.dailyScheduleActive ? "Yes" : "No",
         batchName,
         topHit?.name ?? "",
@@ -1536,11 +1665,14 @@ export function ScreeningDetailPage() {
   const pageSafe = Math.min(page, totalPages);
   const startIdx = (pageSafe - 1) * pageSize;
   const pageRows = sorted.slice(startIdx, startIdx + pageSize);
+  const configuredActimizeReviewAlertUrl = normalizeReviewUrl(appEnv("VITE_ACTIMIZE_REVIEW_ALERT_URL", "").trim());
+  const actimizeReviewAlertUrl = configuredActimizeReviewAlertUrl || DEFAULT_ACTIMIZE_REVIEW_ALERT_URL;
   const [hitEntityDialog, setHitEntityDialog] = useState<{
     sourceEntity: string;
     hits: HitMatch[];
     error: { status: number | null; text: string } | null;
     pending: boolean;
+    reviewUrl: string;
   } | null>(null);
 
   function sortIndicator(key: ResultSortKey): string {
@@ -1564,11 +1696,13 @@ export function ScreeningDetailPage() {
   function openHitEntity(row: ResultRow) {
     const hits = getHitMatchesFromRaw(row.raw);
     const error = row.uiStatus === "Failed" ? extractEngineErrorFromRaw(row.raw) : null;
+    const rowReviewUrl = resolveActimizeReviewUrlFromRaw(row.raw);
     setHitEntityDialog({
       sourceEntity: row.entity,
       hits,
       error: error ? { status: error.status, text: error.errorText } : null,
       pending: row.uiStatus === "Pending",
+      reviewUrl: rowReviewUrl || actimizeReviewAlertUrl,
     });
   }
 
@@ -1615,7 +1749,6 @@ export function ScreeningDetailPage() {
     updateScreeningWorkspace({ mode: available[next] });
   }
   const roleDisplay = primaryRole ? primaryRole[0].toUpperCase() + primaryRole.slice(1) : "Unknown";
-  const actimizeReviewAlertUrl = appEnv("VITE_ACTIMIZE_REVIEW_ALERT_URL", "").trim();
   const scheduleTimezoneLabel = useMemo(() => {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local";
     const tzPart = Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
@@ -2359,10 +2492,10 @@ export function ScreeningDetailPage() {
                 <textarea
                   value={scheduleSubscriptionEmails}
                   onChange={(e) => setScheduleSubscriptionEmails(e.target.value)}
-                  placeholder="compliance@company.com, analyst@company.com"
+                  placeholder="compliance@prudential.com, analyst@prudential.com"
                 />
                 <div className="hintText">
-                  Use comma, semicolon, or new line to enter multiple email addresses. First-time SNS email subscriptions require clicking the confirmation email once before notifications can be delivered. Subscription actions are recorded in Audit Log.
+                  Use comma, semicolon, or new line to enter multiple email addresses. Only @prudential.com email addresses are allowed.
                 </div>
               </div>
 
@@ -2552,8 +2685,8 @@ export function ScreeningDetailPage() {
         </div>
 
         <div className="cardBody">
-          <div className="tableWrap">
-            <table className="table">
+          <div className="tableWrap resultsTableWrap">
+            <table className="table resultsTable">
               <thead>
                 <tr>
                   <th scope="col" style={{ width: 220 }}>
@@ -2574,6 +2707,9 @@ export function ScreeningDetailPage() {
                       Type {sortIndicator("type")}
                     </button>
                   </th>
+                  <th scope="col" style={{ width: 180 }}>
+                    Screening Type
+                  </th>
                   <th scope="col" style={{ width: 120 }}>
                     <button type="button" className="linkBtn" onClick={() => toggleResultSort("country")}>
                       Country {sortIndicator("country")}
@@ -2589,18 +2725,19 @@ export function ScreeningDetailPage() {
                       Submitted Date/Time {sortIndicator("submittedAt")}
                     </button>
                   </th>
-                  <th scope="col" style={{ width: 230 }}>Actions</th>
+                  <th scope="col" style={{ width: 108 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="emptyRow">
+                    <td colSpan={9} className="emptyRow">
                       No results found.
                     </td>
                   </tr>
                 ) : (
                   pageRows.map((r) => {
+                    const rowActimizeReviewUrl = resolveActimizeReviewUrlFromRaw(r.raw) || actimizeReviewAlertUrl;
                     return (
                       <tr key={r.id}>
                         <td className="entityCell">
@@ -2616,6 +2753,7 @@ export function ScreeningDetailPage() {
                         </td>
                         <td>{modeBadge(r.mode)}</td>
                         <td className="muted">{r.type}</td>
+                        <td className="muted">{r.screeningType || "\u2014"}</td>
                         <td className="muted">{r.country || "\u2014"}</td>
                         <td>{badge(r.uiStatus)}</td>
                         <td className="muted">{r.date}</td>
@@ -2631,6 +2769,16 @@ export function ScreeningDetailPage() {
                               >
                                 <ViewIcon />
                               </button>
+                              <a
+                                href={rowActimizeReviewUrl}
+                                className="iconBtn"
+                                target="_blank"
+                                rel="noreferrer"
+                                title={`Open Actimize review for ${r.entity}`}
+                                aria-label={`Open Actimize review for ${r.entity}`}
+                              >
+                                <ExternalLinkIcon />
+                              </a>
                             </div>
                           </div>
                         </td>
@@ -2685,11 +2833,11 @@ export function ScreeningDetailPage() {
                 <span className="muted">Source Entity</span>
                 <strong>{hitEntityDialog.sourceEntity}</strong>
               </div>
-              {actimizeReviewAlertUrl ? (
+              {hitEntityDialog.reviewUrl ? (
                 <div className="hitEntityRow">
                   <span className="muted">Review Alert</span>
                   <a
-                    href={actimizeReviewAlertUrl}
+                    href={hitEntityDialog.reviewUrl}
                     className="btnGhostSmall"
                     target="_blank"
                     rel="noreferrer"

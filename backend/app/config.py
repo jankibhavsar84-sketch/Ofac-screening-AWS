@@ -74,7 +74,6 @@ class Settings:
     aws_s3_upload_prefix: str
     aws_sns_notifications_enabled: bool
     aws_sns_schedule_topic_prefix: str
-    aws_notification_delivery_mode: str
     aws_ses_sender_email: str
 
     actimize_base_url: str
@@ -96,7 +95,6 @@ class Settings:
     actimize_requester_name: str
     actimize_alert_review_url: str
     actimize_timeout_s: float
-    actimize_mock: bool
     actimize_log_raw_api_io: bool
     actimize_raw_api_log_max_chars: int
     actimize_screening_type_cache_ttl_s: int
@@ -104,8 +102,6 @@ class Settings:
 
     screening_tps: int
     screening_parallel_messages: int
-    screening_poll_interval_ms: int
-    screening_sync_timeout_s: int
     screening_result_limit: int
     worker_heartbeat_path: str
     worker_health_max_age_s: int
@@ -154,7 +150,6 @@ def load_settings() -> Settings:
         aws_sns_notifications_enabled=_to_bool(os.getenv("AWS_SNS_NOTIFICATIONS_ENABLED"), False),
         aws_sns_schedule_topic_prefix=os.getenv("AWS_SNS_SCHEDULE_TOPIC_PREFIX", "ofac-screening-schedule").strip()
         or "ofac-screening-schedule",
-        aws_notification_delivery_mode=os.getenv("AWS_NOTIFICATION_DELIVERY_MODE", "SES").strip().upper() or "SES",
         aws_ses_sender_email=os.getenv("AWS_SES_SENDER_EMAIL", "").strip(),
         actimize_base_url=os.getenv("ACTIMIZE_BASE_URL", "").strip(),
         actimize_provider=os.getenv("ACTIMIZE_PROVIDER", "prudential").strip().lower() or "prudential",
@@ -181,7 +176,6 @@ def load_settings() -> Settings:
         actimize_requester_name=os.getenv("ACTIMIZE_REQUESTER_NAME", "SCREENING_SYSTEM").strip() or "SCREENING_SYSTEM",
         actimize_alert_review_url=os.getenv("ACTIMIZE_ALERT_REVIEW_URL", "").strip(),
         actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 10.0),
-        actimize_mock=_to_bool(os.getenv("ACTIMIZE_MOCK"), False),
         actimize_log_raw_api_io=_to_bool(
             os.getenv("ACTIMIZE_LOG_RAW_API_IO"),
             _to_bool(os.getenv("ACTIMIZE_LOG_RAW_SUCCESS_RESPONSE"), False),
@@ -194,8 +188,6 @@ def load_settings() -> Settings:
         actimize_screening_type_cache_max_entries=_to_int(os.getenv("ACTIMIZE_SCREENING_TYPE_CACHE_MAX_ENTRIES"), 512),
         screening_tps=_to_int(os.getenv("SCREENING_TPS"), 32),
         screening_parallel_messages=_to_int(os.getenv("SCREENING_PARALLEL_MESSAGES"), 1),
-        screening_poll_interval_ms=_to_int(os.getenv("SCREENING_POLL_INTERVAL_MS"), 750),
-        screening_sync_timeout_s=_to_int(os.getenv("SCREENING_SYNC_TIMEOUT_S"), 60),
         screening_result_limit=_to_int(os.getenv("SCREENING_RESULT_LIMIT"), 5),
         worker_heartbeat_path=os.getenv("WORKER_HEARTBEAT_PATH", "/tmp/ofac-worker-heartbeat").strip()
         or "/tmp/ofac-worker-heartbeat",

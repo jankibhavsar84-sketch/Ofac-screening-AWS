@@ -1,0 +1,4 @@
+{
+  "APP_DB_URL": "postgresql://<user>:<password>@<host>:5432/<database>?sslmode=require",
+  "APP_DB_PATH": "/tmp/screening.db"
+}

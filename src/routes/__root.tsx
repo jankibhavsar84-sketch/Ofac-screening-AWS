@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, createRootRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "react-oidc-context";
 import { buildIdentity, hasPermission } from "../auth/claims";
-import { oidcAuthEnabled, oidcUseRpInitiatedLogout, redirectToSignedOutPage } from "../auth/oidc";
+import { oidcAuthEnabled, oidcUseRpInitiatedLogout, redirectToSignedOutPage, signoutWithProvider } from "../auth/oidc";
 import { setAccessToken } from "../auth/session";
 
 type ThemeMode = "light" | "dark";
@@ -50,7 +50,7 @@ function RootLayout() {
         redirectToSignedOutPage();
       } else {
         try {
-          await auth.signoutRedirect();
+          await signoutWithProvider(auth);
         } catch {
           redirectToSignedOutPage();
         }

@@ -1,4 +1,4 @@
-import type { AuthProviderProps } from "react-oidc-context";
+import type { AuthContextProps, AuthProviderProps } from "react-oidc-context";
 import { WebStorageStateStore } from "oidc-client-ts";
 import { appEnv } from "../config/env";
 
@@ -25,11 +25,14 @@ export const signedOutPath = "/signed-out";
 
 const authority = env("VITE_OIDC_AUTHORITY", oidcAuthEnabled ? "http://127.0.0.1/oidc-placeholder" : "http://127.0.0.1/oidc-disabled");
 const clientId = env("VITE_OIDC_CLIENT_ID", "screening-frontend");
+const isCognitoAuthority = /\/\/cognito-idp\.[^/]+\.amazonaws\.com\//i.test(authority);
 
 const redirectUri = env("VITE_OIDC_REDIRECT_URI", `${window.location.origin}/`);
 const explicitPostLogoutRedirectUri = appEnv("VITE_OIDC_POST_LOGOUT_REDIRECT_URI", "").trim();
 const postLogoutRedirectUri = explicitPostLogoutRedirectUri || `${window.location.origin}${signedOutPath}`;
 export const oidcUseRpInitiatedLogout = explicitPostLogoutRedirectUri.length > 0;
+export const oidcRedirectUri = redirectUri;
+export const oidcPostLogoutRedirectUri = postLogoutRedirectUri;
 const defaultScope = "openid profile email";
 const scope = env("VITE_OIDC_SCOPE", defaultScope);
 export const oidcIdleTimeoutMs = envInt("VITE_OIDC_IDLE_TIMEOUT_MS", 15 * 60 * 1000);
@@ -75,4 +78,23 @@ export function clearSigninQueryParams(): void {
 
 export function redirectToSignedOutPage(): void {
   window.location.assign(signedOutPath);
+}
+
+type SignoutContext = Pick<AuthContextProps, "signoutRedirect">;
+
+export async function signoutWithProvider(auth: SignoutContext): Promise<void> {
+  if (isCognitoAuthority) {
+    await auth.signoutRedirect({
+      post_logout_redirect_uri: oidcPostLogoutRedirectUri,
+      extraQueryParams: {
+        logout_uri: oidcPostLogoutRedirectUri,
+        redirect_uri: oidcRedirectUri,
+      },
+    });
+    return;
+  }
+
+  await auth.signoutRedirect({
+    post_logout_redirect_uri: oidcPostLogoutRedirectUri,
+  });
 }

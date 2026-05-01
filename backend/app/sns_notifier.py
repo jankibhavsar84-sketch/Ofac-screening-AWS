@@ -14,7 +14,6 @@ class SnsNotifier:
     def __init__(self) -> None:
         self.enabled = bool(settings.aws_sns_notifications_enabled)
         self.topic_prefix = self._sanitize_topic_prefix(settings.aws_sns_schedule_topic_prefix)
-        self.delivery_mode = str(settings.aws_notification_delivery_mode or "SES").strip().upper() or "SES"
         self.ses_sender_email = str(settings.aws_ses_sender_email or "").strip()
         client_kwargs: dict[str, Any] = {
             "region_name": settings.aws_region,
@@ -30,7 +29,9 @@ class SnsNotifier:
 
     @property
     def _use_ses(self) -> bool:
-        return self.delivery_mode == "SES" and bool(self.ses_sender_email)
+        # Prefer direct SES email delivery whenever sender identity is configured.
+        # This avoids SNS email subscription confirmation requirements.
+        return bool(self.ses_sender_email)
 
     @staticmethod
     def _sanitize_topic_prefix(raw: str | None) -> str:
@@ -178,7 +179,9 @@ class SnsNotifier:
         if isinstance(summary, dict) and summary:
             details = f"\n\nSummary:\n{json.dumps(summary, indent=2, sort_keys=True)}"
         final_message = f"{base_message}{details}".strip()
-        if self._use_ses and email:
+        if self._use_ses:
+            if not email:
+                raise ValueError("email is required when SES notification delivery is enabled")
             response = self.ses_client.send_email(
                 FromEmailAddress=self.ses_sender_email,
                 Destination={"ToAddresses": [str(email).strip()]},

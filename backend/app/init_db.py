@@ -5,10 +5,9 @@ from .repository import JobRepository
 
 
 def main() -> None:
-    repository = JobRepository(settings.app_db_path, settings.app_db_url, initialize_schema=True)
-    repository.validate_schema()
+    repository = JobRepository(settings.app_db_path, settings.app_db_url)
     target = "APP_DB_URL" if repository.is_postgres else settings.app_db_path
-    print(f"Database schema initialized for {target}")
+    print(f"Database schema validated for {target}")
 
 
 if __name__ == "__main__":

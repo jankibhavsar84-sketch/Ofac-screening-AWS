@@ -466,6 +466,7 @@ def _publish_schedule_notification_via_sns(
     summary = repository.build_job_completion_summary(job_id) or {}
     batch_name = str(schedule.get("batch_name") or "").strip() or schedule_id
     completion_outcome = _derive_completion_outcome(summary)
+    total_parties = int(summary.get("total_items") or 0)
     records_screened = int(summary.get("records_screened") or summary.get("total_items") or 0)
     completed_items = int(summary.get("completed_items") or 0)
     failed_items = int(summary.get("failed_items") or 0)
@@ -479,8 +480,12 @@ def _publish_schedule_notification_via_sns(
     message_lines = [
         f"Your scheduled screening batch is {completion_outcome}.",
         "",
-        f"Batch Name: {batch_name}",
+        f"Job Name: {batch_name}",
         f"Job ID: {job_id}",
+        f"Number of parties in batch: {total_parties}",
+        f"Number of alerts generated: {hit_records}",
+        "",
+        "Detailed Summary:",
         f"Number of records screened: {records_screened}",
         f"Successfully screened records: {completed_items}",
         f"Failed records: {failed_items}",
@@ -868,7 +873,10 @@ def _process_received_message(
 def run() -> None:
     queue = SqsQueue()
     queue.ensure_queue()
-    repository = JobRepository(settings.app_db_path, settings.app_db_url)
+    repository = JobRepository(
+        settings.app_db_path,
+        settings.app_db_url,
+    )
     notifier = SnsNotifier()
     service = ScreeningService(repository=repository, queue=queue, notifier=notifier)
     actimize = ActimizeClient(repository=repository)

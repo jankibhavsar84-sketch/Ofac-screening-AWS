@@ -158,13 +158,14 @@ Frontend runtime config in container:
 Backend/Worker (`backend/.env.example`):
 
 - `APP_DB_URL` optional. If set to a `postgresql://...` URL, backend/worker use PostgreSQL instead of SQLite (`APP_DB_PATH`).
+- In ECS, keep DB settings in one shared secret (recommended: `ofac-screening/database-config`) and reference the same `APP_DB_URL`/`APP_DB_PATH` keys from both backend and worker task definitions.
+- Example payload for the shared DB secret: `deploy/ecs/database-config.example.json`.
 - Backend and worker validate schema at startup, but they do not run DDL automatically. Initialize schema explicitly with `python -m app.init_db` as part of setup/deployment.
 - `SCREENING_TPS=32` caps outbound screening API request rate
 - `SCREENING_PARALLEL_MESSAGES=1` controls how many SQS messages the worker processes concurrently
 - `SCREENING_ITEM_RETRY_MAX_ATTEMPTS=2` retries transient upstream failures before marking an item failed
 - `SCREENING_ITEM_RETRY_INITIAL_DELAY_S=3` base delay for item retry backoff
 - `SCREENING_ITEM_RETRY_MAX_DELAY_S=60` cap for item retry delay
-- `ACTIMIZE_MOCK` is ignored; backend always calls Actimize
 - `ACTIMIZE_PROVIDER=prudential` (default and only supported provider)
 - Set `ACTIMIZE_BASE_URL=<.../financial-governance/sanctions-screening/v1>`
 - Auth options for real engine:

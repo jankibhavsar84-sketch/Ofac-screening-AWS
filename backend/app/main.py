@@ -43,7 +43,10 @@ from .repository import JobRepository
 from .screening_service import ScreeningService
 from .sns_notifier import SnsNotifier
 
-repository = JobRepository(settings.app_db_path, settings.app_db_url)
+repository = JobRepository(
+    settings.app_db_path,
+    settings.app_db_url,
+)
 queue = SqsQueue()
 notifier = SnsNotifier()
 service = ScreeningService(repository=repository, queue=queue, notifier=notifier)
@@ -78,6 +81,8 @@ _SENSITIVE_QUERY_KEYS = {
     "subscribe_email",
     "subscribe_emails",
 }
+_SUBSCRIPTION_EMAIL_DOMAIN = "prudential.com"
+_BASIC_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def _is_sensitive_key(key: str) -> bool:
@@ -284,19 +289,34 @@ def _preferred_actor_name(principal: AuthPrincipal, hinted_user_name: str | None
     return principal.user_id
 
 
-def _parse_subscription_emails(raw_values: list[str]) -> list[str]:
+def _normalize_subscription_email(value: str | None) -> str:
+    return str(value or "").strip().lower()
+
+
+def _is_allowed_subscription_email(value: str | None) -> bool:
+    email = _normalize_subscription_email(value)
+    if not email or not _BASIC_EMAIL_RE.match(email):
+        return False
+    return email.endswith(f"@{_SUBSCRIPTION_EMAIL_DOMAIN}")
+
+
+def _parse_subscription_emails(raw_values: list[str]) -> tuple[list[str], list[str]]:
     seen: set[str] = set()
-    emails: list[str] = []
+    valid_emails: list[str] = []
+    invalid_emails: list[str] = []
     for raw in raw_values:
         for token in re.split(r"[,\n;]+", str(raw or "")):
-            candidate = token.strip().lower()
-            if not candidate or "@" not in candidate:
+            candidate = _normalize_subscription_email(token)
+            if not candidate:
                 continue
             if candidate in seen:
                 continue
             seen.add(candidate)
-            emails.append(candidate)
-    return emails
+            if _is_allowed_subscription_email(candidate):
+                valid_emails.append(candidate)
+            else:
+                invalid_emails.append(candidate)
+    return valid_emails, invalid_emails
 
 
 def _normalize_business_unit_code(value: str | None) -> str:
@@ -625,13 +645,20 @@ async def create_batch_job_with_upload(
         )
 
     if subscribe_results and accepted.daily_schedule_id:
-        subscription_emails = _parse_subscription_emails(
+        subscription_emails, invalid_subscription_emails = _parse_subscription_emails(
             [
                 subscribe_emails or "",
                 subscribe_email or "",
                 principal.email or "",
             ]
         )
+        if invalid_subscription_emails:
+            invalid_preview = ", ".join(invalid_subscription_emails[:5])
+            suffix = " ..." if len(invalid_subscription_emails) > 5 else ""
+            raise HTTPException(
+                status_code=400,
+                detail=f"Only @{_SUBSCRIPTION_EMAIL_DOMAIN} subscription emails are allowed. Invalid: {invalid_preview}{suffix}",
+            )
         for email in subscription_emails:
             svc.subscribe_to_schedule(
                 schedule_id=accepted.daily_schedule_id,
@@ -864,9 +891,11 @@ def subscribe_daily_schedule(
     principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
     svc: ScreeningService = Depends(get_service),
 ) -> ScheduleSubscription:
-    safe_email = email.strip().lower() or principal.email.strip().lower()
+    safe_email = _normalize_subscription_email(email) or _normalize_subscription_email(principal.email)
     if not safe_email:
         raise HTTPException(status_code=400, detail="email is required")
+    if not _is_allowed_subscription_email(safe_email):
+        raise HTTPException(status_code=400, detail=f"Only @{_SUBSCRIPTION_EMAIL_DOMAIN} email addresses are allowed")
     return svc.subscribe_to_schedule(
         schedule_id=schedule_id,
         user_id=principal.user_id,
@@ -882,9 +911,11 @@ def unsubscribe_daily_schedule(
     principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
     svc: ScreeningService = Depends(get_service),
 ) -> dict[str, str]:
-    safe_email = email.strip().lower() or principal.email.strip().lower()
+    safe_email = _normalize_subscription_email(email) or _normalize_subscription_email(principal.email)
     if not safe_email:
         raise HTTPException(status_code=400, detail="email is required")
+    if not _is_allowed_subscription_email(safe_email):
+        raise HTTPException(status_code=400, detail=f"Only @{_SUBSCRIPTION_EMAIL_DOMAIN} email addresses are allowed")
     removed = svc.unsubscribe_from_schedule(
         schedule_id=schedule_id,
         email=safe_email,
