@@ -103,7 +103,9 @@ class Settings:
     screening_tps: int
     screening_parallel_messages: int
     screening_result_limit: int
-    worker_heartbeat_path: str
+    worker_health_host: str
+    worker_health_port: int
+    worker_healthcheck_timeout_s: float
     worker_health_max_age_s: int
     screening_item_retry_max_attempts: int
     screening_item_retry_initial_delay_s: int
@@ -189,8 +191,9 @@ def load_settings() -> Settings:
         screening_tps=_to_int(os.getenv("SCREENING_TPS"), 32),
         screening_parallel_messages=_to_int(os.getenv("SCREENING_PARALLEL_MESSAGES"), 1),
         screening_result_limit=_to_int(os.getenv("SCREENING_RESULT_LIMIT"), 5),
-        worker_heartbeat_path=os.getenv("WORKER_HEARTBEAT_PATH", "/tmp/ofac-worker-heartbeat").strip()
-        or "/tmp/ofac-worker-heartbeat",
+        worker_health_host=os.getenv("WORKER_HEALTH_HOST", "127.0.0.1").strip() or "127.0.0.1",
+        worker_health_port=_to_int(os.getenv("WORKER_HEALTH_PORT"), 8081),
+        worker_healthcheck_timeout_s=_to_float(os.getenv("WORKER_HEALTHCHECK_TIMEOUT_S"), 5.0),
         worker_health_max_age_s=_to_int(os.getenv("WORKER_HEALTH_MAX_AGE_S"), 180),
         screening_item_retry_max_attempts=_to_int(os.getenv("SCREENING_ITEM_RETRY_MAX_ATTEMPTS"), 2),
         screening_item_retry_initial_delay_s=_to_int(os.getenv("SCREENING_ITEM_RETRY_INITIAL_DELAY_S"), 3),

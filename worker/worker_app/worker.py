@@ -1,10 +1,10 @@
 ﻿from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import logging
-from pathlib import Path
-from threading import Lock
+from threading import Lock, Thread
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -26,17 +26,76 @@ logger = logging.getLogger("screening-worker")
 _RETRYABLE_EXTERNAL_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
-def _write_worker_heartbeat(path: str) -> None:
-    safe_path = str(path or "").strip()
-    if not safe_path:
-        return
-    try:
-        heartbeat_path = Path(safe_path)
-        heartbeat_path.parent.mkdir(parents=True, exist_ok=True)
-        heartbeat_path.write_text(f"{time.time():.6f}", encoding="ascii")
-    except Exception:  # noqa: BLE001
-        # Health check heartbeat failures should not crash worker processing.
-        return
+class WorkerHealthState:
+    def __init__(self, max_age_s: int) -> None:
+        self.max_age_s = max(int(max_age_s), 1)
+        self._lock = Lock()
+        self._last_heartbeat_at_monotonic = time.monotonic()
+
+    def touch(self) -> None:
+        with self._lock:
+            self._last_heartbeat_at_monotonic = time.monotonic()
+
+    def snapshot(self) -> tuple[bool, float, int]:
+        now = time.monotonic()
+        with self._lock:
+            age_s = max(0.0, now - self._last_heartbeat_at_monotonic)
+            max_age_s = self.max_age_s
+        return age_s <= max_age_s, age_s, max_age_s
+
+
+def _build_worker_health_handler(health_state: WorkerHealthState) -> type[BaseHTTPRequestHandler]:
+    class _WorkerHealthHandler(BaseHTTPRequestHandler):
+        server_version = "OFACWorkerHealth/1.0"
+
+        def _send_json(self, status_code: int, payload: dict[str, Any]) -> None:
+            body = json.dumps(payload, ensure_ascii=True).encode("utf-8")
+            self.send_response(status_code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self) -> None:  # noqa: N802
+            if self.path not in {"/health", "/health/"}:
+                self.send_error(404)
+                return
+            is_healthy, age_s, max_age_s = health_state.snapshot()
+            if is_healthy:
+                self._send_json(
+                    200,
+                    {
+                        "status": "ok",
+                        "heartbeat_age_s": round(age_s, 3),
+                        "max_age_s": max_age_s,
+                    },
+                )
+                return
+            self._send_json(
+                503,
+                {
+                    "status": "stale",
+                    "heartbeat_age_s": round(age_s, 3),
+                    "max_age_s": max_age_s,
+                },
+            )
+
+        def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
+            # Keep worker logs focused on screening events.
+            return
+
+    return _WorkerHealthHandler
+
+
+def _start_worker_health_server(health_state: WorkerHealthState) -> ThreadingHTTPServer:
+    host = str(settings.worker_health_host or "127.0.0.1").strip() or "127.0.0.1"
+    port = max(int(settings.worker_health_port), 1)
+    server = ThreadingHTTPServer((host, port), _build_worker_health_handler(health_state))
+    server.daemon_threads = True
+    thread = Thread(target=server.serve_forever, name="worker-health-http", daemon=True)
+    thread.start()
+    logger.info("worker health endpoint listening on http://%s:%s/health", host, port)
+    return server
 
 
 def _s3_client() -> object:
@@ -895,6 +954,8 @@ def run() -> None:
     limiter = FixedRateLimiter(settings.screening_tps)
     last_schedule_check = 0.0
     last_cleanup_run = 0.0
+    health_state = WorkerHealthState(settings.worker_health_max_age_s)
+    health_server = _start_worker_health_server(health_state)
 
     max_parallel_messages = max(settings.screening_parallel_messages, 1)
     logger.info(
@@ -902,50 +963,53 @@ def run() -> None:
         settings.screening_tps,
         max_parallel_messages,
     )
-    _write_worker_heartbeat(settings.worker_heartbeat_path)
+    health_state.touch()
+    try:
+        with ThreadPoolExecutor(max_workers=max_parallel_messages) as executor:
+            while True:
+                health_state.touch()
+                messages = _receive_message_batch(queue, max_parallel_messages)
+                if messages:
+                    futures = [
+                        executor.submit(
+                            _process_received_message,
+                            raw=raw,
+                            queue=queue,
+                            repository=repository,
+                            notifier=notifier,
+                            actimize=actimize,
+                            limiter=limiter,
+                        )
+                        for raw in messages
+                    ]
+                    for future in as_completed(futures):
+                        try:
+                            future.result()
+                        except Exception as exc:  # noqa: BLE001
+                            logger.exception("unexpected worker message failure: %s", exc)
 
-    with ThreadPoolExecutor(max_workers=max_parallel_messages) as executor:
-        while True:
-            _write_worker_heartbeat(settings.worker_heartbeat_path)
-            messages = _receive_message_batch(queue, max_parallel_messages)
-            if messages:
-                futures = [
-                    executor.submit(
-                        _process_received_message,
-                        raw=raw,
-                        queue=queue,
-                        repository=repository,
-                        notifier=notifier,
-                        actimize=actimize,
-                        limiter=limiter,
+                now_monotonic = time.monotonic()
+                if now_monotonic - last_schedule_check >= max(settings.daily_screening_check_interval_s, 5):
+                    trigger_due_daily_schedules(repository, service, notifier)
+                    last_schedule_check = now_monotonic
+                if now_monotonic - last_cleanup_run >= max(settings.operational_cleanup_interval_s, 60):
+                    deleted = repository.purge_old_operational_data(
+                        audit_event_retention_days=settings.audit_event_retention_days,
+                        api_access_log_retention_days=settings.api_access_log_retention_days,
+                        external_api_error_retention_days=settings.external_api_error_retention_days,
                     )
-                    for raw in messages
-                ]
-                for future in as_completed(futures):
-                    try:
-                        future.result()
-                    except Exception as exc:  # noqa: BLE001
-                        logger.exception("unexpected worker message failure: %s", exc)
-
-            now_monotonic = time.monotonic()
-            if now_monotonic - last_schedule_check >= max(settings.daily_screening_check_interval_s, 5):
-                trigger_due_daily_schedules(repository, service, notifier)
-                last_schedule_check = now_monotonic
-            if now_monotonic - last_cleanup_run >= max(settings.operational_cleanup_interval_s, 60):
-                deleted = repository.purge_old_operational_data(
-                    audit_event_retention_days=settings.audit_event_retention_days,
-                    api_access_log_retention_days=settings.api_access_log_retention_days,
-                    external_api_error_retention_days=settings.external_api_error_retention_days,
-                )
-                if any(v > 0 for v in deleted.values()):
-                    repository.add_audit_event(
-                        action="OPERATIONAL_DATA_PURGED",
-                        entity_type="retention_policy",
-                        details=deleted,
-                    )
-                    logger.info("operational data cleanup completed: %s", deleted)
-                last_cleanup_run = now_monotonic
-            _write_worker_heartbeat(settings.worker_heartbeat_path)
+                    if any(v > 0 for v in deleted.values()):
+                        repository.add_audit_event(
+                            action="OPERATIONAL_DATA_PURGED",
+                            entity_type="retention_policy",
+                            details=deleted,
+                        )
+                        logger.info("operational data cleanup completed: %s", deleted)
+                    last_cleanup_run = now_monotonic
+                health_state.touch()
+    finally:
+        health_server.shutdown()
+        health_server.server_close()
 
 
 def trigger_due_daily_schedules(repository: JobRepository, service: ScreeningService, notifier: SnsNotifier) -> None:

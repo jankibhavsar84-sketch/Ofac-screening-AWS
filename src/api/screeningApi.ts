@@ -123,6 +123,16 @@ export type RecentScreeningResultRow = {
   raw: Record<string, unknown>;
 };
 
+export type ScreeningTypeOption = {
+  value: string;
+  label: string;
+  source_screening_type: string;
+  target_screening_type: string;
+  search_definition_name?: string;
+  screening_type_name?: string;
+  display_order?: number;
+};
+
 export type BusinessUnit = {
   business_unit_code: string;
   business_unit_name: string;
@@ -744,6 +754,20 @@ export async function getScreeningSummary(): Promise<ScreeningSummaryCounts> {
     failed: Number(parsed.failed ?? 0),
     match: Number(parsed.match ?? 0),
   };
+}
+
+export async function listScreeningTypes(): Promise<ScreeningTypeOption[]> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/screenings/types`, window.location.origin);
+  const resp = await fetch(url.toString(), {
+    headers: withAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load screening types: ${await parseApiError(resp)}`);
+  }
+  const parsed = (await resp.json()) as unknown;
+  return Array.isArray(parsed) ? (parsed as ScreeningTypeOption[]) : [];
 }
 
 export async function listRecentScreeningResults(limit = 300): Promise<RecentScreeningResultRow[]> {

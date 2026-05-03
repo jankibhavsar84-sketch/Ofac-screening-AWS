@@ -33,6 +33,7 @@ from .models import (
     MatchJobAccepted,
     MatchJobProgress,
     MatchJobRequest,
+    ScreeningTypeOption,
     ScreeningQueueMessage,
     ScheduleSubscription,
     UserBusinessUnitMapping,
@@ -201,6 +202,13 @@ def _count_match_candidates(payload: dict[str, Any]) -> int:
         return total
     results = payload.get("results")
     return len(results) if isinstance(results, list) else 0
+
+
+def _build_single_party_keys_by_screening_type(screening_types: list[str] | None) -> dict[str, str]:
+    safe_types = [str(value or "").strip() for value in (screening_types or []) if str(value or "").strip()]
+    if not safe_types:
+        safe_types = ["Sanction"]
+    return {safe_type: actimize.build_on_demand_party_key(safe_type) for safe_type in safe_types}
 
 
 @app.middleware("http")
@@ -908,6 +916,14 @@ def get_screening_summary(
     )
 
 
+@app.get("/api/v1/screenings/types", response_model=list[ScreeningTypeOption])
+def list_screening_types(
+    _: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[ScreeningTypeOption]:
+    return svc.list_screening_type_options()
+
+
 @app.get("/api/v1/screenings/results", response_model=list[dict[str, Any]])
 def list_recent_screening_results(
     limit: int = Query(default=300, ge=1, le=300),
@@ -1070,7 +1086,11 @@ def match_sync(
     for item_key, query in payload.queries.items():
         query_for_screening = query.model_copy(deep=True)
         request_props = dict(query_for_screening.properties if isinstance(query_for_screening.properties, dict) else {})
-        request_props["partyKey"] = actimize.resolve_party_key(query_for_screening)
+        party_keys_by_type = _build_single_party_keys_by_screening_type(payload.screening_types)
+        primary_party_key = next(iter(party_keys_by_type.values()), "")
+        if primary_party_key:
+            request_props["partyKey"] = primary_party_key
+        request_props["partyKeysByScreeningType"] = party_keys_by_type
         if normalized_business_unit_code:
             request_props["businessUnit"] = normalized_business_unit_code
         query_for_screening.properties = request_props

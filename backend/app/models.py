@@ -248,6 +248,16 @@ class ScheduleSubscription(BaseModel):
     created_at: str
 
 
+class ScreeningTypeOption(BaseModel):
+    value: str
+    label: str
+    source_screening_type: str
+    target_screening_type: str
+    search_definition_name: str = ""
+    screening_type_name: str = ""
+    display_order: int = 1000
+
+
 class AuditEvent(BaseModel):
     event_id: int
     created_at: str

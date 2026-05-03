@@ -3,9 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path
 import sys
-import time
 import urllib.error
 import urllib.request
 
@@ -39,28 +37,37 @@ def _check_backend() -> None:
 
 
 def _check_worker() -> None:
-    path = (os.getenv("WORKER_HEARTBEAT_PATH") or settings.worker_heartbeat_path).strip()
-    max_age_s = int(os.getenv("WORKER_HEALTH_MAX_AGE_S", str(settings.worker_health_max_age_s)))
-    if not path:
-        raise RuntimeError("WORKER_HEARTBEAT_PATH is empty")
-    if max_age_s <= 0:
-        raise RuntimeError("WORKER_HEALTH_MAX_AGE_S must be > 0")
+    host = (os.getenv("WORKER_HEALTH_HOST") or settings.worker_health_host).strip() or "127.0.0.1"
+    port = int(os.getenv("WORKER_HEALTH_PORT", str(settings.worker_health_port)))
+    timeout_s = float(os.getenv("WORKER_HEALTHCHECK_TIMEOUT_S", str(settings.worker_healthcheck_timeout_s)))
+    url = os.getenv("WORKER_HEALTHCHECK_URL", "").strip() or f"http://{host}:{port}/health"
 
-    heartbeat_file = Path(path)
-    if not heartbeat_file.exists():
-        raise RuntimeError(f"worker heartbeat file not found: {heartbeat_file}")
+    if port <= 0:
+        raise RuntimeError("WORKER_HEALTH_PORT must be > 0")
+    if timeout_s <= 0:
+        raise RuntimeError("WORKER_HEALTHCHECK_TIMEOUT_S must be > 0")
 
     try:
-        raw = heartbeat_file.read_text(encoding="ascii").strip()
-        heartbeat_epoch = float(raw)
-    except (OSError, ValueError) as exc:
-        raise RuntimeError(f"invalid worker heartbeat file: {heartbeat_file}") from exc
+        with urllib.request.urlopen(url, timeout=timeout_s) as response:
+            status_code = int(getattr(response, "status", 0))
+            body = response.read()
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"worker health URL unreachable: {exc}") from exc
 
-    age_s = time.time() - heartbeat_epoch
-    if age_s > max_age_s:
-        raise RuntimeError(
-            f"worker heartbeat stale: age={age_s:.1f}s max={max_age_s}s file={heartbeat_file}"
-        )
+    if status_code != 200:
+        detail = body.decode("utf-8", errors="replace").strip() if body else ""
+        suffix = f" body={detail}" if detail else ""
+        raise RuntimeError(f"worker health endpoint returned HTTP {status_code}{suffix}")
+
+    if not body:
+        return
+    try:
+        payload = json.loads(body.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError:
+        return
+    if isinstance(payload, dict) and str(payload.get("status") or "").strip().lower() == "ok":
+        return
+    raise RuntimeError("worker health payload did not include status=ok")
 
 
 def main(argv: list[str] | None = None) -> int:

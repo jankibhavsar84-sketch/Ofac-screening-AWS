@@ -445,12 +445,21 @@ class ActimizeClient:
         if not normalized_types:
             normalized_types = ["Sanction"]
 
+        party_key_overrides_by_type = self._extract_party_keys_by_screening_type(query)
         responses_by_screening_type: dict[str, dict[str, Any]] = {}
         any_hit = False
         for screening_type in normalized_types:
+            query_for_screening = query
+            override_key = party_key_overrides_by_type.get(self._normalize_screening_type_key(screening_type))
+            if override_key:
+                props = query.properties if isinstance(query.properties, dict) else {}
+                next_props = dict(props)
+                next_props["partyKey"] = override_key
+                query_for_screening = query.model_copy(deep=True, update={"properties": next_props})
+
             mapped_screening_type = self._map_screening_type(screening_type)
             response = self.screen_single(
-                query,
+                query_for_screening,
                 screening_type=screening_type,
                 mock_screening=mock_screening,
                 requester_name=requester_name,
@@ -458,6 +467,7 @@ class ActimizeClient:
             safe_response = dict(response) if isinstance(response, dict) else {}
             safe_response["requested_screening_type"] = screening_type
             safe_response["actimize_screening_type"] = mapped_screening_type or screening_type
+            safe_response["party_key"] = self.resolve_party_key(query_for_screening)
             responses_by_screening_type[screening_type] = safe_response
             if self._response_has_positive_match(safe_response):
                 any_hit = True
@@ -641,6 +651,25 @@ class ActimizeClient:
     @staticmethod
     def _normalize_screening_type_key(value: str | None) -> str:
         return re.sub(r"\s+", " ", str(value or "").strip()).lower()
+
+    def _extract_party_keys_by_screening_type(self, query: EntityExample) -> dict[str, str]:
+        props = query.properties if isinstance(query.properties, dict) else {}
+        raw_mapping = props.get("partyKeysByScreeningType")
+        if not isinstance(raw_mapping, dict):
+            raw_mapping = props.get("party_keys_by_screening_type")
+        if not isinstance(raw_mapping, dict):
+            return {}
+
+        out: dict[str, str] = {}
+        for raw_type, raw_key in raw_mapping.items():
+            normalized_type = self._normalize_screening_type_key(str(raw_type or ""))
+            if not normalized_type:
+                continue
+            resolved_key = _first_non_empty(_as_list(raw_key))
+            safe_resolved_key = self._normalize_party_key(resolved_key)
+            if safe_resolved_key:
+                out[normalized_type] = safe_resolved_key
+        return out
 
     def _get_cached_screening_type(self, normalized_source: str) -> str | None:
         if self.screening_type_cache_ttl_s <= 0 or not normalized_source:
@@ -906,6 +935,15 @@ class ActimizeClient:
             remainder = safe_key[4:].lstrip(" _-")
             return f"{canonical_prefix}{remainder}" if remainder else canonical_prefix
         return f"{canonical_prefix}{safe_key}"
+
+    def build_on_demand_party_key(self, screening_type: str | None = None) -> str:
+        unique_key = uuid4().hex.upper()
+        safe_screening_type = str(screening_type or "").strip()
+        if safe_screening_type:
+            suffix = re.sub(r"[^A-Za-z0-9]+", "_", safe_screening_type).strip("_").upper()[:24]
+            if suffix:
+                return self._normalize_party_key(f"OD_{unique_key}_{suffix}")
+        return self._normalize_party_key(f"OD_{unique_key}")
 
     def _build_party_key(self, query: EntityExample) -> str:
         normalized = query.model_dump(mode="json")

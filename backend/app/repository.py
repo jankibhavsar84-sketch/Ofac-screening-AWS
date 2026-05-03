@@ -60,14 +60,154 @@ DEFAULT_BUSINESS_UNITS: list[tuple[str, str]] = [
     ("US_PRU_PGIM_LATAM", "PGIM LATAM"),
 ]
 DEFAULT_FALLBACK_BUSINESS_UNIT_CODE = "US_PRU_OPES"
-DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str], ...] = (
-    ("Sanction", "SD_US_Customers_Sanctions"),
-    ("PEP", "SD_US_Customers_PEP_RCA_International"),
-    ("AME", "SD_US_Customers_AME"),
-    ("Fincen 314(a)", "SD_US_Customers_314(a)"),
-    ("Fincen 314a", "SD_US_Customers_314(a)"),
-    ("Fincen314(a)", "SD_US_Customers_314(a)"),
-    ("Fincen314a", "SD_US_Customers_314(a)"),
+DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], ...] = (
+    (
+        "Sanction",
+        "SD_US_Customers_Sanctions",
+        10,
+        "Search Definition Customer Sanctions",
+        "Sanction screening for US Customer",
+    ),
+    (
+        "PEP",
+        "SD_US_Customers_PEP_RCA_International",
+        20,
+        "Search Definition Customer PEP RCA International",
+        "PEP Screening Exclude US",
+    ),
+    (
+        "AME",
+        "SD_US_Customers_AME",
+        30,
+        "Search Definition Customer AME",
+        "Adverse Media Screening",
+    ),
+    (
+        "Fincen 314(a)",
+        "SD_US_Customers_314(a)",
+        40,
+        "Search Definition Customer FinCEN 314(a)",
+        "Fincen 314a Screening",
+    ),
+    (
+        "Fincen 314a",
+        "SD_US_Customers_314(a)",
+        40,
+        "Search Definition Customer FinCEN 314(a)",
+        "Fincen 314a Screening",
+    ),
+    (
+        "Fincen314(a)",
+        "SD_US_Customers_314(a)",
+        40,
+        "Search Definition Customer FinCEN 314(a)",
+        "Fincen 314a Screening",
+    ),
+    (
+        "Fincen314a",
+        "SD_US_Customers_314(a)",
+        40,
+        "Search Definition Customer FinCEN 314(a)",
+        "Fincen 314a Screening",
+    ),
+    (
+        "SD_US_Customers_Sanctions_PGIM_MA",
+        "SD_US_Customers_Sanctions_PGIM_MA",
+        50,
+        "Search Definition Customer Sanctions PGIM Multi-Asset Solutions / PGIM Strategic Capital Group",
+        "PGIM Multi-Asset Solutions/ PGIM Strategic Capital Group Sanction Screening",
+    ),
+    (
+        "SD_US_Customers_Sanctions_PGIM_CIO",
+        "SD_US_Customers_Sanctions_PGIM_CIO",
+        60,
+        "Search Definition Customer Sanctions PGIM CIO",
+        "PGIM CIO Sanction Screening",
+    ),
+    (
+        "SD_US_Customers_Sanctions_PGIM_FI",
+        "SD_US_Customers_Sanctions_PGIM_FI",
+        70,
+        "Search Definition Customer Sanctions PGIM Fixed Income",
+        "PGIM Fixed Income Sanction Screening",
+    ),
+    (
+        "SD_US_Customers_Sanctions_PGIM_RE",
+        "SD_US_Customers_Sanctions_PGIM_RE",
+        80,
+        "Search Definition Customer Sanctions PGIM Real Estate",
+        "Search Definition Customer Sanctions PGIM Real Estate",
+    ),
+    (
+        "SD_US_Customers_Sanctions_PGIM_PP_FI",
+        "SD_US_Customers_Sanctions_PGIM_PP_FI",
+        90,
+        "Search Definition Customer Sanctions PGIM Public and Private Fixed Income",
+        "Search Definition Customer Sanctions PGIM Public and Private Fixed Income",
+    ),
+    (
+        "SD_US_Customers_Sanctions_PGIM_NE_FI",
+        "SD_US_Customers_Sanctions_PGIM_NE_FI",
+        100,
+        "Search Definition Customer Sanctions Public & Private Fixed Income, PGIM Netherlands B.V.",
+        "Search Definition Customer Sanctions Public & Private Fixed Income, PGIM Netherlands B.V.",
+    ),
+    (
+        "SD_US_Customers_Sanctions_PGIM_QUANT",
+        "SD_US_Customers_Sanctions_PGIM_QUANT",
+        110,
+        "Search Definition Customer Sanctions PGIM Quant",
+        "Search Definition Customer Sanctions PGIM Quant",
+    ),
+    (
+        "SD_US_Customers_Sanctions_PGIM_JK_ASC",
+        "SD_US_Customers_Sanctions_PGIM_JK_ASC",
+        120,
+        "Search Definition Customer Sanctions Jennison Associates",
+        "Jennison Associates Sanction Screening",
+    ),
+    (
+        "SD_US_Customers_Sanctions_PGIM_APAC",
+        "SD_US_Customers_Sanctions_PGIM_APAC",
+        130,
+        "Search Definition Customer Sanctions PGIM Real Estate (APAC) & PGIM Private Capital (Australia)",
+        "PGIM Real Estate (APAC) & PGIM Private Capital (Australia) Sanction Screening",
+    ),
+    (
+        "SD_US_Customers_Sanctions_PGIM_LATAM",
+        "SD_US_Customers_Sanctions_PGIM_LATAM",
+        140,
+        "Search Definition Customer Sanctions PGIM LATAM",
+        "PGIM LATAM Sanction Screening",
+    ),
+    (
+        "SD_Customers_PEP_RCA_International",
+        "SD_Customers_PEP_RCA_International",
+        150,
+        "Global Political Exposed Person",
+        "Global PEP Screening",
+    ),
+    (
+        "SD_US_Marijuana_DJ_External",
+        "SD_US_Marijuana_DJ_External",
+        160,
+        "Search Definition Marijuana Screening",
+        "Marijuana Screening",
+    ),
+    (
+        "SD_Customers_Sanctions_PGIM_JAPAN",
+        "SD_Customers_Sanctions_PGIM_JAPAN",
+        170,
+        "Search Definition Customer Sanctions PGIM Japan",
+        "PGIM Japan Sanction Screening",
+    ),
+    (
+        "SD_Customers_Sanctions_PGIM_HK",
+        "SD_Customers_Sanctions_PGIM_HK",
+        180,
+        "Search Definition Customer Sanctions PGIM HongKong",
+        "PGIM HongKong Sanction Screening",
+    ),
 )
 
 REQUIRED_TABLES: tuple[str, ...] = (
@@ -136,6 +276,9 @@ REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
     "actimize_screening_type_mappings": (
         "source_screening_type",
         "target_screening_type",
+        "search_definition_name",
+        "screening_type_name",
+        "display_order",
         "is_active",
         "created_at",
         "updated_at",
@@ -792,6 +935,9 @@ class JobRepository:
                   normalized_source_type TEXT PRIMARY KEY,
                   source_screening_type TEXT NOT NULL,
                   target_screening_type TEXT NOT NULL,
+                  search_definition_name TEXT NOT NULL DEFAULT '',
+                  screening_type_name TEXT NOT NULL DEFAULT '',
+                  display_order INTEGER NOT NULL DEFAULT 1000,
                   is_active BOOLEAN NOT NULL DEFAULT TRUE,
                   created_at TEXT NOT NULL,
                   updated_at TEXT NOT NULL
@@ -958,6 +1104,9 @@ class JobRepository:
             self._ensure_column(conn, "batch_file_uploads", "queries_s3_uri", "TEXT")
             self._ensure_column(conn, "actimize_screening_type_mappings", "source_screening_type", "TEXT NOT NULL")
             self._ensure_column(conn, "actimize_screening_type_mappings", "target_screening_type", "TEXT NOT NULL")
+            self._ensure_column(conn, "actimize_screening_type_mappings", "search_definition_name", "TEXT NOT NULL DEFAULT ''")
+            self._ensure_column(conn, "actimize_screening_type_mappings", "screening_type_name", "TEXT NOT NULL DEFAULT ''")
+            self._ensure_column(conn, "actimize_screening_type_mappings", "display_order", "INTEGER NOT NULL DEFAULT 1000")
             self._ensure_column(conn, "actimize_screening_type_mappings", "is_active", "BOOLEAN NOT NULL DEFAULT TRUE")
             self._ensure_column(conn, "actimize_screening_type_mappings", "created_at", "TEXT NOT NULL")
             self._ensure_column(conn, "actimize_screening_type_mappings", "updated_at", "TEXT NOT NULL")
@@ -1040,9 +1189,12 @@ class JobRepository:
 
     def _seed_default_actimize_screening_type_mappings(self, conn: Any) -> None:
         ts = now_iso()
-        for source_type, target_type in DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS:
+        for source_type, target_type, display_order, search_definition_name, screening_type_name in DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS:
             safe_source = str(source_type or "").strip()
             safe_target = str(target_type or "").strip()
+            safe_display_order = max(int(display_order), 0)
+            safe_search_definition_name = str(search_definition_name or "").strip() or safe_target
+            safe_screening_type_name = str(screening_type_name or "").strip() or safe_source or safe_target
             normalized_source = self._normalize_screening_type_key(safe_source)
             if not normalized_source or not safe_target:
                 continue
@@ -1055,13 +1207,16 @@ class JobRepository:
                       normalized_source_type,
                       source_screening_type,
                       target_screening_type,
+                      search_definition_name,
+                      screening_type_name,
+                      display_order,
                       is_active,
                       created_at,
                       updated_at
-                    ) VALUES(?, ?, ?, TRUE, ?, ?)
+                    ) VALUES(?, ?, ?, ?, ?, ?, TRUE, ?, ?)
                     ON CONFLICT(normalized_source_type) DO NOTHING
                     """,
-                    (normalized_source, safe_source, safe_target, ts, ts),
+                    (normalized_source, safe_source, safe_target, safe_search_definition_name, safe_screening_type_name, safe_display_order, ts, ts),
                 )
             else:
                 self._execute(
@@ -1071,13 +1226,59 @@ class JobRepository:
                       normalized_source_type,
                       source_screening_type,
                       target_screening_type,
+                      search_definition_name,
+                      screening_type_name,
+                      display_order,
                       is_active,
                       created_at,
                       updated_at
-                    ) VALUES(?, ?, ?, TRUE, ?, ?)
+                    ) VALUES(?, ?, ?, ?, ?, ?, TRUE, ?, ?)
                     """,
-                    (normalized_source, safe_source, safe_target, ts, ts),
+                    (normalized_source, safe_source, safe_target, safe_search_definition_name, safe_screening_type_name, safe_display_order, ts, ts),
                 )
+
+            self._execute(
+                conn,
+                """
+                UPDATE actimize_screening_type_mappings
+                SET display_order = ?,
+                    search_definition_name = CASE
+                      WHEN search_definition_name IS NULL OR TRIM(search_definition_name) = ''
+                      THEN ?
+                      ELSE search_definition_name
+                    END,
+                    screening_type_name = CASE
+                      WHEN screening_type_name IS NULL OR TRIM(screening_type_name) = ''
+                      THEN ?
+                      ELSE screening_type_name
+                    END
+                WHERE normalized_source_type = ?
+                  AND (display_order IS NULL OR display_order = 1000)
+                """,
+                (safe_display_order, safe_search_definition_name, safe_screening_type_name, normalized_source),
+            )
+
+            self._execute(
+                conn,
+                """
+                UPDATE actimize_screening_type_mappings
+                SET search_definition_name = ?
+                WHERE normalized_source_type = ?
+                  AND (search_definition_name IS NULL OR TRIM(search_definition_name) = '')
+                """,
+                (safe_search_definition_name, normalized_source),
+            )
+
+            self._execute(
+                conn,
+                """
+                UPDATE actimize_screening_type_mappings
+                SET screening_type_name = ?
+                WHERE normalized_source_type = ?
+                  AND (screening_type_name IS NULL OR TRIM(screening_type_name) = '')
+                """,
+                (safe_screening_type_name, normalized_source),
+            )
 
     def resolve_actimize_screening_type(self, source_screening_type: str | None) -> str:
         safe_source = str(source_screening_type or "").strip()
@@ -1106,6 +1307,41 @@ class JobRepository:
 
         mapped = str(row["target_screening_type"] or "").strip()
         return mapped or safe_source
+
+    def list_active_actimize_screening_type_mappings(self) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = self._execute(
+                conn,
+                """
+                SELECT source_screening_type, target_screening_type, search_definition_name, screening_type_name, display_order
+                FROM actimize_screening_type_mappings
+                WHERE is_active = TRUE
+                ORDER BY display_order ASC, source_screening_type ASC
+                """,
+            ).fetchall()
+
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            source = str(row["source_screening_type"] or "").strip()
+            target = str(row["target_screening_type"] or "").strip()
+            search_definition_name = str(row["search_definition_name"] or "").strip()
+            screening_type_name = str(row["screening_type_name"] or "").strip()
+            try:
+                display_order = int(row["display_order"] if row["display_order"] is not None else 1000)
+            except (TypeError, ValueError):
+                display_order = 1000
+            if not source and not target:
+                continue
+            out.append(
+                {
+                    "source_screening_type": source,
+                    "target_screening_type": target,
+                    "search_definition_name": search_definition_name or target or source,
+                    "screening_type_name": screening_type_name or source or target,
+                    "display_order": display_order,
+                }
+            )
+        return out
 
     @staticmethod
     def normalize_schedule_frequency(value: str | None) -> str:
@@ -1729,22 +1965,48 @@ class JobRepository:
         return f"{canonical_prefix}{safe_key}"
 
     @staticmethod
-    def _extract_party_key_from_request_payload(request_payload: dict[str, Any] | None, fallback: str = "") -> str:
+    def _extract_party_keys_from_request_payload(request_payload: dict[str, Any] | None, fallback: str = "") -> list[str]:
+        keys: list[str] = []
+
+        def _append_values(raw_value: Any) -> None:
+            if isinstance(raw_value, list):
+                for list_item in raw_value:
+                    safe_item = str(list_item or "").strip()
+                    if safe_item:
+                        keys.append(safe_item)
+                return
+            if isinstance(raw_value, str):
+                safe_value = raw_value.strip()
+                if safe_value:
+                    keys.append(safe_value)
+
         props = (request_payload or {}).get("properties")
         if isinstance(props, dict):
             for key in ("partyKey", "party_key", "party key", "PartyKey"):
-                value = props.get(key)
-                if isinstance(value, list):
-                    for list_item in value:
-                        safe_item = str(list_item or "").strip()
-                        if safe_item:
-                            return safe_item
-                elif isinstance(value, str):
-                    safe_value = value.strip()
-                    if safe_value:
-                        return safe_value
+                _append_values(props.get(key))
+            raw_mapping = props.get("partyKeysByScreeningType")
+            if not isinstance(raw_mapping, dict):
+                raw_mapping = props.get("party_keys_by_screening_type")
+            if isinstance(raw_mapping, dict):
+                for mapping_value in raw_mapping.values():
+                    _append_values(mapping_value)
         safe_fallback = str(fallback or "").strip()
-        return safe_fallback
+        if safe_fallback:
+            keys.append(safe_fallback)
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for key in keys:
+            normalized = key.upper()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            deduped.append(key)
+        return deduped
+
+    @classmethod
+    def _extract_party_key_from_request_payload(cls, request_payload: dict[str, Any] | None, fallback: str = "") -> str:
+        keys = cls._extract_party_keys_from_request_payload(request_payload, fallback=fallback)
+        return keys[0] if keys else str(fallback or "").strip()
 
     @staticmethod
     def _parse_json_object(raw: Any) -> dict[str, Any] | None:
@@ -1884,9 +2146,13 @@ class JobRepository:
             for row in candidate_rows:
                 request_payload = self._parse_json_object(row["request_json"]) or {}
                 item_key = str(row["item_key"] or "").strip()
-                resolved_party_key = self._extract_party_key_from_request_payload(request_payload, fallback=item_key)
-                normalized_resolved_party_key = self._normalize_actimize_party_key(resolved_party_key)
-                if normalized_resolved_party_key != normalized_unique_key:
+                resolved_party_keys = self._extract_party_keys_from_request_payload(request_payload, fallback=item_key)
+                normalized_resolved_party_keys = {
+                    self._normalize_actimize_party_key(resolved_party_key)
+                    for resolved_party_key in resolved_party_keys
+                    if str(resolved_party_key or "").strip()
+                }
+                if normalized_unique_key not in normalized_resolved_party_keys:
                     continue
 
                 response_payload = self._parse_json_object(row["response_json"]) or {

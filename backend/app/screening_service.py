@@ -22,6 +22,7 @@ from .models import (
     MatchJobAccepted,
     MatchJobProgress,
     MatchJobRequest,
+    ScreeningTypeOption,
     ScheduleSubscription,
     ScreeningQueueMessage,
     UserBusinessUnitMapping,
@@ -740,6 +741,36 @@ class ScreeningService:
                     return values.strip()
         return str(fallback or "").strip()
 
+    @classmethod
+    def _extract_party_key_for_screening_type(
+        cls,
+        request_payload: dict[str, Any] | None,
+        matches: dict[str, Any] | None,
+        screening_type: str | None,
+        fallback: str = "",
+    ) -> str:
+        matches_query = matches.get("query") if isinstance(matches, dict) and isinstance(matches.get("query"), dict) else None
+        from_matches = cls._extract_party_key_from_query(matches_query, "")
+        if from_matches:
+            return from_matches
+
+        props = (request_payload or {}).get("properties")
+        if isinstance(props, dict):
+            raw_mapping = props.get("partyKeysByScreeningType")
+            if not isinstance(raw_mapping, dict):
+                raw_mapping = props.get("party_keys_by_screening_type")
+            if isinstance(raw_mapping, dict):
+                normalized_target = cls._normalize_screening_type_key(screening_type)
+                if normalized_target:
+                    for raw_type, raw_key in raw_mapping.items():
+                        if cls._normalize_screening_type_key(raw_type) != normalized_target:
+                            continue
+                        mapped_value = str(raw_key or "").strip()
+                        if mapped_value:
+                            return mapped_value
+
+        return cls._extract_party_key_from_query(request_payload, fallback)
+
     @staticmethod
     def _build_matches_payload(
         item_status: str,
@@ -828,7 +859,6 @@ class ScreeningService:
         item_matches = self._build_matches_payload(item_status, request_payload, response_payload, error_text)
         ui_type = self._query_to_ui_type(request_payload)
         display_name = self._display_name_from_query(request_payload, item_key)
-        party_key = self._extract_party_key_from_query(request_payload, item_key)
         submitted_at = str(row.get("created_at") or "").strip()
         screening_types = self._parse_screening_types(row.get("screening_types_json"))
         daily_schedule_id = str(row.get("daily_schedule_id") or row.get("source_schedule_id") or "").strip() or None
@@ -865,6 +895,12 @@ class ScreeningService:
         for index, screening_type in enumerate(screening_types_for_rows):
             safe_screening_type = str(screening_type or "").strip()
             matches = self._response_for_screening_type(item_matches, safe_screening_type)
+            party_key = self._extract_party_key_for_screening_type(
+                request_payload,
+                matches,
+                safe_screening_type,
+                fallback=item_key,
+            )
             engine_status = self._engine_status_from_matches(matches)
             manual_status_cd = str(matches.get("manual_status_cd") or "").strip().upper()
             manual_match = bool(matches.get("manual_match") is True or manual_status_cd == "T")
@@ -1200,6 +1236,40 @@ class ScreeningService:
                 )
             )
         return items
+
+    def list_screening_type_options(self) -> list[ScreeningTypeOption]:
+        rows = self.repository.list_active_actimize_screening_type_mappings()
+        options: list[ScreeningTypeOption] = []
+        seen_targets: set[str] = set()
+
+        for row in rows:
+            source = str(row.get("source_screening_type") or "").strip()
+            target = str(row.get("target_screening_type") or "").strip()
+            search_definition_name = str(row.get("search_definition_name") or "").strip()
+            screening_type_name = str(row.get("screening_type_name") or "").strip()
+            try:
+                display_order = int(row.get("display_order") if row.get("display_order") is not None else 1000)
+            except (TypeError, ValueError):
+                display_order = 1000
+            value = source or target
+            if not value:
+                continue
+            dedupe_key = (target or value).lower()
+            if dedupe_key in seen_targets:
+                continue
+            seen_targets.add(dedupe_key)
+            options.append(
+                ScreeningTypeOption(
+                    value=value,
+                    label=screening_type_name or value,
+                    source_screening_type=source or value,
+                    target_screening_type=target or value,
+                    search_definition_name=search_definition_name or target or value,
+                    screening_type_name=screening_type_name or source or value,
+                    display_order=display_order,
+                )
+            )
+        return options
 
     def remove_daily_schedule(self, schedule_id: str, user_id: str | None = None, user_name: str | None = None) -> bool:
         removed = self.repository.deactivate_daily_schedule(schedule_id)

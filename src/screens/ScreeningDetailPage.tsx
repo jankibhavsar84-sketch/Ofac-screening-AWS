@@ -10,11 +10,13 @@ import {
 } from "../state/submissions";
 import {
   getScreeningSummary,
+  listScreeningTypes,
   listRecentScreeningResults,
   matchSync,
   uploadBatchAndSubmitJob,
   type EntityExample,
   type RecentScreeningResultRow,
+  type ScreeningTypeOption,
   type ScreeningSummaryCounts,
 } from "../api/screeningApi";
 import { buildIdentity, getPrimaryRole, hasPermission } from "../auth/claims";
@@ -24,7 +26,7 @@ import { useBusinessUnits } from "../context/BusinessUnitsContext";
 
 type Mode = "SINGLE" | "BATCH" | "SCHEDULE";
 type UiType = "Individual" | "Organization" | "Unknown" | "Vessel" | "Aircraft";
-type ScreeningType = "Sanction" | "PEP" | "AME" | "Fincen 314(a)" | "Global Sanction";
+type ScreeningType = string;
 type ScheduleFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
 
 type IdDoc = { idType: string; idNumber: string; idCountry: string };
@@ -51,6 +53,15 @@ type StatusFilter = "All Statuses" | "Clear" | "Potential Match" | "Pending" | "
 type TypeFilter = "All Types" | UiType;
 type ResultSortKey = "entity" | "mode" | "type" | "country" | "status" | "score" | "submittedAt";
 type SelectOption<T extends string> = { value: T; label: string; icon?: React.ReactNode };
+type DashboardScreeningTypeOption = {
+  value: ScreeningType;
+  label: string;
+  shortLabel: string;
+  searchDefinition: string;
+  searchDefinitionName: string;
+  screeningTypeName: string;
+  displayOrder: number;
+};
 
 const RECENT_RESULTS_CACHE_MS = 2 * 60 * 1000;
 const RECENT_RESULTS_LIMIT = 300;
@@ -240,13 +251,147 @@ const ENTITY_TYPE_OPTIONS: SelectOption<UiType>[] = [
   { value: "Aircraft", label: "Aircraft", icon: uiTypeIcon("Aircraft") },
 ];
 
-const SCREENING_TYPE_OPTIONS: { value: ScreeningType; desc: string }[] = [
-  { value: "Sanction", desc: "Primary sanctions lists and watchlist controls" },
-  { value: "PEP", desc: "Politically Exposed Person checks" },
-  { value: "AME", desc: "Adverse media and negative news" },
-  { value: "Fincen 314(a)", desc: "US FinCEN 314(a) request screening" },
-  { value: "Global Sanction", desc: "Aggregated global sanctions coverage" },
+const DEFAULT_SCREENING_TYPE_OPTIONS: DashboardScreeningTypeOption[] = [
+  {
+    value: "Sanction",
+    label: "Sanction",
+    shortLabel: "SAN",
+    searchDefinition: "SD_US_Customers_Sanctions",
+    searchDefinitionName: "Search Definition Customer Sanctions",
+    screeningTypeName: "Sanction screening for US Customer",
+    displayOrder: 10,
+  },
+  {
+    value: "PEP",
+    label: "PEP",
+    shortLabel: "PEP",
+    searchDefinition: "SD_US_Customers_PEP_RCA_International",
+    searchDefinitionName: "Global Political Exposed Person",
+    screeningTypeName: "PEP Screening Exclude US",
+    displayOrder: 20,
+  },
+  {
+    value: "AME",
+    label: "AME",
+    shortLabel: "AME",
+    searchDefinition: "SD_US_Customers_AME",
+    searchDefinitionName: "Search Definition Customer AME",
+    screeningTypeName: "Adverse Media Screening",
+    displayOrder: 30,
+  },
+  {
+    value: "Fincen 314(a)",
+    label: "Fincen 314(a)",
+    shortLabel: "314A",
+    searchDefinition: "SD_US_Customers_314(a)",
+    searchDefinitionName: "Search Definition Customer FinCEN 314(a)",
+    screeningTypeName: "Fincen 314a Screening",
+    displayOrder: 40,
+  },
+  {
+    value: "Global Sanction",
+    label: "Global Sanction",
+    shortLabel: "G-SAN",
+    searchDefinition: "Global Sanction",
+    searchDefinitionName: "Global Sanction",
+    screeningTypeName: "Global Sanction Screening",
+    displayOrder: 50,
+  },
 ];
+
+const SCREENING_TYPE_SHORT_LABEL_OVERRIDES: Record<string, string> = {
+  SANCTION: "SAN",
+  PEP: "PEP",
+  AME: "AME",
+  FINCEN_314_A: "314A",
+  FINCEN_314A: "314A",
+  FINCEN314_A: "314A",
+  FINCEN314A: "314A",
+  GLOBAL_SANCTION: "G-SAN",
+  SD_US_CUSTOMERS_SANCTIONS: "SAN",
+  SD_US_CUSTOMERS_PEP_RCA_INTERNATIONAL: "PEP",
+  SD_CUSTOMERS_PEP_RCA_INTERNATIONAL: "PEP",
+  SD_US_CUSTOMERS_AME: "AME",
+  SD_US_CUSTOMERS_314_A: "314A",
+  SD_US_MARIJUANA_DJ_EXTERNAL: "MJ",
+  SD_US_CUSTOMERS_SANCTIONS_PGIM_MA: "SAN-MA",
+  SD_US_CUSTOMERS_SANCTIONS_PGIM_CIO: "SAN-CIO",
+  SD_US_CUSTOMERS_SANCTIONS_PGIM_FI: "SAN-FI",
+  SD_US_CUSTOMERS_SANCTIONS_PGIM_RE: "SAN-RE",
+  SD_US_CUSTOMERS_SANCTIONS_PGIM_PP_FI: "SAN-PP-FI",
+  SD_US_CUSTOMERS_SANCTIONS_PGIM_NE_FI: "SAN-NE-FI",
+  SD_US_CUSTOMERS_SANCTIONS_PGIM_QUANT: "SAN-QUANT",
+  SD_US_CUSTOMERS_SANCTIONS_PGIM_JK_ASC: "SAN-JK-ASC",
+  SD_US_CUSTOMERS_SANCTIONS_PGIM_APAC: "SAN-APAC",
+  SD_US_CUSTOMERS_SANCTIONS_PGIM_LATAM: "SAN-LATAM",
+  SD_CUSTOMERS_SANCTIONS_PGIM_JAPAN: "SAN-JAPAN",
+  SD_CUSTOMERS_SANCTIONS_PGIM_HK: "SAN-HK",
+};
+
+function normalizeScreeningTypeKey(value: string): string {
+  return safeTrim(value)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function deriveScreeningTypeShortLabel(value: string, fallbackLabel: string, searchDefinition: string): string {
+  const candidates = [value, fallbackLabel, searchDefinition].map((v) => safeTrim(v)).filter(Boolean);
+  for (const candidate of candidates) {
+    const mapped = SCREENING_TYPE_SHORT_LABEL_OVERRIDES[normalizeScreeningTypeKey(candidate)];
+    if (mapped) return mapped;
+  }
+
+  const tokens = (searchDefinition || value || fallbackLabel)
+    .toUpperCase()
+    .split(/[^A-Z0-9]+/g)
+    .filter(Boolean);
+
+  if (tokens.includes("SANCTIONS")) {
+    const sanctionsIndex = tokens.indexOf("SANCTIONS");
+    const afterSanctions = tokens.slice(sanctionsIndex + 1).filter((token) => token !== "PGIM");
+    if (!afterSanctions.length) return "SAN";
+    return `SAN-${afterSanctions.slice(-2).join("-")}`;
+  }
+  if (tokens.includes("PEP")) return tokens.includes("RCA") ? "PEP-RCA" : "PEP";
+  if (tokens.includes("AME")) return "AME";
+  if (tokens.includes("MARIJUANA")) return "MJ";
+  if (tokens.includes("314")) return "314A";
+
+  const words = safeTrim(fallbackLabel || value || searchDefinition)
+    .split(/[^A-Za-z0-9]+/g)
+    .filter(Boolean);
+  if (!words.length) return "TYPE";
+  if (words.length === 1) return words[0].slice(0, 12).toUpperCase();
+  return words.slice(0, 3).map((word) => word[0].toUpperCase()).join("");
+}
+
+function screeningTypeOptionFromApi(row: ScreeningTypeOption): DashboardScreeningTypeOption | null {
+  const source = safeTrim(String(row?.source_screening_type || row?.value || ""));
+  const target = safeTrim(String(row?.target_screening_type || ""));
+  const screeningTypeName = safeTrim(String(row?.screening_type_name || row?.label || source || target));
+  const value = source || screeningTypeName || target;
+  if (!value) return null;
+  const searchDefinition = target || value;
+  const searchDefinitionName = safeTrim(String(row?.search_definition_name || "")) || searchDefinition;
+  const shortLabel = deriveScreeningTypeShortLabel(value, screeningTypeName || value, searchDefinition);
+  const parsedDisplayOrder = Number(row?.display_order);
+  const displayOrder = Number.isFinite(parsedDisplayOrder) ? parsedDisplayOrder : 1000;
+  return {
+    value,
+    label: screeningTypeName || value,
+    shortLabel,
+    searchDefinition,
+    searchDefinitionName,
+    screeningTypeName: screeningTypeName || value,
+    displayOrder,
+  };
+}
+
+function areScreeningTypeSelectionsEqual(left: ScreeningType[], right: ScreeningType[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => value === right[index]);
+}
 
 const SCHEDULE_FREQUENCY_OPTIONS: { value: ScheduleFrequency; label: string; hint: string }[] = [
   { value: "DAILY", label: "Daily", hint: "Runs every day at configured schedule time." },
@@ -464,13 +609,18 @@ function normalizeResultRow(row: RecentScreeningResultRow): ResultRow | null {
   if (!normalizedEngineStatus) return null;
   const normalizedUiStatus = normalizeUiStatus(uiStatusRaw, normalizedEngineStatus, manualMatch);
 
+  const rawScreeningType = safeTrim(String((row as any)?.screeningType || ""));
+  const shortScreeningType = rawScreeningType
+    ? deriveScreeningTypeShortLabel(rawScreeningType, rawScreeningType, rawScreeningType)
+    : "";
+
   return {
     id,
     entity,
     partyKey: safeTrim(String(row?.partyKey || "")),
     mode: modeRaw as ResultMode,
     type: typeRaw as UiType,
-    screeningType: safeTrim(String((row as any)?.screeningType || "")),
+    screeningType: shortScreeningType,
     country: safeTrim(String(row?.country || "")),
     engineStatus: normalizedEngineStatus,
     manualMatch,
@@ -730,36 +880,50 @@ function RefreshIcon({ className }: { className?: string }) {
 function ScreeningTypeCards({
   selected,
   onToggle,
+  options,
 }: {
   selected: ScreeningType[];
   onToggle: (type: ScreeningType) => void;
+  options: DashboardScreeningTypeOption[];
 }) {
   return (
     <div className="screeningTypeWrap">
       <div className="sectionRow" style={{ marginBottom: 8 }}>
         <div className="sectionTitle">Screening Types <span className="requiredMark">*</span></div>
       </div>
-      <div className="screeningTypeGrid">
-        {SCREENING_TYPE_OPTIONS.map((option) => {
-          const active = selected.includes(option.value);
-          return (
-            <button
-              key={option.value}
-              type="button"
-              className={active ? "screeningTypeCard active" : "screeningTypeCard"}
-              onClick={() => onToggle(option.value)}
-              aria-pressed={active}
-            >
-              <div className="screeningTypeHead">
-                <span className="screeningTypeName">{option.value}</span>
-                <span className={active ? "screeningTypeTick active" : "screeningTypeTick"} aria-hidden="true">
-                  {active ? "\u2713" : "+"}
-                </span>
-              </div>
-              <div className="screeningTypeDesc">{option.desc}</div>
-            </button>
-          );
-        })}
+      <div className="screeningTypeHint">Hover a tile to view screening type and search definition. Scroll left/right for more types.</div>
+      <div className="screeningTypeScroller" role="region" aria-label="Available screening types" tabIndex={0}>
+        <div className="screeningTypeGrid">
+          {options.map((option) => {
+            const active = selected.includes(option.value);
+            const showCode = option.searchDefinitionName !== option.searchDefinition;
+            const tooltip = [
+              `Screening type: ${option.screeningTypeName}`,
+              showCode
+                ? `Search definition: ${option.searchDefinitionName} (${option.searchDefinition})`
+                : `Search definition: ${option.searchDefinitionName}`,
+            ].join("\n");
+            const ariaTooltip = tooltip.replace(/\n+/g, ". ");
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={active ? "screeningTypeCard active" : "screeningTypeCard"}
+                onClick={() => onToggle(option.value)}
+                aria-pressed={active}
+                title={tooltip}
+                aria-label={`${option.label}. ${ariaTooltip}${active ? ". Selected" : ""}`}
+              >
+                <div className="screeningTypeHead">
+                  <span className="screeningTypeName">{option.shortLabel}</span>
+                  <span className={active ? "screeningTypeTick active" : "screeningTypeTick"} aria-hidden="true">
+                    {active ? "\u2713" : "+"}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -830,6 +994,45 @@ export function ScreeningDetailPage() {
   );
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await listScreeningTypes();
+        if (cancelled || !Array.isArray(rows) || rows.length === 0) return;
+        const sortedRows = rows.slice().sort((left, right) => {
+          const leftOrder = Number(left?.display_order);
+          const rightOrder = Number(right?.display_order);
+          const safeLeftOrder = Number.isFinite(leftOrder) ? leftOrder : 1000;
+          const safeRightOrder = Number.isFinite(rightOrder) ? rightOrder : 1000;
+          if (safeLeftOrder !== safeRightOrder) return safeLeftOrder - safeRightOrder;
+          const leftSource = safeTrim(String(left?.source_screening_type || left?.value || ""));
+          const rightSource = safeTrim(String(right?.source_screening_type || right?.value || ""));
+          return leftSource.localeCompare(rightSource);
+        });
+        const deduped = new Map<string, DashboardScreeningTypeOption>();
+        sortedRows.forEach((row) => {
+          const mapped = screeningTypeOptionFromApi(row);
+          if (!mapped) return;
+          const dedupeKey =
+            normalizeScreeningTypeKey(mapped.searchDefinition || "") ||
+            normalizeScreeningTypeKey(mapped.value || "");
+          if (!deduped.has(dedupeKey)) {
+            deduped.set(dedupeKey, mapped);
+          }
+        });
+        const nextOptions = Array.from(deduped.values());
+        if (!nextOptions.length || cancelled) return;
+        setScreeningTypeOptions(nextOptions);
+      } catch {
+        // Keep fallback options when screening-type endpoint is unavailable.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     writeLocalStorageJson(RECENT_RESULT_ROWS_STORAGE_KEY, recentResultRows);
   }, [recentResultRows]);
 
@@ -856,6 +1059,9 @@ export function ScreeningDetailPage() {
   ]);
 
   const [notes, setNotes] = useState("");
+  const [screeningTypeOptions, setScreeningTypeOptions] = useState<DashboardScreeningTypeOption[]>(
+    DEFAULT_SCREENING_TYPE_OPTIONS
+  );
   const [singleScreeningTypes, setSingleScreeningTypes] = useState<ScreeningType[]>(["Sanction"]);
   const [singleMockScreening, setSingleMockScreening] = useState(true);
   const [singleBusinessUnitCode, setSingleBusinessUnitCode] = useState("");
@@ -880,6 +1086,31 @@ export function ScreeningDetailPage() {
   const [scheduleFile, setScheduleFile] = useState<File | null>(null);
   const [scheduleFileName, setScheduleFileName] = useState("");
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const validTypes = new Set(screeningTypeOptions.map((option) => option.value));
+    const fallbackType = screeningTypeOptions[0]?.value || "Sanction";
+    const normalizeSelection = (values: ScreeningType[]): ScreeningType[] => {
+      const filtered = values.filter((value) => validTypes.has(value));
+      if (filtered.length) {
+        return Array.from(new Set(filtered));
+      }
+      return fallbackType ? [fallbackType] : [];
+    };
+
+    setSingleScreeningTypes((prev) => {
+      const next = normalizeSelection(prev);
+      return areScreeningTypeSelectionsEqual(prev, next) ? prev : next;
+    });
+    setBatchScreeningTypes((prev) => {
+      const next = normalizeSelection(prev);
+      return areScreeningTypeSelectionsEqual(prev, next) ? prev : next;
+    });
+    setScheduleScreeningTypes((prev) => {
+      const next = normalizeSelection(prev);
+      return areScreeningTypeSelectionsEqual(prev, next) ? prev : next;
+    });
+  }, [screeningTypeOptions]);
 
   const [singleError, setSingleError] = useState<string | null>(null);
   const [singleSubmitting, setSingleSubmitting] = useState(false);
@@ -1903,6 +2134,7 @@ export function ScreeningDetailPage() {
               <ScreeningTypeCards
                 selected={singleScreeningTypes}
                 onToggle={(value) => toggleScreeningType(value, setSingleScreeningTypes)}
+                options={screeningTypeOptions}
               />
 
               <div className="mockModeCard">
@@ -2277,6 +2509,7 @@ export function ScreeningDetailPage() {
             <ScreeningTypeCards
               selected={batchScreeningTypes}
               onToggle={(value) => toggleScreeningType(value, setBatchScreeningTypes)}
+              options={screeningTypeOptions}
             />
 
             {/* Dropzone */}
@@ -2424,6 +2657,7 @@ export function ScreeningDetailPage() {
               <ScreeningTypeCards
                 selected={scheduleScreeningTypes}
                 onToggle={(value) => toggleScreeningType(value, setScheduleScreeningTypes)}
+                options={screeningTypeOptions}
               />
 
               <div className="grid2" style={{ marginTop: 10 }}>
