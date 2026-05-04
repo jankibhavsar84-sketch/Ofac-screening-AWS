@@ -255,6 +255,7 @@ class ScreeningTypeOption(BaseModel):
     target_screening_type: str
     search_definition_name: str = ""
     screening_type_name: str = ""
+    party_key_suffix: str = ""
     display_order: int = 1000
 
 

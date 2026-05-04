@@ -233,8 +233,10 @@ class ActimizeClient:
         self._cached_access_token_expires_at = 0.0
         self._token_lock = Lock()
         self._screening_type_cache: dict[str, tuple[str, float]] = {}
+        self._screening_type_suffix_cache: dict[str, tuple[str, float]] = {}
         self._screening_type_cache_lock = Lock()
         self._screening_type_mapping_lookup_failed = False
+        self._screening_type_suffix_lookup_failed = False
 
     def screen_single(
         self,
@@ -697,6 +699,68 @@ class ActimizeClient:
                 time.monotonic() + float(self.screening_type_cache_ttl_s),
             )
 
+    def _get_cached_screening_type_suffix(self, normalized_source: str) -> str | None:
+        if self.screening_type_cache_ttl_s <= 0 or not normalized_source:
+            return None
+        now = time.monotonic()
+        with self._screening_type_cache_lock:
+            cached = self._screening_type_suffix_cache.get(normalized_source)
+            if cached is None:
+                return None
+            suffix_value, expires_at = cached
+            if now >= expires_at:
+                self._screening_type_suffix_cache.pop(normalized_source, None)
+                return None
+            return suffix_value
+
+    def _cache_screening_type_suffix(self, normalized_source: str, suffix_value: str) -> None:
+        if self.screening_type_cache_ttl_s <= 0 or not normalized_source:
+            return
+        with self._screening_type_cache_lock:
+            if len(self._screening_type_suffix_cache) >= self.screening_type_cache_max_entries:
+                if normalized_source not in self._screening_type_suffix_cache and self._screening_type_suffix_cache:
+                    self._screening_type_suffix_cache.pop(next(iter(self._screening_type_suffix_cache)))
+            self._screening_type_suffix_cache[normalized_source] = (
+                suffix_value,
+                time.monotonic() + float(self.screening_type_cache_ttl_s),
+            )
+
+    @staticmethod
+    def _normalize_party_key_suffix(value: str | None) -> str:
+        digits = re.sub(r"[^0-9]", "", str(value or "").strip())
+        if not digits:
+            return ""
+        if len(digits) > 3:
+            digits = digits[-3:]
+        return digits.zfill(3)
+
+    def _resolve_party_key_suffix(self, screening_type: str | None) -> str:
+        safe = str(screening_type or "").strip()
+        if not safe:
+            return ""
+        normalized_source = self._normalize_screening_type_key(safe)
+        cached = self._get_cached_screening_type_suffix(normalized_source)
+        if cached is not None:
+            return cached
+
+        suffix_value = ""
+        if self.repository is not None and hasattr(self.repository, "resolve_actimize_party_key_suffix"):
+            try:
+                resolved = self.repository.resolve_actimize_party_key_suffix(safe)
+                suffix_value = self._normalize_party_key_suffix(str(resolved or ""))
+                self._screening_type_suffix_lookup_failed = False
+            except Exception as exc:  # noqa: BLE001
+                if not self._screening_type_suffix_lookup_failed:
+                    logger.warning(
+                        "actimize screeningType suffix lookup failed; falling back source=%s error=%s",
+                        safe,
+                        exc,
+                    )
+                self._screening_type_suffix_lookup_failed = True
+
+        self._cache_screening_type_suffix(normalized_source, suffix_value)
+        return suffix_value
+
     def _map_screening_type(self, screening_type: str | None) -> str:
         safe = str(screening_type or "").strip()
         if not safe:
@@ -938,11 +1002,16 @@ class ActimizeClient:
 
     def build_on_demand_party_key(self, screening_type: str | None = None) -> str:
         unique_key = uuid4().hex.upper()
-        safe_screening_type = str(screening_type or "").strip()
+        mapped_suffix = self._resolve_party_key_suffix(screening_type)
+        if mapped_suffix:
+            return self._normalize_party_key(f"OD_{unique_key}_{mapped_suffix}")
+
+        safe_screening_type = self._normalize_screening_type_key(screening_type)
         if safe_screening_type:
-            suffix = re.sub(r"[^A-Za-z0-9]+", "_", safe_screening_type).strip("_").upper()[:24]
-            if suffix:
-                return self._normalize_party_key(f"OD_{unique_key}_{suffix}")
+            # Keep on-demand party key suffix in 3-digit shape for non-mapped types.
+            digest = hashlib.sha1(safe_screening_type.encode("utf-8")).hexdigest()
+            derived_suffix = f"{int(digest[:8], 16) % 1000:03d}"
+            return self._normalize_party_key(f"OD_{unique_key}_{derived_suffix}")
         return self._normalize_party_key(f"OD_{unique_key}")
 
     def _build_party_key(self, query: EntityExample) -> str:

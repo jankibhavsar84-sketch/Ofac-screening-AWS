@@ -204,6 +204,7 @@ CREATE TABLE IF NOT EXISTS actimize_screening_type_mappings (
   target_screening_type TEXT NOT NULL,
   search_definition_name TEXT NOT NULL DEFAULT '',
   screening_type_name TEXT NOT NULL DEFAULT '',
+  party_key_suffix TEXT NOT NULL DEFAULT '',
   display_order INTEGER NOT NULL DEFAULT 1000,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TEXT NOT NULL,
@@ -292,6 +293,7 @@ ALTER TABLE IF EXISTS actimize_screening_type_mappings ADD COLUMN IF NOT EXISTS 
 ALTER TABLE IF EXISTS actimize_screening_type_mappings ADD COLUMN IF NOT EXISTS target_screening_type TEXT NOT NULL;
 ALTER TABLE IF EXISTS actimize_screening_type_mappings ADD COLUMN IF NOT EXISTS search_definition_name TEXT NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS actimize_screening_type_mappings ADD COLUMN IF NOT EXISTS screening_type_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS actimize_screening_type_mappings ADD COLUMN IF NOT EXISTS party_key_suffix TEXT NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS actimize_screening_type_mappings ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 1000;
 ALTER TABLE IF EXISTS actimize_screening_type_mappings ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE IF EXISTS actimize_screening_type_mappings ADD COLUMN IF NOT EXISTS created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP::TEXT;
@@ -424,5 +426,32 @@ SET screening_type_name = CASE normalized_source_type
   ELSE screening_type_name
 END
 WHERE screening_type_name IS NULL OR TRIM(screening_type_name) = '';
+
+UPDATE actimize_screening_type_mappings
+SET party_key_suffix = CASE normalized_source_type
+  WHEN 'sanction' THEN '001'
+  WHEN 'pep' THEN '002'
+  WHEN 'ame' THEN '003'
+  WHEN 'fincen 314(a)' THEN '004'
+  WHEN 'fincen 314a' THEN '005'
+  WHEN 'fincen314(a)' THEN '006'
+  WHEN 'fincen314a' THEN '007'
+  WHEN 'sd_us_customers_sanctions_pgim_ma' THEN '008'
+  WHEN 'sd_us_customers_sanctions_pgim_cio' THEN '009'
+  WHEN 'sd_us_customers_sanctions_pgim_fi' THEN '010'
+  WHEN 'sd_us_customers_sanctions_pgim_re' THEN '011'
+  WHEN 'sd_us_customers_sanctions_pgim_pp_fi' THEN '012'
+  WHEN 'sd_us_customers_sanctions_pgim_ne_fi' THEN '013'
+  WHEN 'sd_us_customers_sanctions_pgim_quant' THEN '014'
+  WHEN 'sd_us_customers_sanctions_pgim_jk_asc' THEN '015'
+  WHEN 'sd_us_customers_sanctions_pgim_apac' THEN '016'
+  WHEN 'sd_us_customers_sanctions_pgim_latam' THEN '017'
+  WHEN 'sd_customers_pep_rca_international' THEN '018'
+  WHEN 'sd_us_marijuana_dj_external' THEN '019'
+  WHEN 'sd_customers_sanctions_pgim_japan' THEN '020'
+  WHEN 'sd_customers_sanctions_pgim_hk' THEN '021'
+  ELSE party_key_suffix
+END
+WHERE party_key_suffix IS NULL OR TRIM(party_key_suffix) = '' OR party_key_suffix !~ '^[0-9]{3}$';
 
 COMMIT;

@@ -1247,6 +1247,7 @@ class ScreeningService:
             target = str(row.get("target_screening_type") or "").strip()
             search_definition_name = str(row.get("search_definition_name") or "").strip()
             screening_type_name = str(row.get("screening_type_name") or "").strip()
+            party_key_suffix = str(row.get("party_key_suffix") or "").strip()
             try:
                 display_order = int(row.get("display_order") if row.get("display_order") is not None else 1000)
             except (TypeError, ValueError):
@@ -1266,6 +1267,7 @@ class ScreeningService:
                     target_screening_type=target or value,
                     search_definition_name=search_definition_name or target or value,
                     screening_type_name=screening_type_name or source or value,
+                    party_key_suffix=party_key_suffix,
                     display_order=display_order,
                 )
             )

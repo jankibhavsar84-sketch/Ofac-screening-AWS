@@ -60,13 +60,14 @@ DEFAULT_BUSINESS_UNITS: list[tuple[str, str]] = [
     ("US_PRU_PGIM_LATAM", "PGIM LATAM"),
 ]
 DEFAULT_FALLBACK_BUSINESS_UNIT_CODE = "US_PRU_OPES"
-DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], ...] = (
+DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str, str], ...] = (
     (
         "Sanction",
         "SD_US_Customers_Sanctions",
         10,
         "Search Definition Customer Sanctions",
         "Sanction screening for US Customer",
+        "001",
     ),
     (
         "PEP",
@@ -74,6 +75,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         20,
         "Search Definition Customer PEP RCA International",
         "PEP Screening Exclude US",
+        "002",
     ),
     (
         "AME",
@@ -81,6 +83,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         30,
         "Search Definition Customer AME",
         "Adverse Media Screening",
+        "003",
     ),
     (
         "Fincen 314(a)",
@@ -88,6 +91,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         40,
         "Search Definition Customer FinCEN 314(a)",
         "Fincen 314a Screening",
+        "004",
     ),
     (
         "Fincen 314a",
@@ -95,6 +99,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         40,
         "Search Definition Customer FinCEN 314(a)",
         "Fincen 314a Screening",
+        "005",
     ),
     (
         "Fincen314(a)",
@@ -102,6 +107,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         40,
         "Search Definition Customer FinCEN 314(a)",
         "Fincen 314a Screening",
+        "006",
     ),
     (
         "Fincen314a",
@@ -109,6 +115,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         40,
         "Search Definition Customer FinCEN 314(a)",
         "Fincen 314a Screening",
+        "007",
     ),
     (
         "SD_US_Customers_Sanctions_PGIM_MA",
@@ -116,6 +123,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         50,
         "Search Definition Customer Sanctions PGIM Multi-Asset Solutions / PGIM Strategic Capital Group",
         "PGIM Multi-Asset Solutions/ PGIM Strategic Capital Group Sanction Screening",
+        "008",
     ),
     (
         "SD_US_Customers_Sanctions_PGIM_CIO",
@@ -123,6 +131,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         60,
         "Search Definition Customer Sanctions PGIM CIO",
         "PGIM CIO Sanction Screening",
+        "009",
     ),
     (
         "SD_US_Customers_Sanctions_PGIM_FI",
@@ -130,6 +139,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         70,
         "Search Definition Customer Sanctions PGIM Fixed Income",
         "PGIM Fixed Income Sanction Screening",
+        "010",
     ),
     (
         "SD_US_Customers_Sanctions_PGIM_RE",
@@ -137,6 +147,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         80,
         "Search Definition Customer Sanctions PGIM Real Estate",
         "Search Definition Customer Sanctions PGIM Real Estate",
+        "011",
     ),
     (
         "SD_US_Customers_Sanctions_PGIM_PP_FI",
@@ -144,6 +155,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         90,
         "Search Definition Customer Sanctions PGIM Public and Private Fixed Income",
         "Search Definition Customer Sanctions PGIM Public and Private Fixed Income",
+        "012",
     ),
     (
         "SD_US_Customers_Sanctions_PGIM_NE_FI",
@@ -151,6 +163,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         100,
         "Search Definition Customer Sanctions Public & Private Fixed Income, PGIM Netherlands B.V.",
         "Search Definition Customer Sanctions Public & Private Fixed Income, PGIM Netherlands B.V.",
+        "013",
     ),
     (
         "SD_US_Customers_Sanctions_PGIM_QUANT",
@@ -158,6 +171,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         110,
         "Search Definition Customer Sanctions PGIM Quant",
         "Search Definition Customer Sanctions PGIM Quant",
+        "014",
     ),
     (
         "SD_US_Customers_Sanctions_PGIM_JK_ASC",
@@ -165,6 +179,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         120,
         "Search Definition Customer Sanctions Jennison Associates",
         "Jennison Associates Sanction Screening",
+        "015",
     ),
     (
         "SD_US_Customers_Sanctions_PGIM_APAC",
@@ -172,6 +187,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         130,
         "Search Definition Customer Sanctions PGIM Real Estate (APAC) & PGIM Private Capital (Australia)",
         "PGIM Real Estate (APAC) & PGIM Private Capital (Australia) Sanction Screening",
+        "016",
     ),
     (
         "SD_US_Customers_Sanctions_PGIM_LATAM",
@@ -179,6 +195,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         140,
         "Search Definition Customer Sanctions PGIM LATAM",
         "PGIM LATAM Sanction Screening",
+        "017",
     ),
     (
         "SD_Customers_PEP_RCA_International",
@@ -186,6 +203,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         150,
         "Global Political Exposed Person",
         "Global PEP Screening",
+        "018",
     ),
     (
         "SD_US_Marijuana_DJ_External",
@@ -193,6 +211,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         160,
         "Search Definition Marijuana Screening",
         "Marijuana Screening",
+        "019",
     ),
     (
         "SD_Customers_Sanctions_PGIM_JAPAN",
@@ -200,6 +219,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         170,
         "Search Definition Customer Sanctions PGIM Japan",
         "PGIM Japan Sanction Screening",
+        "020",
     ),
     (
         "SD_Customers_Sanctions_PGIM_HK",
@@ -207,6 +227,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str, str], 
         180,
         "Search Definition Customer Sanctions PGIM HongKong",
         "PGIM HongKong Sanction Screening",
+        "021",
     ),
 )
 
@@ -278,6 +299,7 @@ REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
         "target_screening_type",
         "search_definition_name",
         "screening_type_name",
+        "party_key_suffix",
         "display_order",
         "is_active",
         "created_at",
@@ -937,6 +959,7 @@ class JobRepository:
                   target_screening_type TEXT NOT NULL,
                   search_definition_name TEXT NOT NULL DEFAULT '',
                   screening_type_name TEXT NOT NULL DEFAULT '',
+                  party_key_suffix TEXT NOT NULL DEFAULT '',
                   display_order INTEGER NOT NULL DEFAULT 1000,
                   is_active BOOLEAN NOT NULL DEFAULT TRUE,
                   created_at TEXT NOT NULL,
@@ -1106,6 +1129,7 @@ class JobRepository:
             self._ensure_column(conn, "actimize_screening_type_mappings", "target_screening_type", "TEXT NOT NULL")
             self._ensure_column(conn, "actimize_screening_type_mappings", "search_definition_name", "TEXT NOT NULL DEFAULT ''")
             self._ensure_column(conn, "actimize_screening_type_mappings", "screening_type_name", "TEXT NOT NULL DEFAULT ''")
+            self._ensure_column(conn, "actimize_screening_type_mappings", "party_key_suffix", "TEXT NOT NULL DEFAULT ''")
             self._ensure_column(conn, "actimize_screening_type_mappings", "display_order", "INTEGER NOT NULL DEFAULT 1000")
             self._ensure_column(conn, "actimize_screening_type_mappings", "is_active", "BOOLEAN NOT NULL DEFAULT TRUE")
             self._ensure_column(conn, "actimize_screening_type_mappings", "created_at", "TEXT NOT NULL")
@@ -1189,12 +1213,20 @@ class JobRepository:
 
     def _seed_default_actimize_screening_type_mappings(self, conn: Any) -> None:
         ts = now_iso()
-        for source_type, target_type, display_order, search_definition_name, screening_type_name in DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS:
+        for (
+            source_type,
+            target_type,
+            display_order,
+            search_definition_name,
+            screening_type_name,
+            party_key_suffix,
+        ) in DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS:
             safe_source = str(source_type or "").strip()
             safe_target = str(target_type or "").strip()
             safe_display_order = max(int(display_order), 0)
             safe_search_definition_name = str(search_definition_name or "").strip() or safe_target
             safe_screening_type_name = str(screening_type_name or "").strip() or safe_source or safe_target
+            safe_party_key_suffix = self._normalize_party_key_suffix(party_key_suffix)
             normalized_source = self._normalize_screening_type_key(safe_source)
             if not normalized_source or not safe_target:
                 continue
@@ -1209,14 +1241,25 @@ class JobRepository:
                       target_screening_type,
                       search_definition_name,
                       screening_type_name,
+                      party_key_suffix,
                       display_order,
                       is_active,
                       created_at,
                       updated_at
-                    ) VALUES(?, ?, ?, ?, ?, ?, TRUE, ?, ?)
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
                     ON CONFLICT(normalized_source_type) DO NOTHING
                     """,
-                    (normalized_source, safe_source, safe_target, safe_search_definition_name, safe_screening_type_name, safe_display_order, ts, ts),
+                    (
+                        normalized_source,
+                        safe_source,
+                        safe_target,
+                        safe_search_definition_name,
+                        safe_screening_type_name,
+                        safe_party_key_suffix,
+                        safe_display_order,
+                        ts,
+                        ts,
+                    ),
                 )
             else:
                 self._execute(
@@ -1228,13 +1271,24 @@ class JobRepository:
                       target_screening_type,
                       search_definition_name,
                       screening_type_name,
+                      party_key_suffix,
                       display_order,
                       is_active,
                       created_at,
                       updated_at
-                    ) VALUES(?, ?, ?, ?, ?, ?, TRUE, ?, ?)
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
                     """,
-                    (normalized_source, safe_source, safe_target, safe_search_definition_name, safe_screening_type_name, safe_display_order, ts, ts),
+                    (
+                        normalized_source,
+                        safe_source,
+                        safe_target,
+                        safe_search_definition_name,
+                        safe_screening_type_name,
+                        safe_party_key_suffix,
+                        safe_display_order,
+                        ts,
+                        ts,
+                    ),
                 )
 
             self._execute(
@@ -1251,11 +1305,22 @@ class JobRepository:
                       WHEN screening_type_name IS NULL OR TRIM(screening_type_name) = ''
                       THEN ?
                       ELSE screening_type_name
+                    END,
+                    party_key_suffix = CASE
+                      WHEN party_key_suffix IS NULL OR TRIM(party_key_suffix) = ''
+                      THEN ?
+                      ELSE party_key_suffix
                     END
                 WHERE normalized_source_type = ?
                   AND (display_order IS NULL OR display_order = 1000)
                 """,
-                (safe_display_order, safe_search_definition_name, safe_screening_type_name, normalized_source),
+                (
+                    safe_display_order,
+                    safe_search_definition_name,
+                    safe_screening_type_name,
+                    safe_party_key_suffix,
+                    normalized_source,
+                ),
             )
 
             self._execute(
@@ -1280,20 +1345,73 @@ class JobRepository:
                 (safe_screening_type_name, normalized_source),
             )
 
-    def resolve_actimize_screening_type(self, source_screening_type: str | None) -> str:
+            self._execute(
+                conn,
+                """
+                UPDATE actimize_screening_type_mappings
+                SET party_key_suffix = ?
+                WHERE normalized_source_type = ?
+                  AND (party_key_suffix IS NULL OR TRIM(party_key_suffix) = '')
+                """,
+                (safe_party_key_suffix, normalized_source),
+            )
+
+        self._ensure_unique_party_key_suffixes(conn)
+
+    def _ensure_unique_party_key_suffixes(self, conn: Any) -> None:
+        rows = self._execute(
+            conn,
+            """
+            SELECT normalized_source_type, party_key_suffix, display_order, source_screening_type
+            FROM actimize_screening_type_mappings
+            ORDER BY display_order ASC, source_screening_type ASC, normalized_source_type ASC
+            """,
+        ).fetchall()
+        used_suffixes: set[str] = set()
+        updates: list[tuple[str, str]] = []
+        for row in rows:
+            normalized_source = str(row["normalized_source_type"] or "").strip()
+            if not normalized_source:
+                continue
+            raw_suffix = str(row["party_key_suffix"] or "").strip()
+            normalized_suffix = self._normalize_party_key_suffix(raw_suffix)
+            if normalized_suffix and normalized_suffix not in used_suffixes:
+                used_suffixes.add(normalized_suffix)
+                if raw_suffix != normalized_suffix:
+                    updates.append((normalized_suffix, normalized_source))
+                continue
+
+            candidate = self._next_available_party_key_suffix(used_suffixes)
+            if not candidate:
+                continue
+            used_suffixes.add(candidate)
+            updates.append((candidate, normalized_source))
+
+        for suffix, normalized_source in updates:
+            self._execute(
+                conn,
+                """
+                UPDATE actimize_screening_type_mappings
+                SET party_key_suffix = ?
+                WHERE normalized_source_type = ?
+                """,
+                (suffix, normalized_source),
+            )
+
+    def resolve_actimize_screening_type_mapping(self, source_screening_type: str | None) -> dict[str, str]:
         safe_source = str(source_screening_type or "").strip()
         if not safe_source:
-            return ""
+            return {"target_screening_type": "", "party_key_suffix": ""}
 
         normalized_source = self._normalize_screening_type_key(safe_source)
         if not normalized_source:
-            return safe_source
+            return {"target_screening_type": safe_source, "party_key_suffix": ""}
 
         with self._connect() as conn:
             row = self._execute(
                 conn,
                 """
-                SELECT target_screening_type
+                SELECT target_screening_type, party_key_suffix
                 FROM actimize_screening_type_mappings
                 WHERE normalized_source_type = ?
                   AND is_active = TRUE
@@ -1303,17 +1421,34 @@ class JobRepository:
             ).fetchone()
 
         if not row:
-            return safe_source
+            return {"target_screening_type": safe_source, "party_key_suffix": ""}
 
         mapped = str(row["target_screening_type"] or "").strip()
+        suffix = self._normalize_party_key_suffix(str(row["party_key_suffix"] or ""))
+        return {"target_screening_type": mapped or safe_source, "party_key_suffix": suffix}
+
+    def resolve_actimize_screening_type(self, source_screening_type: str | None) -> str:
+        mapping = self.resolve_actimize_screening_type_mapping(source_screening_type)
+        mapped = str(mapping.get("target_screening_type") or "").strip()
+        safe_source = str(source_screening_type or "").strip()
         return mapped or safe_source
+
+    def resolve_actimize_party_key_suffix(self, source_screening_type: str | None) -> str:
+        mapping = self.resolve_actimize_screening_type_mapping(source_screening_type)
+        return self._normalize_party_key_suffix(str(mapping.get("party_key_suffix") or ""))
 
     def list_active_actimize_screening_type_mappings(self) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = self._execute(
                 conn,
                 """
-                SELECT source_screening_type, target_screening_type, search_definition_name, screening_type_name, display_order
+                SELECT
+                  source_screening_type,
+                  target_screening_type,
+                  search_definition_name,
+                  screening_type_name,
+                  party_key_suffix,
+                  display_order
                 FROM actimize_screening_type_mappings
                 WHERE is_active = TRUE
                 ORDER BY display_order ASC, source_screening_type ASC
@@ -1326,6 +1461,7 @@ class JobRepository:
             target = str(row["target_screening_type"] or "").strip()
             search_definition_name = str(row["search_definition_name"] or "").strip()
             screening_type_name = str(row["screening_type_name"] or "").strip()
+            party_key_suffix = self._normalize_party_key_suffix(str(row["party_key_suffix"] or ""))
             try:
                 display_order = int(row["display_order"] if row["display_order"] is not None else 1000)
             except (TypeError, ValueError):
@@ -1338,6 +1474,7 @@ class JobRepository:
                     "target_screening_type": target,
                     "search_definition_name": search_definition_name or target or source,
                     "screening_type_name": screening_type_name or source or target,
+                    "party_key_suffix": party_key_suffix,
                     "display_order": display_order,
                 }
             )
@@ -2026,6 +2163,23 @@ class JobRepository:
     @staticmethod
     def _normalize_screening_type_key(value: str | None) -> str:
         return re.sub(r"\s+", " ", str(value or "").strip()).lower()
+
+    @staticmethod
+    def _normalize_party_key_suffix(value: str | None) -> str:
+        digits = re.sub(r"[^0-9]", "", str(value or "").strip())
+        if not digits:
+            return ""
+        if len(digits) > 3:
+            digits = digits[-3:]
+        return digits.zfill(3)
+
+    @staticmethod
+    def _next_available_party_key_suffix(used_suffixes: set[str]) -> str:
+        for number in range(1, 1000):
+            candidate = f"{number:03d}"
+            if candidate not in used_suffixes:
+                return candidate
+        return ""
 
     @staticmethod
     def _apply_actimize_alert_to_response_payload(

@@ -1,0 +1,12 @@
+{
+  "containerOverrides": [
+    {
+      "name": "backend",
+      "command": [
+        "python",
+        "-c",
+        "import os,re,psycopg; dsn=os.environ.get('APP_DB_URL','').strip(); assert dsn,'APP_DB_URL missing'; conn=psycopg.connect(dsn); conn.autocommit=True; cur=conn.cursor(); cur.execute(\"ALTER TABLE actimize_screening_type_mappings ADD COLUMN IF NOT EXISTS party_key_suffix TEXT NOT NULL DEFAULT ''\"); cur.execute(\"SELECT normalized_source_type, party_key_suffix FROM actimize_screening_type_mappings ORDER BY COALESCE(display_order,1000), source_screening_type, normalized_source_type\"); rows=cur.fetchall(); used=set(); updates=[];\nfor ns,raw in rows:\n raw=str(raw or '').strip(); digits=''.join(ch for ch in raw if ch.isdigit()); norm=(digits[-3:] if digits else '').zfill(3) if digits else '';\n if norm and norm not in used:\n  used.add(norm);\n  if raw!=norm: updates.append((norm,ns));\n  continue;\n assigned='';\n for i in range(1,1000):\n  cand=f'{i:03d}';\n  if cand not in used:\n   assigned=cand; used.add(cand); break;\n if assigned: updates.append((assigned,ns));\nfor suffix,ns in updates: cur.execute(\"UPDATE actimize_screening_type_mappings SET party_key_suffix=%s WHERE normalized_source_type=%s\", (suffix, ns));\ncur.execute(\"SELECT count(*) FROM actimize_screening_type_mappings\"); total=cur.fetchone()[0]; cur.execute(\"SELECT count(*) FROM (SELECT party_key_suffix FROM actimize_screening_type_mappings GROUP BY party_key_suffix HAVING count(*)>1) d\"); dups=cur.fetchone()[0]; print(f'SCHEMA_AND_SUFFIX_OK total={total} updated={len(updates)} duplicate_suffix_groups={dups}'); cur.close(); conn.close()"
+      ]
+    }
+  ]
+}
