@@ -1590,9 +1590,9 @@ class JobRepository:
         self,
         user_id: str | None,
         user_name: str | None,
-        limit: int = 300,
+        limit: int = 1000,
     ) -> list[dict[str, Any]]:
-        safe_limit = max(1, min(int(limit or 300), 300))
+        safe_limit = max(1, min(int(limit or 1000), 5000))
         safe_user_id = str(user_id or "").strip()
         safe_user_name = str(user_name or "").strip()
 
@@ -1626,7 +1626,7 @@ class JobRepository:
                 LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
                 LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
                 {where_sql}
-                ORDER BY j.created_at DESC, COALESCE(ji.updated_at, j.updated_at, j.created_at) DESC, ji.item_key ASC
+                ORDER BY COALESCE(ji.updated_at, j.updated_at, j.created_at) DESC, j.created_at DESC, ji.item_key ASC
                 LIMIT ?
                 """,
                 tuple([*params, safe_limit]),

@@ -1883,14 +1883,16 @@ body.colResizeActive *{
   background:var(--app-surface);
 }
 .partyKeyCell{
-  white-space:nowrap;
+  white-space:normal;
 }
 .partyKeyValue{
   display:block;
-  max-width:120px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  max-width:100%;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  overflow-wrap:anywhere;
+  word-break:break-word;
   line-height:1.2;
 }
 

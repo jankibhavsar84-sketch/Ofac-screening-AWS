@@ -1,0 +1,109 @@
+{
+    "containerDefinitions":  [
+                                 {
+                                     "name":  "frontend",
+                                     "image":  "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260504202726",
+                                     "cpu":  0,
+                                     "portMappings":  [
+                                                          {
+                                                              "containerPort":  80,
+                                                              "hostPort":  80,
+                                                              "protocol":  "tcp"
+                                                          }
+                                                      ],
+                                     "essential":  true,
+                                     "command":  [
+                                                     "/entrypoint.sh"
+                                                 ],
+                                     "environment":  [
+
+                                                     ],
+                                     "mountPoints":  [
+
+                                                     ],
+                                     "volumesFrom":  [
+
+                                                     ],
+                                     "secrets":  [
+                                                     {
+                                                         "name":  "VITE_OIDC_CLIENT_ID",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_OIDC_CLIENT_ID::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_POST_LOGOUT_REDIRECT_URI",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_OIDC_POST_LOGOUT_REDIRECT_URI::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_IDLE_TIMEOUT_MS",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_OIDC_IDLE_TIMEOUT_MS::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_SCREENING_POLL_INTERVAL_MS",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_SCREENING_POLL_INTERVAL_MS::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_AUTHORITY",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_OIDC_AUTHORITY::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_CLEAR_SESSION_ON_CLOSE",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_OIDC_CLEAR_SESSION_ON_CLOSE::"
+                                                     },
+                                                     {
+                                                         "name":  "BACKEND_UPSTREAM",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:BACKEND_UPSTREAM::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_SCREENING_JOB_TIMEOUT_MS",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_SCREENING_JOB_TIMEOUT_MS::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_SCOPE",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_OIDC_SCOPE::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_SCREENING_API_BASE_URL",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_SCREENING_API_BASE_URL::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_AUTH_ENABLED",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_AUTH_ENABLED::"
+                                                     },
+                                                     {
+                                                         "name":  "NGINX_DNS_RESOLVER",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:NGINX_DNS_RESOLVER::"
+                                                     },
+                                                     {
+                                                         "name":  "VITE_OIDC_REDIRECT_URI",
+                                                         "valueFrom":  "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/frontend-config-khVrfj:VITE_OIDC_REDIRECT_URI::"
+                                                     }
+                                                 ],
+                                     "logConfiguration":  {
+                                                              "logDriver":  "awslogs",
+                                                              "options":  {
+                                                                              "awslogs-group":  "/ecs/ofac-screening-frontend",
+                                                                              "awslogs-region":  "us-east-2",
+                                                                              "awslogs-stream-prefix":  "ecs"
+                                                                          }
+                                                          },
+                                     "systemControls":  [
+
+                                                        ]
+                                 }
+                             ],
+    "family":  "ofac-screening-frontend",
+    "taskRoleArn":  "arn:aws:iam::981450247094:role/ofac-screening-frontend-task-role",
+    "executionRoleArn":  "arn:aws:iam::981450247094:role/ofac-screening-frontend-task-execution-role",
+    "networkMode":  "awsvpc",
+    "volumes":  [
+
+                ],
+    "placementConstraints":  [
+
+                             ],
+    "requiresCompatibilities":  [
+                                    "FARGATE"
+                                ],
+    "cpu":  "256",
+    "memory":  "512"
+}

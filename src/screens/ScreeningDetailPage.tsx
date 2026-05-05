@@ -74,12 +74,12 @@ type DashboardScreeningTypeOption = {
 };
 
 const RECENT_RESULTS_CACHE_MS = 2 * 60 * 1000;
-const RECENT_RESULTS_LIMIT = 300;
+const RECENT_RESULTS_LIMIT = 2000;
 const RECENT_RESULT_ROWS_STORAGE_KEY = "ofac-screening:recent-result-rows";
 const RECENT_RESULT_SUMMARY_STORAGE_KEY = "ofac-screening:recent-result-summary";
 const RESULT_TABLE_DEFAULT_COLUMN_WIDTHS: Record<ResultTableColumnKey, number> = {
   entity: 220,
-  partyKey: 120,
+  partyKey: 320,
   mode: 120,
   type: 120,
   screeningType: 180,
@@ -90,7 +90,7 @@ const RESULT_TABLE_DEFAULT_COLUMN_WIDTHS: Record<ResultTableColumnKey, number> =
 };
 const RESULT_TABLE_MIN_COLUMN_WIDTHS: Record<ResultTableColumnKey, number> = {
   entity: 160,
-  partyKey: 110,
+  partyKey: 220,
   mode: 90,
   type: 90,
   screeningType: 130,
@@ -886,6 +886,12 @@ export function ScreeningDetailPage() {
     startWidth: number;
   } | null>(null);
   const recentResultsRefreshInFlightRef = useRef(false);
+  const pendingRecentResultsRefreshRef = useRef<{
+    silent: boolean;
+    updateTimestamp: boolean;
+    resetPage: boolean;
+    requestUserId?: string;
+  } | null>(null);
   const screeningResultsMetaRef = useRef(screeningResultsMeta);
   const {
     businessUnitOptions,
@@ -1200,8 +1206,18 @@ export function ScreeningDetailPage() {
       requestUserId?: string;
     }) => {
       const activeUserId = safeTrim(requestUserId || currentUser?.id || "");
-      if (!activeUserId) return;
-      if (recentResultsRefreshInFlightRef.current) return;
+      if (recentResultsRefreshInFlightRef.current) {
+        const existing = pendingRecentResultsRefreshRef.current;
+        pendingRecentResultsRefreshRef.current = {
+          // If any queued request is interactive, keep it interactive.
+          silent: (existing?.silent ?? true) && silent,
+          // If any queued request needs metadata/page updates, preserve that.
+          updateTimestamp: Boolean(existing?.updateTimestamp || updateTimestamp),
+          resetPage: Boolean(existing?.resetPage || resetPage),
+          requestUserId: requestUserId || existing?.requestUserId,
+        };
+        return;
+      }
 
       recentResultsRefreshInFlightRef.current = true;
       if (!silent) {
@@ -1213,12 +1229,11 @@ export function ScreeningDetailPage() {
           getScreeningSummary(),
           listRecentScreeningResults(RECENT_RESULTS_LIMIT),
         ]);
-        if (activeUserId !== safeTrim(currentUser?.id || "")) return;
         setSummaryCounts(normalizeSummaryCounts(summary));
         setRecentResultRows(normalizeResultRows(rows));
         setScreeningResultsMeta((prev) => ({
           lastRefreshedAt: updateTimestamp ? new Date().toISOString() : prev.lastRefreshedAt,
-          submissionsOwnerUserId: activeUserId,
+          submissionsOwnerUserId: activeUserId || prev.submissionsOwnerUserId,
         }));
         if (resetPage) {
           updateScreeningWorkspace({ page: 1 });
@@ -1231,6 +1246,11 @@ export function ScreeningDetailPage() {
         recentResultsRefreshInFlightRef.current = false;
         if (!silent) {
           setResultsRefreshing(false);
+        }
+        const queuedRefresh = pendingRecentResultsRefreshRef.current;
+        if (queuedRefresh) {
+          pendingRecentResultsRefreshRef.current = null;
+          void loadRecentResults(queuedRefresh);
         }
       }
     },

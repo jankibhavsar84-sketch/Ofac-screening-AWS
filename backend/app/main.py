@@ -926,7 +926,7 @@ def list_screening_types(
 
 @app.get("/api/v1/screenings/results", response_model=list[dict[str, Any]])
 def list_recent_screening_results(
-    limit: int = Query(default=300, ge=1, le=300),
+    limit: int = Query(default=1000, ge=1, le=5000),
     principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
     svc: ScreeningService = Depends(get_service),
 ) -> list[dict[str, Any]]:

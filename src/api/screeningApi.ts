@@ -769,7 +769,7 @@ export async function listScreeningTypes(): Promise<ScreeningTypeOption[]> {
   return Array.isArray(parsed) ? (parsed as ScreeningTypeOption[]) : [];
 }
 
-export async function listRecentScreeningResults(limit = 300): Promise<RecentScreeningResultRow[]> {
+export async function listRecentScreeningResults(limit = 2000): Promise<RecentScreeningResultRow[]> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
   const url = new URL(`${baseUrl}/screenings/results`, window.location.origin);
   url.searchParams.set("limit", String(limit));

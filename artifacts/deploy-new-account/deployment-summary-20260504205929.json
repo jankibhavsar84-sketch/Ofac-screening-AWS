@@ -1,0 +1,11 @@
+{
+    "frontend_taskdef":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:24",
+    "backend_taskdef":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-backend:24",
+    "frontend_service":  "ofac-screening-frontend-svc",
+    "deployed_at":  "2026-05-04T21:04:17.1254104-04:00",
+    "frontend_image":  "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260504205929",
+    "backend_service":  "ofac-screening-backend-svc",
+    "tag":  "20260504205929",
+    "cluster":  "Screening",
+    "backend_image":  "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260504205929"
+}

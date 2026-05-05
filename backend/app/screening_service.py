@@ -867,7 +867,13 @@ class ScreeningService:
         item_matches = self._build_matches_payload(item_status, request_payload, response_payload, error_text)
         ui_type = self._query_to_ui_type(request_payload)
         display_name = self._display_name_from_query(request_payload, item_key)
-        submitted_at = str(row.get("created_at") or "").strip()
+        job_created_at = str(row.get("created_at") or "").strip()
+        submitted_at = str(
+            row.get("item_updated_at")
+            or row.get("job_updated_at")
+            or row.get("created_at")
+            or ""
+        ).strip()
         screening_types = self._parse_screening_types(row.get("screening_types_json"))
         daily_schedule_id = str(row.get("daily_schedule_id") or row.get("source_schedule_id") or "").strip() or None
         daily_schedule_active = bool(daily_schedule_id and daily_schedule_id in active_schedule_ids)
@@ -883,7 +889,7 @@ class ScreeningService:
         submission_stub = {
             "id": job_id,
             "mode": mode,
-            "createdAt": submitted_at,
+            "createdAt": job_created_at or submitted_at,
             "createdByUserId": row.get("user_id"),
             "createdByUserName": row.get("user_name"),
             "businessUnitCode": row.get("business_unit_code"),
@@ -1007,7 +1013,7 @@ class ScreeningService:
             processed_at=str(callback_result.get("processed_at") or ""),
         )
 
-    def list_user_recent_results(self, user_id: str | None, user_name: str | None, limit: int = 300) -> list[dict[str, Any]]:
+    def list_user_recent_results(self, user_id: str | None, user_name: str | None, limit: int = 1000) -> list[dict[str, Any]]:
         rows = self.repository.list_recent_result_items(user_id=user_id, user_name=user_name, limit=limit)
         active_schedule_ids = {
             str(s.get("schedule_id", "")).strip()
