@@ -1,0 +1,12 @@
+{
+  "containerOverrides": [
+    {
+      "name": "backend",
+      "command": [
+        "python",
+        "-c",
+        "import os, json, psycopg\n\ndsn = os.environ.get('APP_DB_URL', '').strip()\nassert dsn, 'APP_DB_URL missing'\nconn = psycopg.connect(dsn)\ncur = conn.cursor()\ncur.execute(\"SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'actimize_screening_type_mappings'::regclass AND contype='p'\")\npk = cur.fetchall()\ncur.execute(\"SELECT \\\"Search_Definition_ID\\\", \\\"Screening_Type\\\", search_definition_name, is_active, display_order FROM actimize_screening_type_mappings ORDER BY display_order ASC\")\nrows = [\n  {\n    'Search_Definition_ID': r[0],\n    'Screening_Type': r[1],\n    'Search Definition name': r[2],\n    'Active': r[3],\n    'Display_order': r[4],\n  }\n  for r in cur.fetchall()\n]\nprint('MAPPING_SNAPSHOT', json.dumps({'pk': pk, 'row_count': len(rows), 'rows': rows}, ensure_ascii=False))\ncur.close(); conn.close()"
+      ]
+    }
+  ]
+}

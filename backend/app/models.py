@@ -251,11 +251,9 @@ class ScheduleSubscription(BaseModel):
 class ScreeningTypeOption(BaseModel):
     value: str
     label: str
-    source_screening_type: str
-    target_screening_type: str
+    screening_type: str
+    search_definition_id: str
     search_definition_name: str = ""
-    screening_type_name: str = ""
-    party_key_suffix: str = ""
     display_order: int = 1000
 
 

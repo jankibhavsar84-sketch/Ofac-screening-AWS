@@ -1,0 +1,12 @@
+{
+  "containerOverrides": [
+    {
+      "name": "backend",
+      "command": [
+        "python",
+        "-c",
+        "import os, psycopg; dsn=os.environ.get('APP_DB_URL','').strip(); assert dsn, 'APP_DB_URL missing'; conn=psycopg.connect(dsn); conn.autocommit=True; cur=conn.cursor(); cur.execute(\"ALTER TABLE actimize_screening_type_mappings RENAME COLUMN target_screening_type TO \"\"Search_Definition_ID\"\"\"); cur.execute(\"SELECT column_name FROM information_schema.columns WHERE table_name='actimize_screening_type_mappings' ORDER BY ordinal_position\"); cols=[r[0] for r in cur.fetchall()]; print('RENAME_OK columns=', ','.join(cols)); cur.close(); conn.close()"
+      ]
+    }
+  ]
+}

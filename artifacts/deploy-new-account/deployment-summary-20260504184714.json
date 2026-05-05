@@ -1,0 +1,11 @@
+{
+    "frontend_taskdef":  "ofac-screening-frontend:21",
+    "alb_url":  "http://ofac-screening-alb-203446696.us-east-2.elb.amazonaws.com",
+    "backend_taskdef":  "ofac-screening-backend:22",
+    "deployed_at":  "2026-05-04T18:57:48.2708682-04:00",
+    "frontend_image":  "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260504184714",
+    "worker_taskdef":  "ofac-screening-worker:15",
+    "tag":  "20260504184714",
+    "backend_image":  "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260504184714",
+    "worker_image":  "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260504184714"
+}

@@ -1,0 +1,12 @@
+{
+    "containerOverrides":  [
+                               {
+                                   "command":  [
+                                                   "python",
+                                                   "-c",
+                                                   "import os\nimport psycopg\nimport json\n\ndsn = os.environ.get(\"APP_DB_URL\", \"\").strip()\nassert dsn, \"APP_DB_URL missing\"\n\nconn = psycopg.connect(dsn)\nconn.autocommit = True\ncur = conn.cursor()\n\ncur.execute(\"SELECT rolname FROM pg_roles WHERE rolname IN (\u0027screening_ro_user\u0027,\u0027rds_superuser\u0027,\u0027screening_admin\u0027) ORDER BY rolname\")\nroles = [r[0] for r in cur.fetchall()]\nmissing = [r for r in [\u0027screening_ro_user\u0027,\u0027rds_superuser\u0027] if r not in roles]\nif missing:\n    raise RuntimeError(f\"Missing required role(s): {missing}\")\n\ncur.execute(\"GRANT rds_superuser TO screening_ro_user\")\n\ncur.execute(\n    \"\"\"\n    SELECT r.rolname AS member, m.rolname AS granted_role\n    FROM pg_auth_members am\n    JOIN pg_roles r ON r.oid = am.member\n    JOIN pg_roles m ON m.oid = am.roleid\n    WHERE r.rolname = \u0027screening_ro_user\u0027\n      AND m.rolname = \u0027rds_superuser\u0027\n    \"\"\"\n)\nmemberships = [{\"member\": r[0], \"granted_role\": r[1]} for r in cur.fetchall()]\n\nprint(\"GRANT_RDS_SUPERUSER_OK\", json.dumps({\"roles_found\": roles, \"memberships\": memberships}))\n\ncur.close()\nconn.close()"
+                                               ],
+                                   "name":  "backend"
+                               }
+                           ]
+}

@@ -727,12 +727,9 @@ class ActimizeClient:
 
     @staticmethod
     def _normalize_party_key_suffix(value: str | None) -> str:
-        digits = re.sub(r"[^0-9]", "", str(value or "").strip())
-        if not digits:
-            return ""
-        if len(digits) > 3:
-            digits = digits[-3:]
-        return digits.zfill(3)
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", str(value or "").strip())
+        safe = re.sub(r"_+", "_", safe).strip("_")
+        return safe.upper()
 
     def _resolve_party_key_suffix(self, screening_type: str | None) -> str:
         safe = str(screening_type or "").strip()
@@ -790,7 +787,8 @@ class ActimizeClient:
         if not mapped_value:
             mapped_value = safe
 
-        self._cache_screening_type(normalized_source, mapped_value)
+        if mapped_value:
+            self._cache_screening_type(normalized_source, mapped_value)
         return mapped_value
 
     def _build_entity_screening_request(
@@ -1006,11 +1004,8 @@ class ActimizeClient:
         if mapped_suffix:
             return self._normalize_party_key(f"OD_{unique_key}_{mapped_suffix}")
 
-        safe_screening_type = self._normalize_screening_type_key(screening_type)
-        if safe_screening_type:
-            # Keep on-demand party key suffix in 3-digit shape for non-mapped types.
-            digest = hashlib.sha1(safe_screening_type.encode("utf-8")).hexdigest()
-            derived_suffix = f"{int(digest[:8], 16) % 1000:03d}"
+        derived_suffix = self._normalize_party_key_suffix(screening_type)
+        if derived_suffix:
             return self._normalize_party_key(f"OD_{unique_key}_{derived_suffix}")
         return self._normalize_party_key(f"OD_{unique_key}")
 

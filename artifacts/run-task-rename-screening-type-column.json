@@ -1,0 +1,12 @@
+{
+    "containerOverrides":  [
+                               {
+                                   "command":  [
+                                                   "python",
+                                                   "-c",
+                                                   "import os\nimport psycopg\n\ndsn = os.environ.get(\"APP_DB_URL\", \"\").strip()\nassert dsn, \"APP_DB_URL missing\"\nconn = psycopg.connect(dsn)\nconn.autocommit = True\ncur = conn.cursor()\n\ncur.execute(\u0027ALTER TABLE actimize_screening_type_mappings RENAME COLUMN screening_type_name TO \"Screening_Type\"\u0027)\ncur.execute(\"SELECT column_name FROM information_schema.columns WHERE table_name=\u0027actimize_screening_type_mappings\u0027 ORDER BY ordinal_position\")\ncols = [r[0] for r in cur.fetchall()]\nprint(\u0027RENAME_COLUMN_OK columns=\u0027 + \u0027,\u0027.join(cols))\n\ncur.close()\nconn.close()"
+                                               ],
+                                   "name":  "backend"
+                               }
+                           ]
+}

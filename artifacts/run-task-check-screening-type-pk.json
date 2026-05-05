@@ -1,0 +1,12 @@
+{
+    "containerOverrides":  [
+                               {
+                                   "command":  [
+                                                   "python",
+                                                   "-c",
+                                                   "import os, psycopg, json\n\ndsn = os.environ.get(\"APP_DB_URL\", \"\").strip()\nassert dsn, \"APP_DB_URL missing\"\nconn = psycopg.connect(dsn)\ncur = conn.cursor()\n\ncur.execute(\"SELECT count(*) FROM actimize_screening_type_mappings\")\ntotal = cur.fetchone()[0]\ncur.execute(\"SELECT count(*) FROM actimize_screening_type_mappings WHERE screening_type_name IS NULL OR btrim(screening_type_name) = \u0027\u0027\")\nblanks = cur.fetchone()[0]\ncur.execute(\"SELECT screening_type_name, count(*) FROM actimize_screening_type_mappings GROUP BY screening_type_name HAVING count(*) \u003e 1 ORDER BY count(*) DESC, screening_type_name\")\ndups = cur.fetchall()\ncur.execute(\"SELECT screening_type_name FROM actimize_screening_type_mappings ORDER BY screening_type_name\")\nvals = [r[0] for r in cur.fetchall()]\n\nprint(\"PK_CHECK\", json.dumps({\"total\": total, \"blanks\": blanks, \"duplicate_groups\": len(dups), \"duplicates\": dups, \"values\": vals}, ensure_ascii=False))\ncur.close()\nconn.close()"
+                                               ],
+                                   "name":  "backend"
+                               }
+                           ]
+}

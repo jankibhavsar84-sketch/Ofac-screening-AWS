@@ -1,0 +1,174 @@
+{
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260504184714",
+      "cpu": 0,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp",
+          "name": "api",
+          "appProtocol": "http"
+        }
+      ],
+      "essential": true,
+      "command": [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000"
+      ],
+      "environment": [],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "secrets": [
+        {
+          "name": "CORS_ALLOW_ORIGINS",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/backend-config-5kGaHY:CORS_ALLOW_ORIGINS::"
+        },
+        {
+          "name": "AWS_SES_SENDER_EMAIL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/ses-config-SnjHHf:AWS_SES_SENDER_EMAIL::"
+        },
+        {
+          "name": "ACTIMIZE_SOURCE_SYSTEM",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_SOURCE_SYSTEM::"
+        },
+        {
+          "name": "AWS_SQS_QUEUE_NAME",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/sqs-config-vFLFRX:AWS_SQS_QUEUE_NAME::"
+        },
+        {
+          "name": "AWS_SNS_NOTIFICATIONS_ENABLED",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/sns-config-WVuAwf:AWS_SNS_NOTIFICATIONS_ENABLED::"
+        },
+        {
+          "name": "AUTH_ENABLED",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/backend-config-5kGaHY:AUTH_ENABLED::"
+        },
+        {
+          "name": "AUTH_ISSUER",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/backend-config-5kGaHY:AUTH_ISSUER::"
+        },
+        {
+          "name": "ACTIMIZE_ALERT_REVIEW_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_ALERT_REVIEW_URL::"
+        },
+        {
+          "name": "ACTIMIZE_PROVIDER",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_PROVIDER::"
+        },
+        {
+          "name": "AWS_S3_UPLOAD_PREFIX",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/s3-config-Wiz5Gi:AWS_S3_UPLOAD_PREFIX::"
+        },
+        {
+          "name": "AWS_S3_UPLOAD_BUCKET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/s3-config-Wiz5Gi:AWS_S3_UPLOAD_BUCKET::"
+        },
+        {
+          "name": "APP_DB_PATH",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/database-config-FecUwP:APP_DB_PATH::"
+        },
+        {
+          "name": "ACTIMIZE_CLIENT_ASSERTION_AUDIENCE",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_CLIENT_ASSERTION_AUDIENCE::"
+        },
+        {
+          "name": "AUTH_JWKS_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/backend-config-5kGaHY:AUTH_JWKS_URL::"
+        },
+        {
+          "name": "AWS_SNS_SCHEDULE_TOPIC_PREFIX",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/sns-config-WVuAwf:AWS_SNS_SCHEDULE_TOPIC_PREFIX::"
+        },
+        {
+          "name": "ACTIMIZE_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_CLIENT_ID::"
+        },
+        {
+          "name": "ACTIMIZE_RAW_API_LOG_MAX_CHARS",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_RAW_API_LOG_MAX_CHARS::"
+        },
+        {
+          "name": "AUTH_AUDIENCE",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/backend-config-5kGaHY:AUTH_AUDIENCE::"
+        },
+        {
+          "name": "ACTIMIZE_CLIENT_ASSERTION_TYPE",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_CLIENT_ASSERTION_TYPE::"
+        },
+        {
+          "name": "AWS_REGION",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/sqs-config-vFLFRX:AWS_REGION::"
+        },
+        {
+          "name": "ACTIMIZE_LOG_RAW_API_IO",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_LOG_RAW_API_IO::"
+        },
+        {
+          "name": "AUTH_ALGORITHMS",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/backend-config-5kGaHY:AUTH_ALGORITHMS::"
+        },
+        {
+          "name": "ACTIMIZE_CLIENT_ASSERTION_ALGORITHM",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_CLIENT_ASSERTION_ALGORITHM::"
+        },
+        {
+          "name": "ACTIMIZE_SCOPE",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_SCOPE::"
+        },
+        {
+          "name": "ACTIMIZE_BASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_BASE_URL::"
+        },
+        {
+          "name": "ACTIMIZE_TOKEN_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_TOKEN_URL::"
+        },
+        {
+          "name": "APP_DB_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/database-config-FecUwP:APP_DB_URL::"
+        },
+        {
+          "name": "ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:981450247094:secret:ofac-screening/actimize-config-Incsk4:ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/ofac-screening-backend",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "python -m app.healthcheck backend"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      },
+      "systemControls": []
+    }
+  ],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "volumes": [],
+  "networkMode": "awsvpc",
+  "cpu": "256",
+  "executionRoleArn": "arn:aws:iam::981450247094:role/ofac-screening-backend-task-execution-role",
+  "family": "ofac-screening-backend",
+  "memory": "1024",
+  "taskRoleArn": "arn:aws:iam::981450247094:role/ofac-screening-backend-task-role",
+  "placementConstraints": []
+}

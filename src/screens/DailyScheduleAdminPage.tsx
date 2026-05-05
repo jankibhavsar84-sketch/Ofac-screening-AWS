@@ -110,8 +110,8 @@ export function DailyScheduleAdminPage() {
           </p>
           {error ? <div className="errorBox" role="alert" aria-live="assertive">{error}</div> : null}
 
-          <div className="tableWrap" style={{ marginTop: 10 }}>
-            <table className="table">
+          <div className="tableWrap scheduleTableWrap" style={{ marginTop: 10 }}>
+            <table className="table scheduleTable">
               <thead>
                 <tr>
                   <th scope="col" style={{ width: 220 }}>Batch Name</th>

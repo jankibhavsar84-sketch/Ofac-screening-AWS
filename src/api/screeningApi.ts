@@ -126,10 +126,9 @@ export type RecentScreeningResultRow = {
 export type ScreeningTypeOption = {
   value: string;
   label: string;
-  source_screening_type: string;
-  target_screening_type: string;
+  screening_type: string;
+  search_definition_id: string;
   search_definition_name?: string;
-  screening_type_name?: string;
   display_order?: number;
 };
 

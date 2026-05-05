@@ -1,0 +1,12 @@
+{
+  "containerOverrides": [
+    {
+      "name": "backend",
+      "command": [
+        "python",
+        "-c",
+        "import os, json, psycopg\n\nupdates = [\n    (\"SD_US_Customers_Sanctions\", \"SAN-US\"),\n    (\"SD_US_Customers_314(a)\", \"314a\"),\n    (\"SD_US_Customers_AME\", \"AME\"),\n    (\"SD_US_Customers_PEP_RCA_International\", \"PEP\"),\n    (\"SD_US_Marijuana_DJ_External\", \"MPIN\"),\n    (\"SD_Customers_PEP_RCA_International\", \"PEP-G\"),\n    (\"SD_US_Customers_Sanctions_PGIM_APAC\", \"SAN-PAPC\"),\n    (\"SD_US_Customers_Sanctions_PGIM_CIO\", \"SAN-PCIO\"),\n    (\"SD_US_Customers_Sanctions_PGIM_FI\", \"SAN-PFIC\"),\n    (\"SD_US_Customers_Sanctions_PGIM_JK_ASC\", \"SAN-PJAC\"),\n    (\"SD_US_Customers_Sanctions_PGIM_LATAM\", \"SAN-PPLA\"),\n    (\"SD_US_Customers_Sanctions_PGIM_MA\", \"SAN-PSCG\"),\n    (\"SD_US_Customers_Sanctions_PGIM_NE_FI\", \"SAN-PUPV\"),\n    (\"SD_Customers_Sanctions_PGIM_HK\", \"SAN-PGHK\"),\n    (\"SD_Customers_Sanctions_PGIM_JAPAN\", \"SAN-PGJP\"),\n    (\"SD_US_Customers_Sanctions_PGIM_PP_FI\", \"SAN-PPFI\"),\n    (\"SD_US_Customers_Sanctions_PGIM_QUANT\", \"SAN-PPQS\"),\n    (\"SD_US_Customers_Sanctions_PGIM_RE\", \"SAN-PLUX\"),\n]\n\ndsn = os.environ.get('APP_DB_URL', '').strip()\nassert dsn, 'APP_DB_URL missing'\nconn = psycopg.connect(dsn)\nconn.autocommit = True\ncur = conn.cursor()\nupdated=0\nfor sid, stype in updates:\n    cur.execute(\"UPDATE actimize_screening_type_mappings SET \\\"Screening_Type\\\" = %s, updated_at = CURRENT_TIMESTAMP::text WHERE \\\"Search_Definition_ID\\\" = %s\", (stype, sid))\n    updated += cur.rowcount\ncur.execute(\"SELECT \\\"Search_Definition_ID\\\", \\\"Screening_Type\\\", display_order FROM actimize_screening_type_mappings ORDER BY display_order ASC\")\nrows = [list(r) for r in cur.fetchall()]\nprint('UPDATE_WITH_UNIQUE_PEP_OK', json.dumps({'updated_rows': updated, 'rows': rows}, ensure_ascii=False))\ncur.close(); conn.close()"
+      ]
+    }
+  ]
+}

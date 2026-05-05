@@ -1,0 +1,12 @@
+{
+    "containerOverrides":  [
+                               {
+                                   "command":  [
+                                                   "python",
+                                                   "-c",
+                                                   "import os\nimport psycopg\nimport json\n\ndsn = os.environ.get(\"APP_DB_URL\", \"\").strip()\nassert dsn, \"APP_DB_URL missing\"\n\nconn = psycopg.connect(dsn)\nconn.autocommit = True\ncur = conn.cursor()\n\ncur.execute(\"ALTER TABLE actimize_screening_type_mappings DROP CONSTRAINT IF EXISTS actimize_screening_type_mappings_pkey\")\ncur.execute(\n    \"\"\"\n    UPDATE actimize_screening_type_mappings\n    SET screening_type_name = CONCAT(\n      COALESCE(NULLIF(btrim(\"Search_Definition_ID\"), \u0027\u0027), \u0027TYPE\u0027),\n      \u0027_\u0027,\n      COALESCE(NULLIF(btrim(party_key_suffix), \u0027\u0027), \u0027000\u0027)\n    )\n    WHERE screening_type_name IS NULL OR btrim(screening_type_name) = \u0027\u0027\n    \"\"\"\n)\ncur.execute(\"SELECT screening_type_name, count(*) FROM actimize_screening_type_mappings GROUP BY screening_type_name HAVING count(*) \u003e 1\")\ndups = cur.fetchall()\nif dups:\n    raise RuntimeError(f\"Duplicate screening_type_name values remain: {dups}\")\ncur.execute(\"SELECT count(*) FROM actimize_screening_type_mappings WHERE screening_type_name IS NULL OR btrim(screening_type_name) = \u0027\u0027\")\nblanks = cur.fetchone()[0]\nif blanks:\n    raise RuntimeError(f\"Blank screening_type_name values remain: {blanks}\")\n\ncur.execute(\"ALTER TABLE actimize_screening_type_mappings ADD CONSTRAINT actimize_screening_type_mappings_pkey PRIMARY KEY (screening_type_name)\")\n\ncur.execute(\"SELECT screening_type_name FROM actimize_screening_type_mappings ORDER BY screening_type_name\")\nvals = [r[0] for r in cur.fetchall()]\nprint(\"PK_SET_OK\", json.dumps({\"count\": len(vals), \"values\": vals}, ensure_ascii=False))\n\ncur.close()\nconn.close()"
+                                               ],
+                                   "name":  "backend"
+                               }
+                           ]
+}

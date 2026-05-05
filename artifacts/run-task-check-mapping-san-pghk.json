@@ -1,0 +1,12 @@
+{
+  "containerOverrides": [
+    {
+      "name": "backend",
+      "command": [
+        "python",
+        "-c",
+        "import os, json, psycopg\n\ndsn = os.environ.get('APP_DB_URL', '').strip()\nassert dsn, 'APP_DB_URL missing'\nconn = psycopg.connect(dsn)\ncur = conn.cursor()\ncur.execute('''\nSELECT \"Screening_Type\", \"Search_Definition_ID\", search_definition_name, is_active, display_order\nFROM actimize_screening_type_mappings\nWHERE \"Screening_Type\" IN ('SAN-PGHK','SAN-PFIC','SAN-PGJP')\nORDER BY display_order\n''')\nrows=[{'Screening_Type':r[0],'Search_Definition_ID':r[1],'search_definition_name':r[2],'is_active':r[3],'display_order':r[4]} for r in cur.fetchall()]\nprint('MAPPING_CHECK', json.dumps(rows, ensure_ascii=False))\ncur.close(); conn.close()"
+      ]
+    }
+  ]
+}

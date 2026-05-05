@@ -38,6 +38,13 @@ class ScreeningService:
         self.queue = queue
         self.notifier = notifier
 
+    def _normalize_requested_screening_types(self, screening_types: list[str] | None) -> list[str]:
+        normalized_types, unresolved_types = self.repository.normalize_active_screening_types(screening_types)
+        if unresolved_types and not normalized_types:
+            unresolved = ", ".join(unresolved_types)
+            raise ValueError(f"Unsupported or inactive screening type(s): {unresolved}")
+        return normalized_types
+
     @staticmethod
     def _extract_cognito_user_pool_id(auth_issuer: str) -> str:
         issuer = (auth_issuer or "").strip().rstrip("/")
@@ -96,6 +103,7 @@ class ScreeningService:
         if payload.daily_screening and not (payload.batch_name and payload.batch_name.strip()):
             raise ValueError("batch_name is required when daily_screening is enabled")
 
+        normalized_screening_types = self._normalize_requested_screening_types(payload.screening_types)
         daily_schedule_id: str | None = None
         scheduled_next_run_at: str | None = None
         source_schedule_id = (payload.schedule_id or "").strip() or None
@@ -112,7 +120,7 @@ class ScreeningService:
             else "SINGLE"
         )
         correlation_id = str(payload.correlation_id or "").strip() or str(uuid4())
-        payload = payload.model_copy(update={"correlation_id": correlation_id})
+        payload = payload.model_copy(update={"correlation_id": correlation_id, "screening_types": normalized_screening_types})
 
         if payload.daily_screening:
             self._validate_business_unit_access(payload.user_id, business_unit_code)
@@ -1240,34 +1248,30 @@ class ScreeningService:
     def list_screening_type_options(self) -> list[ScreeningTypeOption]:
         rows = self.repository.list_active_actimize_screening_type_mappings()
         options: list[ScreeningTypeOption] = []
-        seen_targets: set[str] = set()
+        seen_types: set[str] = set()
 
         for row in rows:
-            source = str(row.get("source_screening_type") or "").strip()
-            target = str(row.get("target_screening_type") or "").strip()
+            screening_type = str(row.get("screening_type") or "").strip()
+            search_definition_id = str(row.get("search_definition_id") or "").strip()
             search_definition_name = str(row.get("search_definition_name") or "").strip()
-            screening_type_name = str(row.get("screening_type_name") or "").strip()
-            party_key_suffix = str(row.get("party_key_suffix") or "").strip()
             try:
                 display_order = int(row.get("display_order") if row.get("display_order") is not None else 1000)
             except (TypeError, ValueError):
                 display_order = 1000
-            value = source or target
+            value = screening_type
             if not value:
                 continue
-            dedupe_key = (target or value).lower()
-            if dedupe_key in seen_targets:
+            dedupe_key = value.lower()
+            if dedupe_key in seen_types:
                 continue
-            seen_targets.add(dedupe_key)
+            seen_types.add(dedupe_key)
             options.append(
                 ScreeningTypeOption(
                     value=value,
-                    label=screening_type_name or value,
-                    source_screening_type=source or value,
-                    target_screening_type=target or value,
-                    search_definition_name=search_definition_name or target or value,
-                    screening_type_name=screening_type_name or source or value,
-                    party_key_suffix=party_key_suffix,
+                    label=value,
+                    screening_type=value,
+                    search_definition_id=search_definition_id or value,
+                    search_definition_name=search_definition_name or search_definition_id or value,
                     display_order=display_order,
                 )
             )
