@@ -162,10 +162,34 @@ def _load_batch_queries(
     return parsed
 
 
+def _resolve_dispatch_screening_types(screening_types: list[str] | None) -> list[str]:
+    resolved: list[str] = []
+    seen: set[str] = set()
+    for raw in screening_types or []:
+        safe = str(raw or "").strip()
+        if not safe:
+            continue
+        dedupe_key = safe.lower()
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        resolved.append(safe)
+    return resolved or ["Sanction"]
+
+
+def _build_screening_item_key(base_item_key: str, screening_type: str) -> str:
+    safe_base = str(base_item_key or "").strip()
+    safe_type = str(screening_type or "").strip()
+    if safe_base and safe_type:
+        return f"{safe_base}_{safe_type}"
+    return safe_base or safe_type
+
+
 def _handle_job_dispatch(
     *,
     repository: JobRepository,
     queue: SqsQueue,
+    actimize: ActimizeClient,
     message: ScreeningQueueMessage,
     receipt_handle: str,
 ) -> None:
@@ -239,9 +263,18 @@ def _handle_job_dispatch(
             parsed,
         )
 
-    expected_total = len(parsed)
+    screening_types_for_dispatch = _resolve_dispatch_screening_types(message.screening_types)
+    if screening_types_for_dispatch != list(message.screening_types or []):
+        message = message.model_copy(update={"screening_types": screening_types_for_dispatch})
+
+    expected_query_count = len(parsed)
+    expected_total = expected_query_count * len(screening_types_for_dispatch)
     repository.update_job_total_items(job_id, expected_total)
-    repository.upsert_job_metadata(job_id=job_id, query_count=expected_total)
+    repository.upsert_job_metadata(
+        job_id=job_id,
+        screening_types=screening_types_for_dispatch,
+        query_count=expected_query_count,
+    )
     repository.add_audit_event(
         action="BATCH_DISPATCH_STARTED",
         user_id=message.user_id,
@@ -252,6 +285,8 @@ def _handle_job_dispatch(
             "job_id": job_id,
             "source_upload_id": upload_id,
             "total_items": expected_total,
+            "query_count": expected_query_count,
+            "screening_type_count": len(screening_types_for_dispatch),
             "skipped_existing_records": skipped_existing_records,
             "queue_name": settings.aws_sqs_queue_name,
         },
@@ -262,6 +297,7 @@ def _handle_job_dispatch(
 
     # Expand and enqueue in chunks to keep memory bounded.
     batch: list[tuple[str, dict[str, object], EntityExample, str | None]] = []
+    dispatched_query_count = 0
     dispatched_items = 0
     for item_key, raw_query in parsed.items():
         safe_key = str(item_key or "").strip()
@@ -284,11 +320,12 @@ def _handle_job_dispatch(
             continue
         request_payload = query.model_dump(mode="json")
         batch.append((safe_key, request_payload, query, record_hashes.get(safe_key)))
-        dispatched_items += 1
+        dispatched_query_count += 1
         if len(batch) >= 500:
-            _flush_dispatch_batch(
+            dispatched_items += _flush_dispatch_batch(
                 repository=repository,
                 queue=queue,
+                actimize=actimize,
                 job_id=job_id,
                 submitted_at=submitted_at,
                 correlation_id=correlation_id,
@@ -298,9 +335,10 @@ def _handle_job_dispatch(
             batch = []
 
     if batch:
-        _flush_dispatch_batch(
+        dispatched_items += _flush_dispatch_batch(
             repository=repository,
             queue=queue,
+            actimize=actimize,
             job_id=job_id,
             submitted_at=submitted_at,
             correlation_id=correlation_id,
@@ -308,9 +346,13 @@ def _handle_job_dispatch(
             items=batch,
         )
 
-    if dispatched_items != expected_total:
+    if dispatched_items != expected_total or dispatched_query_count != expected_query_count:
         repository.update_job_total_items(job_id, dispatched_items)
-        repository.upsert_job_metadata(job_id=job_id, query_count=dispatched_items)
+        repository.upsert_job_metadata(
+            job_id=job_id,
+            screening_types=screening_types_for_dispatch,
+            query_count=dispatched_query_count,
+        )
     if dispatched_items == 0:
         repository.refresh_job_status(job_id)
 
@@ -324,6 +366,8 @@ def _handle_job_dispatch(
             "job_id": job_id,
             "source_upload_id": upload_id,
             "total_items": dispatched_items,
+            "query_count": dispatched_query_count,
+            "screening_type_count": len(screening_types_for_dispatch),
             "skipped_existing_records": skipped_existing_records,
         },
     )
@@ -333,48 +377,41 @@ def _flush_dispatch_batch(
     *,
     repository: JobRepository,
     queue: SqsQueue,
+    actimize: ActimizeClient,
     job_id: str,
     submitted_at: str,
     correlation_id: str,
     message: ScreeningQueueMessage,
     items: list[tuple[str, dict[str, object], EntityExample, str | None]],
-) -> None:
-    next_items: list[tuple[str, dict[str, object], EntityExample, str | None]] = []
+) -> int:
+    screening_types = _resolve_dispatch_screening_types(message.screening_types)
+    next_items: list[tuple[str, str, dict[str, object], EntityExample, str | None]] = []
     bulk_payloads: list[tuple[str, dict[str, object]]] = []
     for item_key, payload, query, record_hash in items:
-        props = query.properties if isinstance(query.properties, dict) else {}
-        has_party_key = bool(str(props.get("partyKey") or "").strip() or str(props.get("party_key") or "").strip())
-        if item_key and not has_party_key:
-            next_props = dict(props)
-            next_props["partyKey"] = item_key
-            query = query.model_copy(update={"properties": next_props})
-
-            payload_props = payload.get("properties") if isinstance(payload.get("properties"), dict) else {}
-            payload_props = dict(payload_props)
-            payload_props["partyKey"] = item_key
-            payload = dict(payload)
-            payload["properties"] = payload_props
-
+        base_props = query.properties if isinstance(query.properties, dict) else {}
         safe_business_unit_code = str(message.business_unit_code or "").strip().upper()
-        if safe_business_unit_code:
-            next_props = dict(query.properties if isinstance(query.properties, dict) else {})
-            next_props["businessUnit"] = safe_business_unit_code
-            query = query.model_copy(update={"properties": next_props})
+        for screening_type in screening_types:
+            per_type_party_key = actimize.build_batch_party_key(item_key, screening_type)
+            per_type_item_key = _build_screening_item_key(item_key, screening_type)
+            per_type_props = dict(base_props)
+            per_type_props["partyKey"] = per_type_party_key
+            per_type_props["partyKeysByScreeningType"] = {screening_type: per_type_party_key}
+            per_type_props["screeningType"] = screening_type
+            if safe_business_unit_code:
+                per_type_props["businessUnit"] = safe_business_unit_code
 
-            payload_props = payload.get("properties") if isinstance(payload.get("properties"), dict) else {}
-            payload_props = dict(payload_props)
-            payload_props["businessUnit"] = safe_business_unit_code
-            payload = dict(payload)
-            payload["properties"] = payload_props
+            per_type_query = query.model_copy(update={"properties": per_type_props})
+            per_type_payload = dict(payload)
+            per_type_payload["properties"] = dict(per_type_props)
 
-        next_items.append((item_key, payload, query, record_hash))
-        bulk_payloads.append((item_key, payload))
+            next_items.append((per_type_item_key, screening_type, per_type_payload, per_type_query, record_hash))
+            bulk_payloads.append((per_type_item_key, per_type_payload))
 
     repository.add_job_items_bulk(job_id, bulk_payloads)
 
     # Enqueue per-item screening tasks to allow parallelism across workers.
     pending: list[ScreeningQueueMessage] = []
-    for item_key, _payload, query, record_hash in next_items:
+    for item_key, screening_type, _payload, query, record_hash in next_items:
         pending.append(
             ScreeningQueueMessage(
                 message_type="SCREEN_ITEM",
@@ -382,7 +419,7 @@ def _flush_dispatch_batch(
                 item_key=item_key,
                 query=query,
                 submitted_at=submitted_at,
-                screening_types=list(message.screening_types or []),
+                screening_types=[screening_type],
                 mock_screening=bool(message.mock_screening),
                 user_id=message.user_id,
                 user_name=message.user_name,
@@ -398,6 +435,7 @@ def _flush_dispatch_batch(
             pending = []
     if pending:
         queue.enqueue_batch(pending)
+    return len(next_items)
 
 
 class FixedRateLimiter:
@@ -707,6 +745,7 @@ def _process_received_message(
             _handle_job_dispatch(
                 repository=repository,
                 queue=queue,
+                actimize=actimize,
                 message=message,
                 receipt_handle=str(receipt_handle),
             )

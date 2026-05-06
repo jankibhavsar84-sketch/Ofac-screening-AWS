@@ -1,0 +1,12 @@
+{
+    "containerOverrides":  [
+                               {
+                                   "command":  [
+                                                   "python",
+                                                   "-c",
+                                                   "import json, os\nimport psycopg\n\nparty=\u0027AMLP_E_2001X13\u0027\nurl=os.getenv(\u0027APP_DB_URL\u0027,\u0027\u0027).strip()\nwith psycopg.connect(url) as conn:\n  with conn.cursor() as cur:\n    cur.execute(\"\"\"\n      select j.job_id, ji.item_key, ji.status, ji.error_text, ji.updated_at,\n             coalesce(j.user_name,\u0027\u0027), coalesce(j.user_id,\u0027\u0027), ji.request_json, ji.response_json\n      from job_items ji\n      join jobs j on j.job_id=ji.job_id\n      where ji.item_key=%s or ji.request_json ilike %s\n      order by ji.updated_at desc\n      limit 10\n    \"\"\", (party, f\u0027%{party}%\u0027))\n    rows=[]\n    for r in cur.fetchall():\n      rows.append({\u0027job_id\u0027:r[0],\u0027item_key\u0027:r[1],\u0027status\u0027:r[2],\u0027error_text\u0027:r[3],\u0027updated_at\u0027:r[4],\u0027user_name\u0027:r[5],\u0027user_id\u0027:r[6],\u0027request_json\u0027:r[7],\u0027response_json\u0027:r[8]})\n    print(\u0027PARTY_DETAIL\u0027, json.dumps(rows))\nprint(\u0027PARTY_DONE\u0027)"
+                                               ],
+                                   "name":  "backend"
+                               }
+                           ]
+}

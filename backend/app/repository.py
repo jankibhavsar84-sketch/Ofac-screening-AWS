@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import sqlite3
+from threading import Lock
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -200,6 +201,15 @@ class JobRepository:
             atexit.register(self.close)
 
         self.validate_schema()
+        self._job_items_has_parsed_status = self._runtime_column_exists("job_items", "parsed_status")
+        self._jobs_has_created_at_ts = self._runtime_column_exists("jobs", "created_at_ts")
+        self._jobs_has_updated_at_ts = self._runtime_column_exists("jobs", "updated_at_ts")
+        self._job_items_has_updated_at_ts = self._runtime_column_exists("job_items", "updated_at_ts")
+        self._job_items_has_user_id = self._runtime_column_exists("job_items", "user_id")
+        self._jobs_has_job_seq_id = self._runtime_column_exists("jobs", "job_seq_id")
+        self._job_items_has_job_seq_id = self._runtime_column_exists("job_items", "job_seq_id")
+        self._pg_mv_refresh_lock = Lock()
+        self._last_pg_mv_refresh_at = 0.0
 
     def close(self) -> None:
         if self._pool is not None:
@@ -374,6 +384,61 @@ class JobRepository:
         if self.is_postgres:
             return self._postgres_column_exists(conn, table_name, column_name)
         return self._sqlite_column_exists(conn, table_name, column_name)
+
+    def _runtime_column_exists(self, table_name: str, column_name: str) -> bool:
+        with self._connect() as conn:
+            return self._column_exists(conn, table_name, column_name)
+
+    def _job_items_jobs_join_condition(self, job_alias: str = "j", item_alias: str = "ji") -> str:
+        if self.is_postgres and self._jobs_has_job_seq_id and self._job_items_has_job_seq_id:
+            return f"{job_alias}.job_seq_id = {item_alias}.job_seq_id"
+        return f"{job_alias}.job_id = {item_alias}.job_id"
+
+    def _postgres_materialized_view_exists(self, conn: Any, view_name: str) -> bool:
+        if not self.is_postgres:
+            return False
+        row = self._execute(
+            conn,
+            """
+            SELECT 1
+            FROM pg_matviews
+            WHERE schemaname = current_schema()
+              AND matviewname = ?
+            LIMIT 1
+            """,
+            (view_name,),
+        ).fetchone()
+        return bool(row)
+
+    def _maybe_refresh_postgres_result_materialized_views(self) -> bool:
+        if not self.is_postgres or not settings.pg_result_mv_enabled:
+            return False
+        refresh_interval = max(int(settings.pg_result_mv_refresh_interval_s), 1)
+        now_monotonic = time.monotonic()
+        if now_monotonic - self._last_pg_mv_refresh_at < refresh_interval:
+            return False
+        with self._pg_mv_refresh_lock:
+            now_monotonic = time.monotonic()
+            if now_monotonic - self._last_pg_mv_refresh_at < refresh_interval:
+                return False
+            with self._connect() as conn:
+                if not self._postgres_materialized_view_exists(conn, "mv_user_recent_results"):
+                    self._last_pg_mv_refresh_at = now_monotonic
+                    return False
+                if not self._postgres_materialized_view_exists(conn, "mv_user_result_summary_counts"):
+                    self._last_pg_mv_refresh_at = now_monotonic
+                    return False
+                try:
+                    # Keep request paths responsive if refresh would wait on locks.
+                    self._execute(conn, "SET LOCAL lock_timeout = '750ms'")
+                    self._execute(conn, "SET LOCAL statement_timeout = '5000ms'")
+                    self._execute(conn, "REFRESH MATERIALIZED VIEW mv_user_recent_results")
+                    self._execute(conn, "REFRESH MATERIALIZED VIEW mv_user_result_summary_counts")
+                    self._last_pg_mv_refresh_at = time.monotonic()
+                    return True
+                except Exception:  # noqa: BLE001
+                    self._last_pg_mv_refresh_at = time.monotonic()
+                    return False
 
     def _ensure_table(self, conn: Any, table_name: str, ddl: str) -> None:
         if self._table_exists(conn, table_name):
@@ -1298,26 +1363,42 @@ class JobRepository:
     ) -> str:
         ts = now_iso()
         status_value = status.value if isinstance(status, JobStatus) else str(status)
+        columns = [
+            "job_id",
+            "status",
+            "created_at",
+            "updated_at",
+            "total_items",
+            "source_schedule_id",
+            "source_upload_id",
+            "user_id",
+            "user_name",
+        ]
+        values: list[Any] = [
+            job_id,
+            status_value,
+            ts,
+            ts,
+            max(int(total_items), 0),
+            (source_schedule_id or "").strip() or None,
+            (source_upload_id or "").strip() or None,
+            (user_id or "").strip() or None,
+            (user_name or "").strip() or None,
+        ]
+        if self._jobs_has_created_at_ts:
+            columns.append("created_at_ts")
+            values.append(ts)
+        if self._jobs_has_updated_at_ts:
+            columns.append("updated_at_ts")
+            values.append(ts)
+
+        placeholders = ", ".join("?" for _ in columns)
+        columns_sql = ", ".join(columns)
         with self._connect() as conn:
             self._execute(
                 conn,
-                """
-                INSERT INTO jobs(
-                  job_id, status, created_at, updated_at, total_items,
-                  source_schedule_id, source_upload_id, user_id, user_name
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    job_id,
-                    status_value,
-                    ts,
-                    ts,
-                    max(int(total_items), 0),
-                    (source_schedule_id or "").strip() or None,
-                    (source_upload_id or "").strip() or None,
-                    (user_id or "").strip() or None,
-                    (user_name or "").strip() or None,
-                ),
+                f"INSERT INTO jobs({columns_sql}) VALUES({placeholders})",
+                tuple(values),
             )
         return ts
 
@@ -1595,42 +1676,91 @@ class JobRepository:
         safe_limit = max(1, min(int(limit or 1000), 5000))
         safe_user_id = str(user_id or "").strip()
         safe_user_name = str(user_name or "").strip()
+        join_condition = self._job_items_jobs_join_condition()
 
-        filters: list[str] = []
-        params: list[Any] = []
-        if safe_user_id and safe_user_name:
-            filters.append("(j.user_id = ? OR LOWER(COALESCE(j.user_name, '')) = LOWER(?))")
-            params.extend([safe_user_id, safe_user_name])
-        elif safe_user_id:
-            filters.append("j.user_id = ?")
-            params.append(safe_user_id)
-        elif safe_user_name:
-            filters.append("LOWER(COALESCE(j.user_name, '')) = LOWER(?)")
-            params.append(safe_user_name)
+        rows: list[Any] = []
+        if self.is_postgres and safe_user_id:
+            with self._connect() as conn:
+                if self._job_items_has_user_id:
+                    rows = self._execute(
+                        conn,
+                        """
+                        WITH recent AS (
+                          SELECT job_seq_id, item_key, updated_at
+                          FROM job_items
+                          WHERE user_id = ?
+                          ORDER BY updated_at DESC, job_seq_id DESC, item_key ASC
+                          LIMIT ?
+                        )
+                        SELECT
+                          j.job_id, j.status AS job_status, j.created_at, j.updated_at AS job_updated_at, j.total_items,
+                          j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
+                          jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
+                          jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
+                          bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri,
+                          ji.item_key, ji.request_json, ji.response_json, ji.status AS item_status, ji.error_text AS item_error_text, ji.updated_at AS item_updated_at
+                        FROM recent r
+                        INNER JOIN job_items ji ON ji.job_seq_id = r.job_seq_id AND ji.item_key = r.item_key
+                        INNER JOIN jobs j ON j.job_seq_id = r.job_seq_id
+                        LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                        LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                        ORDER BY r.updated_at DESC, r.job_seq_id DESC, r.item_key ASC
+                        """,
+                        (safe_user_id, safe_limit),
+                    ).fetchall()
+                else:
+                    rows = self._execute(
+                        conn,
+                        f"""
+                        SELECT
+                          j.job_id, j.status AS job_status, j.created_at, j.updated_at AS job_updated_at, j.total_items,
+                          j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
+                          jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
+                          jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
+                          bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri,
+                          ji.item_key, ji.request_json, ji.response_json, ji.status AS item_status, ji.error_text AS item_error_text, ji.updated_at AS item_updated_at
+                        FROM job_items ji
+                        INNER JOIN jobs j ON {join_condition}
+                        LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                        LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                        WHERE j.user_id = ?
+                        ORDER BY COALESCE(ji.updated_at, j.updated_at, j.created_at) DESC, j.created_at DESC, ji.item_key ASC
+                        LIMIT ?
+                        """,
+                        (safe_user_id, safe_limit),
+                    ).fetchall()
+        else:
+            filters: list[str] = []
+            params: list[Any] = []
+            if safe_user_id:
+                filters.append("j.user_id = ?")
+                params.append(safe_user_id)
+            elif safe_user_name:
+                filters.append("LOWER(COALESCE(j.user_name, '')) = LOWER(?)")
+                params.append(safe_user_name)
 
-        where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
-
-        with self._connect() as conn:
-            rows = self._execute(
-                conn,
-                f"""
-                SELECT
-                  j.job_id, j.status AS job_status, j.created_at, j.updated_at AS job_updated_at, j.total_items,
-                  j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
-                  jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                  jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
-                  bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri,
-                  ji.item_key, ji.request_json, ji.response_json, ji.status AS item_status, ji.error_text AS item_error_text, ji.updated_at AS item_updated_at
-                FROM job_items ji
-                INNER JOIN jobs j ON j.job_id = ji.job_id
-                LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
-                LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
-                {where_sql}
-                ORDER BY COALESCE(ji.updated_at, j.updated_at, j.created_at) DESC, j.created_at DESC, ji.item_key ASC
-                LIMIT ?
-                """,
-                tuple([*params, safe_limit]),
-            ).fetchall()
+            where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
+            with self._connect() as conn:
+                rows = self._execute(
+                    conn,
+                    f"""
+                    SELECT
+                      j.job_id, j.status AS job_status, j.created_at, j.updated_at AS job_updated_at, j.total_items,
+                      j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
+                      jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
+                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
+                      bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri,
+                      ji.item_key, ji.request_json, ji.response_json, ji.status AS item_status, ji.error_text AS item_error_text, ji.updated_at AS item_updated_at
+                    FROM job_items ji
+                    INNER JOIN jobs j ON {join_condition}
+                    LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                    LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                    {where_sql}
+                    ORDER BY COALESCE(ji.updated_at, j.updated_at, j.created_at) DESC, j.created_at DESC, ji.item_key ASC
+                    LIMIT ?
+                    """,
+                    tuple([*params, safe_limit]),
+                ).fetchall()
 
         out: list[dict[str, Any]] = []
         for row in rows:
@@ -1671,13 +1801,62 @@ class JobRepository:
     def get_user_result_summary_counts(self, user_id: str | None, user_name: str | None) -> dict[str, int]:
         safe_user_id = str(user_id or "").strip()
         safe_user_name = str(user_name or "").strip()
+        join_condition = self._job_items_jobs_join_condition()
+
+        if self.is_postgres and safe_user_id:
+            with self._connect() as conn:
+                if self._job_items_has_parsed_status:
+                    if self._job_items_has_user_id:
+                        row = self._execute(
+                            conn,
+                            """
+                            SELECT
+                              COUNT(*) AS total,
+                              COUNT(*) FILTER (WHERE COALESCE(parsed_status, 'FAILED') = 'CLEAR') AS clear,
+                              COUNT(*) FILTER (WHERE COALESCE(parsed_status, 'FAILED') = 'POTENTIAL') AS potential,
+                              COUNT(*) FILTER (WHERE COALESCE(parsed_status, 'FAILED') = 'PENDING') AS pending,
+                              COUNT(*) FILTER (WHERE COALESCE(parsed_status, 'FAILED') = 'FAILED') AS failed
+                            FROM job_items
+                            WHERE user_id = ?
+                            """,
+                            (safe_user_id,),
+                        ).fetchone()
+                        return {
+                            "total": int(row["total"] or 0) if row else 0,
+                            "clear": int(row["clear"] or 0) if row else 0,
+                            "potential": int(row["potential"] or 0) if row else 0,
+                            "pending": int(row["pending"] or 0) if row else 0,
+                            "failed": int(row["failed"] or 0) if row else 0,
+                            "match": 0,
+                        }
+
+                    row = self._execute(
+                        conn,
+                        f"""
+                        SELECT
+                          COUNT(*) AS total,
+                          COUNT(*) FILTER (WHERE COALESCE(ji.parsed_status, 'FAILED') = 'CLEAR') AS clear,
+                          COUNT(*) FILTER (WHERE COALESCE(ji.parsed_status, 'FAILED') = 'POTENTIAL') AS potential,
+                          COUNT(*) FILTER (WHERE COALESCE(ji.parsed_status, 'FAILED') = 'PENDING') AS pending,
+                          COUNT(*) FILTER (WHERE COALESCE(ji.parsed_status, 'FAILED') = 'FAILED') AS failed
+                        FROM job_items ji
+                        INNER JOIN jobs j ON {join_condition}
+                        WHERE j.user_id = ?
+                        """,
+                        (safe_user_id,),
+                    ).fetchone()
+                    return {
+                        "total": int(row["total"] or 0) if row else 0,
+                        "clear": int(row["clear"] or 0) if row else 0,
+                        "potential": int(row["potential"] or 0) if row else 0,
+                        "pending": int(row["pending"] or 0) if row else 0,
+                        "failed": int(row["failed"] or 0) if row else 0,
+                        "match": 0,
+                    }
 
         filters: list[str] = []
         params: list[Any] = []
-        if safe_user_id and safe_user_name:
-            filters.append("(j.user_id = ? OR LOWER(COALESCE(j.user_name, '')) = LOWER(?))")
-            params.extend([safe_user_id, safe_user_name])
-        elif safe_user_id:
+        if safe_user_id:
             filters.append("j.user_id = ?")
             params.append(safe_user_id)
         elif safe_user_name:
@@ -1686,167 +1865,246 @@ class JobRepository:
 
         where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
 
-        if self.is_postgres:
-            with self._connect() as conn:
-                row = self._execute(
-                    conn,
-                    f"""
-                    WITH filtered AS (
-                      SELECT ji.status, ji.error_text, ji.response_json
-                      FROM job_items ji
-                      INNER JOIN jobs j ON j.job_id = ji.job_id
-                      {where_sql}
-                    ),
-                    classified AS (
-                      SELECT
-                        status,
-                        CASE
-                          WHEN status IN ('QUEUED', 'PROCESSING') THEN 'PENDING'
-                          WHEN status = 'FAILED' THEN 'FAILED'
-                          WHEN COALESCE(NULLIF(response_json, ''), '') = '' THEN 'FAILED'
-                          WHEN COALESCE((response_json::jsonb ->> 'status')::int, 200) <> 200 THEN 'FAILED'
-                          WHEN COALESCE(NULLIF(response_json::jsonb ->> 'error_text', ''), NULLIF(response_json::jsonb ->> 'error', '')) IS NOT NULL THEN 'FAILED'
-                          WHEN UPPER(COALESCE(response_json::jsonb ->> 'engine_message', '')) = 'PM' THEN 'POTENTIAL'
-                          WHEN UPPER(COALESCE(response_json::jsonb ->> 'engine_message', '')) = 'NM' THEN 'CLEAR'
-                          WHEN EXISTS (
-                            SELECT 1
-                            FROM jsonb_array_elements(COALESCE(response_json::jsonb -> 'results', '[]'::jsonb)) AS elem
-                            WHERE COALESCE((elem ->> 'match')::boolean, FALSE) = TRUE
-                          ) THEN 'POTENTIAL'
-                          ELSE 'CLEAR'
-                        END AS outcome
-                      FROM filtered
-                    )
-                    SELECT
-                      COUNT(*) AS total,
-                      COUNT(*) FILTER (WHERE outcome = 'CLEAR') AS clear,
-                      COUNT(*) FILTER (WHERE outcome = 'POTENTIAL') AS potential,
-                      COUNT(*) FILTER (WHERE outcome = 'PENDING') AS pending,
-                      COUNT(*) FILTER (WHERE outcome = 'FAILED') AS failed
-                    FROM classified
-                    """,
-                    tuple(params),
-                ).fetchone()
-        else:
-            with self._connect() as conn:
-                rows = self._execute(
-                    conn,
-                    f"""
-                    SELECT ji.status, ji.error_text, ji.response_json
-                    FROM job_items ji
-                    INNER JOIN jobs j ON j.job_id = ji.job_id
-                    {where_sql}
-                    """,
-                    tuple(params),
-                ).fetchall()
+        with self._connect() as conn:
+            rows = self._execute(
+                conn,
+                f"""
+                SELECT ji.status, ji.response_json{", ji.parsed_status" if self._job_items_has_parsed_status else ""}
+                FROM job_items ji
+                INNER JOIN jobs j ON {join_condition}
+                {where_sql}
+                """,
+                tuple(params),
+            ).fetchall()
 
-            total = 0
-            clear = 0
-            potential = 0
-            pending = 0
-            failed = 0
-            for item in rows:
-                total += 1
+        total = 0
+        clear = 0
+        potential = 0
+        pending = 0
+        failed = 0
+        for item in rows:
+            total += 1
+            if self._job_items_has_parsed_status:
+                parsed_status = str(item["parsed_status"] or "").strip().upper() or "FAILED"
+            else:
                 item_status = str(item["status"] or "").strip().upper()
                 if item_status in {JobStatus.queued.value, JobStatus.processing.value}:
-                    pending += 1
-                    continue
-                if item_status == JobStatus.failed.value:
-                    failed += 1
-                    continue
-                try:
-                    response_payload = json.loads(item["response_json"]) if item["response_json"] else {}
-                except Exception:
-                    response_payload = {}
-                response_status = response_payload.get("status")
-                response_error = str(response_payload.get("error_text") or response_payload.get("error") or "").strip()
-                if (isinstance(response_status, int) and response_status != 200) or response_error or not isinstance(response_payload, dict):
-                    failed += 1
-                    continue
-                engine_message = str(response_payload.get("engine_message") or "").strip().upper()
-                if engine_message == "PM":
-                    potential += 1
-                    continue
-                if engine_message == "NM":
-                    clear += 1
-                    continue
-                results = response_payload.get("results", [])
-                if isinstance(results, list) and any(isinstance(result, dict) and bool(result.get("match")) for result in results):
-                    potential += 1
+                    parsed_status = "PENDING"
+                elif item_status == JobStatus.failed.value:
+                    parsed_status = "FAILED"
                 else:
-                    clear += 1
+                    try:
+                        response_payload = json.loads(item["response_json"]) if item["response_json"] else {}
+                    except Exception:
+                        response_payload = {}
+                    parsed_status = self._derive_parsed_status_from_response_payload(response_payload)
 
-            return {
-                "total": total,
-                "clear": clear,
-                "potential": potential,
-                "pending": pending,
-                "failed": failed,
-                "match": 0,
-            }
+            if parsed_status == "CLEAR":
+                clear += 1
+            elif parsed_status == "POTENTIAL":
+                potential += 1
+            elif parsed_status == "PENDING":
+                pending += 1
+            else:
+                failed += 1
 
         return {
-            "total": int(row["total"] or 0) if row else 0,
-            "clear": int(row["clear"] or 0) if row else 0,
-            "potential": int(row["potential"] or 0) if row else 0,
-            "pending": int(row["pending"] or 0) if row else 0,
-            "failed": int(row["failed"] or 0) if row else 0,
+            "total": total,
+            "clear": clear,
+            "potential": potential,
+            "pending": pending,
+            "failed": failed,
             "match": 0,
         }
 
+    @staticmethod
+    def _derive_parsed_status_from_response_payload(response_payload: dict[str, Any] | None) -> str:
+        if not isinstance(response_payload, dict):
+            return "FAILED"
+        response_status = response_payload.get("status")
+        response_error = str(response_payload.get("error_text") or response_payload.get("error") or "").strip()
+        if (isinstance(response_status, int) and response_status != 200) or response_error:
+            return "FAILED"
+        engine_message = str(response_payload.get("engine_message") or "").strip().upper()
+        if engine_message == "PM":
+            return "POTENTIAL"
+        if engine_message == "NM":
+            return "CLEAR"
+        results = response_payload.get("results", [])
+        if isinstance(results, list) and any(isinstance(result, dict) and bool(result.get("match")) for result in results):
+            return "POTENTIAL"
+        return "CLEAR"
+
     def add_job_item(self, job_id: str, item_key: str, request_payload: dict[str, Any]) -> None:
         ts = now_iso()
+        parsed_status = "PENDING"
         with self._connect() as conn:
-            self._execute(
-                conn,
-                """
-                INSERT INTO job_items(job_id, item_key, request_json, response_json, status, error_text, updated_at)
-                VALUES(?, ?, ?, NULL, ?, NULL, ?)
-                """,
-                (job_id, item_key, json.dumps(request_payload), JobStatus.queued.value, ts),
-            )
+            if self._job_items_has_parsed_status:
+                extra_col = ", updated_at_ts" if self._job_items_has_updated_at_ts else ""
+                extra_placeholder = ", ?" if self._job_items_has_updated_at_ts else ""
+                self._execute(
+                    conn,
+                    f"""
+                    INSERT INTO job_items(job_id, item_key, request_json, response_json, status, parsed_status, error_text, updated_at{extra_col})
+                    VALUES(?, ?, ?, NULL, ?, ?, NULL, ?{extra_placeholder})
+                    """,
+                    (
+                        job_id,
+                        item_key,
+                        json.dumps(request_payload),
+                        JobStatus.queued.value,
+                        parsed_status,
+                        ts,
+                        *([ts] if self._job_items_has_updated_at_ts else []),
+                    ),
+                )
+            else:
+                extra_col = ", updated_at_ts" if self._job_items_has_updated_at_ts else ""
+                extra_placeholder = ", ?" if self._job_items_has_updated_at_ts else ""
+                self._execute(
+                    conn,
+                    f"""
+                    INSERT INTO job_items(job_id, item_key, request_json, response_json, status, error_text, updated_at{extra_col})
+                    VALUES(?, ?, ?, NULL, ?, NULL, ?{extra_placeholder})
+                    """,
+                    (
+                        job_id,
+                        item_key,
+                        json.dumps(request_payload),
+                        JobStatus.queued.value,
+                        ts,
+                        *([ts] if self._job_items_has_updated_at_ts else []),
+                    ),
+                )
+        self._maybe_refresh_postgres_result_materialized_views()
 
     def mark_item_processing(self, job_id: str, item_key: str) -> None:
         ts = now_iso()
         with self._connect() as conn:
+            if self._job_items_has_parsed_status:
+                self._execute(
+                    conn,
+                    f"UPDATE job_items SET status = ?, parsed_status = ?, updated_at = ?{', updated_at_ts = ?' if self._job_items_has_updated_at_ts else ''} WHERE job_id = ? AND item_key = ?",
+                    (
+                        JobStatus.processing.value,
+                        "PENDING",
+                        ts,
+                        *([ts] if self._job_items_has_updated_at_ts else []),
+                        job_id,
+                        item_key,
+                    ),
+                )
+            else:
+                self._execute(
+                    conn,
+                    f"UPDATE job_items SET status = ?, updated_at = ?{', updated_at_ts = ?' if self._job_items_has_updated_at_ts else ''} WHERE job_id = ? AND item_key = ?",
+                    (
+                        JobStatus.processing.value,
+                        ts,
+                        *([ts] if self._job_items_has_updated_at_ts else []),
+                        job_id,
+                        item_key,
+                    ),
+                )
             self._execute(
                 conn,
-                "UPDATE job_items SET status = ?, updated_at = ? WHERE job_id = ? AND item_key = ?",
-                (JobStatus.processing.value, ts, job_id, item_key),
+                f"UPDATE jobs SET status = ?, updated_at = ?{', updated_at_ts = ?' if self._jobs_has_updated_at_ts else ''} WHERE job_id = ? AND status <> ?",
+                (
+                    JobStatus.processing.value,
+                    ts,
+                    *([ts] if self._jobs_has_updated_at_ts else []),
+                    job_id,
+                    JobStatus.completed.value,
+                ),
             )
-            self._execute(
-                conn,
-                "UPDATE jobs SET status = ?, updated_at = ? WHERE job_id = ? AND status <> ?",
-                (JobStatus.processing.value, ts, job_id, JobStatus.completed.value),
-            )
+        self._maybe_refresh_postgres_result_materialized_views()
 
     def mark_item_completed(self, job_id: str, item_key: str, response_payload: dict[str, Any]) -> None:
         ts = now_iso()
+        parsed_status = self._derive_parsed_status_from_response_payload(response_payload)
         with self._connect() as conn:
-            self._execute(
-                conn,
-                """
-                UPDATE job_items
-                SET status = ?, response_json = ?, error_text = NULL, updated_at = ?
-                WHERE job_id = ? AND item_key = ?
-                """,
-                (JobStatus.completed.value, json.dumps(response_payload), ts, job_id, item_key),
-            )
+            if self._job_items_has_parsed_status:
+                extra_set = ", updated_at_ts = ?" if self._job_items_has_updated_at_ts else ""
+                self._execute(
+                    conn,
+                    f"""
+                    UPDATE job_items
+                    SET status = ?, parsed_status = ?, response_json = ?, error_text = NULL, updated_at = ?{extra_set}
+                    WHERE job_id = ? AND item_key = ?
+                    """,
+                    (
+                        JobStatus.completed.value,
+                        parsed_status,
+                        json.dumps(response_payload),
+                        ts,
+                        *([ts] if self._job_items_has_updated_at_ts else []),
+                        job_id,
+                        item_key,
+                    ),
+                )
+            else:
+                extra_set = ", updated_at_ts = ?" if self._job_items_has_updated_at_ts else ""
+                self._execute(
+                    conn,
+                    f"""
+                    UPDATE job_items
+                    SET status = ?, response_json = ?, error_text = NULL, updated_at = ?{extra_set}
+                    WHERE job_id = ? AND item_key = ?
+                    """,
+                    (
+                        JobStatus.completed.value,
+                        json.dumps(response_payload),
+                        ts,
+                        *([ts] if self._job_items_has_updated_at_ts else []),
+                        job_id,
+                        item_key,
+                    ),
+                )
         self._refresh_job_status(job_id)
+        self._maybe_refresh_postgres_result_materialized_views()
 
     def mark_item_failed(self, job_id: str, item_key: str, error_text: str) -> None:
         ts = now_iso()
         with self._connect() as conn:
-            self._execute(
-                conn,
-                """
-                UPDATE job_items
-                SET status = ?, response_json = NULL, error_text = ?, updated_at = ?
-                WHERE job_id = ? AND item_key = ?
-                """,
-                (JobStatus.failed.value, error_text[:2000], ts, job_id, item_key),
-            )
+            if self._job_items_has_parsed_status:
+                extra_set = ", updated_at_ts = ?" if self._job_items_has_updated_at_ts else ""
+                self._execute(
+                    conn,
+                    f"""
+                    UPDATE job_items
+                    SET status = ?, parsed_status = ?, response_json = NULL, error_text = ?, updated_at = ?{extra_set}
+                    WHERE job_id = ? AND item_key = ?
+                    """,
+                    (
+                        JobStatus.failed.value,
+                        "FAILED",
+                        error_text[:2000],
+                        ts,
+                        *([ts] if self._job_items_has_updated_at_ts else []),
+                        job_id,
+                        item_key,
+                    ),
+                )
+            else:
+                extra_set = ", updated_at_ts = ?" if self._job_items_has_updated_at_ts else ""
+                self._execute(
+                    conn,
+                    f"""
+                    UPDATE job_items
+                    SET status = ?, response_json = NULL, error_text = ?, updated_at = ?{extra_set}
+                    WHERE job_id = ? AND item_key = ?
+                    """,
+                    (
+                        JobStatus.failed.value,
+                        error_text[:2000],
+                        ts,
+                        *([ts] if self._job_items_has_updated_at_ts else []),
+                        job_id,
+                        item_key,
+                    ),
+                )
         self._refresh_job_status(job_id)
+        self._maybe_refresh_postgres_result_materialized_views()
 
     @staticmethod
     def _normalize_actimize_party_key(party_key: str | None) -> str:
@@ -2169,15 +2427,39 @@ class JobRepository:
                             processed_at=processed_at,
                         )
 
-                self._execute(
-                    conn,
-                    """
-                    UPDATE job_items
-                    SET response_json = ?, updated_at = ?
-                    WHERE job_id = ? AND item_key = ?
-                    """,
-                    (json.dumps(response_payload), processed_at, row["job_id"], row["item_key"]),
-                )
+                if self._job_items_has_parsed_status:
+                    self._execute(
+                        conn,
+                        f"""
+                        UPDATE job_items
+                        SET response_json = ?, parsed_status = ?, updated_at = ?{', updated_at_ts = ?' if self._job_items_has_updated_at_ts else ''}
+                        WHERE job_id = ? AND item_key = ?
+                        """,
+                        (
+                            json.dumps(response_payload),
+                            self._derive_parsed_status_from_response_payload(response_payload),
+                            processed_at,
+                            *([processed_at] if self._job_items_has_updated_at_ts else []),
+                            row["job_id"],
+                            row["item_key"],
+                        ),
+                    )
+                else:
+                    self._execute(
+                        conn,
+                        f"""
+                        UPDATE job_items
+                        SET response_json = ?, updated_at = ?{', updated_at_ts = ?' if self._job_items_has_updated_at_ts else ''}
+                        WHERE job_id = ? AND item_key = ?
+                        """,
+                        (
+                            json.dumps(response_payload),
+                            processed_at,
+                            *([processed_at] if self._job_items_has_updated_at_ts else []),
+                            row["job_id"],
+                            row["item_key"],
+                        ),
+                    )
                 matched_items.append({"job_id": str(row["job_id"]), "item_key": item_key})
 
             callback_details = {
@@ -2239,6 +2521,7 @@ class JobRepository:
                 )
                 callback_id = int(cur.lastrowid)
 
+        self._maybe_refresh_postgres_result_materialized_views()
         return {
             "callback_id": callback_id,
             "unique_key": safe_unique_key,
@@ -2271,11 +2554,17 @@ class JobRepository:
         else:
             status = JobStatus.queued.value
 
+        ts = now_iso()
         with self._connect() as conn:
             self._execute(
                 conn,
-                "UPDATE jobs SET status = ?, updated_at = ? WHERE job_id = ?",
-                (status, now_iso(), job_id),
+                f"UPDATE jobs SET status = ?, updated_at = ?{', updated_at_ts = ?' if self._jobs_has_updated_at_ts else ''} WHERE job_id = ?",
+                (
+                    status,
+                    ts,
+                    *( [ts] if self._jobs_has_updated_at_ts else [] ),
+                    job_id,
+                ),
             )
 
     def get_job_snapshot(self, job_id: str) -> dict[str, Any] | None:
@@ -2832,11 +3121,12 @@ class JobRepository:
         safe_job_id = (job_id or "").strip()
         if not safe_job_id:
             return
+        ts = now_iso()
         with self._connect() as conn:
             self._execute(
                 conn,
-                "UPDATE jobs SET total_items = ?, updated_at = ? WHERE job_id = ?",
-                (max(int(total_items), 0), now_iso(), safe_job_id),
+                f"UPDATE jobs SET total_items = ?, updated_at = ?{', updated_at_ts = ?' if self._jobs_has_updated_at_ts else ''} WHERE job_id = ?",
+                (max(int(total_items), 0), ts, *([ts] if self._jobs_has_updated_at_ts else []), safe_job_id),
             )
 
     def refresh_job_status(self, job_id: str) -> None:
@@ -2851,11 +3141,12 @@ class JobRepository:
             return
         # Persist a terminal job-level failure without needing to create per-item rows.
         # Set total_items=0 to avoid "pending inferred" counts on the UI.
+        ts = now_iso()
         with self._connect() as conn:
             self._execute(
                 conn,
-                "UPDATE jobs SET status = ?, total_items = 0, updated_at = ? WHERE job_id = ?",
-                (JobStatus.failed.value, now_iso(), safe_job_id),
+                f"UPDATE jobs SET status = ?, total_items = 0, updated_at = ?{', updated_at_ts = ?' if self._jobs_has_updated_at_ts else ''} WHERE job_id = ?",
+                (JobStatus.failed.value, ts, *([ts] if self._jobs_has_updated_at_ts else []), safe_job_id),
             )
             self.add_audit_event(
                 action="SCREENING_JOB_FAILED",
@@ -2869,34 +3160,65 @@ class JobRepository:
         if not safe_job_id or not items:
             return
         ts = now_iso()
-        if self.is_postgres:
+        extra_col = ", updated_at_ts" if self._job_items_has_updated_at_ts else ""
+        extra_placeholder_pg = ", %s" if self._job_items_has_updated_at_ts else ""
+        extra_placeholder_sqlite = ", ?" if self._job_items_has_updated_at_ts else ""
+        if self._job_items_has_parsed_status and self.is_postgres:
             query = """
-                INSERT INTO job_items(job_id, item_key, request_json, response_json, status, error_text, updated_at)
-                VALUES(%s, %s, %s, NULL, %s, NULL, %s)
+                INSERT INTO job_items(job_id, item_key, request_json, response_json, status, parsed_status, error_text, updated_at{extra_col})
+                VALUES(%s, %s, %s, NULL, %s, %s, NULL, %s{extra_placeholder_pg})
                 ON CONFLICT (job_id, item_key) DO NOTHING
-                """
+                """.format(extra_col=extra_col, extra_placeholder_pg=extra_placeholder_pg)
+        elif self._job_items_has_parsed_status:
+            query = """
+                INSERT OR IGNORE INTO job_items(job_id, item_key, request_json, response_json, status, parsed_status, error_text, updated_at{extra_col})
+                VALUES(?, ?, ?, NULL, ?, ?, NULL, ?{extra_placeholder_sqlite})
+                """.format(extra_col=extra_col, extra_placeholder_sqlite=extra_placeholder_sqlite)
+        elif self.is_postgres:
+            query = """
+                INSERT INTO job_items(job_id, item_key, request_json, response_json, status, error_text, updated_at{extra_col})
+                VALUES(%s, %s, %s, NULL, %s, NULL, %s{extra_placeholder_pg})
+                ON CONFLICT (job_id, item_key) DO NOTHING
+                """.format(extra_col=extra_col, extra_placeholder_pg=extra_placeholder_pg)
         else:
             query = """
-                INSERT OR IGNORE INTO job_items(job_id, item_key, request_json, response_json, status, error_text, updated_at)
-                VALUES(?, ?, ?, NULL, ?, NULL, ?)
-                """
+                INSERT OR IGNORE INTO job_items(job_id, item_key, request_json, response_json, status, error_text, updated_at{extra_col})
+                VALUES(?, ?, ?, NULL, ?, NULL, ?{extra_placeholder_sqlite})
+                """.format(extra_col=extra_col, extra_placeholder_sqlite=extra_placeholder_sqlite)
 
-        params = [
-            (
-                safe_job_id,
-                (item_key or "").strip(),
-                json.dumps(request_payload),
-                JobStatus.queued.value,
-                ts,
-            )
-            for item_key, request_payload in items
-            if (item_key or "").strip()
-        ]
+        if self._job_items_has_parsed_status:
+            params = [
+                (
+                    safe_job_id,
+                    (item_key or "").strip(),
+                    json.dumps(request_payload),
+                    JobStatus.queued.value,
+                    "PENDING",
+                    ts,
+                    *([ts] if self._job_items_has_updated_at_ts else []),
+                )
+                for item_key, request_payload in items
+                if (item_key or "").strip()
+            ]
+        else:
+            params = [
+                (
+                    safe_job_id,
+                    (item_key or "").strip(),
+                    json.dumps(request_payload),
+                    JobStatus.queued.value,
+                    ts,
+                    *([ts] if self._job_items_has_updated_at_ts else []),
+                )
+                for item_key, request_payload in items
+                if (item_key or "").strip()
+            ]
         if not params:
             return
         with self._connect() as conn:
             cur = conn.cursor()
             cur.executemany(self._sql(query), params)
+        self._maybe_refresh_postgres_result_materialized_views()
 
     def attach_upload_to_job(self, upload_id: str, job_id: str) -> bool:
         with self._connect() as conn:

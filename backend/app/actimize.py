@@ -1009,6 +1009,22 @@ class ActimizeClient:
             return self._normalize_party_key(f"OD_{unique_key}_{derived_suffix}")
         return self._normalize_party_key(f"OD_{unique_key}")
 
+    def build_batch_party_key(self, base_party_key: str, screening_type: str | None = None) -> str:
+        safe_base = self._normalize_party_key(base_party_key)
+        if not safe_base:
+            return self.build_on_demand_party_key(screening_type)
+
+        suffix = self._resolve_party_key_suffix(screening_type)
+        if not suffix:
+            suffix = self._normalize_party_key_suffix(screening_type)
+        if not suffix:
+            return safe_base
+
+        safe_suffix = suffix.upper()
+        if safe_base.upper().endswith(f"_{safe_suffix}"):
+            return safe_base
+        return f"{safe_base}_{safe_suffix}"
+
     def _build_party_key(self, query: EntityExample) -> str:
         normalized = query.model_dump(mode="json")
         canonical = json.dumps(normalized, sort_keys=True, separators=(",", ":"))

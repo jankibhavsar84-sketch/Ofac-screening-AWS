@@ -1,0 +1,12 @@
+{
+    "containerOverrides":  [
+                               {
+                                   "command":  [
+                                                   "python",
+                                                   "-c",
+                                                   "import json, os\nimport psycopg\n\nurl = os.getenv(\u0027APP_DB_URL\u0027, \u0027\u0027).strip()\nprint(\u0027PROFILE_DB_URL\u0027, bool(url))\nif not url:\n    raise SystemExit(1)\n\nwith psycopg.connect(url) as conn:\n    with conn.cursor() as cur:\n        cur.execute(\"\"\"\n        with base as (\n            select\n              lower(coalesce(j.user_name,\u0027\u0027)) as user_name,\n              length(coalesce(ji.response_json,\u0027\u0027)) as resp_len,\n              ji.status\n            from job_items ji\n            join jobs j on j.job_id = ji.job_id\n            where lower(coalesce(j.user_name,\u0027\u0027)) in (\u0027admin\u0027,\u0027admin2\u0027)\n        )\n        select\n          user_name,\n          count(*)::bigint as total_rows,\n          round(avg(resp_len)::numeric,2) as avg_resp_len,\n          max(resp_len) as max_resp_len,\n          sum(case when status in (\u0027QUEUED\u0027,\u0027PROCESSING\u0027) then 1 else 0 end)::bigint as pending_rows,\n          sum(case when status = \u0027FAILED\u0027 then 1 else 0 end)::bigint as failed_rows\n        from base\n        group by user_name\n        order by total_rows desc\n        \"\"\")\n        prof = [\n            {\n                \u0027user_name\u0027: r[0],\n                \u0027total_rows\u0027: int(r[1]),\n                \u0027avg_response_json_len\u0027: float(r[2]) if r[2] is not None else None,\n                \u0027max_response_json_len\u0027: int(r[3]) if r[3] is not None else None,\n                \u0027pending_rows\u0027: int(r[4]),\n                \u0027failed_rows\u0027: int(r[5]),\n            }\n            for r in cur.fetchall()\n        ]\n        print(\u0027SUMMARY_PROFILE\u0027, json.dumps(prof))\n\nprint(\u0027PROFILE_DONE\u0027)"
+                                               ],
+                                   "name":  "backend"
+                               }
+                           ]
+}

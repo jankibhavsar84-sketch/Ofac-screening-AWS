@@ -1,0 +1,12 @@
+{
+    "containerOverrides":  [
+                               {
+                                   "command":  [
+                                                   "python",
+                                                   "-c",
+                                                   "import json, os\nimport psycopg\njob=\u0027bcba0db7-3f46-4748-a0e2-a9b6e4c24d6b\u0027\nurl=os.getenv(\u0027APP_DB_URL\u0027,\u0027\u0027).strip()\nwith psycopg.connect(url) as conn:\n  with conn.cursor() as cur:\n    cur.execute(\"\"\"\n      select event_id, created_at, action, entity_type, coalesce(entity_id,\u0027\u0027), coalesce(details_json,\u0027\u0027)\n      from audit_events\n      where coalesce(entity_id,\u0027\u0027)=%s\n         or coalesce(details_json,\u0027\u0027) ilike %s\n      order by event_id asc\n      limit 200\n    \"\"\", (job, f\u0027%{job}%\u0027))\n    rows=[{\u0027event_id\u0027:r[0],\u0027created_at\u0027:r[1],\u0027action\u0027:r[2],\u0027entity_type\u0027:r[3],\u0027entity_id\u0027:r[4],\u0027details_json\u0027:r[5]} for r in cur.fetchall()]\n    print(\u0027AUDIT_FOR_JOB\u0027, json.dumps(rows))\nprint(\u0027AUDIT_DONE\u0027)"
+                                               ],
+                                   "name":  "backend"
+                               }
+                           ]
+}

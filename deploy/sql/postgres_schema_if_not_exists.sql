@@ -454,4 +454,97 @@ SET party_key_suffix = CASE normalized_source_type
 END
 WHERE party_key_suffix IS NULL OR TRIM(party_key_suffix) = '' OR party_key_suffix !~ '^[0-9]{3}$';
 
+-- Performance + typed-column upgrade for large result sets
+ALTER TABLE IF EXISTS jobs ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS jobs ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING NULLIF(updated_at, '')::timestamptz;
+ALTER TABLE IF EXISTS job_items ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING NULLIF(updated_at, '')::timestamptz;
+ALTER TABLE IF EXISTS daily_schedules ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS daily_schedules ALTER COLUMN last_run_at TYPE TIMESTAMPTZ USING NULLIF(last_run_at, '')::timestamptz;
+ALTER TABLE IF EXISTS daily_schedules ALTER COLUMN next_run_at TYPE TIMESTAMPTZ USING NULLIF(next_run_at, '')::timestamptz;
+ALTER TABLE IF EXISTS batch_file_uploads ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS schedule_record_state ALTER COLUMN first_seen_at TYPE TIMESTAMPTZ USING NULLIF(first_seen_at, '')::timestamptz;
+ALTER TABLE IF EXISTS schedule_record_state ALTER COLUMN last_screened_at TYPE TIMESTAMPTZ USING NULLIF(last_screened_at, '')::timestamptz;
+ALTER TABLE IF EXISTS schedule_subscriptions ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS schedule_subscriptions ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING NULLIF(updated_at, '')::timestamptz;
+ALTER TABLE IF EXISTS job_schedule_notifications ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS audit_events ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS api_access_logs ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS external_api_errors ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS actimize_alert_callbacks ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS schedule_notifications ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS business_units ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS business_units ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING NULLIF(updated_at, '')::timestamptz;
+ALTER TABLE IF EXISTS user_business_units ALTER COLUMN created_at TYPE TIMESTAMPTZ USING NULLIF(created_at, '')::timestamptz;
+ALTER TABLE IF EXISTS user_business_units ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING NULLIF(updated_at, '')::timestamptz;
+
+ALTER TABLE IF EXISTS jobs ADD COLUMN IF NOT EXISTS created_at_ts TIMESTAMPTZ;
+ALTER TABLE IF EXISTS jobs ADD COLUMN IF NOT EXISTS updated_at_ts TIMESTAMPTZ;
+ALTER TABLE IF EXISTS job_items ADD COLUMN IF NOT EXISTS updated_at_ts TIMESTAMPTZ;
+ALTER TABLE IF EXISTS job_items ADD COLUMN IF NOT EXISTS parsed_status TEXT;
+
+UPDATE jobs
+SET created_at_ts = COALESCE(created_at_ts, created_at),
+    updated_at_ts = COALESCE(updated_at_ts, updated_at)
+WHERE created_at_ts IS NULL OR updated_at_ts IS NULL;
+
+UPDATE job_items
+SET updated_at_ts = COALESCE(updated_at_ts, updated_at)
+WHERE updated_at_ts IS NULL;
+
+UPDATE job_items
+SET parsed_status = CASE
+  WHEN status IN ('QUEUED', 'PROCESSING') THEN 'PENDING'
+  WHEN status = 'FAILED' THEN 'FAILED'
+  WHEN COALESCE(NULLIF(response_json, ''), '') = '' THEN 'FAILED'
+  WHEN UPPER(COALESCE(response_json::jsonb ->> 'engine_message', '')) = 'PM' THEN 'POTENTIAL'
+  WHEN UPPER(COALESCE(response_json::jsonb ->> 'engine_message', '')) = 'NM' THEN 'CLEAR'
+  ELSE 'CLEAR'
+END
+WHERE parsed_status IS NULL OR TRIM(parsed_status) = '';
+
+ALTER TABLE IF EXISTS job_items ALTER COLUMN parsed_status SET DEFAULT 'PENDING';
+
+CREATE INDEX IF NOT EXISTS idx_jobs_user_updated
+ON jobs(user_id, updated_at_ts DESC, created_at_ts DESC, job_id);
+
+CREATE INDEX IF NOT EXISTS idx_job_items_job_updated
+ON job_items(job_id, updated_at_ts DESC, item_key);
+
+CREATE INDEX IF NOT EXISTS idx_job_items_parsed_status
+ON job_items(parsed_status);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS mv_user_recent_results AS
+SELECT
+  j.user_id,
+  ji.job_id,
+  ji.item_key,
+  COALESCE(ji.updated_at_ts, j.updated_at_ts, j.created_at_ts, ji.updated_at, j.updated_at, j.created_at) AS sort_ts,
+  COALESCE(NULLIF(ji.parsed_status, ''), 'FAILED') AS parsed_status
+FROM job_items ji
+INNER JOIN jobs j ON j.job_id = ji.job_id
+WHERE COALESCE(j.user_id, '') <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_recent_results_pk
+ON mv_user_recent_results(job_id, item_key);
+
+CREATE INDEX IF NOT EXISTS idx_mv_user_recent_results_user_sort
+ON mv_user_recent_results(user_id, sort_ts DESC, job_id, item_key);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS mv_user_result_summary_counts AS
+SELECT
+  user_id,
+  COUNT(*)::BIGINT AS total,
+  SUM(CASE WHEN parsed_status = 'CLEAR' THEN 1 ELSE 0 END)::BIGINT AS clear,
+  SUM(CASE WHEN parsed_status = 'POTENTIAL' THEN 1 ELSE 0 END)::BIGINT AS potential,
+  SUM(CASE WHEN parsed_status = 'PENDING' THEN 1 ELSE 0 END)::BIGINT AS pending,
+  SUM(CASE WHEN parsed_status = 'FAILED' THEN 1 ELSE 0 END)::BIGINT AS failed
+FROM mv_user_recent_results
+GROUP BY user_id;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_result_summary_counts_user
+ON mv_user_result_summary_counts(user_id);
+
+REFRESH MATERIALIZED VIEW mv_user_recent_results;
+REFRESH MATERIALIZED VIEW mv_user_result_summary_counts;
+
 COMMIT;

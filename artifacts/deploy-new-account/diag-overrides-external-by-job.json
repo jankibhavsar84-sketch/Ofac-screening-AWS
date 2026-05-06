@@ -1,0 +1,12 @@
+{
+    "containerOverrides":  [
+                               {
+                                   "command":  [
+                                                   "python",
+                                                   "-c",
+                                                   "import json, os\nimport psycopg\n\njob=\u0027bcba0db7-3f46-4748-a0e2-a9b6e4c24d6b\u0027\nitem=\u0027AMLP_E_2001X13\u0027\nurl=os.getenv(\u0027APP_DB_URL\u0027,\u0027\u0027).strip()\nwith psycopg.connect(url) as conn:\n  with conn.cursor() as cur:\n    cur.execute(\"\"\"\n      select created_at, provider, operation, endpoint, status_code,\n             coalesce(job_id,\u0027\u0027), coalesce(item_key,\u0027\u0027), coalesce(error_text,\u0027\u0027), coalesce(details_json,\u0027\u0027)\n      from external_api_errors\n      where coalesce(job_id,\u0027\u0027)=%s or coalesce(item_key,\u0027\u0027)=%s\n      order by created_at desc\n      limit 20\n    \"\"\", (job, item))\n    rows=[]\n    for r in cur.fetchall():\n      rows.append({\u0027created_at\u0027:r[0],\u0027provider\u0027:r[1],\u0027operation\u0027:r[2],\u0027endpoint\u0027:r[3],\u0027status_code\u0027:r[4],\u0027job_id\u0027:r[5],\u0027item_key\u0027:r[6],\u0027error_text\u0027:r[7],\u0027details_json\u0027:r[8]})\n    print(\u0027EXTERNAL_ERRORS_BY_JOB_ITEM\u0027, json.dumps(rows))\nprint(\u0027EXTERNAL_ERRORS_DONE\u0027)"
+                                               ],
+                                   "name":  "backend"
+                               }
+                           ]
+}

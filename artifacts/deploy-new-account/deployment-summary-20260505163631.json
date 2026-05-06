@@ -1,0 +1,11 @@
+﻿{
+    "cluster":  "Screening",
+    "region":  "us-east-2",
+    "backend_service":  "ofac-screening-backend-svc",
+    "backend_task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-backend:25",
+    "backend_image":  "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260505163631",
+    "worker_service":  "ofac-screening-worker-svc",
+    "worker_task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-worker:17",
+    "worker_image":  "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260505163631",
+    "deployed_at":  "2026-05-05T16:42:30.5277349-04:00"
+}

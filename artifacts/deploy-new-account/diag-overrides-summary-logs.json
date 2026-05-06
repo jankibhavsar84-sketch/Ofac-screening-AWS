@@ -1,0 +1,12 @@
+{
+    "containerOverrides":  [
+                               {
+                                   "command":  [
+                                                   "python",
+                                                   "-c",
+                                                   "import json, os\nimport psycopg\n\nurl = os.getenv(\u0027APP_DB_URL\u0027, \u0027\u0027).strip()\nprint(\u0027LOG_DIAG_DB_URL\u0027, bool(url))\nif not url:\n    raise SystemExit(1)\n\nwith psycopg.connect(url) as conn:\n    with conn.cursor() as cur:\n        cur.execute(\"\"\"\n        select coalesce(user_name,\u0027\u0027), coalesce(user_id,\u0027\u0027), count(*)::bigint,\n               round(avg(duration_ms)::numeric,2),\n               max(duration_ms)\n        from api_access_logs\n        where request_path = \u0027/api/v1/screenings/summary\u0027\n        group by 1,2\n        order by max(duration_ms) desc\n        limit 10\n        \"\"\")\n        rows = [\n            {\n                \u0027user_name\u0027: r[0],\n                \u0027user_id\u0027: r[1],\n                \u0027count\u0027: int(r[2]),\n                \u0027avg_ms\u0027: float(r[3]) if r[3] is not None else None,\n                \u0027max_ms\u0027: int(r[4]) if r[4] is not None else None,\n            }\n            for r in cur.fetchall()\n        ]\n        print(\u0027SUMMARY_LAT_BY_USER\u0027, json.dumps(rows))\n\n        cur.execute(\"\"\"\n        select created_at, status_code, duration_ms, coalesce(user_name,\u0027\u0027), coalesce(user_id,\u0027\u0027), coalesce(auth_state,\u0027\u0027)\n        from api_access_logs\n        where request_path = \u0027/api/v1/screenings/summary\u0027\n          and lower(coalesce(user_name,\u0027\u0027)) in (\u0027admin\u0027, \u0027admin2\u0027)\n        order by created_at desc\n        limit 40\n        \"\"\")\n        recent = [\n            {\n                \u0027created_at\u0027: r[0],\n                \u0027status_code\u0027: int(r[1]),\n                \u0027duration_ms\u0027: int(r[2]),\n                \u0027user_name\u0027: r[3],\n                \u0027user_id\u0027: r[4],\n                \u0027auth_state\u0027: r[5],\n            }\n            for r in cur.fetchall()\n        ]\n        print(\u0027SUMMARY_RECENT_ADMIN_ADMIN2\u0027, json.dumps(recent))\n\nprint(\u0027LOG_DIAG_DONE\u0027)"
+                                               ],
+                                   "name":  "backend"
+                               }
+                           ]
+}

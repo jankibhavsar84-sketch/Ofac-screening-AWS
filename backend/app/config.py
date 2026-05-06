@@ -62,6 +62,8 @@ class Settings:
     db_connect_max_attempts: int
     db_connect_backoff_initial_ms: int
     db_connect_backoff_max_ms: int
+    pg_result_mv_enabled: bool
+    pg_result_mv_refresh_interval_s: int
     cors_allow_origins: str
     multipart_max_part_size_bytes: int
 
@@ -140,6 +142,8 @@ def load_settings() -> Settings:
         db_connect_max_attempts=_to_int(os.getenv("DB_CONNECT_MAX_ATTEMPTS"), 4),
         db_connect_backoff_initial_ms=_to_int(os.getenv("DB_CONNECT_BACKOFF_INITIAL_MS"), 100),
         db_connect_backoff_max_ms=_to_int(os.getenv("DB_CONNECT_BACKOFF_MAX_MS"), 1500),
+        pg_result_mv_enabled=_to_bool(os.getenv("PG_RESULT_MV_ENABLED"), False),
+        pg_result_mv_refresh_interval_s=_to_int(os.getenv("PG_RESULT_MV_REFRESH_INTERVAL_S"), 20),
         cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*"),
         multipart_max_part_size_bytes=_to_bytes(os.getenv("MULTIPART_MAX_PART_SIZE", "25m"), 25 * 1024 * 1024),
         aws_region=os.getenv("AWS_REGION", "us-east-1"),

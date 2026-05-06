@@ -1,0 +1,7 @@
+{
+    "image":  "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260505112433",
+    "task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:25",
+    "service":  "ofac-screening-frontend-svc",
+    "tag":  "20260505112433",
+    "deployed_at":  "2026-05-05T11:32:28.6154310-04:00"
+}

@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import boto3
 
+from .actimize import ActimizeClient
 from .config import settings
 from .models import (
     ActimizeAlertCallbackAccepted,
@@ -354,10 +355,14 @@ class ScreeningService:
                 screened_item_keys=[],
             )
 
+        screening_types_for_dispatch = self._resolve_dispatch_screening_types(payload.screening_types)
+        expected_item_total = len(queries_for_job) * len(screening_types_for_dispatch)
+        actimize = ActimizeClient(repository=self.repository)
+
         job_id = str(uuid4())
         submitted_at = self.repository.create_job(
             job_id=job_id,
-            total_items=len(queries_for_job),
+            total_items=expected_item_total,
             source_schedule_id=source_schedule_id,
             source_upload_id=source_upload_id,
             user_id=payload.user_id,
@@ -366,7 +371,7 @@ class ScreeningService:
         self.repository.upsert_job_metadata(
             job_id=job_id,
             mode=inferred_mode,
-            screening_types=payload.screening_types,
+            screening_types=screening_types_for_dispatch,
             mock_screening=payload.mock_screening,
             batch_name=payload.batch_name,
             daily_screening=bool(payload.daily_screening or source_schedule_id),
@@ -376,108 +381,112 @@ class ScreeningService:
             business_unit_code=business_unit_code,
         )
 
-        for item_key, query_payload in queries_for_job.items():
+        safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
+        is_single_mode = inferred_mode == "SINGLE"
+        for item_key in queries_for_job:
             query = payload.queries[item_key]
-
-            # Preserve uploaded PartyKey in the request that is sent to Actimize.
-            # Frontend keys batch uploads by PartyKey and we want that same key to
-            # be used as the external "partyKey" for traceability.
             safe_item_key = str(item_key or "").strip()
-            props = query.properties if isinstance(query.properties, dict) else {}
-            has_party_key = bool(str(props.get("partyKey") or "").strip() or str(props.get("party_key") or "").strip())
-            if safe_item_key and not has_party_key:
-                next_props = dict(props)
-                next_props["partyKey"] = safe_item_key
-                query = query.model_copy(update={"properties": next_props})
-                if isinstance(query_payload, dict):
-                    next_payload = dict(query_payload)
-                    next_payload_props = next_payload.get("properties") if isinstance(next_payload.get("properties"), dict) else {}
-                    next_payload_props = dict(next_payload_props)
-                    next_payload_props["partyKey"] = safe_item_key
-                    next_payload["properties"] = next_payload_props
-                    query_payload = next_payload
+            base_props = query.properties if isinstance(query.properties, dict) else {}
 
-            safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
-            if safe_business_unit_code:
-                props_for_bu = query.properties if isinstance(query.properties, dict) else {}
-                next_props_for_bu = dict(props_for_bu)
-                next_props_for_bu["businessUnit"] = safe_business_unit_code
-                query = query.model_copy(update={"properties": next_props_for_bu})
-                if isinstance(query_payload, dict):
-                    next_payload = dict(query_payload)
-                    next_payload_props = (
-                        next_payload.get("properties") if isinstance(next_payload.get("properties"), dict) else {}
+            party_keys_by_screening_type: dict[str, str] = {}
+            for screening_type in screening_types_for_dispatch:
+                if is_single_mode:
+                    party_key = actimize.build_on_demand_party_key(screening_type)
+                else:
+                    party_key = actimize.build_batch_party_key(safe_item_key, screening_type)
+                if party_key:
+                    party_keys_by_screening_type[screening_type] = party_key
+
+            for screening_type in screening_types_for_dispatch:
+                per_type_party_key = party_keys_by_screening_type.get(screening_type, "")
+                per_type_item_key = (
+                    self._build_screening_item_key(safe_item_key, screening_type)
+                    if is_single_mode
+                    else self._build_batch_screening_item_key(safe_item_key, screening_type)
+                )
+                per_type_props = dict(base_props)
+                if per_type_party_key:
+                    per_type_props["partyKey"] = per_type_party_key
+                    per_type_props["partyKeysByScreeningType"] = {screening_type: per_type_party_key}
+                per_type_props["screeningType"] = screening_type
+                if safe_business_unit_code:
+                    per_type_props["businessUnit"] = safe_business_unit_code
+
+                per_type_query = query.model_copy(update={"properties": per_type_props})
+                per_type_request_payload = per_type_query.model_dump(mode="json")
+                self.repository.add_job_item(
+                    job_id=job_id,
+                    item_key=per_type_item_key,
+                    request_payload=per_type_request_payload,
+                )
+
+                queue_message = ScreeningQueueMessage(
+                    job_id=job_id,
+                    item_key=per_type_item_key,
+                    query=per_type_query,
+                    submitted_at=submitted_at,
+                    screening_types=[screening_type],
+                    mock_screening=payload.mock_screening,
+                    user_id=payload.user_id,
+                    user_name=payload.user_name,
+                    correlation_id=correlation_id,
+                    business_unit_code=safe_business_unit_code or None,
+                    source_schedule_id=source_schedule_id,
+                    source_record_hash=record_hashes.get(item_key),
+                )
+                self.repository.add_audit_event(
+                    action="SQS_ENQUEUE_STARTED",
+                    user_id=payload.user_id,
+                    user_name=payload.user_name,
+                    entity_type="screening_queue_item",
+                    entity_id=f"{job_id}:{per_type_item_key}",
+                    details={
+                        "job_id": job_id,
+                        "item_key": per_type_item_key,
+                        "source_item_key": item_key,
+                        "queue_name": settings.aws_sqs_queue_name,
+                        "source_schedule_id": source_schedule_id,
+                        "screening_types": [screening_type],
+                        "mock_screening": payload.mock_screening,
+                        "correlation_id": correlation_id,
+                        "request": per_type_request_payload,
+                    },
+                )
+                try:
+                    self.queue.enqueue(queue_message)
+                    self.repository.add_audit_event(
+                        action="SQS_ENQUEUED",
+                        user_id=payload.user_id,
+                        user_name=payload.user_name,
+                        entity_type="screening_queue_item",
+                        entity_id=f"{job_id}:{per_type_item_key}",
+                        details={
+                            "job_id": job_id,
+                            "item_key": per_type_item_key,
+                            "source_item_key": item_key,
+                            "queue_name": settings.aws_sqs_queue_name,
+                            "source_schedule_id": source_schedule_id,
+                            "correlation_id": correlation_id,
+                        },
                     )
-                    next_payload_props = dict(next_payload_props)
-                    next_payload_props["businessUnit"] = safe_business_unit_code
-                    next_payload["properties"] = next_payload_props
-                    query_payload = next_payload
-
-            self.repository.add_job_item(job_id=job_id, item_key=item_key, request_payload=query_payload)
-            queue_message = ScreeningQueueMessage(
-                job_id=job_id,
-                item_key=item_key,
-                query=query,
-                submitted_at=submitted_at,
-                screening_types=payload.screening_types,
-                mock_screening=payload.mock_screening,
-                user_id=payload.user_id,
-                user_name=payload.user_name,
-                correlation_id=correlation_id,
-                business_unit_code=safe_business_unit_code or None,
-                source_schedule_id=source_schedule_id,
-                source_record_hash=record_hashes.get(item_key),
-            )
-            self.repository.add_audit_event(
-                action="SQS_ENQUEUE_STARTED",
-                user_id=payload.user_id,
-                user_name=payload.user_name,
-                entity_type="screening_queue_item",
-                entity_id=f"{job_id}:{item_key}",
-                details={
-                    "job_id": job_id,
-                    "item_key": item_key,
-                    "queue_name": settings.aws_sqs_queue_name,
-                    "source_schedule_id": source_schedule_id,
-                    "screening_types": payload.screening_types,
-                    "mock_screening": payload.mock_screening,
-                    "correlation_id": correlation_id,
-                    "request": query_payload,
-                },
-            )
-            try:
-                self.queue.enqueue(queue_message)
-                self.repository.add_audit_event(
-                    action="SQS_ENQUEUED",
-                    user_id=payload.user_id,
-                    user_name=payload.user_name,
-                    entity_type="screening_queue_item",
-                    entity_id=f"{job_id}:{item_key}",
-                    details={
-                        "job_id": job_id,
-                        "item_key": item_key,
-                        "queue_name": settings.aws_sqs_queue_name,
-                        "source_schedule_id": source_schedule_id,
-                        "correlation_id": correlation_id,
-                    },
-                )
-            except Exception as exc:  # noqa: BLE001
-                self.repository.add_audit_event(
-                    action="SQS_ENQUEUE_FAILED",
-                    user_id=payload.user_id,
-                    user_name=payload.user_name,
-                    entity_type="screening_queue_item",
-                    entity_id=f"{job_id}:{item_key}",
-                    details={
-                        "job_id": job_id,
-                        "item_key": item_key,
-                        "queue_name": settings.aws_sqs_queue_name,
-                        "source_schedule_id": source_schedule_id,
-                        "correlation_id": correlation_id,
-                        "error": str(exc),
-                    },
-                )
-                raise
+                except Exception as exc:  # noqa: BLE001
+                    self.repository.add_audit_event(
+                        action="SQS_ENQUEUE_FAILED",
+                        user_id=payload.user_id,
+                        user_name=payload.user_name,
+                        entity_type="screening_queue_item",
+                        entity_id=f"{job_id}:{per_type_item_key}",
+                        details={
+                            "job_id": job_id,
+                            "item_key": per_type_item_key,
+                            "source_item_key": item_key,
+                            "queue_name": settings.aws_sqs_queue_name,
+                            "source_schedule_id": source_schedule_id,
+                            "correlation_id": correlation_id,
+                            "error": str(exc),
+                        },
+                    )
+                    raise
 
         self.repository.add_audit_event(
             action="SCREENING_JOB_SUBMITTED",
@@ -486,8 +495,10 @@ class ScreeningService:
             entity_type="screening_job",
             entity_id=job_id,
             details={
-                "total_items": len(queries_for_job),
-                "screening_types": payload.screening_types,
+                "total_items": expected_item_total,
+                "query_count": len(queries_for_job),
+                "screening_type_count": len(screening_types_for_dispatch),
+                "screening_types": screening_types_for_dispatch,
                 "daily_screening": payload.daily_screening,
                 "batch_name": payload.batch_name,
                 "mock_screening": payload.mock_screening,
@@ -503,7 +514,7 @@ class ScreeningService:
             job_id=job_id,
             status=JobStatus.queued,
             submitted_at=submitted_at,
-            total_items=len(queries_for_job),
+            total_items=expected_item_total,
             business_unit_code=business_unit_code or None,
             daily_schedule_id=daily_schedule_id,
             screened_item_keys=list(queries_for_job.keys()),
@@ -512,6 +523,37 @@ class ScreeningService:
     @staticmethod
     def _normalize_business_unit_code(value: str | None) -> str:
         return str(value or "").strip().upper()
+
+    @staticmethod
+    def _resolve_dispatch_screening_types(screening_types: list[str] | None) -> list[str]:
+        resolved: list[str] = []
+        seen: set[str] = set()
+        for raw in screening_types or []:
+            safe = str(raw or "").strip()
+            if not safe:
+                continue
+            dedupe_key = safe.lower()
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+            resolved.append(safe)
+        return resolved or ["Sanction"]
+
+    @staticmethod
+    def _build_screening_item_key(base_item_key: str, screening_type: str) -> str:
+        safe_base = str(base_item_key or "").strip()
+        safe_type = str(screening_type or "").strip()
+        if safe_base and safe_type:
+            return f"{safe_base}::{safe_type}"
+        return safe_base or safe_type
+
+    @staticmethod
+    def _build_batch_screening_item_key(base_item_key: str, screening_type: str) -> str:
+        safe_base = str(base_item_key or "").strip()
+        safe_type = str(screening_type or "").strip()
+        if safe_base and safe_type:
+            return f"{safe_base}_{safe_type}"
+        return safe_base or safe_type
 
     @staticmethod
     def _parse_job_status(value: Any) -> JobStatus:
@@ -674,6 +716,50 @@ class ScreeningService:
         if len(per_type) == 1:
             return next(iter(per_type.values()))
         return matches
+
+    @classmethod
+    def _resolve_screening_types_for_item(
+        cls,
+        request_payload: dict[str, Any] | None,
+        matches: dict[str, Any] | None,
+        default_screening_types: list[str] | None,
+    ) -> list[str]:
+        resolved: list[str] = []
+        seen: set[str] = set()
+
+        def _append(raw_value: Any) -> None:
+            safe_value = str(raw_value or "").strip()
+            if not safe_value:
+                return
+            dedupe_key = cls._normalize_screening_type_key(safe_value)
+            if not dedupe_key or dedupe_key in seen:
+                return
+            seen.add(dedupe_key)
+            resolved.append(safe_value)
+
+        props = (request_payload or {}).get("properties")
+        if isinstance(props, dict):
+            for key in ("screeningType", "screening_type"):
+                raw_value = props.get(key)
+                if isinstance(raw_value, list):
+                    for candidate in raw_value:
+                        _append(candidate)
+                else:
+                    _append(raw_value)
+
+        per_type = cls._extract_responses_by_screening_type(matches if isinstance(matches, dict) else {})
+        for response_payload in per_type.values():
+            if not isinstance(response_payload, dict):
+                continue
+            _append(response_payload.get("requested_screening_type"))
+            _append(response_payload.get("actimize_screening_type"))
+
+        if resolved:
+            return resolved
+
+        for screening_type in default_screening_types or []:
+            _append(screening_type)
+        return resolved or [""]
 
     @staticmethod
     def _classify_single_result(matches: dict[str, Any]) -> str:
@@ -904,7 +990,11 @@ class ScreeningService:
             "dailyScheduleActive": daily_schedule_active,
         }
 
-        screening_types_for_rows = screening_types if screening_types else [""]
+        screening_types_for_rows = self._resolve_screening_types_for_item(
+            request_payload=request_payload,
+            matches=item_matches,
+            default_screening_types=screening_types,
+        )
         out: list[dict[str, Any]] = []
         for index, screening_type in enumerate(screening_types_for_rows):
             safe_screening_type = str(screening_type or "").strip()

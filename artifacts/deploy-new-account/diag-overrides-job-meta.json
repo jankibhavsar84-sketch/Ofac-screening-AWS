@@ -1,0 +1,12 @@
+{
+    "containerOverrides":  [
+                               {
+                                   "command":  [
+                                                   "python",
+                                                   "-c",
+                                                   "import json, os\nimport psycopg\njob=\u0027bcba0db7-3f46-4748-a0e2-a9b6e4c24d6b\u0027\nurl=os.getenv(\u0027APP_DB_URL\u0027,\u0027\u0027).strip()\nwith psycopg.connect(url) as conn:\n  with conn.cursor() as cur:\n    cur.execute(\"\"\"\n      select j.job_id, j.status, j.created_at, j.updated_at, j.total_items,\n             coalesce(j.user_name,\u0027\u0027), coalesce(j.user_id,\u0027\u0027),\n             coalesce(jm.mode,\u0027\u0027), coalesce(jm.screening_types_json,\u0027\u0027), coalesce(jm.mock_screening::text,\u0027\u0027), coalesce(jm.business_unit_code,\u0027\u0027)\n      from jobs j\n      left join job_metadata jm on jm.job_id=j.job_id\n      where j.job_id=%s\n    \"\"\", (job,))\n    r=cur.fetchone()\n    print(\u0027JOB_META\u0027, json.dumps({\u0027job_id\u0027:r[0],\u0027job_status\u0027:r[1],\u0027created_at\u0027:r[2],\u0027updated_at\u0027:r[3],\u0027total_items\u0027:r[4],\u0027user_name\u0027:r[5],\u0027user_id\u0027:r[6],\u0027mode\u0027:r[7],\u0027screening_types_json\u0027:r[8],\u0027mock_screening\u0027:r[9],\u0027business_unit_code\u0027:r[10]} if r else None))\nprint(\u0027JOB_META_DONE\u0027)"
+                                               ],
+                                   "name":  "backend"
+                               }
+                           ]
+}
