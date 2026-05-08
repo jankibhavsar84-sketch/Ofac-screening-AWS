@@ -24,18 +24,18 @@ ALTER TABLE IF EXISTS external_api_errors ADD COLUMN IF NOT EXISTS user_ref_id B
 ALTER TABLE IF EXISTS api_access_logs ADD COLUMN IF NOT EXISTS user_ref_id BIGINT;
 
 WITH raw_users AS (
-  SELECT NULLIF(BTRIM(user_id), '') AS old_id, NULLIF(BTRIM(user_name), '') AS user_name, NULL::TEXT AS user_email
+  SELECT NULLIF(BTRIM(user_id), '') AS old_id, NULL::TEXT AS user_name, NULL::TEXT AS user_email
   FROM jobs
   UNION ALL
-  SELECT NULLIF(BTRIM(user_id), ''), NULLIF(BTRIM(user_name), ''), NULL::TEXT FROM daily_schedules
+  SELECT NULLIF(BTRIM(user_id), ''), NULL::TEXT, NULL::TEXT FROM daily_schedules
   UNION ALL
-  SELECT NULLIF(BTRIM(user_id), ''), NULLIF(BTRIM(user_name), ''), NULL::TEXT FROM batch_file_uploads
+  SELECT NULLIF(BTRIM(user_id), ''), NULL::TEXT, NULL::TEXT FROM batch_file_uploads
   UNION ALL
-  SELECT NULLIF(BTRIM(user_id), ''), NULLIF(BTRIM(user_name), ''), NULLIF(LOWER(BTRIM(email)), '') FROM schedule_subscriptions
+  SELECT NULLIF(BTRIM(user_id), ''), NULL::TEXT, NULLIF(LOWER(BTRIM(email)), '') FROM schedule_subscriptions
   UNION ALL
   SELECT NULLIF(BTRIM(user_id), ''), NULLIF(BTRIM(user_name), ''), NULLIF(LOWER(BTRIM(email)), '') FROM schedule_notifications
   UNION ALL
-  SELECT NULLIF(BTRIM(user_id), ''), NULLIF(BTRIM(user_name), ''), NULL::TEXT FROM user_business_units
+  SELECT NULLIF(BTRIM(user_id), ''), NULL::TEXT, NULL::TEXT FROM user_business_units
   UNION ALL
   SELECT NULLIF(BTRIM(user_id), ''), NULLIF(BTRIM(user_name), ''), NULL::TEXT FROM audit_events
   UNION ALL

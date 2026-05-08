@@ -1,0 +1,20 @@
+[
+  {
+    "service": "ofac-screening-backend-svc",
+    "previous_taskdef": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-backend:33",
+    "new_taskdef": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-backend:34",
+    "image": "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260508140733"
+  },
+  {
+    "service": "ofac-screening-frontend-svc",
+    "previous_taskdef": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:28",
+    "new_taskdef": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:29",
+    "image": "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260508140733"
+  },
+  {
+    "service": "ofac-screening-worker-svc",
+    "previous_taskdef": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-worker:24",
+    "new_taskdef": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-worker:25",
+    "image": "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260508140733"
+  }
+]
