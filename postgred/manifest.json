@@ -5,8 +5,8 @@
     "tables": 16,
     "custom_types": 0,
     "sequences": 5,
-    "indexes_non_constraint": 24,
-    "views_and_matviews": 3,
+    "indexes_non_constraint": 25,
+    "views_and_matviews": 4,
     "routines": 0,
     "triggers": 0
   },

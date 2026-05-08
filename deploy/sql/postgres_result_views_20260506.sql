@@ -3,6 +3,7 @@ BEGIN;
 -- Replace any previous non-materialized views with materialized views.
 DROP VIEW IF EXISTS vw_user_result_summary_counts;
 DROP VIEW IF EXISTS vw_screening_results_dataset;
+DROP MATERIALIZED VIEW IF EXISTS mv_user_submission_jobs;
 DROP MATERIALIZED VIEW IF EXISTS mv_daily_schedule_batch_runs;
 DROP MATERIALIZED VIEW IF EXISTS mv_user_result_summary_counts;
 DROP MATERIALIZED VIEW IF EXISTS mv_user_recent_results;
@@ -50,6 +51,42 @@ GROUP BY user_ref_id;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_result_summary_counts_user
 ON mv_user_result_summary_counts(user_ref_id);
+
+-- Materialized dataset for screening submission history endpoint.
+CREATE MATERIALIZED VIEW mv_user_submission_jobs AS
+SELECT
+  j.job_id,
+  j.user_ref_id,
+  j.created_at,
+  j.total_items,
+  j.source_schedule_id,
+  j.source_upload_id,
+  COALESCE(NULLIF(BTRIM(j.user_id), ''), au.old_id) AS user_id,
+  COALESCE(NULLIF(BTRIM(j.user_name), ''), au.name, au.old_id) AS user_name,
+  jm.mode,
+  jm.screening_types_json,
+  jm.mock_screening,
+  jm.batch_name,
+  jm.file_name,
+  jm.daily_screening,
+  jm.schedule_frequency,
+  jm.daily_schedule_id,
+  jm.business_unit_code,
+  bu.file_name AS upload_file_name,
+  bu.s3_uri AS upload_s3_uri
+FROM jobs j
+LEFT JOIN app_users au ON au.user_id = j.user_ref_id
+LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_submission_jobs_pk
+ON mv_user_submission_jobs(job_id);
+
+CREATE INDEX IF NOT EXISTS idx_mv_user_submission_jobs_user_created
+ON mv_user_submission_jobs(user_ref_id, created_at DESC, job_id);
+
+CREATE INDEX IF NOT EXISTS idx_mv_user_submission_jobs_user_name_created
+ON mv_user_submission_jobs((LOWER(COALESCE(NULLIF(user_name, ''), user_id, ''))), created_at DESC, job_id);
 
 -- Materialized dataset for admin daily schedule batch run status.
 CREATE MATERIALIZED VIEW mv_daily_schedule_batch_runs AS
@@ -104,5 +141,6 @@ ON mv_daily_schedule_batch_runs(schedule_id, created_at DESC, job_id);
 REFRESH MATERIALIZED VIEW mv_user_recent_results;
 REFRESH MATERIALIZED VIEW mv_user_result_summary_counts;
 REFRESH MATERIALIZED VIEW mv_daily_schedule_batch_runs;
+REFRESH MATERIALIZED VIEW mv_user_submission_jobs;
 
 COMMIT;

@@ -107,6 +107,7 @@ REQUIRED_INDEXES: tuple[str, ...] = (
     "idx_app_users_email",
     "idx_schedule_subscriptions_unique",
     "idx_daily_schedules_next_run",
+    "idx_daily_schedules_active_created",
     "idx_notifications_user",
     "idx_notifications_email",
     "idx_jobs_user_ref",
@@ -458,6 +459,7 @@ class JobRepository:
                     self._last_pg_mv_refresh_at = now_monotonic
                     return False
                 has_daily_batch_runs_mv = self._postgres_materialized_view_exists(conn, "mv_daily_schedule_batch_runs")
+                has_submission_jobs_mv = self._postgres_materialized_view_exists(conn, "mv_user_submission_jobs")
                 try:
                     # Keep request paths responsive if refresh would wait on locks.
                     self._execute(conn, "SET LOCAL lock_timeout = '750ms'")
@@ -466,6 +468,8 @@ class JobRepository:
                     self._execute(conn, "REFRESH MATERIALIZED VIEW mv_user_result_summary_counts")
                     if has_daily_batch_runs_mv:
                         self._execute(conn, "REFRESH MATERIALIZED VIEW mv_daily_schedule_batch_runs")
+                    if has_submission_jobs_mv:
+                        self._execute(conn, "REFRESH MATERIALIZED VIEW mv_user_submission_jobs")
                     self._last_pg_mv_refresh_at = time.monotonic()
                     return True
                 except Exception:  # noqa: BLE001
@@ -924,6 +928,14 @@ class JobRepository:
                 """
                 CREATE INDEX IF NOT EXISTS idx_daily_schedules_next_run
                 ON daily_schedules(next_run_at);
+                """,
+            )
+            self._ensure_index(
+                conn,
+                "idx_daily_schedules_active_created",
+                """
+                CREATE INDEX IF NOT EXISTS idx_daily_schedules_active_created
+                ON daily_schedules(is_active, created_at DESC, schedule_id);
                 """,
             )
             self._ensure_index(
@@ -1572,82 +1584,177 @@ class JobRepository:
 
         with self._connect() as conn:
             user_ref_id = self._lookup_user_ref_id(conn, safe_user_id) if safe_user_id else None
-            if safe_user_id and self._jobs_has_user_ref_id and user_ref_id is None:
-                rows = []
-            elif safe_user_id:
-                user_filter_sql = "j.user_ref_id = ?" if self._jobs_has_user_ref_id else "j.user_id = ?"
-                user_filter_param = user_ref_id if self._jobs_has_user_ref_id else safe_user_id
-                rows = self._execute(
-                    conn,
-                    f"""
-                    SELECT
-                      j.job_id, j.status, j.created_at, j.total_items,
-                      j.source_schedule_id, j.source_upload_id,
-                      COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
-                      COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
-                      jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.business_unit_code,
-                      bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
-                    FROM jobs j
-                    LEFT JOIN app_users au ON au.user_id = j.user_ref_id
-                    LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
-                    LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
-                    WHERE {user_filter_sql}
-                    ORDER BY j.created_at DESC
-                    LIMIT ?
-                    """,
-                    (user_filter_param, safe_limit),
-                ).fetchall()
-            elif safe_user_name:
-                rows = self._execute(
-                    conn,
-                    """
-                    SELECT
-                      j.job_id, j.status, j.created_at, j.total_items,
-                      j.source_schedule_id, j.source_upload_id,
-                      COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
-                      COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
-                      jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.business_unit_code,
-                      bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
-                    FROM jobs j
-                    LEFT JOIN app_users au ON au.user_id = j.user_ref_id
-                    LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
-                    LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
-                    WHERE LOWER(COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id, '')) = LOWER(?)
-                    ORDER BY j.created_at DESC
-                    LIMIT ?
-                    """,
-                    (safe_user_name, safe_limit),
-                ).fetchall()
+            has_submission_jobs_mv = (
+                self.is_postgres and self._postgres_materialized_view_exists(conn, "mv_user_submission_jobs")
+            )
+            if has_submission_jobs_mv:
+                if safe_user_id and user_ref_id is None:
+                    rows = []
+                elif safe_user_id:
+                    rows = self._execute(
+                        conn,
+                        """
+                        SELECT
+                          job_id,
+                          created_at,
+                          total_items,
+                          source_schedule_id,
+                          source_upload_id,
+                          user_id,
+                          user_name,
+                          mode,
+                          screening_types_json,
+                          mock_screening,
+                          batch_name,
+                          file_name,
+                          daily_screening,
+                          schedule_frequency,
+                          daily_schedule_id,
+                          business_unit_code,
+                          upload_file_name,
+                          upload_s3_uri
+                        FROM mv_user_submission_jobs
+                        WHERE user_ref_id = ?
+                        ORDER BY created_at DESC, job_id DESC
+                        LIMIT ?
+                        """,
+                        (user_ref_id, safe_limit),
+                    ).fetchall()
+                elif safe_user_name:
+                    rows = self._execute(
+                        conn,
+                        """
+                        SELECT
+                          job_id,
+                          created_at,
+                          total_items,
+                          source_schedule_id,
+                          source_upload_id,
+                          user_id,
+                          user_name,
+                          mode,
+                          screening_types_json,
+                          mock_screening,
+                          batch_name,
+                          file_name,
+                          daily_screening,
+                          schedule_frequency,
+                          daily_schedule_id,
+                          business_unit_code,
+                          upload_file_name,
+                          upload_s3_uri
+                        FROM mv_user_submission_jobs
+                        WHERE LOWER(COALESCE(NULLIF(user_name, ''), user_id, '')) = LOWER(?)
+                        ORDER BY created_at DESC, job_id DESC
+                        LIMIT ?
+                        """,
+                        (safe_user_name, safe_limit),
+                    ).fetchall()
+                else:
+                    rows = self._execute(
+                        conn,
+                        """
+                        SELECT
+                          job_id,
+                          created_at,
+                          total_items,
+                          source_schedule_id,
+                          source_upload_id,
+                          user_id,
+                          user_name,
+                          mode,
+                          screening_types_json,
+                          mock_screening,
+                          batch_name,
+                          file_name,
+                          daily_screening,
+                          schedule_frequency,
+                          daily_schedule_id,
+                          business_unit_code,
+                          upload_file_name,
+                          upload_s3_uri
+                        FROM mv_user_submission_jobs
+                        ORDER BY created_at DESC, job_id DESC
+                        LIMIT ?
+                        """,
+                        (safe_limit,),
+                    ).fetchall()
             else:
-                rows = self._execute(
-                    conn,
-                    """
-                    SELECT
-                      j.job_id, j.status, j.created_at, j.total_items,
-                      j.source_schedule_id, j.source_upload_id,
-                      COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
-                      COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
-                      jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.business_unit_code,
-                      bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
-                    FROM jobs j
-                    LEFT JOIN app_users au ON au.user_id = j.user_ref_id
-                    LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
-                    LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
-                    ORDER BY j.created_at DESC
-                    LIMIT ?
-                    """,
-                    (safe_limit,),
-                ).fetchall()
+                if safe_user_id and self._jobs_has_user_ref_id and user_ref_id is None:
+                    rows = []
+                elif safe_user_id:
+                    user_filter_sql = "j.user_ref_id = ?" if self._jobs_has_user_ref_id else "j.user_id = ?"
+                    user_filter_param = user_ref_id if self._jobs_has_user_ref_id else safe_user_id
+                    rows = self._execute(
+                        conn,
+                        f"""
+                        SELECT
+                          j.job_id, j.created_at, j.total_items,
+                          j.source_schedule_id, j.source_upload_id,
+                          COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
+                          COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
+                          jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
+                          jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.business_unit_code,
+                          bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
+                        FROM jobs j
+                        LEFT JOIN app_users au ON au.user_id = j.user_ref_id
+                        LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                        LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                        WHERE {user_filter_sql}
+                        ORDER BY j.created_at DESC
+                        LIMIT ?
+                        """,
+                        (user_filter_param, safe_limit),
+                    ).fetchall()
+                elif safe_user_name:
+                    rows = self._execute(
+                        conn,
+                        """
+                        SELECT
+                          j.job_id, j.created_at, j.total_items,
+                          j.source_schedule_id, j.source_upload_id,
+                          COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
+                          COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
+                          jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
+                          jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.business_unit_code,
+                          bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
+                        FROM jobs j
+                        LEFT JOIN app_users au ON au.user_id = j.user_ref_id
+                        LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                        LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                        WHERE LOWER(COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id, '')) = LOWER(?)
+                        ORDER BY j.created_at DESC
+                        LIMIT ?
+                        """,
+                        (safe_user_name, safe_limit),
+                    ).fetchall()
+                else:
+                    rows = self._execute(
+                        conn,
+                        """
+                        SELECT
+                          j.job_id, j.created_at, j.total_items,
+                          j.source_schedule_id, j.source_upload_id,
+                          COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
+                          COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
+                          jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
+                          jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.business_unit_code,
+                          bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
+                        FROM jobs j
+                        LEFT JOIN app_users au ON au.user_id = j.user_ref_id
+                        LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                        LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                        ORDER BY j.created_at DESC
+                        LIMIT ?
+                        """,
+                        (safe_limit,),
+                    ).fetchall()
 
         out: list[dict[str, Any]] = []
         for row in rows:
             out.append(
                 {
                     "job_id": row["job_id"],
-                    "status": row["status"],
                     "created_at": JobRepository._to_iso_text(row["created_at"]) or "",
                     "total_items": int(row["total_items"] or 0),
                     "source_schedule_id": row["source_schedule_id"],
@@ -3351,10 +3458,15 @@ class JobRepository:
     @staticmethod
     def _parse_daily_schedule_row(row: Any) -> dict[str, Any]:
         business_unit_code = ""
+        source_upload_record_count: int | None = None
         try:
             business_unit_code = str(row["business_unit_code"] or "").strip()
         except Exception:  # noqa: BLE001
             business_unit_code = ""
+        try:
+            source_upload_record_count = int(row["source_upload_record_count"])
+        except Exception:  # noqa: BLE001
+            source_upload_record_count = None
         return {
             "schedule_id": row["schedule_id"],
             "batch_name": row["batch_name"],
@@ -3374,10 +3486,56 @@ class JobRepository:
             "source_upload_id": row["source_upload_id"],
             "source_file_name": row["source_file_name"],
             "source_s3_uri": row["source_s3_uri"],
+            "source_upload_record_count": source_upload_record_count,
             "business_unit_code": business_unit_code,
         }
 
     def list_active_daily_schedules(self, user_id: str | None = None) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            safe_user_old_id = self._normalize_user_old_id(user_id)
+            user_ref_id = self._lookup_user_ref_id(conn, safe_user_old_id) if safe_user_old_id else None
+            if safe_user_old_id and self._daily_schedules_has_user_ref_id and user_ref_id is None:
+                rows = []
+            elif safe_user_old_id:
+                user_filter_sql = "ds.user_ref_id = ?" if self._daily_schedules_has_user_ref_id else "ds.user_id = ?"
+                user_filter_param = user_ref_id if self._daily_schedules_has_user_ref_id else safe_user_old_id
+                rows = self._execute(
+                    conn,
+                    f"""
+                    SELECT
+                      ds.schedule_id, ds.batch_name, ds.user_id, ds.user_name, ds.queries_json, ds.screening_types_json, ds.mock_screening,
+                      ds.schedule_frequency, ds.timezone, ds.run_hour, ds.run_minute, ds.created_at, ds.last_run_at, ds.next_run_at, ds.is_active,
+                      ds.source_upload_id, ds.source_file_name, ds.source_s3_uri, ds.business_unit_code,
+                      bu.record_count AS source_upload_record_count
+                    FROM daily_schedules ds
+                    LEFT JOIN batch_file_uploads bu
+                      ON bu.upload_id = ds.source_upload_id
+                    WHERE ds.is_active = TRUE
+                      AND {user_filter_sql}
+                    ORDER BY ds.created_at DESC
+                    """,
+                    (user_filter_param,),
+                ).fetchall()
+            else:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT
+                      ds.schedule_id, ds.batch_name, ds.user_id, ds.user_name, ds.queries_json, ds.screening_types_json, ds.mock_screening,
+                      ds.schedule_frequency, ds.timezone, ds.run_hour, ds.run_minute, ds.created_at, ds.last_run_at, ds.next_run_at, ds.is_active,
+                      ds.source_upload_id, ds.source_file_name, ds.source_s3_uri, ds.business_unit_code,
+                      bu.record_count AS source_upload_record_count
+                    FROM daily_schedules ds
+                    LEFT JOIN batch_file_uploads bu
+                      ON bu.upload_id = ds.source_upload_id
+                    WHERE ds.is_active = TRUE
+                    ORDER BY ds.created_at DESC
+                    """,
+                ).fetchall()
+
+        return [self._parse_daily_schedule_row(row) for row in rows]
+
+    def list_active_daily_schedule_ids(self, user_id: str | None = None) -> set[str]:
         with self._connect() as conn:
             safe_user_old_id = self._normalize_user_old_id(user_id)
             user_ref_id = self._lookup_user_ref_id(conn, safe_user_old_id) if safe_user_old_id else None
@@ -3389,14 +3547,10 @@ class JobRepository:
                 rows = self._execute(
                     conn,
                     f"""
-                    SELECT
-                      schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
-                      schedule_frequency, timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active,
-                      source_upload_id, source_file_name, source_s3_uri, business_unit_code
+                    SELECT schedule_id
                     FROM daily_schedules
                     WHERE is_active = TRUE
                       AND {user_filter_sql}
-                    ORDER BY created_at DESC
                     """,
                     (user_filter_param,),
                 ).fetchall()
@@ -3404,17 +3558,17 @@ class JobRepository:
                 rows = self._execute(
                     conn,
                     """
-                    SELECT
-                      schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
-                      schedule_frequency, timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active,
-                      source_upload_id, source_file_name, source_s3_uri, business_unit_code
+                    SELECT schedule_id
                     FROM daily_schedules
                     WHERE is_active = TRUE
-                    ORDER BY created_at DESC
                     """,
                 ).fetchall()
 
-        return [self._parse_daily_schedule_row(row) for row in rows]
+        return {
+            str(row["schedule_id"] or "").strip()
+            for row in rows
+            if str(row["schedule_id"] or "").strip()
+        }
 
     def deactivate_daily_schedule(self, schedule_id: str) -> bool:
         with self._connect() as conn:

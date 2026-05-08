@@ -1145,11 +1145,7 @@ class ScreeningService:
         screening_type_lookup = self._build_screening_type_lookup(
             self.repository.list_active_actimize_screening_type_mappings()
         )
-        active_schedule_ids = {
-            str(s.get("schedule_id", "")).strip()
-            for s in self.repository.list_active_daily_schedules(user_id=user_id)
-            if str(s.get("schedule_id", "")).strip()
-        }
+        active_schedule_ids = self.repository.list_active_daily_schedule_ids(user_id=user_id)
         recent_rows: list[dict[str, Any]] = []
         for row in rows:
             mapped_rows = self._build_recent_result_rows(row, active_schedule_ids, screening_type_lookup)
@@ -1167,11 +1163,7 @@ class ScreeningService:
         items_by_job = self.repository.list_job_items_for_jobs(
             [str(row.get("job_id") or "").strip() for row in rows]
         )
-        active_schedule_ids = {
-            str(s.get("schedule_id", "")).strip()
-            for s in self.repository.list_active_daily_schedules(user_id=user_id)
-            if str(s.get("schedule_id", "")).strip()
-        }
+        active_schedule_ids = self.repository.list_active_daily_schedule_ids(user_id=user_id)
 
         submissions: list[dict[str, Any]] = []
         for row in rows:
@@ -1355,8 +1347,7 @@ class ScreeningService:
         for s in schedules:
             total_items = len(s["queries"]) if isinstance(s["queries"], dict) else 0
             if total_items == 0 and str(s.get("source_upload_id") or "").strip():
-                upload = self.repository.get_batch_file_upload(str(s.get("source_upload_id") or "").strip())
-                total_items = int((upload or {}).get("record_count") or 0)
+                total_items = int(s.get("source_upload_record_count") or 0)
             items.append(
                 DailyScheduleInfo(
                     schedule_id=s["schedule_id"],

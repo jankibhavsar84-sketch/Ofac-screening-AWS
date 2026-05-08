@@ -8,6 +8,7 @@ CREATE INDEX idx_api_access_logs_path ON dbacd.api_access_logs USING btree (requ
 CREATE INDEX idx_api_access_logs_user ON dbacd.api_access_logs USING btree (user_id, created_at);
 CREATE INDEX idx_api_access_logs_user_ref_created_at ON dbacd.api_access_logs USING btree (user_ref_id, created_at, access_id);
 CREATE INDEX idx_daily_schedules_next_run ON dbacd.daily_schedules USING btree (next_run_at);
+CREATE INDEX idx_daily_schedules_active_created ON dbacd.daily_schedules USING btree (is_active, created_at DESC, schedule_id);
 CREATE INDEX idx_daily_schedules_user_ref ON dbacd.daily_schedules USING btree (user_ref_id, created_at, schedule_id);
 CREATE INDEX idx_external_api_errors_created_at ON dbacd.external_api_errors USING btree (created_at);
 CREATE INDEX idx_external_api_errors_job_item ON dbacd.external_api_errors USING btree (job_id, item_key, created_at);
