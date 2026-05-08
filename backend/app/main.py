@@ -27,6 +27,7 @@ from .models import (
     BusinessUnit,
     BusinessUnitUpdateRequest,
     BusinessUnitUpsertRequest,
+    DailyScheduleBatchRunStatus,
     DailyScheduleInfo,
     EntityMatchResponse,
     JobStatus,
@@ -785,6 +786,15 @@ def list_daily_schedules(
     return svc.list_daily_schedules()
 
 
+@app.get("/api/v1/screenings/daily-schedules/batch-runs", response_model=list[DailyScheduleBatchRunStatus])
+def list_daily_schedule_batch_runs(
+    limit: int = Query(default=200, ge=1, le=1000),
+    _: AuthPrincipal = Depends(require_any_scope("screening.admin")),
+    svc: ScreeningService = Depends(get_service),
+) -> list[DailyScheduleBatchRunStatus]:
+    return svc.list_daily_schedule_batch_runs(limit=limit)
+
+
 @app.get("/api/v1/business-units", response_model=list[BusinessUnit])
 def list_user_business_units(
     principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
@@ -1003,6 +1013,25 @@ def remove_daily_schedule(
     if not removed:
         raise HTTPException(status_code=404, detail=f"Daily schedule {schedule_id} not found")
     return {"status": "removed", "schedule_id": schedule_id}
+
+
+@app.post("/api/v1/screenings/daily-schedules/{schedule_id}/rerun", response_model=MatchJobAccepted)
+def rerun_daily_schedule(
+    schedule_id: str,
+    principal: AuthPrincipal = Depends(require_any_scope("screening.daily", "screening.admin")),
+    svc: ScreeningService = Depends(get_service),
+) -> MatchJobAccepted:
+    try:
+        return svc.rerun_daily_schedule(
+            schedule_id=schedule_id,
+            actor_user_id=principal.user_id,
+            actor_user_name=_preferred_actor_name(principal),
+        )
+    except ValueError as exc:
+        detail = str(exc)
+        if "not found" in detail.lower():
+            raise HTTPException(status_code=404, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=detail) from exc
 
 
 @app.get("/api/v1/audit-events", response_model=list[AuditEvent])

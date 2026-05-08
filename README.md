@@ -166,6 +166,7 @@ Backend/Worker (`backend/.env.example`):
 - `SCREENING_ITEM_RETRY_MAX_ATTEMPTS=2` retries transient upstream failures before marking an item failed
 - `SCREENING_ITEM_RETRY_INITIAL_DELAY_S=3` base delay for item retry backoff
 - `SCREENING_ITEM_RETRY_MAX_DELAY_S=60` cap for item retry delay
+- `SCREENING_ITEM_VISIBILITY_TIMEOUT_S=300` extends `SCREEN_ITEM` SQS visibility after pickup to reduce duplicate redelivery during processing
 - `WORKER_HEALTH_HOST=127.0.0.1` worker local HTTP health host
 - `WORKER_HEALTH_PORT=8081` worker local HTTP health port (`/health`)
 - `WORKER_HEALTHCHECK_TIMEOUT_S=5` timeout used by container health probe

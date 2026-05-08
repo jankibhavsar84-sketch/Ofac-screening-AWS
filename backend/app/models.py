@@ -104,6 +104,26 @@ class DailyScheduleInfo(BaseModel):
     source_upload_id: str | None = None
 
 
+class DailyScheduleBatchRunStatus(BaseModel):
+    job_id: str
+    schedule_id: str
+    batch_name: str
+    schedule_frequency: str | None = None
+    source_file_name: str | None = None
+    source_upload_id: str | None = None
+    status: str
+    run_status: str
+    total_items: int
+    completed_items: int
+    failed_items: int
+    pending_items: int
+    processing_items: int
+    submitted_at: str
+    updated_at: str
+    user_id: str | None = None
+    user_name: str | None = None
+
+
 class ScreeningQueueMessage(BaseModel):
     # Backwards-compatible with older queue messages that didn't include message_type.
     # message_type="SCREEN_ITEM" is a standard per-record screening task.
@@ -208,8 +228,6 @@ class BusinessUnit(BaseModel):
     business_unit_code: str
     business_unit_name: str
     is_active: bool = True
-    created_at: str | None = None
-    updated_at: str | None = None
 
 
 class BusinessUnitUpsertRequest(BaseModel):

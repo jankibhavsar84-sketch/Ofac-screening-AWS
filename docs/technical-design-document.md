@@ -1,7 +1,7 @@
 # Technical Design Document (TDD): OFAC / Watchlist Screening Platform
 
-**Version:** 1.8  
-**Date:** 2026-04-29  
+**Version:** 1.9  
+**Date:** 2026-05-06  
 **Repo:** `ofac-screening-aws`  
 
 This document describes the technical design for the OFAC / watchlist screening platform deployed on AWS. It includes AWS architecture, API flows, process flows, and component responsibilities.
@@ -12,7 +12,7 @@ This document describes the technical design for the OFAC / watchlist screening 
 - The batch upload response now returns `row_meta` so the UI can render placeholder/result rows without duplicating client-side parsing logic.
 - The screening dashboard is split into two backend APIs:
   - `GET /api/v1/screenings/summary` for full-history aggregate cards
-  - `GET /api/v1/screenings/results` for newest-first result rows capped to `300`
+  - `GET /api/v1/screenings/results` for newest-first normalized result rows (`limit` query parameter, default `1000`, max `5000`)
 - The TDD now explicitly documents the browser/API trust boundary: frontend calls only the backend container for application APIs, while the worker remains SQS-driven with no browser-facing API.
 - Large immediate uploads continue to use the S3-backed `JOB_DISPATCH` pattern so the worker expands queued work asynchronously instead of performing per-record dispatch in the request thread.
 - Audit operations now support paged admin retrieval, and raw Actimize/Prudential request/response troubleshooting logs can be enabled with redaction.
@@ -21,6 +21,8 @@ This document describes the technical design for the OFAC / watchlist screening 
 - Actimize request mapping is now explicit for person-name parts end-to-end: `firstName`/`middleName`/`lastName`/`maidenName` are preserved as dedicated fields (not derived from `fullName`) for single and batch flows.
 - Batch parser now preserves structured alias fields (`Alias1*`/`Alias2*`/`Alias3*`) into `properties.aliases[]` so Actimize receives split alias names when provided.
 - Screening definition (`screeningType`) mapping is fully database-driven via `actimize_screening_type_mappings`; code no longer applies hardcoded screening-type fallback mappings.
+- PostgreSQL dashboard/result retrieval is now backed by materialized views (`mv_user_recent_results`, `mv_user_result_summary_counts`) with periodic best-effort refresh in runtime.
+- Recent-result rows now normalize/canonicalize `screeningType` labels using active mapping table values (`screening_type`, `search_definition_id`, `search_definition_name`) for consistent UI grouping.
 
 ## 1. System Overview
 
@@ -31,7 +33,7 @@ The platform supports:
 - **Daily Screening (Scheduled):** selected batches are automatically re-screened on their configured cadence (`DAILY`, `WEEKLY`, `MONTHLY`) shortly after the configured local run time.
 - **AuthN/AuthZ:** OIDC login (AWS Cognito or enterprise IdP federation) and role-based authorization.
 - **Audit Trail:** key user/system actions are recorded for traceability, with admin-facing paged audit APIs.
-- **Fast Screening Dashboard:** summary cards load from a dedicated aggregate API over the full user history, while the Screening Results grid loads a separate recent-results feed capped for UX performance.
+- **Fast Screening Dashboard:** summary cards load from a dedicated aggregate API over full user history, while the Screening Results grid loads a separate newest-first feed with caller-defined `limit` (backend default `1000`, max `5000`).
 - **API Access Logging:** every `/api/v1/*` request is logged with status, latency, auth state, and correlation id.
 - **Raw Upstream Troubleshooting Logs:** outbound Prudential/Actimize request and response payloads are logged to CloudWatch with sensitive fields redacted.
 - **Operational Controls:** explicit schema initialization, connection pooling, DB retry/backoff, retention cleanup, and high-risk external API failure alerting.
@@ -175,7 +177,7 @@ Responsibilities:
 - Enforce UX constraints based on user permissions (hide/disable actions).
 - Persist screening workspace state and audit-log filter/page state in browser `localStorage`.
 - Load dashboard summary counts from `GET /api/v1/screenings/summary` across the full user history.
-- Load Screening Results rows from `GET /api/v1/screenings/results` using a recent-results window capped to the latest `300` rows for the signed-in user.
+- Load Screening Results rows from `GET /api/v1/screenings/results` using newest-first pagination with query `limit` (API default `1000`; current frontend caller default `2000`).
 - Expose environment-configurable review-alert navigation via `VITE_ACTIMIZE_REVIEW_ALERT_URL`.
 
 Runtime configuration:
@@ -195,7 +197,7 @@ Responsibilities:
 - Provide synchronous screening endpoint for immediate results.
 - Create batch jobs and enqueue SQS messages for async processing.
 - Provide a lightweight screening summary API that returns aggregate counts for the signed-in user without loading result rows.
-- Provide a lightweight recent-results API that returns only the latest `300` result rows for the signed-in user, separated from summary-card aggregation.
+- Provide a lightweight recent-results API that returns newest-first normalized rows for the signed-in user (query `limit`: default `1000`, max `5000`), separated from summary-card aggregation.
 - Parse uploaded CSV/XLSX files server-side, validate row rules, normalize them into `EntityExample` payloads, and return `row_meta` for UI rendering.
 - For immediate large batch uploads, create the job quickly and enqueue a single `JOB_DISPATCH` message; the worker expands into per-record `SCREEN_ITEM` tasks using backend-generated `queries.json` stored in S3.
 - Provide job progress endpoints for polling.
@@ -203,6 +205,7 @@ Responsibilities:
 - Write audit events for key actions and failures.
 - Run middleware-based API access logging (method/path/status/latency/user/auth state).
 - Generate and return request correlation id (`X-Correlation-ID`) and propagate to downstream screening flows.
+- Canonicalize recent-result screening-type labels through active `actimize_screening_type_mappings` so rows group consistently across source/request/response variants.
 - Validate database schema at startup, but do not run DDL automatically in runtime API processes.
 - Serve as the only browser-facing application API container; no frontend calls bypass backend to reach the worker.
 
@@ -245,6 +248,7 @@ Responsibilities:
 - Persist API access logs (`api_access_logs`) for request/response traceability.
 - Persist external API failures (`external_api_errors`) with provider/operation context.
 - Persist source-upload metadata (`batch_file_uploads`) and daily schedule dedupe state (`schedule_record_state`).
+- Provide derived materialized views for fast per-user result retrieval and aggregate counters (`mv_user_recent_results`, `mv_user_result_summary_counts`).
 - Separate schema initialization from runtime by using `python -m app.init_db` during setup/deployment.
 
 ## 5. Data Model (Business Objects)
@@ -387,6 +391,29 @@ erDiagram
 - Core columns: `user_name`, `is_active`, `created_at`, `updated_at`
 - Use case: user-to-business-unit authorization mapping used by screening submission flows
 
+### 5.7 Derived Materialized Views (PostgreSQL)
+
+#### `mv_user_recent_results`
+
+- Grain: one row per `(job_id, item_key)` for rows with non-empty `jobs.user_id`.
+- Core columns: `user_id`, `job_id`, `item_key`, `sort_ts`, `parsed_status`.
+- `parsed_status` derivation:
+  - `QUEUED`/`PROCESSING` -> `PENDING`
+  - explicit failed item status or missing response payload -> `FAILED`
+  - response containing `ENGINE_MESSAGE="PM"` -> `POTENTIAL`
+  - response containing `ENGINE_MESSAGE="NM"` -> `CLEAR`
+  - otherwise -> `CLEAR`
+- Indexes:
+  - unique `(job_id, item_key)`
+  - lookup/sort `(user_id, sort_ts DESC, job_id, item_key)`
+
+#### `mv_user_result_summary_counts`
+
+- Grain: one row per `user_id`.
+- Core columns: `total`, `clear`, `potential`, `pending`, `failed`.
+- Source: aggregated from `mv_user_recent_results`.
+- Index: unique `(user_id)`.
+
 ## 6. Backend API Container Design
 
 Base path: `/api/v1` (except health endpoint).
@@ -428,7 +455,7 @@ All public REST endpoints in this section are owned by the `backend` container i
 | `GET` | `/api/v1/screenings/jobs/{job_id}` | `backend` | `screening.read` | Returns job progress counts and terminal responses when complete. |
 | `GET` | `/api/v1/screenings/submissions` | `backend` | `screening.read` | Returns legacy user-visible submission history for single and batch runs with normalized result status. |
 | `GET` | `/api/v1/screenings/summary` | `backend` | `screening.read` | Returns full-history dashboard counts for the signed-in user (`total`, `clear`, `potential`, `pending`, `failed`, `match`) without loading result rows. |
-| `GET` | `/api/v1/screenings/results` | `backend` | `screening.read` | Returns only the latest `300` normalized screening-result rows for the signed-in user, ordered newest-first for fast grid rendering. |
+| `GET` | `/api/v1/screenings/results` | `backend` | `screening.read` | Returns newest-first normalized screening-result rows for the signed-in user. Supports `limit` query parameter (`default=1000`, `min=1`, `max=5000`). |
 | `POST` | `/api/v1/screenings/match` | `backend` | `screening.write` or `screening.single.mock` or `screening.admin` | Performs synchronous screening, persists job/item metadata, returns immediate merged results; logs per-item API call success/failure. |
 | `GET` | `/api/v1/screenings/daily-schedules` | `backend` | `screening.read` | Lists active schedules with frequency, next run, source file metadata, and business unit. |
 | `DELETE` | `/api/v1/screenings/daily-schedules/{schedule_id}` | `backend` | `screening.daily` or `screening.admin` | Disables one daily schedule and writes audit event. |
@@ -643,7 +670,7 @@ Response:
 Request:
 
 ```text
-GET /api/v1/screenings/results?limit=300
+GET /api/v1/screenings/results?limit=2000
 ```
 
 Response:
@@ -651,11 +678,12 @@ Response:
 ```json
 [
   {
-    "id": "493f2ca6-6b61-4017-8220-843d377d436b_AMLP_I_000001",
+    "id": "493f2ca6-6b61-4017-8220-843d377d436b_AMLP_I_000001_Sanction",
     "entity": "Jane Doe",
     "partyKey": "AMLP_I_000001",
     "mode": "BATCH",
     "type": "Individual",
+    "screeningType": "Sanction",
     "country": "US",
     "engineStatus": "NO_HIT",
     "manualMatch": false,
@@ -668,6 +696,11 @@ Response:
   }
 ]
 ```
+
+Notes:
+- API `limit` defaults to `1000` and is clamped to `1..5000`.
+- Frontend currently requests `limit=2000` for the screening grid.
+- `screeningType` is canonicalized via active mapping-table entries (`screening_type`, `search_definition_id`, `search_definition_name`) before rows are returned.
 
 ##### `POST /api/v1/screenings/match` (`backend`)
 
@@ -1264,7 +1297,18 @@ sequenceDiagram
 - Worker troubleshooting logs now capture the same raw wrapped Prudential success/error payload shapes seen by sync screening, which is important when batch and sync behavior diverge because of parser-version drift.
 - Worker logs include `retry_attempt` for per-item processing and requeue operations to support troubleshooting of transient upstream instability.
 
-### 8.4 Data Store Retention and Risk Alerting
+### 8.4 PostgreSQL Result Materialized-View Refresh
+
+- Runtime uses PostgreSQL materialized views for `/api/v1/screenings/results` and `/api/v1/screenings/summary` fast paths.
+- Repository refreshes `mv_user_recent_results` and `mv_user_result_summary_counts` on a best-effort interval (`PG_RESULT_MV_REFRESH_INTERVAL_S`).
+- Refresh cadence is guarded by process-local monotonic timing and a lock to avoid redundant refresh attempts within one process.
+- Runtime applies conservative DB safeguards during refresh:
+  - `lock_timeout = 750ms`
+  - `statement_timeout = 5000ms`
+- If refresh fails or views are unavailable, refresh attempts are skipped until next interval.
+- PostgreSQL read paths for recent results/summary require these views to exist and raise explicit runtime errors when missing.
+
+### 8.5 Data Store Retention and Risk Alerting
 
 - Worker executes periodic retention cleanup for:
   - `audit_events`
@@ -1275,14 +1319,14 @@ sequenceDiagram
   - If external API failures exceed configured threshold inside configured time window, worker records `HIGH_RISK_EXTERNAL_API_FAILURE_ALERT` in `audit_events`.
 - Access-log query parameters are redacted for sensitive key types (token/secret/password/email-like fields).
 
-### 8.5 ECS Cost Controls (Dev)
+### 8.6 ECS Cost Controls (Dev)
 
 - Keep worker desired count at `0` when not testing batch/daily.
 - Use small Fargate tasks (256/512) for dev.
 - Use minimal RDS instance for dev and stop when not needed (per environment policy).
 - Active batch-performance deployments may intentionally pin the worker service above zero and override `SCREENING_PARALLEL_MESSAGES`; this is an operational deployment choice, not a config default.
 
-### 8.6 Performance Validation Snapshot (2026-04-08)
+### 8.7 Performance Validation Snapshot (2026-04-08)
 
 Latest retained batch-upload performance artifact:
 - `artifacts/perf/batch_upload_same_file_20_users_2026-04-08T17-23-25-021Z.json`
@@ -1324,97 +1368,127 @@ Interpretation:
 
 ## 10. Appendix: Runtime Configuration
 
-### 10.1 Frontend (container env)
+### 10.1 Frontend Runtime Configuration (container env + app env)
 
-Frontend settings are provided as container env vars and written at startup into `app-config.js` (see `frontend/entrypoint.sh`).
+Frontend configuration comes from:
+- Container startup env (written into `window.__APP_CONFIG__` by `frontend/entrypoint.sh`).
+- App env fallback (`import.meta.env`) used by `src/config/env.ts` for any key not present in `window.__APP_CONFIG__`.
 
-| Parameter | Default Value | Explanation |
-|---|---:|---|
-| `BACKEND_UPSTREAM` | `http://backend.screening.internal:8000` | Backend origin that Nginx proxies to for `/api/*` (typically the ECS service-discovery name). |
-| `NGINX_CLIENT_MAX_BODY_SIZE` | `25m` | Max upload size for `/api/` reverse-proxy requests (must accommodate batch source files). |
-| `VITE_SCREENING_API_BASE_URL` | `/api/v1` | Base path used by the SPA for API requests (Nginx proxies `/api/*` to backend). |
-| `VITE_SCREENING_POLL_INTERVAL_MS` | `750` | UI polling interval for job progress (`GET /api/v1/screenings/jobs/{job_id}`). |
-| `VITE_SCREENING_JOB_TIMEOUT_MS` | `90000` | UI timeout for long-running job polling flows before surfacing a timeout to the user. |
-| `VITE_ACTIMIZE_REVIEW_ALERT_URL` | *(empty)* | Optional review-alert URL shown in hit-entity details. |
-| `VITE_AUTH_ENABLED` | `false` | Enables OIDC login + bearer token attachment to API calls. |
-| `VITE_OIDC_AUTHORITY` | *(empty)* | OIDC issuer/authority URL (required when `VITE_AUTH_ENABLED=true`). |
-| `VITE_OIDC_CLIENT_ID` | *(empty)* | OIDC client id (required when `VITE_AUTH_ENABLED=true`). |
-| `VITE_OIDC_REDIRECT_URI` | *(empty)* | OIDC redirect URI. If blank, frontend code falls back to `${window.location.origin}/`. |
-| `VITE_OIDC_POST_LOGOUT_REDIRECT_URI` | *(empty)* | Optional post-logout redirect. If blank, frontend falls back to the redirect URI. |
-| `VITE_OIDC_SCOPE` | `openid profile email` | Requested scopes (add `roles` / group scope if your IdP requires it). |
-| `VITE_OIDC_IDLE_TIMEOUT_MS` | `900000` | Frontend session idle timeout (ms). |
-| `VITE_OIDC_CLEAR_SESSION_ON_CLOSE` | `true` | If `true`, clears stored auth/session state when the browser tab is closed. |
+| Parameter | Default Value | Used By | Description / Use |
+|---|---:|---|---|
+| `BACKEND_UPSTREAM` | `http://backend.screening.internal:8000` | `frontend/entrypoint.sh` + generated Nginx config | Backend origin Nginx proxies to for `/api/*` (typically ECS service discovery). |
+| `NGINX_DNS_RESOLVER` | `169.254.169.253` | `frontend/entrypoint.sh` + generated Nginx config | DNS resolver used by Nginx for backend service name resolution. |
+| `NGINX_CLIENT_MAX_BODY_SIZE` | `25m` | `frontend/entrypoint.sh` + generated Nginx config | Max upload body size for `/api/` proxy requests. |
+| `VITE_SCREENING_API_BASE_URL` | `/api/v1` | `src/api/screeningApi.ts` | Base API path used by frontend requests. |
+| `VITE_SCREENING_POLL_INTERVAL_MS` | `750` | `src/api/screeningApi.ts` | Poll interval for async job progress checks. |
+| `VITE_SCREENING_JOB_TIMEOUT_MS` | `90000` | `src/api/screeningApi.ts` | Timeout for async job polling workflows. |
+| `VITE_SYNC_SCREENING_TIMEOUT_MS` | `120000` | `src/api/screeningApi.ts` | Timeout for synchronous match-screening requests (minimum enforced in code: `15000ms`). |
+| `VITE_BUSINESS_UNITS_TIMEOUT_MS` | `45000` | `src/api/screeningApi.ts` | Timeout when loading business-unit options (minimum enforced in code: `5000ms`). |
+| `VITE_DEFAULT_BUSINESS_UNIT_CODE` | `US_PRU_HR` | `src/screens/ScreeningDetailPage.tsx` | Fallback business-unit code used when admin mapping data is unavailable. |
+| `VITE_DEFAULT_BUSINESS_UNIT_NAME` | `Human Resources` | `src/screens/ScreeningDetailPage.tsx` | Fallback business-unit display name paired with fallback code. |
+| `VITE_ACTIMIZE_REVIEW_ALERT_URL` | *(empty)* | `src/screens/ScreeningDetailPage.tsx` | Optional link target for "Review Alert" actions in screening result details. |
+| `VITE_AUTH_ENABLED` | `false` (container default) | `src/auth/oidc.ts`, `src/auth/claims.ts` | Enables OIDC flow and bearer-token usage in API calls. |
+| `VITE_OIDC_AUTHORITY` | *(empty)* | `src/auth/oidc.ts` | OIDC authority/issuer endpoint. Required when auth is enabled. |
+| `VITE_OIDC_CLIENT_ID` | *(empty)* | `src/auth/oidc.ts` | OIDC client id. Required when auth is enabled. |
+| `VITE_OIDC_REDIRECT_URI` | *(empty)* | `src/auth/oidc.ts` | OIDC login redirect URI. If empty, code falls back to `${window.location.origin}/`. |
+| `VITE_OIDC_POST_LOGOUT_REDIRECT_URI` | *(empty)* | `src/auth/oidc.ts` | Post-logout redirect URI. If empty, code falls back to login redirect URI. |
+| `VITE_OIDC_SCOPE` | `openid profile email` | `src/auth/oidc.ts` | OIDC scopes requested during login. |
+| `VITE_OIDC_IDLE_TIMEOUT_MS` | `900000` | `src/auth/oidc.ts` | Frontend idle-session timeout in milliseconds. |
+| `VITE_OIDC_CLEAR_SESSION_ON_CLOSE` | `true` | `src/auth/oidc.ts` | If `true`, clears session storage on browser/tab close. |
 
-### 10.2 Backend/Worker (container env)
+Notes:
+- `frontend/entrypoint.sh` currently emits the OIDC and primary `VITE_*` keys into `app-config.js` at container start.
+- `VITE_SYNC_SCREENING_TIMEOUT_MS`, `VITE_BUSINESS_UNITS_TIMEOUT_MS`, and fallback business-unit vars are read via `appEnv(...)` and therefore can be supplied through build-time env (`import.meta.env`) even if omitted from `app-config.js`.
 
-Backend and worker share the same settings (see `backend/app/config.py` and `backend/.env.example`).
+### 10.2 Backend/Worker Runtime Configuration (`backend/app/config.py`)
 
-| Parameter | Default Value | Explanation |
-|---|---:|---|
-| `APP_NAME` | `OFAC Screening Enterprise API` | Used by FastAPI for service metadata/log labeling. |
-| `APP_VERSION` | `1.0.0` | Used by FastAPI for service metadata. |
-| `APP_DB_PATH` | `/tmp/screening.db` | SQLite path (used when `APP_DB_URL` is not configured). |
-| `APP_DB_URL` | *(empty)* | PostgreSQL connection string. Set in AWS deployments (recommended). |
-| `DB_POOL_MIN_SIZE` | `1` | Minimum PostgreSQL pooled connections per process. |
-| `DB_POOL_MAX_SIZE` | `8` | Maximum PostgreSQL pooled connections per process. |
-| `DB_POOL_TIMEOUT_S` | `5.0` | Connection-pool acquisition timeout. |
-| `DB_CONNECT_MAX_ATTEMPTS` | `4` | Retry attempts for transient DB acquisition failures. |
-| `DB_CONNECT_BACKOFF_INITIAL_MS` | `100` | Initial DB retry backoff. |
-| `DB_CONNECT_BACKOFF_MAX_MS` | `1500` | Max DB retry backoff. |
-| `CORS_ALLOW_ORIGINS` | `*` | CORS allow-list for API responses. Tighten in production. |
-| `MULTIPART_MAX_PART_SIZE` | `25m` | Max multipart part size accepted by the backend for `/screenings/batch-upload`. |
-| `AWS_REGION` | `us-east-1` | AWS region for SQS/S3/SNS clients. |
-| `AWS_SQS_QUEUE_NAME` | `screening-requests` | Queue used for async screening. |
-| `AWS_ENDPOINT_URL` | *(empty)* | Optional override for localstack/dev. |
-| `AWS_ACCESS_KEY_ID` | *(empty)* | Optional static credentials (prefer ECS task role in AWS). |
-| `AWS_SECRET_ACCESS_KEY` | *(empty)* | Optional static credentials (prefer ECS task role in AWS). |
-| `AWS_S3_UPLOAD_BUCKET` | *(empty)* | Enables S3 storage for uploads. Required for large batch `JOB_DISPATCH` flow. |
-| `AWS_S3_UPLOAD_PREFIX` | `screening-input` | Key prefix for S3 uploads (source files and `queries.json`). |
-| `AWS_SNS_NOTIFICATIONS_ENABLED` | `false` | Enables SNS notifications for scheduled screening completion. |
-| `AWS_SNS_SCHEDULE_TOPIC_PREFIX` | `ofac-screening-schedule` | Prefix used for SNS topics created for schedule/email notifications. |
-| `ACTIMIZE_BASE_URL` | *(empty)* | Base URL for Actimize screening API (required for screening requests). |
-| `ACTIMIZE_PROVIDER` | `prudential` | Provider label used in audit/error telemetry. |
-| `ACTIMIZE_API_KEY` | *(empty)* | Optional API key auth (sent via headers when configured). |
-| `ACTIMIZE_BEARER_TOKEN` | *(empty)* | Optional static bearer token auth (sent via headers when configured). |
-| `ACTIMIZE_TOKEN_URL` | *(empty)* | OAuth token endpoint for client-credentials (when using dynamic bearer tokens). |
-| `ACTIMIZE_CLIENT_ID` | *(empty)* | OAuth client id (required if `ACTIMIZE_TOKEN_URL` is set). |
-| `ACTIMIZE_CLIENT_SECRET` | *(empty)* | OAuth client secret (optional if using client assertion). |
-| `ACTIMIZE_CLIENT_ASSERTION_TYPE` | `urn:ietf:params:oauth:client-assertion-type:jwt-bearer` | OAuth client assertion type when using JWT client assertion. |
-| `ACTIMIZE_CLIENT_ASSERTION_ALGORITHM` | `RS256` | JWT signing algorithm for client assertion. |
-| `ACTIMIZE_CLIENT_ASSERTION_AUDIENCE` | *(empty)* | JWT audience; defaults to `ACTIMIZE_TOKEN_URL` when unset. |
-| `ACTIMIZE_CLIENT_ASSERTION_KID` | *(empty)* | Optional JWT header `kid` for key selection. |
-| `ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY` | *(empty)* | PEM private key for client assertion (inline). |
-| `ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64` | *(empty)* | PEM private key for client assertion (base64-encoded). |
-| `ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH` | *(empty)* | PEM private key for client assertion (file path). |
-| `ACTIMIZE_SCOPE` | *(empty)* | Optional OAuth scope string for token request. |
-| `ACTIMIZE_SOURCE_SYSTEM` | `ZIP` | Sent in Actimize payload as `sourceSystem` and used when deriving fallback `partyKey`. |
-| `ACTIMIZE_REQUESTER_NAME` | `SCREENING_SYSTEM` | Default requester name sent in Actimize payload when user name is not provided. |
-| `ACTIMIZE_ALERT_REVIEW_URL` | *(empty)* | Optional URL included in scheduled completion notifications for where to review alerts. |
-| `ACTIMIZE_TIMEOUT_S` | `10.0` | HTTP timeout (seconds) for Actimize requests. |
-| `ACTIMIZE_LOG_RAW_API_IO` | `false` | Enables raw upstream request/response logging to CloudWatch with redaction. |
-| `ACTIMIZE_RAW_API_LOG_MAX_CHARS` | `20000` | Max raw request/response characters retained per log entry. |
-| `SCREENING_TPS` | `32` | Worker outbound throughput cap (TPS). |
-| `SCREENING_PARALLEL_MESSAGES` | `1` | Max in-flight SQS screening items processed concurrently per worker task. |
-| `SCREENING_ITEM_RETRY_MAX_ATTEMPTS` | `2` | Additional retry attempts for transient upstream (`429/500/502/503/504`) item failures before terminal item failure. |
-| `SCREENING_ITEM_RETRY_INITIAL_DELAY_S` | `3` | Initial delay (seconds) for worker delayed requeue of retryable item failures. |
-| `SCREENING_ITEM_RETRY_MAX_DELAY_S` | `60` | Maximum delay (seconds) cap for retry requeue exponential backoff. |
-| `SCREENING_RESULT_LIMIT` | `5` | Default max number of matches returned per item. |
-| `DAILY_SCREENING_TIMEZONE` | `America/New_York` | Timezone for schedule calculations. |
-| `DAILY_SCREENING_HOUR` | `0` | Hour-of-day for default daily schedule run time (local to `DAILY_SCREENING_TIMEZONE`). |
-| `DAILY_SCREENING_MINUTE` | `5` | Minute-of-hour for default daily schedule run time. |
-| `DAILY_SCREENING_CHECK_INTERVAL_S` | `30` | How often the worker checks for due schedules. |
-| `AUDIT_ACCESS_LOG_ENABLED` | `true` | Enables middleware access logging into `api_access_logs`. |
-| `AUDIT_EVENT_RETENTION_DAYS` | `3650` | Retention window for `audit_events` cleanup. |
-| `API_ACCESS_LOG_RETENTION_DAYS` | `365` | Retention window for `api_access_logs` cleanup. |
-| `EXTERNAL_API_ERROR_RETENTION_DAYS` | `365` | Retention window for `external_api_errors` cleanup. |
-| `OPERATIONAL_CLEANUP_INTERVAL_S` | `3600` | How often the worker purges old operational data. |
-| `HIGH_RISK_EXTERNAL_API_ERROR_WINDOW_MINUTES` | `15` | Rolling window for high-risk external API failure detection. |
-| `HIGH_RISK_EXTERNAL_API_ERROR_THRESHOLD` | `10` | Threshold count inside the window that triggers high-risk alert audit events. |
-| `AUTH_ENABLED` | `false` | Enables JWT validation + permission enforcement for `/api/v1/*`. |
-| `AUTH_ISSUER` | *(empty)* | JWT issuer URL. Required when `AUTH_ENABLED=true`. |
-| `AUTH_JWKS_URL` | *(empty)* | JWKS URL for signature verification. Required when `AUTH_ENABLED=true`. |
-| `AUTH_AUDIENCE` | *(empty)* | JWT audience/app-client id (required for Cognito access tokens). |
-| `AUTH_ALGORITHMS` | `RS256` | Allowed JWT signing algorithms. |
+Backend and worker both load the same settings object from `backend/app/config.py`.
+
+| Parameter | Default Value | Used By | Description / Use |
+|---|---:|---|---|
+| `APP_NAME` | `OFAC Screening Enterprise API` | Backend app metadata | FastAPI application name for metadata/log labeling. |
+| `APP_VERSION` | `1.0.0` | Backend app metadata | FastAPI application version string. |
+| `APP_DB_PATH` | `/tmp/screening.db` | Repository initialization | SQLite fallback DB path when `APP_DB_URL` is not set. |
+| `APP_DB_URL` | *(empty)* | Repository initialization | PostgreSQL connection URL (recommended for AWS deployments). |
+| `DB_POOL_MIN_SIZE` | `1` | Repository DB pool | Minimum pooled PostgreSQL connections per process. |
+| `DB_POOL_MAX_SIZE` | `8` | Repository DB pool | Maximum pooled PostgreSQL connections per process. |
+| `DB_POOL_TIMEOUT_S` | `5.0` | Repository DB pool | Timeout for acquiring pooled DB connection. |
+| `DB_CONNECT_MAX_ATTEMPTS` | `4` | Repository DB retry logic | Max attempts for transient DB connection/acquisition retry. |
+| `DB_CONNECT_BACKOFF_INITIAL_MS` | `100` | Repository DB retry logic | Initial retry backoff for DB connection retries. |
+| `DB_CONNECT_BACKOFF_MAX_MS` | `1500` | Repository DB retry logic | Upper bound for DB retry backoff. |
+| `PG_RESULT_MV_REFRESH_INTERVAL_S` | `20` | Result materialized-view refresh logic | Best-effort refresh interval for PostgreSQL result materialized views (`mv_user_recent_results`, `mv_user_result_summary_counts`) used by summary/recent-result APIs. |
+| `CORS_ALLOW_ORIGINS` | `*` | Backend CORS middleware | Comma-separated CORS allowed origins. |
+| `MULTIPART_MAX_PART_SIZE` | `25m` | `/api/v1/screenings/batch-upload` parser | Max multipart part size accepted by backend form parser. |
+| `AWS_REGION` | `us-east-1` | SQS/S3/SNS clients | AWS region for service clients. |
+| `AWS_SQS_QUEUE_NAME` | `screening-requests` | Queue integration | SQS queue name for async screening work. |
+| `AWS_ENDPOINT_URL` | *(empty)* | AWS client construction | Optional endpoint override (for localstack/dev). |
+| `AWS_ACCESS_KEY_ID` | *(empty)* | AWS client construction | Optional static credentials; ECS task role is preferred in AWS. |
+| `AWS_SECRET_ACCESS_KEY` | *(empty)* | AWS client construction | Optional static credentials; ECS task role is preferred in AWS. |
+| `AWS_S3_UPLOAD_BUCKET` | *(empty)* | S3 file-store integration | Bucket for uploaded source files and generated `queries.json`. |
+| `AWS_S3_UPLOAD_PREFIX` | `screening-input` | S3 file-store integration | Key prefix under upload bucket. |
+| `AWS_SNS_NOTIFICATIONS_ENABLED` | `false` | SNS notifier | Enables scheduled-screening email notification publishing. |
+| `AWS_SNS_SCHEDULE_TOPIC_PREFIX` | `ofac-screening-schedule` | SNS notifier | Prefix for per-schedule/per-recipient SNS topics. |
+| `AWS_SES_SENDER_EMAIL` | *(empty)* | SNS/notification metadata | Sender/from address used in schedule notification content. |
+| `ACTIMIZE_BASE_URL` | *(empty)* | Actimize client | Base URL for Actimize screening API calls. |
+| `ACTIMIZE_PROVIDER` | `prudential` | Actimize/audit/error logging | Provider label written into telemetry and audit context. |
+| `ACTIMIZE_API_KEY` | *(empty)* | Actimize client auth | Optional API-key header credential. |
+| `ACTIMIZE_BEARER_TOKEN` | *(empty)* | Actimize client auth | Optional static bearer token credential. |
+| `ACTIMIZE_TOKEN_URL` | *(empty)* | Actimize OAuth token flow | OAuth token endpoint when using dynamic bearer-token retrieval. |
+| `ACTIMIZE_CLIENT_ID` | *(empty)* | Actimize OAuth token flow | OAuth client id for token requests. |
+| `ACTIMIZE_CLIENT_SECRET` | *(empty)* | Actimize OAuth token flow | OAuth client secret when not using assertion-only auth. |
+| `ACTIMIZE_CLIENT_ASSERTION_TYPE` | `urn:ietf:params:oauth:client-assertion-type:jwt-bearer` | Actimize OAuth token flow | OAuth client assertion type for JWT-based client auth. |
+| `ACTIMIZE_CLIENT_ASSERTION_ALGORITHM` | `RS256` | Actimize OAuth token flow | JWT signing algorithm for client assertion. |
+| `ACTIMIZE_CLIENT_ASSERTION_AUDIENCE` | *(empty)* | Actimize OAuth token flow | JWT audience for assertion (if unset, code derives from token URL flow). |
+| `ACTIMIZE_CLIENT_ASSERTION_KID` | *(empty)* | Actimize OAuth token flow | Optional JWT `kid` header value. |
+| `ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY` | *(empty)* | Actimize OAuth token flow | Inline PEM private key for client assertion signing. |
+| `ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_B64` | *(empty)* | Actimize OAuth token flow | Base64-encoded PEM private key for client assertion signing. |
+| `ACTIMIZE_CLIENT_ASSERTION_PRIVATE_KEY_PATH` | *(empty)* | Actimize OAuth token flow | File path to PEM private key for client assertion signing. |
+| `ACTIMIZE_SCOPE` | *(empty)* | Actimize OAuth token flow | Optional OAuth scopes for token request. |
+| `ACTIMIZE_SOURCE_SYSTEM` | `AMLP` | Actimize payload mapping | Default `sourceSystem` value in upstream requests. |
+| `ACTIMIZE_REQUESTER_NAME` | `SCREENING_SYSTEM` | Actimize payload mapping | Default requester name if caller identity is absent. |
+| `ACTIMIZE_ALERT_REVIEW_URL` | *(empty)* | Schedule notification payloads | Optional URL included in completion notifications for analysts. |
+| `ACTIMIZE_TIMEOUT_S` | `10.0` | Actimize HTTP client | Outbound request timeout in seconds. |
+| `ACTIMIZE_LOG_RAW_API_IO` | `false` | Raw API logging | Enables redacted raw upstream request/response logging. |
+| `ACTIMIZE_RAW_API_LOG_MAX_CHARS` | `20000` | Raw API logging | Max characters retained from raw request/response payload logs. |
+| `ACTIMIZE_SCREENING_TYPE_CACHE_TTL_S` | `60` | Screening-type mapping cache | TTL (seconds) for DB-driven screening-type mapping cache. |
+| `ACTIMIZE_SCREENING_TYPE_CACHE_MAX_ENTRIES` | `512` | Screening-type mapping cache | Maximum cache size for screening-type mapping entries. |
+| `SCREENING_TPS` | `32` | Worker throughput control | Per-worker outbound screening request TPS cap. |
+| `SCREENING_PARALLEL_MESSAGES` | `1` | Worker concurrency control | Max in-flight screening SQS messages handled in parallel. |
+| `SCREENING_RESULT_LIMIT` | `5` | Backend sync API response shaping | Max match count returned per screening item in normalized response. |
+| `WORKER_HEALTH_HOST` | `127.0.0.1` | Worker health endpoint + checks | Host binding and health target host fallback for worker checks. |
+| `WORKER_HEALTH_PORT` | `8081` | Worker health endpoint + checks | Port for worker health HTTP endpoint. |
+| `WORKER_HEALTHCHECK_TIMEOUT_S` | `5.0` | Worker health checks | Timeout for worker healthcheck HTTP probe. |
+| `WORKER_HEALTH_MAX_AGE_S` | `180` | Worker heartbeat health logic | Max age for worker activity before health degrades. |
+| `SCREENING_ITEM_RETRY_MAX_ATTEMPTS` | `2` | Worker retry handling | Max delayed retries for transient external screening errors. |
+| `SCREENING_ITEM_RETRY_INITIAL_DELAY_S` | `3` | Worker retry handling | Initial delayed-retry backoff seconds for retryable item failures. |
+| `SCREENING_ITEM_RETRY_MAX_DELAY_S` | `60` | Worker retry handling | Upper bound for exponential delayed-retry backoff seconds. |
+| `DAILY_SCREENING_TIMEZONE` | `America/New_York` | Daily schedule evaluation | Timezone used for schedule next-run calculations. |
+| `DAILY_SCREENING_HOUR` | `0` | Daily schedule defaults | Default schedule hour-of-day. |
+| `DAILY_SCREENING_MINUTE` | `5` | Daily schedule defaults | Default schedule minute-of-hour. |
+| `DAILY_SCREENING_CHECK_INTERVAL_S` | `30` | Worker scheduler loop | Poll interval for checking due daily schedules. |
+| `AUDIT_ACCESS_LOG_ENABLED` | `true` | Backend middleware | Enables API access-log persistence into `api_access_logs`. |
+| `AUDIT_EVENT_RETENTION_DAYS` | `3650` | Worker operational cleanup | Retention window for `audit_events`. |
+| `API_ACCESS_LOG_RETENTION_DAYS` | `365` | Worker operational cleanup | Retention window for `api_access_logs`. |
+| `EXTERNAL_API_ERROR_RETENTION_DAYS` | `365` | Worker operational cleanup | Retention window for `external_api_errors`. |
+| `OPERATIONAL_CLEANUP_INTERVAL_S` | `3600` | Worker operational cleanup | Cleanup loop interval for retention enforcement. |
+| `HIGH_RISK_EXTERNAL_API_ERROR_WINDOW_MINUTES` | `15` | Error alerting logic | Rolling window used for elevated external-failure detection. |
+| `HIGH_RISK_EXTERNAL_API_ERROR_THRESHOLD` | `10` | Error alerting logic | Alert threshold count in window for high-risk audit events. |
+| `AUTH_ENABLED` | `false` | Backend auth middleware | Enables JWT validation and authorization checks for `/api/v1/*`. |
+| `AUTH_ISSUER` | *(empty)* | Backend JWT validation | Required issuer for JWT validation when auth is enabled. |
+| `AUTH_JWKS_URL` | *(empty)* | Backend JWT validation | JWKS URL for JWT signature verification. |
+| `AUTH_AUDIENCE` | *(empty)* | Backend JWT validation | Expected audience/client id for JWT validation. |
+| `AUTH_ALGORITHMS` | `RS256` | Backend JWT validation | Allowed JWT signing algorithms (comma-separated supported by parser). |
+
+### 10.3 Healthcheck Overrides and Backward-Compatible Aliases
+
+| Parameter | Default Value | Used By | Description / Use |
+|---|---:|---|---|
+| `BACKEND_HEALTHCHECK_URL` | `http://127.0.0.1:8000/health` | `python -m app.healthcheck backend` | Override backend health endpoint URL used by ECS/container healthcheck command. |
+| `BACKEND_HEALTHCHECK_TIMEOUT_S` | `5` | `python -m app.healthcheck backend` | Timeout for backend healthcheck URL probe. |
+| `WORKER_HEALTHCHECK_URL` | *(empty)* | `python -m app.healthcheck worker` | Optional full worker health URL; when unset code builds URL from `WORKER_HEALTH_HOST` + `WORKER_HEALTH_PORT`. |
+| `ACTIMIZE_LOG_RAW_SUCCESS_RESPONSE` | `false` | `backend/app/config.py` fallback logic | Legacy alias still honored as fallback default for `ACTIMIZE_LOG_RAW_API_IO`. |
+| `ACTIMIZE_RAW_SUCCESS_LOG_MAX_CHARS` | `20000` | `backend/app/config.py` fallback logic | Legacy alias still honored as fallback default for `ACTIMIZE_RAW_API_LOG_MAX_CHARS`. |
+| `PG_RESULT_MV_ENABLED` | *(deprecated/ignored)* | N/A (removed from runtime settings) | Legacy toggle is no longer used. PostgreSQL materialized-view refresh is now controlled only by `PG_RESULT_MV_REFRESH_INTERVAL_S` when views exist. |
 
 ## 11. Appendix: Batch File -> Actimize Request Mapping
 

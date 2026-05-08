@@ -4,6 +4,9 @@
 
 ALTER TABLE ONLY dbacd."api_access_logs" ADD CONSTRAINT "api_access_logs_pkey" PRIMARY KEY (access_id);
 
+ALTER TABLE ONLY dbacd."app_users" ADD CONSTRAINT "app_users_pkey" PRIMARY KEY (user_id);
+ALTER TABLE ONLY dbacd."app_users" ADD CONSTRAINT "app_users_old_id_key" UNIQUE (old_id);
+
 ALTER TABLE ONLY dbacd."audit_events" ADD CONSTRAINT "audit_events_pkey" PRIMARY KEY (event_id);
 
 ALTER TABLE ONLY dbacd."batch_file_uploads" ADD CONSTRAINT "batch_file_uploads_pkey" PRIMARY KEY (upload_id);

@@ -83,6 +83,7 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str], ...] 
 )
 
 REQUIRED_TABLES: tuple[str, ...] = (
+    "app_users",
     "jobs",
     "job_items",
     "job_metadata",
@@ -102,10 +103,21 @@ REQUIRED_TABLES: tuple[str, ...] = (
 )
 
 REQUIRED_INDEXES: tuple[str, ...] = (
+    "idx_app_users_old_id",
+    "idx_app_users_email",
     "idx_schedule_subscriptions_unique",
     "idx_daily_schedules_next_run",
     "idx_notifications_user",
     "idx_notifications_email",
+    "idx_jobs_user_ref",
+    "idx_daily_schedules_user_ref",
+    "idx_batch_file_uploads_user_ref",
+    "idx_schedule_subscriptions_user_ref",
+    "idx_schedule_notifications_user_ref",
+    "idx_user_business_units_user_ref",
+    "idx_audit_events_user_ref_event",
+    "idx_external_api_errors_user_ref_created_at",
+    "idx_api_access_logs_user_ref_created_at",
     "idx_user_business_units_user",
     "idx_user_business_units_code",
     "idx_audit_events_event_id",
@@ -121,7 +133,8 @@ REQUIRED_INDEXES: tuple[str, ...] = (
 )
 
 REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
-    "jobs": ("source_schedule_id", "source_upload_id", "user_id", "user_name"),
+    "app_users": ("user_id", "is_active", "name", "email", "old_id", "created_at", "updated_at"),
+    "jobs": ("source_schedule_id", "source_upload_id", "user_ref_id", "user_id", "user_name"),
     "job_metadata": (
         "mode",
         "screening_types_json",
@@ -136,6 +149,7 @@ REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
         "business_unit_code",
     ),
     "daily_schedules": (
+        "user_ref_id",
         "user_id",
         "user_name",
         "schedule_frequency",
@@ -144,7 +158,13 @@ REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
         "source_s3_uri",
         "business_unit_code",
     ),
-    "batch_file_uploads": ("queries_s3_bucket", "queries_s3_key", "queries_s3_uri"),
+    "batch_file_uploads": ("user_ref_id", "queries_s3_bucket", "queries_s3_key", "queries_s3_uri"),
+    "schedule_subscriptions": ("user_ref_id",),
+    "schedule_notifications": ("user_ref_id",),
+    "audit_events": ("user_ref_id",),
+    "external_api_errors": ("user_ref_id",),
+    "api_access_logs": ("user_ref_id",),
+    "user_business_units": ("user_ref_id",),
     "actimize_screening_type_mappings": (
         "Screening_Type",
         "Search_Definition_ID",
@@ -206,6 +226,15 @@ class JobRepository:
         self._jobs_has_updated_at_ts = self._runtime_column_exists("jobs", "updated_at_ts")
         self._job_items_has_updated_at_ts = self._runtime_column_exists("job_items", "updated_at_ts")
         self._job_items_has_user_id = self._runtime_column_exists("job_items", "user_id")
+        self._jobs_has_user_ref_id = self._runtime_column_exists("jobs", "user_ref_id")
+        self._daily_schedules_has_user_ref_id = self._runtime_column_exists("daily_schedules", "user_ref_id")
+        self._batch_file_uploads_has_user_ref_id = self._runtime_column_exists("batch_file_uploads", "user_ref_id")
+        self._schedule_subscriptions_has_user_ref_id = self._runtime_column_exists("schedule_subscriptions", "user_ref_id")
+        self._schedule_notifications_has_user_ref_id = self._runtime_column_exists("schedule_notifications", "user_ref_id")
+        self._audit_events_has_user_ref_id = self._runtime_column_exists("audit_events", "user_ref_id")
+        self._external_api_errors_has_user_ref_id = self._runtime_column_exists("external_api_errors", "user_ref_id")
+        self._api_access_logs_has_user_ref_id = self._runtime_column_exists("api_access_logs", "user_ref_id")
+        self._user_business_units_has_user_ref_id = self._runtime_column_exists("user_business_units", "user_ref_id")
         self._jobs_has_job_seq_id = self._runtime_column_exists("jobs", "job_seq_id")
         self._job_items_has_job_seq_id = self._runtime_column_exists("job_items", "job_seq_id")
         self._pg_mv_refresh_lock = Lock()
@@ -411,7 +440,7 @@ class JobRepository:
         return bool(row)
 
     def _maybe_refresh_postgres_result_materialized_views(self) -> bool:
-        if not self.is_postgres or not settings.pg_result_mv_enabled:
+        if not self.is_postgres:
             return False
         refresh_interval = max(int(settings.pg_result_mv_refresh_interval_s), 1)
         now_monotonic = time.monotonic()
@@ -428,12 +457,15 @@ class JobRepository:
                 if not self._postgres_materialized_view_exists(conn, "mv_user_result_summary_counts"):
                     self._last_pg_mv_refresh_at = now_monotonic
                     return False
+                has_daily_batch_runs_mv = self._postgres_materialized_view_exists(conn, "mv_daily_schedule_batch_runs")
                 try:
                     # Keep request paths responsive if refresh would wait on locks.
                     self._execute(conn, "SET LOCAL lock_timeout = '750ms'")
                     self._execute(conn, "SET LOCAL statement_timeout = '5000ms'")
                     self._execute(conn, "REFRESH MATERIALIZED VIEW mv_user_recent_results")
                     self._execute(conn, "REFRESH MATERIALIZED VIEW mv_user_result_summary_counts")
+                    if has_daily_batch_runs_mv:
+                        self._execute(conn, "REFRESH MATERIALIZED VIEW mv_daily_schedule_batch_runs")
                     self._last_pg_mv_refresh_at = time.monotonic()
                     return True
                 except Exception:  # noqa: BLE001
@@ -1072,7 +1104,7 @@ class JobRepository:
             row = self._execute(
                 conn,
                 """
-                SELECT business_unit_code, business_unit_name, is_active, created_at, updated_at
+                SELECT business_unit_code, business_unit_name, is_active
                 FROM business_units
                 WHERE business_unit_code = ?
                   AND (? = TRUE OR is_active = TRUE)
@@ -1086,8 +1118,6 @@ class JobRepository:
             "business_unit_code": str(row["business_unit_code"] or "").strip(),
             "business_unit_name": str(row["business_unit_name"] or "").strip(),
             "is_active": _as_bool(row["is_active"]),
-            "created_at": row["created_at"],
-            "updated_at": row["updated_at"],
         }
 
     def _seed_default_business_units(self, conn: Any) -> None:
@@ -1363,38 +1393,44 @@ class JobRepository:
     ) -> str:
         ts = now_iso()
         status_value = status.value if isinstance(status, JobStatus) else str(status)
-        columns = [
-            "job_id",
-            "status",
-            "created_at",
-            "updated_at",
-            "total_items",
-            "source_schedule_id",
-            "source_upload_id",
-            "user_id",
-            "user_name",
-        ]
-        values: list[Any] = [
-            job_id,
-            status_value,
-            ts,
-            ts,
-            max(int(total_items), 0),
-            (source_schedule_id or "").strip() or None,
-            (source_upload_id or "").strip() or None,
-            (user_id or "").strip() or None,
-            (user_name or "").strip() or None,
-        ]
-        if self._jobs_has_created_at_ts:
-            columns.append("created_at_ts")
-            values.append(ts)
-        if self._jobs_has_updated_at_ts:
-            columns.append("updated_at_ts")
-            values.append(ts)
-
-        placeholders = ", ".join("?" for _ in columns)
-        columns_sql = ", ".join(columns)
         with self._connect() as conn:
+            user_ref_id, resolved_user_id, resolved_user_name, _ = self._ensure_user_ref(
+                conn,
+                user_old_id=user_id,
+                user_name=user_name,
+            )
+            columns = [
+                "job_id",
+                "status",
+                "created_at",
+                "updated_at",
+                "total_items",
+                "source_schedule_id",
+                "source_upload_id",
+            ]
+            values: list[Any] = [
+                job_id,
+                status_value,
+                ts,
+                ts,
+                max(int(total_items), 0),
+                (source_schedule_id or "").strip() or None,
+                (source_upload_id or "").strip() or None,
+            ]
+            if self._jobs_has_user_ref_id:
+                columns.append("user_ref_id")
+                values.append(user_ref_id)
+            columns.extend(["user_id", "user_name"])
+            values.extend([resolved_user_id, resolved_user_name])
+            if self._jobs_has_created_at_ts:
+                columns.append("created_at_ts")
+                values.append(ts)
+            if self._jobs_has_updated_at_ts:
+                columns.append("updated_at_ts")
+                values.append(ts)
+
+            placeholders = ", ".join("?" for _ in columns)
+            columns_sql = ", ".join(columns)
             self._execute(
                 conn,
                 f"INSERT INTO jobs({columns_sql}) VALUES({placeholders})",
@@ -1531,43 +1567,54 @@ class JobRepository:
         limit: int = 200,
     ) -> list[dict[str, Any]]:
         safe_limit = max(min(int(limit), 1000), 1)
-        safe_user_id = (user_id or "").strip()
+        safe_user_id = self._normalize_user_old_id(user_id)
         safe_user_name = (user_name or "").strip()
 
         with self._connect() as conn:
-            if safe_user_id:
+            user_ref_id = self._lookup_user_ref_id(conn, safe_user_id) if safe_user_id else None
+            if safe_user_id and self._jobs_has_user_ref_id and user_ref_id is None:
+                rows = []
+            elif safe_user_id:
+                user_filter_sql = "j.user_ref_id = ?" if self._jobs_has_user_ref_id else "j.user_id = ?"
+                user_filter_param = user_ref_id if self._jobs_has_user_ref_id else safe_user_id
                 rows = self._execute(
                     conn,
-                    """
+                    f"""
                     SELECT
-                      j.job_id, j.status, j.created_at, j.updated_at, j.total_items,
-                      j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
+                      j.job_id, j.status, j.created_at, j.total_items,
+                      j.source_schedule_id, j.source_upload_id,
+                      COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
+                      COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
                       jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
+                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.business_unit_code,
                       bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
                     FROM jobs j
+                    LEFT JOIN app_users au ON au.user_id = j.user_ref_id
                     LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
                     LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
-                    WHERE j.user_id = ?
+                    WHERE {user_filter_sql}
                     ORDER BY j.created_at DESC
                     LIMIT ?
                     """,
-                    (safe_user_id, safe_limit),
+                    (user_filter_param, safe_limit),
                 ).fetchall()
             elif safe_user_name:
                 rows = self._execute(
                     conn,
                     """
                     SELECT
-                      j.job_id, j.status, j.created_at, j.updated_at, j.total_items,
-                      j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
+                      j.job_id, j.status, j.created_at, j.total_items,
+                      j.source_schedule_id, j.source_upload_id,
+                      COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
+                      COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
                       jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
+                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.business_unit_code,
                       bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
                     FROM jobs j
+                    LEFT JOIN app_users au ON au.user_id = j.user_ref_id
                     LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
                     LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
-                    WHERE LOWER(COALESCE(j.user_name, '')) = LOWER(?)
+                    WHERE LOWER(COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id, '')) = LOWER(?)
                     ORDER BY j.created_at DESC
                     LIMIT ?
                     """,
@@ -1578,12 +1625,15 @@ class JobRepository:
                     conn,
                     """
                     SELECT
-                      j.job_id, j.status, j.created_at, j.updated_at, j.total_items,
-                      j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
+                      j.job_id, j.status, j.created_at, j.total_items,
+                      j.source_schedule_id, j.source_upload_id,
+                      COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
+                      COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
                       jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
+                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.business_unit_code,
                       bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri
                     FROM jobs j
+                    LEFT JOIN app_users au ON au.user_id = j.user_ref_id
                     LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
                     LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
                     ORDER BY j.created_at DESC
@@ -1598,8 +1648,7 @@ class JobRepository:
                 {
                     "job_id": row["job_id"],
                     "status": row["status"],
-                    "created_at": row["created_at"],
-                    "updated_at": row["updated_at"],
+                    "created_at": JobRepository._to_iso_text(row["created_at"]) or "",
                     "total_items": int(row["total_items"] or 0),
                     "source_schedule_id": row["source_schedule_id"],
                     "source_upload_id": row["source_upload_id"],
@@ -1613,11 +1662,164 @@ class JobRepository:
                     "daily_screening": row["daily_screening"],
                     "schedule_frequency": row["schedule_frequency"],
                     "daily_schedule_id": row["daily_schedule_id"],
-                    "query_count": int(row["query_count"] or 0) if row["query_count"] is not None else 0,
-                    "deferred_until": row["deferred_until"],
                     "business_unit_code": row["business_unit_code"],
                     "upload_file_name": row["upload_file_name"],
                     "upload_s3_uri": row["upload_s3_uri"],
+                }
+            )
+        return out
+
+    def list_daily_schedule_batch_runs(self, limit: int = 200) -> list[dict[str, Any]]:
+        safe_limit = max(min(int(limit), 1000), 1)
+        if self.is_postgres:
+            with self._connect() as conn:
+                if self._postgres_materialized_view_exists(conn, "mv_daily_schedule_batch_runs"):
+                    rows = self._execute(
+                        conn,
+                        """
+                        SELECT
+                          job_id,
+                          schedule_id,
+                          job_status,
+                          created_at,
+                          updated_at,
+                          total_items,
+                          source_upload_id,
+                          user_id,
+                          user_name,
+                          batch_name,
+                          schedule_frequency,
+                          source_file_name,
+                          completed_items,
+                          failed_items,
+                          pending_items,
+                          processing_items
+                        FROM mv_daily_schedule_batch_runs
+                        ORDER BY created_at DESC
+                        LIMIT ?
+                        """,
+                        (safe_limit,),
+                    ).fetchall()
+                else:
+                    rows = self._execute(
+                        conn,
+                        """
+                        SELECT
+                          j.job_id,
+                          COALESCE(NULLIF(jm.daily_schedule_id, ''), NULLIF(j.source_schedule_id, '')) AS schedule_id,
+                          UPPER(COALESCE(j.status, '')) AS job_status,
+                          j.created_at,
+                          j.updated_at,
+                          j.total_items,
+                          j.source_upload_id,
+                          j.user_id,
+                          j.user_name,
+                          COALESCE(
+                            NULLIF(jm.batch_name, ''),
+                            NULLIF(ds.batch_name, ''),
+                            NULLIF(jm.file_name, ''),
+                            NULLIF(bu.file_name, ''),
+                            'Scheduled Batch'
+                          ) AS batch_name,
+                          NULLIF(COALESCE(NULLIF(jm.schedule_frequency, ''), NULLIF(ds.schedule_frequency, '')), '') AS schedule_frequency,
+                          NULLIF(COALESCE(NULLIF(bu.file_name, ''), NULLIF(ds.source_file_name, ''), NULLIF(jm.file_name, '')), '') AS source_file_name,
+                          COALESCE(js.completed_items, 0) AS completed_items,
+                          COALESCE(js.failed_items, 0) AS failed_items,
+                          COALESCE(js.pending_items, 0) AS pending_items,
+                          COALESCE(js.processing_items, 0) AS processing_items
+                        FROM jobs j
+                        LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                        LEFT JOIN daily_schedules ds
+                          ON ds.schedule_id = COALESCE(NULLIF(jm.daily_schedule_id, ''), NULLIF(j.source_schedule_id, ''))
+                        LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                        LEFT JOIN (
+                          SELECT
+                            job_id,
+                            SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_items,
+                            SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS failed_items,
+                            SUM(CASE WHEN status = 'QUEUED' THEN 1 ELSE 0 END) AS pending_items,
+                            SUM(CASE WHEN status = 'PROCESSING' THEN 1 ELSE 0 END) AS processing_items
+                          FROM job_items
+                          GROUP BY job_id
+                        ) js ON js.job_id = j.job_id
+                        WHERE COALESCE(NULLIF(jm.daily_schedule_id, ''), NULLIF(j.source_schedule_id, '')) IS NOT NULL
+                          AND UPPER(COALESCE(jm.mode, 'BATCH')) = 'BATCH'
+                        ORDER BY j.created_at DESC
+                        LIMIT ?
+                        """,
+                        (safe_limit,),
+                    ).fetchall()
+        else:
+            with self._connect() as conn:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT
+                      j.job_id,
+                      COALESCE(NULLIF(jm.daily_schedule_id, ''), NULLIF(j.source_schedule_id, '')) AS schedule_id,
+                      UPPER(COALESCE(j.status, '')) AS job_status,
+                      j.created_at,
+                      j.updated_at,
+                      j.total_items,
+                      j.source_upload_id,
+                      j.user_id,
+                      j.user_name,
+                      COALESCE(
+                        NULLIF(jm.batch_name, ''),
+                        NULLIF(ds.batch_name, ''),
+                        NULLIF(jm.file_name, ''),
+                        NULLIF(bu.file_name, ''),
+                        'Scheduled Batch'
+                      ) AS batch_name,
+                      NULLIF(COALESCE(NULLIF(jm.schedule_frequency, ''), NULLIF(ds.schedule_frequency, '')), '') AS schedule_frequency,
+                      NULLIF(COALESCE(NULLIF(bu.file_name, ''), NULLIF(ds.source_file_name, ''), NULLIF(jm.file_name, '')), '') AS source_file_name,
+                      COALESCE(js.completed_items, 0) AS completed_items,
+                      COALESCE(js.failed_items, 0) AS failed_items,
+                      COALESCE(js.pending_items, 0) AS pending_items,
+                      COALESCE(js.processing_items, 0) AS processing_items
+                    FROM jobs j
+                    LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                    LEFT JOIN daily_schedules ds
+                      ON ds.schedule_id = COALESCE(NULLIF(jm.daily_schedule_id, ''), NULLIF(j.source_schedule_id, ''))
+                    LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                    LEFT JOIN (
+                      SELECT
+                        job_id,
+                        SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_items,
+                        SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS failed_items,
+                        SUM(CASE WHEN status = 'QUEUED' THEN 1 ELSE 0 END) AS pending_items,
+                        SUM(CASE WHEN status = 'PROCESSING' THEN 1 ELSE 0 END) AS processing_items
+                      FROM job_items
+                      GROUP BY job_id
+                    ) js ON js.job_id = j.job_id
+                    WHERE COALESCE(NULLIF(jm.daily_schedule_id, ''), NULLIF(j.source_schedule_id, '')) IS NOT NULL
+                      AND UPPER(COALESCE(jm.mode, 'BATCH')) = 'BATCH'
+                    ORDER BY j.created_at DESC
+                    LIMIT ?
+                    """,
+                    (safe_limit,),
+                ).fetchall()
+
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            out.append(
+                {
+                    "job_id": str(row["job_id"] or "").strip(),
+                    "job_status": str(row["job_status"] or "").strip().upper(),
+                    "created_at": JobRepository._to_iso_text(row["created_at"]) or "",
+                    "updated_at": JobRepository._to_iso_text(row["updated_at"]) or "",
+                    "total_items": int(row["total_items"] or 0),
+                    "schedule_id": str(row["schedule_id"] or "").strip(),
+                    "source_upload_id": row["source_upload_id"],
+                    "user_id": row["user_id"],
+                    "user_name": row["user_name"],
+                    "batch_name": str(row["batch_name"] or "").strip() or "Scheduled Batch",
+                    "schedule_frequency": str(row["schedule_frequency"] or "").strip() or None,
+                    "source_file_name": str(row["source_file_name"] or "").strip() or None,
+                    "completed_items": int(row["completed_items"] or 0),
+                    "failed_items": int(row["failed_items"] or 0),
+                    "pending_items": int(row["pending_items"] or 0),
+                    "processing_items": int(row["processing_items"] or 0),
                 }
             )
         return out
@@ -1632,7 +1834,7 @@ class JobRepository:
             rows = self._execute(
                 conn,
                 f"""
-                SELECT job_id, item_key, request_json, response_json, status, error_text, updated_at
+                SELECT job_id, item_key, request_json, response_json, status, error_text
                 FROM job_items
                 WHERE job_id IN ({placeholders})
                 ORDER BY job_id ASC, item_key ASC
@@ -1661,7 +1863,6 @@ class JobRepository:
                     "response": response_payload,
                     "status": row["status"],
                     "error_text": row["error_text"],
-                    "updated_at": row["updated_at"],
                 }
             )
 
@@ -1674,69 +1875,92 @@ class JobRepository:
         limit: int = 1000,
     ) -> list[dict[str, Any]]:
         safe_limit = max(1, min(int(limit or 1000), 5000))
-        safe_user_id = str(user_id or "").strip()
+        safe_user_id = self._normalize_user_old_id(user_id)
         safe_user_name = str(user_name or "").strip()
         join_condition = self._job_items_jobs_join_condition()
 
         rows: list[Any] = []
-        if self.is_postgres and safe_user_id:
+        if self.is_postgres:
             with self._connect() as conn:
-                if self._job_items_has_user_id:
-                    rows = self._execute(
-                        conn,
-                        """
-                        WITH recent AS (
-                          SELECT job_seq_id, item_key, updated_at
-                          FROM job_items
-                          WHERE user_id = ?
-                          ORDER BY updated_at DESC, job_seq_id DESC, item_key ASC
-                          LIMIT ?
-                        )
-                        SELECT
-                          j.job_id, j.status AS job_status, j.created_at, j.updated_at AS job_updated_at, j.total_items,
-                          j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
-                          jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                          jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
-                          bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri,
-                          ji.item_key, ji.request_json, ji.response_json, ji.status AS item_status, ji.error_text AS item_error_text, ji.updated_at AS item_updated_at
-                        FROM recent r
-                        INNER JOIN job_items ji ON ji.job_seq_id = r.job_seq_id AND ji.item_key = r.item_key
-                        INNER JOIN jobs j ON j.job_seq_id = r.job_seq_id
-                        LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
-                        LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
-                        ORDER BY r.updated_at DESC, r.job_seq_id DESC, r.item_key ASC
-                        """,
-                        (safe_user_id, safe_limit),
-                    ).fetchall()
+                if not self._postgres_materialized_view_exists(conn, "mv_user_recent_results"):
+                    raise RuntimeError("Required materialized view mv_user_recent_results is missing.")
+
+                if safe_user_id:
+                    user_ref_id = self._lookup_user_ref_id(conn, safe_user_id)
+                    if user_ref_id is None:
+                        return []
+                    recent_cte = """
+                    WITH recent AS (
+                      SELECT job_id, item_key, sort_ts
+                      FROM mv_user_recent_results
+                      WHERE user_ref_id = ?
+                      ORDER BY sort_ts DESC, job_id DESC, item_key ASC
+                      LIMIT ?
+                    )
+                    """
+                    params: tuple[Any, ...] = (user_ref_id, safe_limit)
+                elif safe_user_name:
+                    recent_cte = """
+                    WITH recent AS (
+                      SELECT r.job_id, r.item_key, r.sort_ts
+                      FROM mv_user_recent_results r
+                      LEFT JOIN app_users au ON au.user_id = r.user_ref_id
+                      WHERE LOWER(COALESCE(NULLIF(r.user_name, ''), au.name, r.user_id, '')) = LOWER(?)
+                      ORDER BY r.sort_ts DESC, r.job_id DESC, r.item_key ASC
+                      LIMIT ?
+                    )
+                    """
+                    params = (safe_user_name, safe_limit)
                 else:
-                    rows = self._execute(
-                        conn,
-                        f"""
-                        SELECT
-                          j.job_id, j.status AS job_status, j.created_at, j.updated_at AS job_updated_at, j.total_items,
-                          j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
-                          jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                          jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
-                          bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri,
-                          ji.item_key, ji.request_json, ji.response_json, ji.status AS item_status, ji.error_text AS item_error_text, ji.updated_at AS item_updated_at
-                        FROM job_items ji
-                        INNER JOIN jobs j ON {join_condition}
-                        LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
-                        LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
-                        WHERE j.user_id = ?
-                        ORDER BY COALESCE(ji.updated_at, j.updated_at, j.created_at) DESC, j.created_at DESC, ji.item_key ASC
-                        LIMIT ?
-                        """,
-                        (safe_user_id, safe_limit),
-                    ).fetchall()
+                    recent_cte = """
+                    WITH recent AS (
+                      SELECT job_id, item_key, sort_ts
+                      FROM mv_user_recent_results
+                      ORDER BY sort_ts DESC, job_id DESC, item_key ASC
+                      LIMIT ?
+                    )
+                    """
+                    params = (safe_limit,)
+
+                rows = self._execute(
+                    conn,
+                    f"""
+                    {recent_cte}
+                    SELECT
+                      j.job_id, j.created_at, j.updated_at AS job_updated_at, j.total_items,
+                      j.source_schedule_id, j.source_upload_id,
+                      COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
+                      COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
+                      jm.mode, jm.screening_types_json, jm.batch_name, jm.file_name,
+                      jm.daily_schedule_id, jm.business_unit_code,
+                      bu.file_name AS upload_file_name,
+                      ji.item_key, ji.request_json, ji.response_json, ji.status AS item_status, ji.error_text AS item_error_text, ji.updated_at AS item_updated_at
+                    FROM recent r
+                    INNER JOIN job_items ji ON ji.job_id = r.job_id AND ji.item_key = r.item_key
+                    INNER JOIN jobs j ON j.job_id = r.job_id
+                    LEFT JOIN app_users au ON au.user_id = j.user_ref_id
+                    LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
+                    LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
+                    ORDER BY r.sort_ts DESC, r.job_id DESC, r.item_key ASC
+                    """,
+                    params,
+                ).fetchall()
         else:
             filters: list[str] = []
             params: list[Any] = []
             if safe_user_id:
-                filters.append("j.user_id = ?")
-                params.append(safe_user_id)
+                with self._connect() as conn:
+                    user_ref_id = self._lookup_user_ref_id(conn, safe_user_id) if self._jobs_has_user_ref_id else None
+                    if self._jobs_has_user_ref_id and user_ref_id is None:
+                        return []
+                if self._jobs_has_user_ref_id:
+                    filters.append("j.user_ref_id = ?")
+                    params.append(user_ref_id)
+                else:
+                    filters.append("j.user_id = ?")
+                    params.append(safe_user_id)
             elif safe_user_name:
-                filters.append("LOWER(COALESCE(j.user_name, '')) = LOWER(?)")
+                filters.append("LOWER(COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id, '')) = LOWER(?)")
                 params.append(safe_user_name)
 
             where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
@@ -1745,14 +1969,17 @@ class JobRepository:
                     conn,
                     f"""
                     SELECT
-                      j.job_id, j.status AS job_status, j.created_at, j.updated_at AS job_updated_at, j.total_items,
-                      j.source_schedule_id, j.source_upload_id, j.user_id, j.user_name,
-                      jm.mode, jm.screening_types_json, jm.mock_screening, jm.batch_name, jm.file_name,
-                      jm.daily_screening, jm.schedule_frequency, jm.daily_schedule_id, jm.query_count, jm.deferred_until, jm.business_unit_code,
-                      bu.file_name AS upload_file_name, bu.s3_uri AS upload_s3_uri,
+                      j.job_id, j.created_at, j.updated_at AS job_updated_at, j.total_items,
+                      j.source_schedule_id, j.source_upload_id,
+                      COALESCE(NULLIF(j.user_id, ''), au.old_id) AS user_id,
+                      COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id) AS user_name,
+                      jm.mode, jm.screening_types_json, jm.batch_name, jm.file_name,
+                      jm.daily_schedule_id, jm.business_unit_code,
+                      bu.file_name AS upload_file_name,
                       ji.item_key, ji.request_json, ji.response_json, ji.status AS item_status, ji.error_text AS item_error_text, ji.updated_at AS item_updated_at
                     FROM job_items ji
                     INNER JOIN jobs j ON {join_condition}
+                    LEFT JOIN app_users au ON au.user_id = j.user_ref_id
                     LEFT JOIN job_metadata jm ON jm.job_id = j.job_id
                     LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id
                     {where_sql}
@@ -1767,9 +1994,8 @@ class JobRepository:
             out.append(
                 {
                     "job_id": row["job_id"],
-                    "job_status": row["job_status"],
-                    "created_at": row["created_at"],
-                    "job_updated_at": row["job_updated_at"],
+                    "created_at": JobRepository._to_iso_text(row["created_at"]) or "",
+                    "job_updated_at": JobRepository._to_iso_text(row["job_updated_at"]),
                     "total_items": int(row["total_items"] or 0),
                     "source_schedule_id": row["source_schedule_id"],
                     "source_upload_id": row["source_upload_id"],
@@ -1777,21 +2003,15 @@ class JobRepository:
                     "user_name": row["user_name"],
                     "mode": row["mode"],
                     "screening_types_json": row["screening_types_json"],
-                    "mock_screening": row["mock_screening"],
                     "batch_name": row["batch_name"],
                     "file_name": row["file_name"],
-                    "daily_screening": row["daily_screening"],
-                    "schedule_frequency": row["schedule_frequency"],
                     "daily_schedule_id": row["daily_schedule_id"],
-                    "query_count": int(row["query_count"] or 0) if row["query_count"] is not None else 0,
-                    "deferred_until": row["deferred_until"],
                     "business_unit_code": row["business_unit_code"],
                     "upload_file_name": row["upload_file_name"],
-                    "upload_s3_uri": row["upload_s3_uri"],
                     "item_key": row["item_key"],
                     "item_status": row["item_status"],
                     "item_error_text": row["item_error_text"],
-                    "item_updated_at": row["item_updated_at"],
+                    "item_updated_at": JobRepository._to_iso_text(row["item_updated_at"]),
                     "request_json": row["request_json"],
                     "response_json": row["response_json"],
                 }
@@ -1799,68 +2019,103 @@ class JobRepository:
         return out
 
     def get_user_result_summary_counts(self, user_id: str | None, user_name: str | None) -> dict[str, int]:
-        safe_user_id = str(user_id or "").strip()
+        safe_user_id = self._normalize_user_old_id(user_id)
         safe_user_name = str(user_name or "").strip()
         join_condition = self._job_items_jobs_join_condition()
 
-        if self.is_postgres and safe_user_id:
+        if self.is_postgres:
             with self._connect() as conn:
-                if self._job_items_has_parsed_status:
-                    if self._job_items_has_user_id:
-                        row = self._execute(
-                            conn,
-                            """
-                            SELECT
-                              COUNT(*) AS total,
-                              COUNT(*) FILTER (WHERE COALESCE(parsed_status, 'FAILED') = 'CLEAR') AS clear,
-                              COUNT(*) FILTER (WHERE COALESCE(parsed_status, 'FAILED') = 'POTENTIAL') AS potential,
-                              COUNT(*) FILTER (WHERE COALESCE(parsed_status, 'FAILED') = 'PENDING') AS pending,
-                              COUNT(*) FILTER (WHERE COALESCE(parsed_status, 'FAILED') = 'FAILED') AS failed
-                            FROM job_items
-                            WHERE user_id = ?
-                            """,
-                            (safe_user_id,),
-                        ).fetchone()
-                        return {
-                            "total": int(row["total"] or 0) if row else 0,
-                            "clear": int(row["clear"] or 0) if row else 0,
-                            "potential": int(row["potential"] or 0) if row else 0,
-                            "pending": int(row["pending"] or 0) if row else 0,
-                            "failed": int(row["failed"] or 0) if row else 0,
-                            "match": 0,
-                        }
+                if not self._postgres_materialized_view_exists(conn, "mv_user_recent_results"):
+                    raise RuntimeError("Required materialized view mv_user_recent_results is missing.")
+                if not self._postgres_materialized_view_exists(conn, "mv_user_result_summary_counts"):
+                    raise RuntimeError("Required materialized view mv_user_result_summary_counts is missing.")
 
+                if safe_user_id:
+                    user_ref_id = self._lookup_user_ref_id(conn, safe_user_id)
+                    if user_ref_id is None:
+                        return {"total": 0, "clear": 0, "potential": 0, "pending": 0, "failed": 0, "match": 0}
                     row = self._execute(
                         conn,
-                        f"""
-                        SELECT
-                          COUNT(*) AS total,
-                          COUNT(*) FILTER (WHERE COALESCE(ji.parsed_status, 'FAILED') = 'CLEAR') AS clear,
-                          COUNT(*) FILTER (WHERE COALESCE(ji.parsed_status, 'FAILED') = 'POTENTIAL') AS potential,
-                          COUNT(*) FILTER (WHERE COALESCE(ji.parsed_status, 'FAILED') = 'PENDING') AS pending,
-                          COUNT(*) FILTER (WHERE COALESCE(ji.parsed_status, 'FAILED') = 'FAILED') AS failed
-                        FROM job_items ji
-                        INNER JOIN jobs j ON {join_condition}
-                        WHERE j.user_id = ?
+                        """
+                        SELECT total, clear, potential, pending, failed
+                        FROM mv_user_result_summary_counts
+                        WHERE user_ref_id = ?
+                        LIMIT 1
                         """,
-                        (safe_user_id,),
+                        (user_ref_id,),
                     ).fetchone()
+                    if not row:
+                        return {"total": 0, "clear": 0, "potential": 0, "pending": 0, "failed": 0, "match": 0}
                     return {
-                        "total": int(row["total"] or 0) if row else 0,
-                        "clear": int(row["clear"] or 0) if row else 0,
-                        "potential": int(row["potential"] or 0) if row else 0,
-                        "pending": int(row["pending"] or 0) if row else 0,
-                        "failed": int(row["failed"] or 0) if row else 0,
+                        "total": int(row["total"] or 0),
+                        "clear": int(row["clear"] or 0),
+                        "potential": int(row["potential"] or 0),
+                        "pending": int(row["pending"] or 0),
+                        "failed": int(row["failed"] or 0),
                         "match": 0,
                     }
+
+                if safe_user_name:
+                    row = self._execute(
+                        conn,
+                        """
+                        SELECT
+                          COUNT(*)::BIGINT AS total,
+                          SUM(CASE WHEN r.parsed_status = 'CLEAR' THEN 1 ELSE 0 END)::BIGINT AS clear,
+                          SUM(CASE WHEN r.parsed_status = 'POTENTIAL' THEN 1 ELSE 0 END)::BIGINT AS potential,
+                          SUM(CASE WHEN r.parsed_status = 'PENDING' THEN 1 ELSE 0 END)::BIGINT AS pending,
+                          SUM(CASE WHEN r.parsed_status = 'FAILED' THEN 1 ELSE 0 END)::BIGINT AS failed
+                        FROM mv_user_recent_results r
+                        LEFT JOIN app_users au ON au.user_id = r.user_ref_id
+                        WHERE LOWER(COALESCE(NULLIF(r.user_name, ''), au.name, r.user_id, '')) = LOWER(?)
+                        """,
+                        (safe_user_name,),
+                    ).fetchone()
+                    return {
+                        "total": int((row or {}).get("total") or 0),
+                        "clear": int((row or {}).get("clear") or 0),
+                        "potential": int((row or {}).get("potential") or 0),
+                        "pending": int((row or {}).get("pending") or 0),
+                        "failed": int((row or {}).get("failed") or 0),
+                        "match": 0,
+                    }
+
+                row = self._execute(
+                    conn,
+                    """
+                    SELECT
+                      COUNT(*)::BIGINT AS total,
+                      SUM(CASE WHEN parsed_status = 'CLEAR' THEN 1 ELSE 0 END)::BIGINT AS clear,
+                      SUM(CASE WHEN parsed_status = 'POTENTIAL' THEN 1 ELSE 0 END)::BIGINT AS potential,
+                      SUM(CASE WHEN parsed_status = 'PENDING' THEN 1 ELSE 0 END)::BIGINT AS pending,
+                      SUM(CASE WHEN parsed_status = 'FAILED' THEN 1 ELSE 0 END)::BIGINT AS failed
+                    FROM mv_user_recent_results
+                    """,
+                ).fetchone()
+                return {
+                    "total": int((row or {}).get("total") or 0),
+                    "clear": int((row or {}).get("clear") or 0),
+                    "potential": int((row or {}).get("potential") or 0),
+                    "pending": int((row or {}).get("pending") or 0),
+                    "failed": int((row or {}).get("failed") or 0),
+                    "match": 0,
+                }
 
         filters: list[str] = []
         params: list[Any] = []
         if safe_user_id:
-            filters.append("j.user_id = ?")
-            params.append(safe_user_id)
+            with self._connect() as conn:
+                user_ref_id = self._lookup_user_ref_id(conn, safe_user_id) if self._jobs_has_user_ref_id else None
+                if self._jobs_has_user_ref_id and user_ref_id is None:
+                    return {"total": 0, "clear": 0, "potential": 0, "pending": 0, "failed": 0, "match": 0}
+            if self._jobs_has_user_ref_id:
+                filters.append("j.user_ref_id = ?")
+                params.append(user_ref_id)
+            else:
+                filters.append("j.user_id = ?")
+                params.append(safe_user_id)
         elif safe_user_name:
-            filters.append("LOWER(COALESCE(j.user_name, '')) = LOWER(?)")
+            filters.append("LOWER(COALESCE(NULLIF(j.user_name, ''), au.name, au.old_id, '')) = LOWER(?)")
             params.append(safe_user_name)
 
         where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
@@ -1872,6 +2127,7 @@ class JobRepository:
                 SELECT ji.status, ji.response_json{", ji.parsed_status" if self._job_items_has_parsed_status else ""}
                 FROM job_items ji
                 INNER JOIN jobs j ON {join_condition}
+                LEFT JOIN app_users au ON au.user_id = j.user_ref_id
                 {where_sql}
                 """,
                 tuple(params),
@@ -2178,8 +2434,122 @@ class JobRepository:
         return parsed if isinstance(parsed, dict) else None
 
     @staticmethod
-    def _normalize_screening_type_key(value: str | None) -> str:
-        return re.sub(r"\s+", " ", str(value or "").strip()).lower()
+    def _normalize_user_old_id(value: str | None) -> str:
+        return str(value or "").strip()
+
+    @staticmethod
+    def _normalize_user_name(value: str | None) -> str | None:
+        safe = str(value or "").strip()
+        return safe or None
+
+    @staticmethod
+    def _normalize_user_email(value: str | None) -> str | None:
+        safe = str(value or "").strip().lower()
+        return safe or None
+
+    def _lookup_user_ref_id(self, conn: Any, user_old_id: str | None) -> int | None:
+        safe_old_id = self._normalize_user_old_id(user_old_id)
+        if not safe_old_id:
+            return None
+        row = self._execute(
+            conn,
+            """
+            SELECT user_id
+            FROM app_users
+            WHERE old_id = ?
+            LIMIT 1
+            """,
+            (safe_old_id,),
+        ).fetchone()
+        if not row:
+            return None
+        try:
+            return int(row["user_id"])
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _ensure_user_ref(
+        self,
+        conn: Any,
+        user_old_id: str | None,
+        user_name: str | None = None,
+        user_email: str | None = None,
+    ) -> tuple[int | None, str | None, str | None, str | None]:
+        safe_old_id = self._normalize_user_old_id(user_old_id)
+        safe_name = self._normalize_user_name(user_name)
+        safe_email = self._normalize_user_email(user_email)
+        if not safe_old_id:
+            return None, None, safe_name, safe_email
+
+        ts = now_iso()
+        if self.is_postgres:
+            row = self._execute(
+                conn,
+                """
+                INSERT INTO app_users(
+                  old_id, is_active, name, email, created_at, updated_at
+                ) VALUES(?, TRUE, ?, ?, ?, ?)
+                ON CONFLICT(old_id)
+                DO UPDATE SET
+                  is_active = TRUE,
+                  name = COALESCE(NULLIF(excluded.name, ''), app_users.name),
+                  email = COALESCE(NULLIF(excluded.email, ''), app_users.email),
+                  updated_at = excluded.updated_at
+                RETURNING user_id, old_id, name, email
+                """,
+                (
+                    safe_old_id,
+                    safe_name,
+                    safe_email,
+                    ts,
+                    ts,
+                ),
+            ).fetchone()
+        else:
+            self._execute(
+                conn,
+                """
+                INSERT OR IGNORE INTO app_users(
+                  old_id, is_active, name, email, created_at, updated_at
+                ) VALUES(?, TRUE, ?, ?, ?, ?)
+                """,
+                (safe_old_id, safe_name, safe_email, ts, ts),
+            )
+            self._execute(
+                conn,
+                """
+                UPDATE app_users
+                SET
+                  is_active = TRUE,
+                  name = COALESCE(NULLIF(?, ''), name),
+                  email = COALESCE(NULLIF(?, ''), email),
+                  updated_at = ?
+                WHERE old_id = ?
+                """,
+                (safe_name, safe_email, ts, safe_old_id),
+            )
+            row = self._execute(
+                conn,
+                """
+                SELECT user_id, old_id, name, email
+                FROM app_users
+                WHERE old_id = ?
+                LIMIT 1
+                """,
+                (safe_old_id,),
+            ).fetchone()
+
+        if not row:
+            return None, safe_old_id, safe_name or safe_old_id, safe_email
+
+        resolved_old_id = self._normalize_user_old_id(row["old_id"]) or safe_old_id
+        resolved_name = self._normalize_user_name(row["name"]) or safe_name or resolved_old_id
+        resolved_email = self._normalize_user_email(row["email"]) or safe_email
+        try:
+            user_ref_id = int(row["user_id"])
+        except Exception:  # noqa: BLE001
+            user_ref_id = None
+        return user_ref_id, resolved_old_id, resolved_name, resolved_email
 
     @staticmethod
     def _fallback_search_definition_id_for_legacy_screening_type(source_value: str | None) -> str:
@@ -2586,7 +2956,7 @@ class JobRepository:
             items = self._execute(
                 conn,
                 """
-                SELECT item_key, request_json, response_json, status, error_text, updated_at
+                SELECT item_key, request_json, response_json, status, error_text
                 FROM job_items
                 WHERE job_id = ?
                 ORDER BY item_key ASC
@@ -2615,15 +2985,14 @@ class JobRepository:
                     "response": json.loads(row["response_json"]) if row["response_json"] else None,
                     "status": row_status,
                     "error_text": row["error_text"],
-                    "updated_at": row["updated_at"],
                 }
             )
 
         return {
             "job_id": job["job_id"],
             "status": job["status"],
-            "created_at": job["created_at"],
-            "updated_at": job["updated_at"],
+            "created_at": JobRepository._to_iso_text(job["created_at"]) or "",
+            "updated_at": JobRepository._to_iso_text(job["updated_at"]) or "",
             "total_items": int(job["total_items"] or 0),
             "source_schedule_id": job["source_schedule_id"],
             "source_upload_id": job["source_upload_id"],
@@ -2758,12 +3127,23 @@ class JobRepository:
             )
 
         with self._connect() as conn:
+            user_ref_id, resolved_user_id, resolved_user_name, _ = self._ensure_user_ref(
+                conn,
+                user_old_id=user_id,
+                user_name=user_name,
+            )
+            user_ref_set_sql = "user_ref_id = ?," if self._daily_schedules_has_user_ref_id else ""
+            user_ref_set_params: tuple[Any, ...] = (user_ref_id,) if self._daily_schedules_has_user_ref_id else tuple()
+            user_ref_insert_col_sql = "user_ref_id, " if self._daily_schedules_has_user_ref_id else ""
+            user_ref_insert_val_sql = "?, " if self._daily_schedules_has_user_ref_id else ""
+            user_ref_insert_params: tuple[Any, ...] = (user_ref_id,) if self._daily_schedules_has_user_ref_id else tuple()
             cur = self._execute(
                 conn,
-                """
+                f"""
                 UPDATE daily_schedules
                 SET
                   batch_name = ?,
+                  {user_ref_set_sql}
                   user_id = ?,
                   user_name = ?,
                   queries_json = ?,
@@ -2783,8 +3163,9 @@ class JobRepository:
                 """,
                 (
                     batch_name.strip(),
-                    (user_id or "").strip() or None,
-                    (user_name or "").strip() or None,
+                    *user_ref_set_params,
+                    resolved_user_id,
+                    resolved_user_name,
                     json.dumps(queries),
                     json.dumps(screening_types),
                     bool(mock_screening),
@@ -2805,18 +3186,19 @@ class JobRepository:
 
             self._execute(
                 conn,
-                """
+                f"""
                 INSERT INTO daily_schedules(
-                  schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
+                  schedule_id, batch_name, {user_ref_insert_col_sql}user_id, user_name, queries_json, screening_types_json, mock_screening,
                   schedule_frequency, timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active,
                   source_upload_id, source_file_name, source_s3_uri, business_unit_code
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, TRUE, ?, ?, ?, ?)
+                ) VALUES(?, ?, {user_ref_insert_val_sql}?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, TRUE, ?, ?, ?, ?)
                 """,
                 (
                     safe_schedule_id,
                     batch_name.strip(),
-                    (user_id or "").strip() or None,
-                    (user_name or "").strip() or None,
+                    *user_ref_insert_params,
+                    resolved_user_id,
+                    resolved_user_name,
                     json.dumps(queries),
                     json.dumps(screening_types),
                     bool(mock_screening),
@@ -2958,6 +3340,15 @@ class JobRepository:
         return [self._parse_daily_schedule_row(row) for row in rows]
 
     @staticmethod
+    def _to_iso_text(value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.isoformat()
+        safe = str(value).strip()
+        return safe or None
+
+    @staticmethod
     def _parse_daily_schedule_row(row: Any) -> dict[str, Any]:
         business_unit_code = ""
         try:
@@ -2976,9 +3367,9 @@ class JobRepository:
             "timezone": row["timezone"],
             "run_hour": int(row["run_hour"]),
             "run_minute": int(row["run_minute"]),
-            "created_at": row["created_at"],
-            "last_run_at": row["last_run_at"],
-            "next_run_at": row["next_run_at"],
+            "created_at": JobRepository._to_iso_text(row["created_at"]) or "",
+            "last_run_at": JobRepository._to_iso_text(row["last_run_at"]),
+            "next_run_at": JobRepository._to_iso_text(row["next_run_at"]) or "",
             "is_active": _as_bool(row["is_active"]),
             "source_upload_id": row["source_upload_id"],
             "source_file_name": row["source_file_name"],
@@ -2988,20 +3379,26 @@ class JobRepository:
 
     def list_active_daily_schedules(self, user_id: str | None = None) -> list[dict[str, Any]]:
         with self._connect() as conn:
-            if user_id and user_id.strip():
+            safe_user_old_id = self._normalize_user_old_id(user_id)
+            user_ref_id = self._lookup_user_ref_id(conn, safe_user_old_id) if safe_user_old_id else None
+            if safe_user_old_id and self._daily_schedules_has_user_ref_id and user_ref_id is None:
+                rows = []
+            elif safe_user_old_id:
+                user_filter_sql = "user_ref_id = ?" if self._daily_schedules_has_user_ref_id else "user_id = ?"
+                user_filter_param = user_ref_id if self._daily_schedules_has_user_ref_id else safe_user_old_id
                 rows = self._execute(
                     conn,
-                    """
+                    f"""
                     SELECT
                       schedule_id, batch_name, user_id, user_name, queries_json, screening_types_json, mock_screening,
                       schedule_frequency, timezone, run_hour, run_minute, created_at, last_run_at, next_run_at, is_active,
                       source_upload_id, source_file_name, source_s3_uri, business_unit_code
                     FROM daily_schedules
                     WHERE is_active = TRUE
-                      AND user_id = ?
+                      AND {user_filter_sql}
                     ORDER BY created_at DESC
                     """,
-                    (user_id.strip(),),
+                    (user_filter_param,),
                 ).fetchall()
             else:
                 rows = self._execute(
@@ -3052,20 +3449,29 @@ class JobRepository:
     ) -> str:
         created_at = now_iso()
         with self._connect() as conn:
+            user_ref_id, resolved_user_id, resolved_user_name, _ = self._ensure_user_ref(
+                conn,
+                user_old_id=user_id,
+                user_name=user_name,
+            )
+            user_ref_col_sql = "user_ref_id, " if self._batch_file_uploads_has_user_ref_id else ""
+            user_ref_val_sql = "?, " if self._batch_file_uploads_has_user_ref_id else ""
+            user_ref_params: tuple[Any, ...] = (user_ref_id,) if self._batch_file_uploads_has_user_ref_id else tuple()
             self._execute(
                 conn,
-                """
+                f"""
                 INSERT INTO batch_file_uploads(
-                  upload_id, schedule_id, job_id, user_id, user_name, file_name, s3_bucket, s3_key,
+                  upload_id, schedule_id, job_id, {user_ref_col_sql}user_id, user_name, file_name, s3_bucket, s3_key,
                   s3_uri, queries_s3_bucket, queries_s3_key, queries_s3_uri, file_hash, record_count, created_at, is_active
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+                ) VALUES(?, ?, ?, {user_ref_val_sql}?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
                 """,
                 (
                     upload_id,
                     (schedule_id or "").strip() or None,
                     (job_id or "").strip() or None,
-                    (user_id or "").strip() or None,
-                    (user_name or "").strip() or None,
+                    *user_ref_params,
+                    resolved_user_id,
+                    resolved_user_name,
                     file_name.strip(),
                     (s3_bucket or "").strip() or None,
                     (s3_key or "").strip() or None,
@@ -3274,14 +3680,25 @@ class JobRepository:
         subscription_id = str(uuid4())
         ts = now_iso()
         with self._connect() as conn:
+            user_ref_id, resolved_user_id, resolved_user_name, resolved_email = self._ensure_user_ref(
+                conn,
+                user_old_id=user_id,
+                user_name=user_name,
+                user_email=safe_email,
+            )
+            user_ref_col_sql = "user_ref_id, " if self._schedule_subscriptions_has_user_ref_id else ""
+            user_ref_val_sql = "?, " if self._schedule_subscriptions_has_user_ref_id else ""
+            user_ref_params: tuple[Any, ...] = (user_ref_id,) if self._schedule_subscriptions_has_user_ref_id else tuple()
+            user_ref_update_sql = "user_ref_id = excluded.user_ref_id," if self._schedule_subscriptions_has_user_ref_id else ""
             self._execute(
                 conn,
-                """
+                f"""
                 INSERT INTO schedule_subscriptions(
-                  subscription_id, schedule_id, user_id, user_name, email, is_active, created_at, updated_at
-                ) VALUES(?, ?, ?, ?, ?, TRUE, ?, ?)
+                  subscription_id, schedule_id, {user_ref_col_sql}user_id, user_name, email, is_active, created_at, updated_at
+                ) VALUES(?, ?, {user_ref_val_sql}?, ?, ?, TRUE, ?, ?)
                 ON CONFLICT(schedule_id, email)
                 DO UPDATE SET
+                  {user_ref_update_sql}
                   user_id = excluded.user_id,
                   user_name = excluded.user_name,
                   is_active = TRUE,
@@ -3290,9 +3707,10 @@ class JobRepository:
                 (
                     subscription_id,
                     safe_schedule_id,
-                    (user_id or "").strip() or None,
-                    (user_name or "").strip() or None,
-                    safe_email,
+                    *user_ref_params,
+                    resolved_user_id,
+                    resolved_user_name,
+                    resolved_email or safe_email,
                     ts,
                     ts,
                 ),
@@ -3334,24 +3752,30 @@ class JobRepository:
             return []
 
         with self._connect() as conn:
-            if user_id and user_id.strip():
+            safe_user_old_id = self._normalize_user_old_id(user_id)
+            user_ref_id = self._lookup_user_ref_id(conn, safe_user_old_id) if safe_user_old_id else None
+            if safe_user_old_id and user_ref_id is None and self._schedule_subscriptions_has_user_ref_id:
+                rows = []
+            elif safe_user_old_id:
+                user_filter_sql = "user_ref_id = ?" if self._schedule_subscriptions_has_user_ref_id else "user_id = ?"
+                user_filter_param = user_ref_id if self._schedule_subscriptions_has_user_ref_id else safe_user_old_id
                 rows = self._execute(
                     conn,
-                    """
-                    SELECT subscription_id, schedule_id, user_id, user_name, email, is_active, created_at
+                    f"""
+                    SELECT subscription_id, schedule_id, user_ref_id, user_id, user_name, email, is_active, created_at
                     FROM schedule_subscriptions
                     WHERE schedule_id = ?
-                      AND user_id = ?
+                      AND {user_filter_sql}
                       AND is_active = TRUE
                     ORDER BY created_at DESC
                     """,
-                    (safe_schedule_id, user_id.strip()),
+                    (safe_schedule_id, user_filter_param),
                 ).fetchall()
             else:
                 rows = self._execute(
                     conn,
                     """
-                    SELECT subscription_id, schedule_id, user_id, user_name, email, is_active, created_at
+                    SELECT subscription_id, schedule_id, user_ref_id, user_id, user_name, email, is_active, created_at
                     FROM schedule_subscriptions
                     WHERE schedule_id = ?
                       AND is_active = TRUE
@@ -3364,11 +3788,12 @@ class JobRepository:
             {
                 "subscription_id": row["subscription_id"],
                 "schedule_id": row["schedule_id"],
+                "user_ref_id": int(row["user_ref_id"]) if row["user_ref_id"] is not None else None,
                 "user_id": row["user_id"],
                 "user_name": row["user_name"],
                 "email": row["email"],
                 "is_active": _as_bool(row["is_active"]),
-                "created_at": row["created_at"],
+                "created_at": JobRepository._to_iso_text(row["created_at"]) or "",
             }
             for row in rows
         ]
@@ -3481,16 +3906,28 @@ class JobRepository:
         created_at = now_iso()
         created = 0
         with self._connect() as conn:
+            user_ref_col_sql = "user_ref_id, " if self._schedule_notifications_has_user_ref_id else ""
+            user_ref_val_sql = "?, " if self._schedule_notifications_has_user_ref_id else ""
             for sub in subs:
+                raw_sub_user_ref = sub.get("user_ref_id")
+                sub_user_ref_id = int(raw_sub_user_ref) if isinstance(raw_sub_user_ref, int) or str(raw_sub_user_ref or "").isdigit() else None
+                if self._schedule_notifications_has_user_ref_id and sub_user_ref_id is None:
+                    sub_user_ref_id, _, _, _ = self._ensure_user_ref(
+                        conn,
+                        user_old_id=sub.get("user_id"),
+                        user_name=sub.get("user_name"),
+                        user_email=sub.get("email"),
+                    )
                 self._execute(
                     conn,
-                    """
+                    f"""
                     INSERT INTO schedule_notifications(
-                      created_at, user_id, user_name, email, schedule_id, job_id, title, message, summary_json
-                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      created_at, {user_ref_col_sql}user_id, user_name, email, schedule_id, job_id, title, message, summary_json
+                    ) VALUES(?, {user_ref_val_sql}?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         created_at,
+                        *([sub_user_ref_id] if self._schedule_notifications_has_user_ref_id else []),
                         sub.get("user_id"),
                         sub.get("user_name"),
                         sub.get("email"),
@@ -3535,11 +3972,50 @@ class JobRepository:
 
     def list_user_notifications(self, limit: int = 100, user_id: str | None = None, email: str | None = None) -> list[dict[str, Any]]:
         safe_limit = min(max(int(limit), 1), 1000)
-        safe_user_id = (user_id or "").strip() or None
+        safe_user_old_id = self._normalize_user_old_id(user_id) or None
         safe_email = (email or "").strip().lower() or None
 
         with self._connect() as conn:
-            if safe_user_id and safe_email:
+            user_ref_id = self._lookup_user_ref_id(conn, safe_user_old_id) if safe_user_old_id else None
+            if self._schedule_notifications_has_user_ref_id and safe_user_old_id and user_ref_id is not None and safe_email:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT notification_id, created_at, user_id, user_name, email, schedule_id, job_id, title, message, summary_json
+                    FROM schedule_notifications
+                    WHERE user_ref_id = ? OR email = ?
+                    ORDER BY notification_id DESC
+                    LIMIT ?
+                    """,
+                    (user_ref_id, safe_email, safe_limit),
+                ).fetchall()
+            elif self._schedule_notifications_has_user_ref_id and safe_user_old_id and user_ref_id is not None:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT notification_id, created_at, user_id, user_name, email, schedule_id, job_id, title, message, summary_json
+                    FROM schedule_notifications
+                    WHERE user_ref_id = ?
+                    ORDER BY notification_id DESC
+                    LIMIT ?
+                    """,
+                    (user_ref_id, safe_limit),
+                ).fetchall()
+            elif self._schedule_notifications_has_user_ref_id and safe_user_old_id and user_ref_id is None and safe_email:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT notification_id, created_at, user_id, user_name, email, schedule_id, job_id, title, message, summary_json
+                    FROM schedule_notifications
+                    WHERE email = ?
+                    ORDER BY notification_id DESC
+                    LIMIT ?
+                    """,
+                    (safe_email, safe_limit),
+                ).fetchall()
+            elif self._schedule_notifications_has_user_ref_id and safe_user_old_id and user_ref_id is None:
+                rows = []
+            elif safe_user_old_id and safe_email:
                 rows = self._execute(
                     conn,
                     """
@@ -3549,9 +4025,9 @@ class JobRepository:
                     ORDER BY notification_id DESC
                     LIMIT ?
                     """,
-                    (safe_user_id, safe_email, safe_limit),
+                    (safe_user_old_id, safe_email, safe_limit),
                 ).fetchall()
-            elif safe_user_id:
+            elif safe_user_old_id:
                 rows = self._execute(
                     conn,
                     """
@@ -3561,7 +4037,7 @@ class JobRepository:
                     ORDER BY notification_id DESC
                     LIMIT ?
                     """,
-                    (safe_user_id, safe_limit),
+                    (safe_user_old_id, safe_limit),
                 ).fetchall()
             elif safe_email:
                 rows = self._execute(
@@ -3592,7 +4068,7 @@ class JobRepository:
             notifications.append(
                 {
                     "notification_id": int(row["notification_id"]),
-                    "created_at": row["created_at"],
+                    "created_at": JobRepository._to_iso_text(row["created_at"]) or "",
                     "user_id": row["user_id"],
                     "user_name": row["user_name"],
                     "email": row["email"],
@@ -3606,28 +4082,33 @@ class JobRepository:
         return notifications
 
     def list_business_units(self, user_id: str | None = None, include_inactive: bool = False) -> list[dict[str, Any]]:
-        safe_user_id = (user_id or "").strip()
+        safe_user_old_id = self._normalize_user_old_id(user_id)
         with self._connect() as conn:
-            if safe_user_id:
+            user_ref_id = self._lookup_user_ref_id(conn, safe_user_old_id) if safe_user_old_id else None
+            if safe_user_old_id and self._user_business_units_has_user_ref_id and user_ref_id is None:
+                rows = []
+            elif safe_user_old_id:
+                user_filter_sql = "ubu.user_ref_id = ?" if self._user_business_units_has_user_ref_id else "ubu.user_id = ?"
+                user_filter_param = user_ref_id if self._user_business_units_has_user_ref_id else safe_user_old_id
                 rows = self._execute(
                     conn,
-                    """
-                    SELECT bu.business_unit_code, bu.business_unit_name, bu.is_active, bu.created_at, bu.updated_at
+                    f"""
+                    SELECT bu.business_unit_code, bu.business_unit_name, bu.is_active
                     FROM business_units bu
                     JOIN user_business_units ubu
                       ON ubu.business_unit_code = bu.business_unit_code
-                     AND ubu.user_id = ?
+                     AND {user_filter_sql}
                      AND ubu.is_active = TRUE
                     WHERE (? = TRUE OR bu.is_active = TRUE)
                     ORDER BY bu.business_unit_name ASC, bu.business_unit_code ASC
                     """,
-                    (safe_user_id, include_inactive),
+                    (user_filter_param, include_inactive),
                 ).fetchall()
             else:
                 rows = self._execute(
                     conn,
                     """
-                    SELECT business_unit_code, business_unit_name, is_active, created_at, updated_at
+                    SELECT business_unit_code, business_unit_name, is_active
                     FROM business_units
                     WHERE (? = TRUE OR is_active = TRUE)
                     ORDER BY business_unit_name ASC, business_unit_code ASC
@@ -3640,62 +4121,65 @@ class JobRepository:
                 "business_unit_code": str(row["business_unit_code"] or "").strip(),
                 "business_unit_name": str(row["business_unit_name"] or "").strip(),
                 "is_active": _as_bool(row["is_active"]),
-                "created_at": row["created_at"],
-                "updated_at": row["updated_at"],
             }
             for row in rows
             if str(row["business_unit_code"] or "").strip()
         ]
-        if safe_user_id and not results:
+        if safe_user_old_id and not results:
             fallback = self._get_business_unit_row(DEFAULT_FALLBACK_BUSINESS_UNIT_CODE, include_inactive=False)
             if fallback:
                 return [fallback]
         return results
 
     def list_user_business_unit_codes(self, user_id: str) -> list[str]:
-        safe_user_id = (user_id or "").strip()
-        if not safe_user_id:
+        safe_user_old_id = self._normalize_user_old_id(user_id)
+        if not safe_user_old_id:
             return []
-        rows = self.list_business_units(user_id=safe_user_id, include_inactive=False)
+        rows = self.list_business_units(user_id=safe_user_old_id, include_inactive=False)
         return [str(row["business_unit_code"]).strip() for row in rows if str(row.get("business_unit_code") or "").strip()]
 
     def user_has_business_unit(self, user_id: str | None, business_unit_code: str | None) -> bool:
-        safe_user_id = (user_id or "").strip()
+        safe_user_old_id = self._normalize_user_old_id(user_id)
         safe_code = self._normalize_business_unit_code(business_unit_code)
-        if not safe_user_id or not safe_code:
+        if not safe_user_old_id or not safe_code:
             return False
         with self._connect() as conn:
+            user_ref_id = self._lookup_user_ref_id(conn, safe_user_old_id) if self._user_business_units_has_user_ref_id else None
+            if self._user_business_units_has_user_ref_id and user_ref_id is None:
+                return False
+            user_filter_sql = "ubu.user_ref_id = ?" if self._user_business_units_has_user_ref_id else "ubu.user_id = ?"
+            user_filter_param = user_ref_id if self._user_business_units_has_user_ref_id else safe_user_old_id
             row = self._execute(
                 conn,
-                """
+                f"""
                 SELECT 1
                 FROM user_business_units ubu
                 JOIN business_units bu
                   ON bu.business_unit_code = ubu.business_unit_code
-                WHERE ubu.user_id = ?
+                WHERE {user_filter_sql}
                   AND ubu.business_unit_code = ?
                   AND ubu.is_active = TRUE
                   AND bu.is_active = TRUE
                 LIMIT 1
                 """,
-                (safe_user_id, safe_code),
+                (user_filter_param, safe_code),
             ).fetchone()
             if row:
                 return True
 
             has_user_mapping = self._execute(
                 conn,
-                """
+                f"""
                 SELECT 1
                 FROM user_business_units ubu
                 JOIN business_units bu
                   ON bu.business_unit_code = ubu.business_unit_code
-                WHERE ubu.user_id = ?
+                WHERE {user_filter_sql}
                   AND ubu.is_active = TRUE
                   AND bu.is_active = TRUE
                 LIMIT 1
                 """,
-                (safe_user_id,),
+                (user_filter_param,),
             ).fetchone()
             if has_user_mapping:
                 return False
@@ -3875,8 +4359,8 @@ class JobRepository:
         user_name: str | None,
         business_unit_codes: list[str],
     ) -> list[str]:
-        safe_user_id = (user_id or "").strip()
-        if not safe_user_id:
+        safe_user_old_id = self._normalize_user_old_id(user_id)
+        if not safe_user_old_id:
             raise ValueError("user_id is required")
 
         seen: set[str] = set()
@@ -3890,6 +4374,13 @@ class JobRepository:
 
         ts = now_iso()
         with self._connect() as conn:
+            user_ref_id, resolved_user_id, resolved_user_name, _ = self._ensure_user_ref(
+                conn,
+                user_old_id=safe_user_old_id,
+                user_name=user_name,
+            )
+            if self._user_business_units_has_user_ref_id and user_ref_id is None:
+                raise ValueError("Unable to resolve user for business-unit mapping")
             valid_codes: set[str] = set()
             if normalized_codes:
                 placeholders = ", ".join("?" for _ in normalized_codes)
@@ -3907,24 +4398,33 @@ class JobRepository:
 
             self._execute(
                 conn,
-                """
+                f"""
                 DELETE FROM user_business_units
-                WHERE user_id = ?
+                WHERE {"user_ref_id = ?" if self._user_business_units_has_user_ref_id else "user_id = ?"}
                 """,
-                (safe_user_id,),
+                ((user_ref_id if self._user_business_units_has_user_ref_id else safe_user_old_id),),
             )
 
             for code in normalized_codes:
                 if code not in valid_codes:
                     continue
+                user_ref_col_sql = "user_ref_id, " if self._user_business_units_has_user_ref_id else ""
+                user_ref_val_sql = "?, " if self._user_business_units_has_user_ref_id else ""
                 self._execute(
                     conn,
-                    """
+                    f"""
                     INSERT INTO user_business_units(
-                      user_id, user_name, business_unit_code, is_active, created_at, updated_at
-                    ) VALUES(?, ?, ?, TRUE, ?, ?)
+                      {user_ref_col_sql}user_id, user_name, business_unit_code, is_active, created_at, updated_at
+                    ) VALUES({user_ref_val_sql}?, ?, ?, TRUE, ?, ?)
                     """,
-                    (safe_user_id, (user_name or "").strip() or None, code, ts, ts),
+                    (
+                        *([user_ref_id] if self._user_business_units_has_user_ref_id else []),
+                        resolved_user_id,
+                        resolved_user_name,
+                        code,
+                        ts,
+                        ts,
+                    ),
                 )
 
         return [code for code in normalized_codes if code in valid_codes]
@@ -3934,13 +4434,21 @@ class JobRepository:
             rows = self._execute(
                 conn,
                 """
-                SELECT ubu.user_id, ubu.user_name, ubu.business_unit_code
+                SELECT
+                  COALESCE(NULLIF(ubu.user_id, ''), au.old_id) AS user_id,
+                  COALESCE(NULLIF(ubu.user_name, ''), au.name, au.old_id) AS user_name,
+                  ubu.business_unit_code
                 FROM user_business_units ubu
+                LEFT JOIN app_users au
+                  ON au.user_id = ubu.user_ref_id
                 JOIN business_units bu
                   ON bu.business_unit_code = ubu.business_unit_code
                 WHERE ubu.is_active = TRUE
                   AND bu.is_active = TRUE
-                ORDER BY LOWER(COALESCE(ubu.user_name, ubu.user_id)), ubu.user_id, ubu.business_unit_code
+                ORDER BY
+                  LOWER(COALESCE(NULLIF(ubu.user_name, ''), au.name, au.old_id, NULLIF(ubu.user_id, ''))),
+                  COALESCE(NULLIF(ubu.user_id, ''), au.old_id),
+                  ubu.business_unit_code
                 """,
             ).fetchall()
 
@@ -3971,42 +4479,26 @@ class JobRepository:
             rows = self._execute(
                 conn,
                 """
-                SELECT user_id, user_name
-                FROM (
-                  SELECT user_id, user_name FROM user_business_units WHERE TRIM(COALESCE(user_id, '')) <> ''
-                  UNION ALL
-                  SELECT user_id, user_name FROM jobs WHERE TRIM(COALESCE(user_id, '')) <> ''
-                  UNION ALL
-                  SELECT user_id, user_name FROM daily_schedules WHERE TRIM(COALESCE(user_id, '')) <> ''
-                  UNION ALL
-                  SELECT user_id, user_name FROM batch_file_uploads WHERE TRIM(COALESCE(user_id, '')) <> ''
-                  UNION ALL
-                  SELECT user_id, user_name FROM api_access_logs WHERE TRIM(COALESCE(user_id, '')) <> ''
-                  UNION ALL
-                  SELECT user_id, user_name FROM audit_events WHERE TRIM(COALESCE(user_id, '')) <> ''
-                ) known_users
+                SELECT old_id AS user_id, COALESCE(NULLIF(name, ''), old_id) AS user_name
+                FROM app_users
+                WHERE is_active = TRUE
+                  AND TRIM(COALESCE(old_id, '')) <> ''
                 """,
             ).fetchall()
 
-        merged: dict[str, str] = {}
-        for row in rows:
-            user_id = str(row["user_id"] or "").strip()
-            if not user_id:
-                continue
-            user_name = str(row["user_name"] or "").strip()
-            existing = merged.get(user_id, "")
-            if not existing:
-                merged[user_id] = user_name or user_id
-                continue
-            if _is_technical_identifier(existing) and user_name and not _is_technical_identifier(user_name):
-                merged[user_id] = user_name
-
         return [
-            {"user_id": user_id, "display_name": (display_name or user_id)}
-            for user_id, display_name in sorted(
-                merged.items(),
-                key=lambda item: (str(item[1] or item[0]).lower(), str(item[0]).lower()),
+            {
+                "user_id": str(row["user_id"]).strip(),
+                "display_name": str(row["user_name"] or row["user_id"]).strip() or str(row["user_id"]).strip(),
+            }
+            for row in sorted(
+                rows,
+                key=lambda item: (
+                    str(item["user_name"] or item["user_id"]).strip().lower(),
+                    str(item["user_id"]).strip().lower(),
+                ),
             )
+            if str(row["user_id"] or "").strip()
         ]
 
     def add_audit_event(
@@ -4020,19 +4512,28 @@ class JobRepository:
     ) -> int:
         created_at = now_iso()
         with self._connect() as conn:
+            user_ref_id, resolved_user_id, resolved_user_name, _ = self._ensure_user_ref(
+                conn,
+                user_old_id=user_id,
+                user_name=user_name,
+            )
+            user_ref_col_sql = "user_ref_id, " if self._audit_events_has_user_ref_id else ""
+            user_ref_val_sql = "?, " if self._audit_events_has_user_ref_id else ""
+            user_ref_params: tuple[Any, ...] = (user_ref_id,) if self._audit_events_has_user_ref_id else tuple()
             if self.is_postgres:
                 cur = self._execute(
                     conn,
-                    """
+                    f"""
                     INSERT INTO audit_events(
-                      created_at, user_id, user_name, action, entity_type, entity_id, details_json
-                    ) VALUES(?, ?, ?, ?, ?, ?, ?)
+                      created_at, {user_ref_col_sql}user_id, user_name, action, entity_type, entity_id, details_json
+                    ) VALUES(?, {user_ref_val_sql}?, ?, ?, ?, ?, ?)
                     RETURNING event_id
                     """,
                     (
                         created_at,
-                        (user_id or "").strip() or None,
-                        (user_name or "").strip() or None,
+                        *user_ref_params,
+                        resolved_user_id,
+                        resolved_user_name,
                         action.strip() or "UNKNOWN",
                         (entity_type or "").strip() or None,
                         (entity_id or "").strip() or None,
@@ -4044,15 +4545,16 @@ class JobRepository:
 
             cur = self._execute(
                 conn,
-                """
+                f"""
                 INSERT INTO audit_events(
-                  created_at, user_id, user_name, action, entity_type, entity_id, details_json
-                ) VALUES(?, ?, ?, ?, ?, ?, ?)
+                  created_at, {user_ref_col_sql}user_id, user_name, action, entity_type, entity_id, details_json
+                ) VALUES(?, {user_ref_val_sql}?, ?, ?, ?, ?, ?)
                 """,
                 (
                     created_at,
-                    (user_id or "").strip() or None,
-                    (user_name or "").strip() or None,
+                    *user_ref_params,
+                    resolved_user_id,
+                    resolved_user_name,
                     action.strip() or "UNKNOWN",
                     (entity_type or "").strip() or None,
                     (entity_id or "").strip() or None,
@@ -4079,14 +4581,22 @@ class JobRepository:
         safe_error = str(error_text or "").strip() or "Unknown external API error"
         safe_status = int(status_code) if isinstance(status_code, int) else None
         with self._connect() as conn:
+            user_ref_id, resolved_user_id, resolved_user_name, _ = self._ensure_user_ref(
+                conn,
+                user_old_id=user_id,
+                user_name=user_name,
+            )
+            user_ref_col_sql = "user_ref_id, " if self._external_api_errors_has_user_ref_id else ""
+            user_ref_val_sql = "?, " if self._external_api_errors_has_user_ref_id else ""
+            user_ref_params: tuple[Any, ...] = (user_ref_id,) if self._external_api_errors_has_user_ref_id else tuple()
             if self.is_postgres:
                 cur = self._execute(
                     conn,
-                    """
+                    f"""
                     INSERT INTO external_api_errors(
                       created_at, provider, operation, endpoint, status_code,
-                      user_id, user_name, job_id, item_key, error_text, details_json
-                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      {user_ref_col_sql}user_id, user_name, job_id, item_key, error_text, details_json
+                    ) VALUES(?, ?, ?, ?, ?, {user_ref_val_sql}?, ?, ?, ?, ?, ?)
                     RETURNING error_id
                     """,
                     (
@@ -4095,8 +4605,9 @@ class JobRepository:
                         (operation or "").strip() or None,
                         (endpoint or "").strip() or None,
                         safe_status,
-                        (user_id or "").strip() or None,
-                        (user_name or "").strip() or None,
+                        *user_ref_params,
+                        resolved_user_id,
+                        resolved_user_name,
                         (job_id or "").strip() or None,
                         (item_key or "").strip() or None,
                         safe_error,
@@ -4108,11 +4619,11 @@ class JobRepository:
 
             cur = self._execute(
                 conn,
-                """
+                f"""
                 INSERT INTO external_api_errors(
                   created_at, provider, operation, endpoint, status_code,
-                  user_id, user_name, job_id, item_key, error_text, details_json
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  {user_ref_col_sql}user_id, user_name, job_id, item_key, error_text, details_json
+                ) VALUES(?, ?, ?, ?, ?, {user_ref_val_sql}?, ?, ?, ?, ?, ?)
                 """,
                 (
                     created_at,
@@ -4120,8 +4631,9 @@ class JobRepository:
                     (operation or "").strip() or None,
                     (endpoint or "").strip() or None,
                     safe_status,
-                    (user_id or "").strip() or None,
-                    (user_name or "").strip() or None,
+                    *user_ref_params,
+                    resolved_user_id,
+                    resolved_user_name,
                     (job_id or "").strip() or None,
                     (item_key or "").strip() or None,
                     safe_error,
@@ -4149,14 +4661,22 @@ class JobRepository:
         safe_status = int(status_code) if isinstance(status_code, int) else 0
         safe_duration = max(int(duration_ms), 0)
         with self._connect() as conn:
+            user_ref_id, resolved_user_id, resolved_user_name, _ = self._ensure_user_ref(
+                conn,
+                user_old_id=user_id,
+                user_name=user_name,
+            )
+            user_ref_col_sql = "user_ref_id, " if self._api_access_logs_has_user_ref_id else ""
+            user_ref_val_sql = "?, " if self._api_access_logs_has_user_ref_id else ""
+            user_ref_params: tuple[Any, ...] = (user_ref_id,) if self._api_access_logs_has_user_ref_id else tuple()
             if self.is_postgres:
                 cur = self._execute(
                     conn,
-                    """
+                    f"""
                     INSERT INTO api_access_logs(
                       created_at, correlation_id, request_method, request_path, query_string,
-                      status_code, duration_ms, client_ip, user_agent, user_id, user_name, auth_state, details_json
-                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      status_code, duration_ms, client_ip, user_agent, {user_ref_col_sql}user_id, user_name, auth_state, details_json
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, {user_ref_val_sql}?, ?, ?, ?)
                     RETURNING access_id
                     """,
                     (
@@ -4169,8 +4689,9 @@ class JobRepository:
                         safe_duration,
                         (client_ip or "").strip() or None,
                         (user_agent or "").strip() or None,
-                        (user_id or "").strip() or None,
-                        (user_name or "").strip() or None,
+                        *user_ref_params,
+                        resolved_user_id,
+                        resolved_user_name,
                         (auth_state or "").strip() or None,
                         json.dumps(details or {}),
                     ),
@@ -4180,11 +4701,11 @@ class JobRepository:
 
             cur = self._execute(
                 conn,
-                """
+                f"""
                 INSERT INTO api_access_logs(
                   created_at, correlation_id, request_method, request_path, query_string,
-                  status_code, duration_ms, client_ip, user_agent, user_id, user_name, auth_state, details_json
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  status_code, duration_ms, client_ip, user_agent, {user_ref_col_sql}user_id, user_name, auth_state, details_json
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, {user_ref_val_sql}?, ?, ?, ?)
                 """,
                 (
                     created_at,
@@ -4196,8 +4717,9 @@ class JobRepository:
                     safe_duration,
                     (client_ip or "").strip() or None,
                     (user_agent or "").strip() or None,
-                    (user_id or "").strip() or None,
-                    (user_name or "").strip() or None,
+                    *user_ref_params,
+                    resolved_user_id,
+                    resolved_user_name,
                     (auth_state or "").strip() or None,
                     json.dumps(details or {}),
                 ),
@@ -4366,22 +4888,30 @@ class JobRepository:
 
     def _build_audit_events_where_clause(
         self,
+        conn: Any,
         user_id: str | None = None,
         errors_only: bool = False,
     ) -> tuple[str, tuple[Any, ...]]:
         clauses: list[str] = []
         params: list[Any] = []
-        safe_user_id = str(user_id or "").strip()
+        safe_user_id = self._normalize_user_old_id(user_id)
         if safe_user_id:
-            clauses.append("user_id = ?")
-            params.append(safe_user_id)
+            if self._audit_events_has_user_ref_id:
+                user_ref_id = self._lookup_user_ref_id(conn, safe_user_id)
+                if user_ref_id is None:
+                    return "WHERE 1=0", tuple()
+                clauses.append("e.user_ref_id = ?")
+                params.append(user_ref_id)
+            else:
+                clauses.append("e.user_id = ?")
+                params.append(safe_user_id)
         if errors_only:
             clauses.append(
                 """(
-                    UPPER(action) LIKE ?
-                    OR details_json LIKE ?
-                    OR details_json LIKE ?
-                    OR details_json LIKE ?
+                    UPPER(e.action) LIKE ?
+                    OR e.details_json LIKE ?
+                    OR e.details_json LIKE ?
+                    OR e.details_json LIKE ?
                 )"""
             )
             params.extend(["%FAILED%", '%"error"%', '%"error_text"%', '%"detail"%'])
@@ -4398,13 +4928,17 @@ class JobRepository:
     ) -> dict[str, Any]:
         safe_limit = min(max(int(limit), 1), 1000)
         safe_offset = max(int(offset), 0)
-        where_sql, where_params = self._build_audit_events_where_clause(user_id=user_id, errors_only=errors_only)
         with self._connect() as conn:
+            where_sql, where_params = self._build_audit_events_where_clause(
+                conn,
+                user_id=user_id,
+                errors_only=errors_only,
+            )
             total_row = self._execute(
                 conn,
                 f"""
                 SELECT COUNT(1) AS total
-                FROM audit_events
+                FROM audit_events e
                 {where_sql}
                 """,
                 where_params,
@@ -4414,62 +4948,49 @@ class JobRepository:
             rows = self._execute(
                 conn,
                 f"""
-                SELECT event_id, created_at, user_id, user_name, action, entity_type, entity_id, details_json
-                FROM audit_events
+                SELECT
+                  e.event_id,
+                  e.created_at,
+                  COALESCE(NULLIF(e.user_id, ''), au.old_id) AS user_id,
+                  COALESCE(NULLIF(e.user_name, ''), au.name, au.old_id) AS user_name,
+                  e.action,
+                  e.entity_type,
+                  e.entity_id,
+                  e.details_json
+                FROM audit_events e
+                LEFT JOIN app_users au
+                  ON au.user_id = e.user_ref_id
                 {where_sql}
-                ORDER BY event_id DESC
+                ORDER BY e.event_id DESC
                 LIMIT ?
                 OFFSET ?
                 """,
                 (*where_params, safe_limit, safe_offset),
             ).fetchall()
 
-            missing_name_user_ids = sorted(
-                {
-                    str(row["user_id"]).strip()
-                    for row in rows
-                    if row["user_id"] and _is_technical_identifier(row["user_name"])
-                }
-            )
-            user_name_fallback: dict[str, str] = {}
-            if missing_name_user_ids:
-                placeholders = ", ".join("?" for _ in missing_name_user_ids)
-                lookup_rows = self._execute(
-                    conn,
-                    f"""
-                    SELECT user_id, user_name, event_id
-                    FROM audit_events
-                    WHERE user_id IN ({placeholders})
-                      AND user_name IS NOT NULL
-                      AND TRIM(user_name) <> ''
-                    ORDER BY event_id DESC
-                    """,
-                    tuple(missing_name_user_ids),
-                ).fetchall()
-                for lookup in lookup_rows:
-                    fallback_user_id = str(lookup["user_id"] or "").strip()
-                    fallback_user_name = str(lookup["user_name"] or "").strip()
-                    if not fallback_user_id or _is_technical_identifier(fallback_user_name):
-                        continue
-                    if fallback_user_id not in user_name_fallback:
-                        user_name_fallback[fallback_user_id] = fallback_user_name
-
         events: list[dict[str, Any]] = []
         for row in rows:
             resolved_user_id = row["user_id"]
             resolved_user_name = row["user_name"]
-            if resolved_user_id and _is_technical_identifier(resolved_user_name):
-                resolved_user_name = user_name_fallback.get(str(resolved_user_id).strip()) or None
+            details_payload: dict[str, Any] = {}
+            raw_details = row["details_json"]
+            if raw_details:
+                try:
+                    parsed = json.loads(raw_details)
+                    if isinstance(parsed, dict):
+                        details_payload = parsed
+                except Exception:  # noqa: BLE001
+                    details_payload = {}
             events.append(
                 {
                     "event_id": int(row["event_id"]),
-                    "created_at": row["created_at"],
+                    "created_at": JobRepository._to_iso_text(row["created_at"]) or "",
                     "user_id": resolved_user_id,
                     "user_name": resolved_user_name,
                     "action": row["action"],
                     "entity_type": row["entity_type"],
                     "entity_id": row["entity_id"],
-                    "details": json.loads(row["details_json"]) if row["details_json"] else {},
+                    "details": details_payload,
                 }
             )
         return {

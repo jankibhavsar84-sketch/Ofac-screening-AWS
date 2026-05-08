@@ -16,6 +16,7 @@ from .models import (
     AuditEvent,
     AuditEventPage,
     BusinessUnit,
+    DailyScheduleBatchRunStatus,
     DailyScheduleInfo,
     EntityMatchResponse,
     EntityMatches,
@@ -582,7 +583,7 @@ class ScreeningService:
         progress = MatchJobProgress(
             job_id=snapshot["job_id"],
             status=status,
-            submitted_at=snapshot["created_at"],
+            submitted_at=str(snapshot.get("created_at") or ""),
             total_items=snapshot["total_items"],
             completed_items=snapshot["counts"]["completed"],
             failed_items=snapshot["counts"]["failed"],
@@ -679,6 +680,33 @@ class ScreeningService:
         return re.sub(r"\s+", " ", str(value or "").strip()).lower()
 
     @classmethod
+    def _build_screening_type_lookup(cls, mapping_rows: list[dict[str, Any]]) -> dict[str, str]:
+        lookup: dict[str, str] = {}
+        for row in mapping_rows:
+            screening_type = str(row.get("screening_type") or "").strip()
+            search_definition_id = str(row.get("search_definition_id") or "").strip()
+            search_definition_name = str(row.get("search_definition_name") or "").strip()
+            if not screening_type:
+                continue
+            for candidate in (screening_type, search_definition_id, search_definition_name):
+                normalized = cls._normalize_screening_type_key(candidate)
+                if normalized and normalized not in lookup:
+                    lookup[normalized] = screening_type
+        return lookup
+
+    @classmethod
+    def _canonical_screening_type(cls, value: Any, screening_type_lookup: dict[str, str] | None) -> str:
+        safe_value = str(value or "").strip()
+        if not safe_value:
+            return ""
+        normalized = cls._normalize_screening_type_key(safe_value)
+        if screening_type_lookup and normalized:
+            mapped = str(screening_type_lookup.get(normalized) or "").strip()
+            if mapped:
+                return mapped
+        return safe_value
+
+    @classmethod
     def _extract_responses_by_screening_type(cls, matches: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
         if not isinstance(matches, dict):
             return {}
@@ -693,7 +721,6 @@ class ScreeningService:
             candidates = [
                 str(raw_key or "").strip(),
                 str(raw_value.get("requested_screening_type") or "").strip(),
-                str(raw_value.get("actimize_screening_type") or "").strip(),
             ]
             for candidate in candidates:
                 normalized_key = cls._normalize_screening_type_key(candidate)
@@ -723,12 +750,13 @@ class ScreeningService:
         request_payload: dict[str, Any] | None,
         matches: dict[str, Any] | None,
         default_screening_types: list[str] | None,
+        screening_type_lookup: dict[str, str] | None = None,
     ) -> list[str]:
         resolved: list[str] = []
         seen: set[str] = set()
 
         def _append(raw_value: Any) -> None:
-            safe_value = str(raw_value or "").strip()
+            safe_value = cls._canonical_screening_type(raw_value, screening_type_lookup)
             if not safe_value:
                 return
             dedupe_key = cls._normalize_screening_type_key(safe_value)
@@ -752,7 +780,6 @@ class ScreeningService:
             if not isinstance(response_payload, dict):
                 continue
             _append(response_payload.get("requested_screening_type"))
-            _append(response_payload.get("actimize_screening_type"))
 
         if resolved:
             return resolved
@@ -940,7 +967,12 @@ class ScreeningService:
             return None
         return parsed if isinstance(parsed, dict) else None
 
-    def _build_recent_result_rows(self, row: dict[str, Any], active_schedule_ids: set[str]) -> list[dict[str, Any]]:
+    def _build_recent_result_rows(
+        self,
+        row: dict[str, Any],
+        active_schedule_ids: set[str],
+        screening_type_lookup: dict[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
         job_id = str(row.get("job_id") or "").strip()
         item_key = str(row.get("item_key") or "").strip()
         if not job_id or not item_key:
@@ -961,6 +993,8 @@ class ScreeningService:
             or ""
         ).strip()
         screening_types = self._parse_screening_types(row.get("screening_types_json"))
+        screening_types = [self._canonical_screening_type(value, screening_type_lookup) for value in screening_types]
+        screening_types = [value for value in screening_types if value]
         daily_schedule_id = str(row.get("daily_schedule_id") or row.get("source_schedule_id") or "").strip() or None
         daily_schedule_active = bool(daily_schedule_id and daily_schedule_id in active_schedule_ids)
 
@@ -994,10 +1028,13 @@ class ScreeningService:
             request_payload=request_payload,
             matches=item_matches,
             default_screening_types=screening_types,
+            screening_type_lookup=screening_type_lookup,
         )
         out: list[dict[str, Any]] = []
         for index, screening_type in enumerate(screening_types_for_rows):
             safe_screening_type = str(screening_type or "").strip()
+            if screening_type_lookup:
+                safe_screening_type = self._canonical_screening_type(safe_screening_type, screening_type_lookup)
             matches = self._response_for_screening_type(item_matches, safe_screening_type)
             party_key = self._extract_party_key_for_screening_type(
                 request_payload,
@@ -1105,6 +1142,9 @@ class ScreeningService:
 
     def list_user_recent_results(self, user_id: str | None, user_name: str | None, limit: int = 1000) -> list[dict[str, Any]]:
         rows = self.repository.list_recent_result_items(user_id=user_id, user_name=user_name, limit=limit)
+        screening_type_lookup = self._build_screening_type_lookup(
+            self.repository.list_active_actimize_screening_type_mappings()
+        )
         active_schedule_ids = {
             str(s.get("schedule_id", "")).strip()
             for s in self.repository.list_active_daily_schedules(user_id=user_id)
@@ -1112,7 +1152,7 @@ class ScreeningService:
         }
         recent_rows: list[dict[str, Any]] = []
         for row in rows:
-            mapped_rows = self._build_recent_result_rows(row, active_schedule_ids)
+            mapped_rows = self._build_recent_result_rows(row, active_schedule_ids, screening_type_lookup)
             if mapped_rows:
                 recent_rows.extend(mapped_rows)
             if len(recent_rows) >= limit:
@@ -1199,7 +1239,7 @@ class ScreeningService:
                 submissions.append(
                     {
                         "id": job_id,
-                        "createdAt": row.get("created_at"),
+                        "createdAt": str(row.get("created_at") or ""),
                         "mode": "SINGLE",
                         "createdByUserId": row.get("user_id"),
                         "createdByUserName": row.get("user_name"),
@@ -1288,7 +1328,7 @@ class ScreeningService:
             submissions.append(
                 {
                     "id": job_id,
-                    "createdAt": row.get("created_at"),
+                    "createdAt": str(row.get("created_at") or ""),
                     "mode": "BATCH",
                     "createdByUserId": row.get("user_id"),
                     "createdByUserName": row.get("user_name"),
@@ -1341,6 +1381,71 @@ class ScreeningService:
             )
         return items
 
+    @staticmethod
+    def _derive_batch_run_status(
+        job_status: str,
+        total_items: int,
+        completed_items: int,
+        failed_items: int,
+        pending_items: int,
+        processing_items: int,
+    ) -> str:
+        safe_job_status = str(job_status or "").strip().upper()
+        if pending_items > 0 or processing_items > 0:
+            return "PROCESSING"
+        if total_items <= 0:
+            return "COMPLETED" if safe_job_status == JobStatus.completed.value else safe_job_status or "QUEUED"
+        if failed_items > 0 and completed_items <= 0:
+            return "FAILED"
+        if failed_items > 0 and completed_items > 0:
+            return "PARTIAL"
+        if completed_items > 0:
+            return "COMPLETED"
+        return safe_job_status or "QUEUED"
+
+    def list_daily_schedule_batch_runs(self, limit: int = 200) -> list[DailyScheduleBatchRunStatus]:
+        rows = self.repository.list_daily_schedule_batch_runs(limit=limit)
+        runs: list[DailyScheduleBatchRunStatus] = []
+
+        for row in rows:
+            total_items = int(row.get("total_items") or 0)
+            completed_items = int(row.get("completed_items") or 0)
+            failed_items = int(row.get("failed_items") or 0)
+            pending_items = int(row.get("pending_items") or 0)
+            processing_items = int(row.get("processing_items") or 0)
+            job_status = str(row.get("job_status") or "").strip().upper() or "QUEUED"
+            run_status = self._derive_batch_run_status(
+                job_status=job_status,
+                total_items=total_items,
+                completed_items=completed_items,
+                failed_items=failed_items,
+                pending_items=pending_items,
+                processing_items=processing_items,
+            )
+
+            runs.append(
+                DailyScheduleBatchRunStatus(
+                    job_id=str(row.get("job_id") or "").strip(),
+                    schedule_id=str(row.get("schedule_id") or "").strip(),
+                    batch_name=str(row.get("batch_name") or "").strip() or "Scheduled Batch",
+                    schedule_frequency=(str(row.get("schedule_frequency") or "").strip() or None),
+                    source_file_name=(str(row.get("source_file_name") or "").strip() or None),
+                    source_upload_id=(str(row.get("source_upload_id") or "").strip() or None),
+                    status=job_status,
+                    run_status=run_status,
+                    total_items=total_items,
+                    completed_items=completed_items,
+                    failed_items=failed_items,
+                    pending_items=pending_items,
+                    processing_items=processing_items,
+                    submitted_at=str(row.get("created_at") or ""),
+                    updated_at=str(row.get("updated_at") or ""),
+                    user_id=(str(row.get("user_id") or "").strip() or None),
+                    user_name=(str(row.get("user_name") or "").strip() or None),
+                )
+            )
+        return runs
+
     def list_screening_type_options(self) -> list[ScreeningTypeOption]:
         rows = self.repository.list_active_actimize_screening_type_mappings()
         options: list[ScreeningTypeOption] = []
@@ -1385,6 +1490,62 @@ class ScreeningService:
                 details={"disabled_by": user_name or user_id},
             )
         return removed
+
+    def rerun_daily_schedule(
+        self,
+        schedule_id: str,
+        actor_user_id: str | None = None,
+        actor_user_name: str | None = None,
+    ) -> MatchJobAccepted:
+        safe_schedule_id = str(schedule_id or "").strip()
+        if not safe_schedule_id:
+            raise ValueError("schedule_id is required")
+
+        schedule = self.repository.get_daily_schedule(safe_schedule_id)
+        if not schedule or not bool(schedule.get("is_active")):
+            raise ValueError(f"Daily schedule {safe_schedule_id} not found")
+
+        raw_queries = schedule.get("queries") if isinstance(schedule.get("queries"), dict) else {}
+        source_upload_id = str(schedule.get("source_upload_id") or "").strip() or None
+        if not raw_queries and not source_upload_id:
+            raise ValueError(f"Daily schedule {safe_schedule_id} has no query source configured")
+
+        schedule_user_id = str(schedule.get("user_id") or "").strip() or None
+        schedule_user_name = str(schedule.get("user_name") or "").strip() or None
+        correlation_id = str(uuid4())
+
+        payload = MatchJobRequest(
+            queries=raw_queries,
+            screening_types=list(schedule.get("screening_types") or []),
+            mock_screening=bool(schedule.get("mock_screening")),
+            business_unit_code=schedule.get("business_unit_code"),
+            daily_screening=False,
+            schedule_frequency=str(schedule.get("schedule_frequency") or "DAILY"),
+            schedule_id=safe_schedule_id,
+            source_upload_id=source_upload_id,
+            batch_name=str(schedule.get("batch_name") or safe_schedule_id).strip() or safe_schedule_id,
+            correlation_id=correlation_id,
+            user_id=schedule_user_id or actor_user_id,
+            user_name=schedule_user_name or actor_user_name,
+        )
+
+        accepted = self.submit_job(payload).model_copy(update={"daily_schedule_id": safe_schedule_id})
+        self.repository.add_audit_event(
+            action="DAILY_SCHEDULE_ADHOC_RERUN_TRIGGERED",
+            user_id=actor_user_id,
+            user_name=actor_user_name,
+            entity_type="daily_schedule",
+            entity_id=safe_schedule_id,
+            details={
+                "job_id": accepted.job_id,
+                "batch_name": schedule.get("batch_name"),
+                "query_count": len(raw_queries),
+                "screening_types": list(schedule.get("screening_types") or []),
+                "source_upload_id": source_upload_id,
+                "correlation_id": correlation_id,
+            },
+        )
+        return accepted
 
     def list_audit_events(self, limit: int = 200, user_id: str | None = None, offset: int = 0) -> list[AuditEvent]:
         events = self.repository.list_audit_events(limit=limit, user_id=user_id, offset=offset)

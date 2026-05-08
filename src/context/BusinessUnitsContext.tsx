@@ -62,8 +62,6 @@ function normalizeBusinessUnits(rows: BusinessUnit[]): BusinessUnit[] {
         business_unit_code: safeTrim(String(row.business_unit_code || "")).toUpperCase(),
         business_unit_name: safeTrim(String(row.business_unit_name || "")),
         is_active: Boolean(row.is_active),
-        created_at: row.created_at ?? null,
-        updated_at: row.updated_at ?? null,
       }))
     : [];
 }

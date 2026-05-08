@@ -777,6 +777,18 @@ def _process_received_message(
         next_props["businessUnit"] = safe_business_unit_code
         message = message.model_copy(update={"query": message.query.model_copy(update={"properties": next_props})})
     request_payload = message.query.model_dump(mode="json")
+    # Keep SCREEN_ITEM invisible long enough to avoid SQS redelivery while processing.
+    screen_item_visibility_timeout_s = max(int(settings.screening_item_visibility_timeout_s), 300)
+    try:
+        queue.change_visibility(receipt_handle, timeout_seconds=screen_item_visibility_timeout_s)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "failed to extend visibility for job=%s key=%s timeout_s=%s: %s",
+            message.job_id,
+            message.item_key,
+            screen_item_visibility_timeout_s,
+            exc,
+        )
     logger.info(
         "screening item started job=%s key=%s correlation_id=%s retry_attempt=%s screening_types=%s mock=%s schedule_id=%s",
         message.job_id,

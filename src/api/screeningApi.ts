@@ -65,6 +65,26 @@ export type DailySchedule = {
   source_upload_id?: string | null;
 };
 
+export type DailyScheduleBatchRunStatus = {
+  job_id: string;
+  schedule_id: string;
+  batch_name: string;
+  schedule_frequency?: string | null;
+  source_file_name?: string | null;
+  source_upload_id?: string | null;
+  status: string;
+  run_status: string;
+  total_items: number;
+  completed_items: number;
+  failed_items: number;
+  pending_items: number;
+  processing_items: number;
+  submitted_at: string;
+  updated_at: string;
+  user_id?: string | null;
+  user_name?: string | null;
+};
+
 export type ScheduleSubscription = {
   subscription_id: string;
   schedule_id: string;
@@ -136,8 +156,6 @@ export type BusinessUnit = {
   business_unit_code: string;
   business_unit_name: string;
   is_active: boolean;
-  created_at?: string | null;
-  updated_at?: string | null;
 };
 
 export type UserBusinessUnitMapping = {
@@ -524,6 +542,22 @@ export async function listDailySchedules(): Promise<DailySchedule[]> {
   throw new Error("Failed to load daily schedules: Request failed");
 }
 
+export async function listDailyScheduleBatchRuns(limit = 200): Promise<DailyScheduleBatchRunStatus[]> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/screenings/daily-schedules/batch-runs`, window.location.origin);
+  url.searchParams.set("limit", String(Math.max(1, Math.min(limit, 1000))));
+
+  const resp = await fetch(url.toString(), {
+    headers: withAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load daily schedule batch runs: ${await parseApiError(resp)}`);
+  }
+  const parsed = (await resp.json()) as unknown;
+  return Array.isArray(parsed) ? (parsed as DailyScheduleBatchRunStatus[]) : [];
+}
+
 export async function listMyBusinessUnits(): Promise<BusinessUnit[]> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
   const transientStatuses = new Set([401, 429, 500, 502, 503, 504]);
@@ -673,6 +707,18 @@ export async function removeDailySchedule(scheduleId: string, user?: { id?: stri
   if (!resp.ok) {
     throw new Error(`Failed to remove daily schedule: ${await parseApiError(resp)}`);
   }
+}
+
+export async function rerunDailySchedule(scheduleId: string): Promise<JobAccepted> {
+  const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const resp = await fetch(`${baseUrl}/screenings/daily-schedules/${encodeURIComponent(scheduleId)}/rerun`, {
+    method: "POST",
+    headers: withAuthHeaders(),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to re-run daily schedule: ${await parseApiError(resp)}`);
+  }
+  return (await resp.json()) as JobAccepted;
 }
 
 export async function subscribeToDailySchedule(scheduleId: string, email?: string): Promise<ScheduleSubscription> {

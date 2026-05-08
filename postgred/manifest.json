@@ -1,12 +1,12 @@
 {
   "schema": "dbacd",
-  "generated_at_utc": "2026-03-14T23:19:29.088112+00:00",
+  "generated_at_utc": "2026-05-07T00:00:00+00:00",
   "counts": {
-    "tables": 15,
+    "tables": 16,
     "custom_types": 0,
     "sequences": 5,
-    "indexes_non_constraint": 14,
-    "views_and_matviews": 0,
+    "indexes_non_constraint": 24,
+    "views_and_matviews": 3,
     "routines": 0,
     "triggers": 0
   },

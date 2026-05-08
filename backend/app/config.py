@@ -62,7 +62,6 @@ class Settings:
     db_connect_max_attempts: int
     db_connect_backoff_initial_ms: int
     db_connect_backoff_max_ms: int
-    pg_result_mv_enabled: bool
     pg_result_mv_refresh_interval_s: int
     cors_allow_origins: str
     multipart_max_part_size_bytes: int
@@ -112,6 +111,7 @@ class Settings:
     screening_item_retry_max_attempts: int
     screening_item_retry_initial_delay_s: int
     screening_item_retry_max_delay_s: int
+    screening_item_visibility_timeout_s: int
     daily_screening_timezone: str
     daily_screening_hour: int
     daily_screening_minute: int
@@ -142,7 +142,6 @@ def load_settings() -> Settings:
         db_connect_max_attempts=_to_int(os.getenv("DB_CONNECT_MAX_ATTEMPTS"), 4),
         db_connect_backoff_initial_ms=_to_int(os.getenv("DB_CONNECT_BACKOFF_INITIAL_MS"), 100),
         db_connect_backoff_max_ms=_to_int(os.getenv("DB_CONNECT_BACKOFF_MAX_MS"), 1500),
-        pg_result_mv_enabled=_to_bool(os.getenv("PG_RESULT_MV_ENABLED"), False),
         pg_result_mv_refresh_interval_s=_to_int(os.getenv("PG_RESULT_MV_REFRESH_INTERVAL_S"), 20),
         cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*"),
         multipart_max_part_size_bytes=_to_bytes(os.getenv("MULTIPART_MAX_PART_SIZE", "25m"), 25 * 1024 * 1024),
@@ -202,6 +201,7 @@ def load_settings() -> Settings:
         screening_item_retry_max_attempts=_to_int(os.getenv("SCREENING_ITEM_RETRY_MAX_ATTEMPTS"), 2),
         screening_item_retry_initial_delay_s=_to_int(os.getenv("SCREENING_ITEM_RETRY_INITIAL_DELAY_S"), 3),
         screening_item_retry_max_delay_s=_to_int(os.getenv("SCREENING_ITEM_RETRY_MAX_DELAY_S"), 60),
+        screening_item_visibility_timeout_s=_to_int(os.getenv("SCREENING_ITEM_VISIBILITY_TIMEOUT_S"), 300),
         daily_screening_timezone=os.getenv("DAILY_SCREENING_TIMEZONE", "America/New_York").strip() or "America/New_York",
         daily_screening_hour=_to_int(os.getenv("DAILY_SCREENING_HOUR"), 0),
         daily_screening_minute=_to_int(os.getenv("DAILY_SCREENING_MINUTE"), 5),
