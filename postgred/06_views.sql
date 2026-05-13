@@ -1,43 +1,44 @@
 -- Views and Materialized Views
--- Generated at: 2026-05-06T00:00:00+00:00
--- Schema: dbacd
+-- Generated at: 2026-05-11T00:00:00+00:00
+-- Schema: public
 
--- Result dataset materialized view for fast per-user result queries.
-DROP MATERIALIZED VIEW IF EXISTS mv_user_result_summary_counts;
-DROP MATERIALIZED VIEW IF EXISTS mv_user_recent_results;
-DROP MATERIALIZED VIEW IF EXISTS mv_daily_schedule_batch_runs;
-DROP MATERIALIZED VIEW IF EXISTS mv_user_submission_jobs;
+-- Drop in dependency-safe order.
+DROP MATERIALIZED VIEW IF EXISTS public.mv_user_result_summary_counts;
+DROP MATERIALIZED VIEW IF EXISTS public.mv_daily_schedule_batch_runs;
+DROP MATERIALIZED VIEW IF EXISTS public.mv_user_submission_jobs;
+DROP MATERIALIZED VIEW IF EXISTS public.mv_user_recent_results;
 
-CREATE MATERIALIZED VIEW mv_user_recent_results AS
+CREATE MATERIALIZED VIEW public.mv_user_recent_results AS
 SELECT
   j.user_ref_id,
   au.old_id AS user_id,
   COALESCE(au.name, au.old_id) AS user_name,
-  j.job_seq_id,
   j.job_id,
   ji.item_key,
   COALESCE(ji.updated_at, j.updated_at, j.created_at) AS sort_ts,
   CASE
-    WHEN UPPER(COALESCE(ji.status, '')) IN ('QUEUED', 'PROCESSING') THEN 'PENDING'
-    WHEN UPPER(COALESCE(ji.status, '')) = 'FAILED' THEN 'FAILED'
-    WHEN COALESCE(BTRIM(ji.response_json), '') = '' THEN 'FAILED'
-    WHEN UPPER(COALESCE(ji.response_json, '')) LIKE '%"ENGINE_MESSAGE":"PM"%' THEN 'POTENTIAL'
-    WHEN UPPER(COALESCE(ji.response_json, '')) LIKE '%"ENGINE_MESSAGE":"NM"%' THEN 'CLEAR'
+    WHEN UPPER(COALESCE(NULLIF(ji.parsed_status, ''), '')) IN ('CLEAR', 'POTENTIAL', 'PENDING', 'FAILED')
+      THEN UPPER(ji.parsed_status)
+    WHEN UPPER(COALESCE(ji.status, '')) IN ('QUEUED', 'PROCESSING')
+      THEN 'PENDING'
+    WHEN UPPER(COALESCE(ji.status, '')) = 'FAILED'
+      THEN 'FAILED'
+    WHEN ji.response_json IS NULL
+      THEN 'FAILED'
+    WHEN UPPER(COALESCE(ji.response_json->>'engine_message', '')) = 'PM'
+      THEN 'POTENTIAL'
+    WHEN UPPER(COALESCE(ji.response_json->>'engine_message', '')) = 'NM'
+      THEN 'CLEAR'
     ELSE 'CLEAR'
   END AS parsed_status
-FROM jobs j
-LEFT JOIN app_users au ON au.user_id = j.user_ref_id
-INNER JOIN job_items ji ON ji.job_seq_id = j.job_seq_id
+FROM public.jobs j
+LEFT JOIN public.app_users au
+  ON au.user_id = j.user_ref_id
+INNER JOIN public.job_items ji
+  ON ji.job_id = j.job_id
 WHERE j.user_ref_id IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_recent_results_pk
-  ON mv_user_recent_results(job_seq_id, item_key);
-
-CREATE INDEX IF NOT EXISTS idx_mv_user_recent_results_user_sort
-  ON mv_user_recent_results(user_ref_id, sort_ts DESC, job_seq_id, item_key);
-
--- Aggregated status counters by user.
-CREATE MATERIALIZED VIEW mv_user_result_summary_counts AS
+CREATE MATERIALIZED VIEW public.mv_user_result_summary_counts AS
 SELECT
   user_ref_id,
   MAX(user_id) AS user_id,
@@ -46,16 +47,11 @@ SELECT
   SUM(CASE WHEN parsed_status = 'POTENTIAL' THEN 1 ELSE 0 END)::BIGINT AS potential,
   SUM(CASE WHEN parsed_status = 'PENDING' THEN 1 ELSE 0 END)::BIGINT AS pending,
   SUM(CASE WHEN parsed_status = 'FAILED' THEN 1 ELSE 0 END)::BIGINT AS failed
-FROM mv_user_recent_results
+FROM public.mv_user_recent_results
 GROUP BY user_ref_id;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_result_summary_counts_user
-  ON mv_user_result_summary_counts(user_ref_id);
-
--- Submission-history dataset (header-level) for /screenings/submissions.
-CREATE MATERIALIZED VIEW mv_user_submission_jobs AS
+CREATE MATERIALIZED VIEW public.mv_user_submission_jobs AS
 SELECT
-  j.job_seq_id,
   j.job_id,
   j.user_ref_id,
   j.created_at,
@@ -75,26 +71,18 @@ SELECT
   jm.business_unit_code,
   bu.file_name AS upload_file_name,
   bu.s3_uri AS upload_s3_uri
-FROM jobs j
-LEFT JOIN app_users au ON au.user_id = j.user_ref_id
-LEFT JOIN job_metadata jm ON jm.job_seq_id = j.job_seq_id
-LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id AND bu.job_seq_id = j.job_seq_id;
+FROM public.jobs j
+LEFT JOIN public.app_users au
+  ON au.user_id = j.user_ref_id
+LEFT JOIN public.job_metadata jm
+  ON jm.job_id = j.job_id
+LEFT JOIN public.batch_file_uploads bu
+  ON bu.upload_id = j.source_upload_id;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_submission_jobs_pk
-  ON mv_user_submission_jobs(job_seq_id);
-
-CREATE INDEX IF NOT EXISTS idx_mv_user_submission_jobs_user_created
-  ON mv_user_submission_jobs(user_ref_id, created_at DESC, job_seq_id);
-
-CREATE INDEX IF NOT EXISTS idx_mv_user_submission_jobs_user_name_created
-  ON mv_user_submission_jobs((LOWER(COALESCE(NULLIF(user_name, ''), user_id, ''))), created_at DESC, job_seq_id);
-
--- Admin daily schedule run status dataset.
-CREATE MATERIALIZED VIEW mv_daily_schedule_batch_runs AS
+CREATE MATERIALIZED VIEW public.mv_daily_schedule_batch_runs AS
 SELECT
-  j.job_seq_id,
   j.job_id,
-  COALESCE(NULLIF(jm.daily_schedule_id, ''), NULLIF(j.source_schedule_id, '')) AS schedule_id,
+  COALESCE(jm.daily_schedule_id, j.source_schedule_id) AS schedule_id,
   UPPER(COALESCE(j.status, '')) AS job_status,
   j.created_at,
   j.updated_at,
@@ -116,27 +104,25 @@ SELECT
   COALESCE(js.failed_items, 0) AS failed_items,
   COALESCE(js.pending_items, 0) AS pending_items,
   COALESCE(js.processing_items, 0) AS processing_items
-FROM jobs j
-LEFT JOIN app_users au ON au.user_id = j.user_ref_id
-LEFT JOIN job_metadata jm ON jm.job_seq_id = j.job_seq_id
-LEFT JOIN daily_schedules ds
-  ON ds.schedule_id = COALESCE(NULLIF(jm.daily_schedule_id, ''), NULLIF(j.source_schedule_id, ''))
-LEFT JOIN batch_file_uploads bu ON bu.upload_id = j.source_upload_id AND bu.job_seq_id = j.job_seq_id
+FROM public.jobs j
+LEFT JOIN public.app_users au
+  ON au.user_id = j.user_ref_id
+LEFT JOIN public.job_metadata jm
+  ON jm.job_id = j.job_id
+LEFT JOIN public.daily_schedules ds
+  ON ds.schedule_id = COALESCE(jm.daily_schedule_id, j.source_schedule_id)
+LEFT JOIN public.batch_file_uploads bu
+  ON bu.upload_id = j.source_upload_id
 LEFT JOIN (
   SELECT
-    job_seq_id,
+    job_id,
     SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_items,
     SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS failed_items,
     SUM(CASE WHEN status = 'QUEUED' THEN 1 ELSE 0 END) AS pending_items,
     SUM(CASE WHEN status = 'PROCESSING' THEN 1 ELSE 0 END) AS processing_items
-  FROM job_items
-  GROUP BY job_seq_id
-) js ON js.job_seq_id = j.job_seq_id
-WHERE COALESCE(NULLIF(jm.daily_schedule_id, ''), NULLIF(j.source_schedule_id, '')) IS NOT NULL
+  FROM public.job_items
+  GROUP BY job_id
+) js
+  ON js.job_id = j.job_id
+WHERE COALESCE(jm.daily_schedule_id, j.source_schedule_id) IS NOT NULL
   AND UPPER(COALESCE(jm.mode, 'BATCH')) = 'BATCH';
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_daily_schedule_batch_runs_job
-  ON mv_daily_schedule_batch_runs(job_seq_id);
-
-CREATE INDEX IF NOT EXISTS idx_mv_daily_schedule_batch_runs_sched_created
-  ON mv_daily_schedule_batch_runs(schedule_id, created_at DESC, job_seq_id);

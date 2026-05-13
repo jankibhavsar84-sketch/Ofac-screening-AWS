@@ -1,0 +1,114 @@
+erDiagram
+    APP_USERS ||--o{ API_ACCESS_LOGS : user_ref_id
+    APP_USERS ||--o{ AUDIT_EVENTS : user_ref_id
+    APP_USERS ||--o{ BATCH_FILE_UPLOADS : user_ref_id
+    APP_USERS ||--o{ DAILY_SCHEDULES : user_ref_id
+    APP_USERS ||--o{ EXTERNAL_API_ERRORS : user_ref_id
+    APP_USERS ||--o{ JOB_ITEMS : user_ref_id
+    APP_USERS ||--o{ SCHEDULE_NOTIFICATIONS : user_ref_id
+    APP_USERS ||--o{ SCHEDULE_SUBSCRIPTIONS : user_ref_id
+    APP_USERS ||--o{ USER_BUSINESS_UNITS : user_ref_id
+    APP_USERS ||--o{ JOBS : user_ref_id
+
+    BUSINESS_UNITS ||--o{ DAILY_SCHEDULES : business_unit_code
+    BUSINESS_UNITS ||--o{ JOB_METADATA : business_unit_code
+    BUSINESS_UNITS ||--o{ USER_BUSINESS_UNITS : business_unit_code
+
+    DAILY_SCHEDULES ||--o{ BATCH_FILE_UPLOADS : schedule_id
+    DAILY_SCHEDULES ||--o{ JOB_METADATA : daily_schedule_id
+    DAILY_SCHEDULES ||--o{ JOB_SCHEDULE_NOTIFICATIONS : schedule_id
+    DAILY_SCHEDULES ||--o{ JOBS : source_schedule_id
+    DAILY_SCHEDULES ||--o{ SCHEDULE_NOTIFICATIONS : schedule_id
+    DAILY_SCHEDULES ||--o{ SCHEDULE_RECORD_STATE : schedule_id
+    DAILY_SCHEDULES ||--o{ SCHEDULE_SUBSCRIPTIONS : schedule_id
+
+    JOBS ||--o{ JOB_ITEMS : job_id
+    JOBS ||--o| JOB_METADATA : job_id
+    JOBS ||--o| JOB_SCHEDULE_NOTIFICATIONS : job_id
+    JOBS ||--o{ BATCH_FILE_UPLOADS : job_id
+    JOBS ||--o{ EXTERNAL_API_ERRORS : job_id
+    JOBS ||--o{ SCHEDULE_NOTIFICATIONS : job_id
+    JOBS ||--o{ SCHEDULE_RECORD_STATE : last_job_id
+
+    ACTIMIZE_ALERT_CALLBACKS {
+      bigint callback_id PK
+    }
+
+    ACTIMIZE_SCREENING_TYPE_MAPPINGS {
+      varchar Screening_Type PK
+    }
+
+    APP_USERS {
+      bigint user_id PK
+      text old_id UK
+    }
+
+    BUSINESS_UNITS {
+      varchar business_unit_code PK
+    }
+
+    DAILY_SCHEDULES {
+      int schedule_id PK
+    }
+
+    JOBS {
+      bigint job_id PK
+    }
+
+    JOB_ITEMS {
+      bigint job_id PK, FK
+      text item_key PK
+    }
+
+    JOB_METADATA {
+      bigint job_id PK, FK
+      int daily_schedule_id FK
+    }
+
+    JOB_SCHEDULE_NOTIFICATIONS {
+      bigint job_id PK, FK
+      int schedule_id FK
+    }
+
+    BATCH_FILE_UPLOADS {
+      text upload_id PK
+      bigint job_id FK
+      int schedule_id FK
+    }
+
+    EXTERNAL_API_ERRORS {
+      bigint error_id PK
+      bigint job_id FK
+    }
+
+    SCHEDULE_NOTIFICATIONS {
+      bigint notification_id PK
+      bigint job_id FK
+      int schedule_id FK
+    }
+
+    SCHEDULE_RECORD_STATE {
+      int schedule_id PK, FK
+      text record_hash PK
+      bigint last_job_id FK
+    }
+
+    SCHEDULE_SUBSCRIPTIONS {
+      text subscription_id PK
+      int schedule_id FK
+    }
+
+    USER_BUSINESS_UNITS {
+      bigint user_ref_id PK, FK
+      varchar business_unit_code PK, FK
+    }
+
+    API_ACCESS_LOGS {
+      bigint access_id PK
+      bigint user_ref_id FK
+    }
+
+    AUDIT_EVENTS {
+      bigint event_id PK
+      bigint user_ref_id FK
+    }

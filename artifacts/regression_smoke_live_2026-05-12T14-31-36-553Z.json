@@ -1,0 +1,56 @@
+{
+  "started_at": "2026-05-12T14:29:58.603Z",
+  "finished_at": "2026-05-12T14:31:36.553Z",
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net",
+  "user": "perf_load_user_01",
+  "results": {
+    "health": {
+      "ok": true,
+      "detail": "ok"
+    },
+    "auth_login": {
+      "ok": false,
+      "detail": "page.waitForURL: Timeout 90000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================"
+    },
+    "map_local_user_bu": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "screening_types": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "single_match": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "batch_submit": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "batch_poll": {
+      "ok": false,
+      "detail": "No batch job id"
+    },
+    "submissions": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "summary": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "results": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "daily_schedules": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "audit_events": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    }
+  }
+}

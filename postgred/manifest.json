@@ -1,14 +1,14 @@
 {
-  "schema": "dbacd",
-  "generated_at_utc": "2026-05-07T00:00:00+00:00",
+  "schema": "public",
+  "generated_at_utc": "2026-05-08T22:36:36+00:00",
   "counts": {
-    "tables": 16,
+    "tables": 17,
     "custom_types": 0,
-    "sequences": 5,
-    "indexes_non_constraint": 25,
+    "sequences": 7,
+    "indexes_non_constraint": 43,
     "views_and_matviews": 4,
-    "routines": 0,
-    "triggers": 0
+    "routines": 3,
+    "triggers": 6
   },
   "files": [
     "00_schema.sql",

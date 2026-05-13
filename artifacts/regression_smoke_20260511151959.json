@@ -1,0 +1,42 @@
+{
+    "health":  {
+                   "ok":  true,
+                   "detail":  "{\"status\":\"ok\"}"
+               },
+    "screening_types":  {
+                            "ok":  true,
+                            "detail":  "count=18 first=SAN-US"
+                        },
+    "business_units":  {
+                           "ok":  true,
+                           "detail":  "count=1"
+                       },
+    "single_match":  {
+                         "ok":  false,
+                         "detail":  "The remote server returned an error: (403) Forbidden."
+                     },
+    "batch_submit":  {
+                         "ok":  false,
+                         "detail":  "The remote server returned an error: (400) Bad Request."
+                     },
+    "submissions":  {
+                        "ok":  true,
+                        "detail":  "count=0"
+                    },
+    "summary":  {
+                    "ok":  false,
+                    "detail":  "The remote server returned an error: (500) Internal Server Error."
+                },
+    "results":  {
+                    "ok":  false,
+                    "detail":  "The remote server returned an error: (500) Internal Server Error."
+                },
+    "daily_schedules":  {
+                            "ok":  false,
+                            "detail":  "The remote server returned an error: (500) Internal Server Error."
+                        },
+    "audit_events":  {
+                         "ok":  true,
+                         "detail":  "count=5"
+                     }
+}

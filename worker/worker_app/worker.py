@@ -26,6 +26,20 @@ logger = logging.getLogger("screening-worker")
 _RETRYABLE_EXTERNAL_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
+def _normalize_schedule_id(value: Any) -> int | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    raw = str(value).strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
 class WorkerHealthState:
     def __init__(self, max_age_s: int) -> None:
         self.max_age_s = max(int(max_age_s), 1)
@@ -138,7 +152,11 @@ def _load_batch_queries(
     queries_key = str(upload.get("queries_s3_key") or "").strip()
     if queries_bucket and queries_key:
         raw = _download_s3_text(s3, queries_bucket, queries_key)
-        parsed = json.loads(raw)
+        if isinstance(raw, dict):
+            parsed = raw
+        else:
+            safe_raw = raw.decode("utf-8", errors="replace") if isinstance(raw, (bytes, bytearray)) else str(raw)
+            parsed = json.loads(safe_raw)
         if not isinstance(parsed, dict) or not parsed:
             raise RuntimeError("queries.json must be a non-empty object")
         repository.update_batch_file_upload_record_count(upload_id, len(parsed))
@@ -257,7 +275,7 @@ def _handle_job_dispatch(
         repository.mark_job_failed(job_id, f"Failed to parse batch payload: {exc}")
         return
 
-    if message.source_schedule_id:
+    if message.source_schedule_id is not None:
         parsed, record_hashes, skipped_existing_records = repository.filter_unscreened_schedule_queries(
             message.source_schedule_id,
             parsed,
@@ -536,14 +554,18 @@ def _resolve_requester_name(message: ScreeningQueueMessage, repository: JobRepos
 def _publish_schedule_notification_via_sns(
     repository: JobRepository,
     notifier: SnsNotifier,
-    schedule_id: str,
+    schedule_id: int | str,
     job_id: str,
 ) -> None:
+    normalized_schedule_id = _normalize_schedule_id(schedule_id)
+    if normalized_schedule_id is None:
+        return
+
     if not notifier.enabled:
         return
 
-    schedule = repository.get_daily_schedule(schedule_id) or {}
-    subscription_rows = repository.list_schedule_subscriptions(schedule_id=schedule_id)
+    schedule = repository.get_daily_schedule(normalized_schedule_id) or {}
+    subscription_rows = repository.list_schedule_subscriptions(schedule_id=normalized_schedule_id)
     recipient_emails = sorted(
         {
             str(row.get("email") or "").strip().lower()
@@ -555,13 +577,13 @@ def _publish_schedule_notification_via_sns(
         repository.add_audit_event(
             action="SNS_NOTIFICATION_SKIPPED_NO_RECIPIENTS",
             entity_type="daily_schedule",
-            entity_id=schedule_id,
+            entity_id=str(normalized_schedule_id),
             details={"job_id": job_id},
         )
         return
 
     summary = repository.build_job_completion_summary(job_id) or {}
-    batch_name = str(schedule.get("batch_name") or "").strip() or schedule_id
+    batch_name = str(schedule.get("batch_name") or "").strip() or str(normalized_schedule_id)
     completion_outcome = _derive_completion_outcome(summary)
     total_parties = int(summary.get("total_items") or 0)
     records_screened = int(summary.get("records_screened") or summary.get("total_items") or 0)
@@ -605,9 +627,9 @@ def _publish_schedule_notification_via_sns(
     failed_emails: list[str] = []
     for email in recipient_emails:
         try:
-            sync_result = notifier.ensure_email_subscription(schedule_id=schedule_id, email=email)
+            sync_result = notifier.ensure_email_subscription(schedule_id=str(normalized_schedule_id), email=email)
             message_id = notifier.publish_schedule_completion(
-                schedule_id=schedule_id,
+                schedule_id=str(normalized_schedule_id),
                 title=subject,
                 message=message,
                 summary=None,
@@ -616,7 +638,7 @@ def _publish_schedule_notification_via_sns(
             repository.add_audit_event(
                 action="SNS_NOTIFICATION_PUBLISHED",
                 entity_type="daily_schedule",
-                entity_id=schedule_id,
+                entity_id=str(normalized_schedule_id),
                 details={
                     "job_id": job_id,
                     "batch_name": batch_name,
@@ -637,7 +659,7 @@ def _publish_schedule_notification_via_sns(
             repository.add_audit_event(
                 action="SNS_NOTIFICATION_PUBLISH_FAILED",
                 entity_type="daily_schedule",
-                entity_id=schedule_id,
+                entity_id=str(normalized_schedule_id),
                 details={
                     "job_id": job_id,
                     "batch_name": batch_name,
@@ -647,7 +669,7 @@ def _publish_schedule_notification_via_sns(
             )
             logger.exception(
                 "failed to publish SNS schedule notification for schedule_id=%s job_id=%s email=%s: %s",
-                schedule_id,
+                normalized_schedule_id,
                 job_id,
                 email,
                 exc,
@@ -656,7 +678,7 @@ def _publish_schedule_notification_via_sns(
     repository.add_audit_event(
         action="SNS_NOTIFICATION_BATCH_COMPLETED",
         entity_type="daily_schedule",
-        entity_id=schedule_id,
+        entity_id=str(normalized_schedule_id),
         details={
             "job_id": job_id,
             "batch_name": batch_name,
@@ -830,7 +852,7 @@ def _process_received_message(
             correlation_id,
             result_count,
         )
-        if message.source_schedule_id and message.source_record_hash:
+        if message.source_schedule_id is not None and message.source_record_hash:
             repository.mark_schedule_record_screened(
                 schedule_id=message.source_schedule_id,
                 record_hash=message.source_record_hash,
@@ -925,7 +947,7 @@ def _process_received_message(
                     message.item_key,
                     f"{exc}; retry requeue failed: {requeue_exc}",
                 )
-                if message.source_schedule_id:
+                if message.source_schedule_id is not None:
                     created_notifications = repository.maybe_publish_schedule_job_notification(
                         job_id=message.job_id,
                         schedule_id=message.source_schedule_id,
@@ -970,7 +992,7 @@ def _process_received_message(
             return
 
         repository.mark_item_failed(message.job_id, message.item_key, str(exc))
-        if message.source_schedule_id:
+        if message.source_schedule_id is not None:
             created_notifications = repository.maybe_publish_schedule_job_notification(
                 job_id=message.job_id,
                 schedule_id=message.source_schedule_id,

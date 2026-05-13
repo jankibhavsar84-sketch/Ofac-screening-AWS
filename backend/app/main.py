@@ -547,7 +547,13 @@ async def create_batch_job_with_upload(
     daily_screening = _form_bool("daily_screening", False)
     schedule_frequency = _form_str("schedule_frequency", "DAILY") or "DAILY"
     schedule_run_at = _form_str("schedule_run_at", None)
-    schedule_id = _form_str("schedule_id", None)
+    schedule_id_raw = _form_str("schedule_id", None)
+    schedule_id: int | None = None
+    if schedule_id_raw is not None and str(schedule_id_raw).strip() != "":
+        try:
+            schedule_id = int(str(schedule_id_raw).strip())
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="schedule_id must be an integer") from exc
     mock_screening = _form_bool("mock_screening", False)
     subscribe_results = _form_bool("subscribe_results", False)
     subscribe_email = _form_str("subscribe_email", None)
@@ -555,7 +561,7 @@ async def create_batch_job_with_upload(
     business_unit_code = _form_required_str("business_unit_code")
     user_name = _form_str("user_name", None)
 
-    if (daily_screening or (schedule_id or "").strip()) and not principal_has_permission(principal, "screening.daily", "screening.admin"):
+    if (daily_screening or schedule_id is not None) and not principal_has_permission(principal, "screening.daily", "screening.admin"):
         raise HTTPException(status_code=403, detail="Only Compliance/Admin can enable scheduled screening")
 
     try:
@@ -569,7 +575,7 @@ async def create_batch_job_with_upload(
     body = await file.read()
     if not body:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
-    is_scheduled_upload = bool(daily_screening or (schedule_id or "").strip())
+    is_scheduled_upload = bool(daily_screening or schedule_id is not None)
 
     upload_id = str(uuid4())
     file_hash = hashlib.sha256(body).hexdigest()
@@ -599,7 +605,7 @@ async def create_batch_job_with_upload(
         s3_bucket=s3_info.get("bucket"),
         s3_key=s3_info.get("key"),
         s3_uri=s3_info.get("s3_uri"),
-        schedule_id=(schedule_id or "").strip() or None,
+        schedule_id=schedule_id,
     )
 
     # Scheduled/daily batch jobs should not execute immediately; preserve existing behavior.
@@ -612,7 +618,7 @@ async def create_batch_job_with_upload(
             daily_screening=bool(daily_screening),
             schedule_frequency=schedule_frequency,
             schedule_run_at=(schedule_run_at or "").strip() or None,
-            schedule_id=(schedule_id or "").strip() or None,
+            schedule_id=schedule_id,
             source_upload_id=upload_id,
             batch_name=(batch_name or "").strip() or None,
             correlation_id=correlation_id,
@@ -639,9 +645,8 @@ async def create_batch_job_with_upload(
                 detail="Batch dispatch requires S3 storage to be enabled (AWS_S3_UPLOAD_BUCKET).",
             )
 
-        job_id = str(uuid4())
-        submitted_at = repository.create_job(
-            job_id=job_id,
+        submitted_at, job_id = repository.create_job(
+            job_id=None,
             total_items=0,
             status=JobStatus.queued,
             source_upload_id=upload_id,
@@ -949,7 +954,7 @@ def list_recent_screening_results(
 
 @app.get("/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions", response_model=list[ScheduleSubscription])
 def list_daily_schedule_subscriptions(
-    schedule_id: str,
+    schedule_id: int,
     principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
     svc: ScreeningService = Depends(get_service),
 ) -> list[ScheduleSubscription]:
@@ -958,7 +963,7 @@ def list_daily_schedule_subscriptions(
 
 @app.post("/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions", response_model=ScheduleSubscription)
 def subscribe_daily_schedule(
-    schedule_id: str,
+    schedule_id: int,
     email: str = Query(default=""),
     principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
     svc: ScreeningService = Depends(get_service),
@@ -978,7 +983,7 @@ def subscribe_daily_schedule(
 
 @app.delete("/api/v1/screenings/daily-schedules/{schedule_id}/subscriptions")
 def unsubscribe_daily_schedule(
-    schedule_id: str,
+    schedule_id: int,
     email: str = Query(default=""),
     principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
     svc: ScreeningService = Depends(get_service),
@@ -1001,7 +1006,7 @@ def unsubscribe_daily_schedule(
 
 @app.delete("/api/v1/screenings/daily-schedules/{schedule_id}")
 def remove_daily_schedule(
-    schedule_id: str,
+    schedule_id: int,
     user_id: str | None = Query(default=None),
     user_name: str | None = Query(default=None),
     principal: AuthPrincipal = Depends(require_any_scope("screening.daily", "screening.admin")),
@@ -1017,7 +1022,7 @@ def remove_daily_schedule(
 
 @app.post("/api/v1/screenings/daily-schedules/{schedule_id}/rerun", response_model=MatchJobAccepted)
 def rerun_daily_schedule(
-    schedule_id: str,
+    schedule_id: int,
     principal: AuthPrincipal = Depends(require_any_scope("screening.daily", "screening.admin")),
     svc: ScreeningService = Depends(get_service),
 ) -> MatchJobAccepted:
@@ -1079,9 +1084,8 @@ def match_sync(
     payload = payload.model_copy(
         update={"user_id": principal.user_id, "user_name": actor_user_name, "correlation_id": correlation_id}
     )
-    job_id = str(uuid4())
-    repository.create_job(
-        job_id=job_id,
+    _, job_id = repository.create_job(
+        job_id=None,
         total_items=len(payload.queries),
         status=JobStatus.processing,
         user_id=payload.user_id,

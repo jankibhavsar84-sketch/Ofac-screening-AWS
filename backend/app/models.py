@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class EntityExample(BaseModel):
@@ -45,7 +45,7 @@ class MatchJobRequest(BaseModel):
     daily_screening: bool = False
     schedule_frequency: str = "DAILY"
     schedule_run_at: str | None = None
-    schedule_id: str | None = None
+    schedule_id: int | None = None
     source_upload_id: str | None = None
     batch_name: str | None = None
     correlation_id: str | None = None
@@ -61,17 +61,17 @@ class JobStatus(str, Enum):
 
 
 class MatchJobAccepted(BaseModel):
-    job_id: str
+    job_id: str | int
     status: JobStatus
     submitted_at: str
     total_items: int
     business_unit_code: str | None = None
-    daily_schedule_id: str | None = None
+    daily_schedule_id: int | None = None
     screened_item_keys: list[str] = Field(default_factory=list)
 
 
 class MatchJobProgress(BaseModel):
-    job_id: str
+    job_id: str | int
     status: JobStatus
     submitted_at: str
     total_items: int
@@ -84,7 +84,7 @@ class MatchJobProgress(BaseModel):
 
 
 class DailyScheduleInfo(BaseModel):
-    schedule_id: str
+    schedule_id: int
     batch_name: str
     user_id: str | None = None
     user_name: str | None = None
@@ -105,8 +105,8 @@ class DailyScheduleInfo(BaseModel):
 
 
 class DailyScheduleBatchRunStatus(BaseModel):
-    job_id: str
-    schedule_id: str
+    job_id: str | int
+    schedule_id: int
     batch_name: str
     schedule_frequency: str | None = None
     source_file_name: str | None = None
@@ -130,7 +130,7 @@ class ScreeningQueueMessage(BaseModel):
     # message_type="JOB_DISPATCH" is a lightweight control message that expands/enqueues
     # per-record tasks in the worker (used to avoid API timeouts on large batches).
     message_type: str = "SCREEN_ITEM"
-    job_id: str
+    job_id: str | int
     item_key: str | None = None
     query: EntityExample | None = None
     submitted_at: str
@@ -140,10 +140,22 @@ class ScreeningQueueMessage(BaseModel):
     user_name: str | None = None
     correlation_id: str | None = None
     business_unit_code: str | None = None
-    source_schedule_id: str | None = None
+    source_schedule_id: int | None = None
     source_record_hash: str | None = None
     source_upload_id: str | None = None
     retry_attempt: int = 0
+
+    @field_validator("source_schedule_id", mode="before")
+    @classmethod
+    def _coerce_source_schedule_id(cls, value: Any) -> int | None:
+        if value is None or isinstance(value, bool):
+            return None
+        if isinstance(value, int):
+            return value
+        raw = str(value).strip()
+        if not raw:
+            return None
+        return int(raw)
 
     @model_validator(mode="after")
     def _validate_shape(self) -> "ScreeningQueueMessage":
@@ -172,12 +184,12 @@ class BatchUploadRowMeta(BaseModel):
 
 
 class BatchUploadAccepted(BaseModel):
-    job_id: str
+    job_id: str | int
     status: JobStatus
     submitted_at: str
     total_items: int
     business_unit_code: str | None = None
-    daily_schedule_id: str | None = None
+    daily_schedule_id: int | None = None
     screened_item_keys: list[str] = Field(default_factory=list)
     source_upload_id: str | None = None
     file_name: str
@@ -258,7 +270,7 @@ class AdminUserOption(BaseModel):
 
 class ScheduleSubscription(BaseModel):
     subscription_id: str
-    schedule_id: str
+    schedule_id: int
     user_id: str | None = None
     user_name: str | None = None
     email: str

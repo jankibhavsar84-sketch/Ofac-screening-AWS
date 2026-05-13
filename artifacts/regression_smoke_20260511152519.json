@@ -1,0 +1,46 @@
+{
+    "health":  {
+                   "ok":  true,
+                   "detail":  "ok"
+               },
+    "map_local_user_bu":  {
+                              "ok":  true,
+                              "detail":  "{\"user_id\":\"local-dev-user\",\"user_name\":\"Local Dev User\",\"business_unit_codes\":[\"US_PRU_OPES\"]}"
+                          },
+    "screening_types":  {
+                            "ok":  true,
+                            "detail":  "count=18"
+                        },
+    "single_match":  {
+                         "ok":  true,
+                         "detail":  "status=200 total=0 engine=NM"
+                     },
+    "batch_submit":  {
+                         "ok":  true,
+                         "detail":  "job_id=75 status=QUEUED"
+                     },
+    "batch_poll":  {
+                       "ok":  true,
+                       "detail":  "status=COMPLETED completed=2 failed=0"
+                   },
+    "submissions":  {
+                        "ok":  true,
+                        "detail":  "count=6"
+                    },
+    "summary":  {
+                    "ok":  false,
+                    "detail":  "The remote server returned an error: (500) Internal Server Error."
+                },
+    "results":  {
+                    "ok":  false,
+                    "detail":  "The remote server returned an error: (500) Internal Server Error."
+                },
+    "daily_schedules":  {
+                            "ok":  false,
+                            "detail":  "The remote server returned an error: (500) Internal Server Error."
+                        },
+    "audit_events":  {
+                         "ok":  true,
+                         "detail":  "count=20"
+                     }
+}

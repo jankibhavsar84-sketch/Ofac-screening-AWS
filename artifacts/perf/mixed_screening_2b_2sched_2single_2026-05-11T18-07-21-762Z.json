@@ -1,0 +1,144 @@
+{
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net/",
+  "input_file": "C:\\software\\ofac-screening-aws\\public\\Actimize_SSB1_template.xlsx",
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_with_sub.json",
+  "distribution": {
+    "batch_users": 2,
+    "schedule_users": 2,
+    "single_users": 2
+  },
+  "started_at": "2026-05-11T18:07:21.886Z",
+  "finished_at": "2026-05-11T18:13:28.360Z",
+  "total_users": 6,
+  "total_success": 0,
+  "total_failed": 6,
+  "response_time_ms": {
+    "min": 0,
+    "p50": 0,
+    "p90": 0,
+    "max": 0,
+    "avg": 0
+  },
+  "cohorts": {
+    "batch": {
+      "total": 2,
+      "success": 0,
+      "failed": 2
+    },
+    "schedule": {
+      "total": 2,
+      "success": 0,
+      "failed": 2,
+      "cleanup_success": 0,
+      "cleanup_failed": 0
+    },
+    "single": {
+      "total": 2,
+      "success": 0,
+      "failed": 2
+    }
+  },
+  "http_status_counts": {
+    "null": 6
+  },
+  "page_errors": 6,
+  "error_boxes": 0,
+  "results": [
+    {
+      "username": "perf_load_user_01",
+      "action": "batch",
+      "started_at": "2026-05-11T18:07:22.063Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=bad2ae102fbe4428934a767db81e6a31&code_challenge=cKXCA4WZuFc5ZOTM27EiDFz9IHz5mfYqtyZD0Qu_GEE&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:13:28.222Z",
+      "since_global_start_ms": 366336
+    },
+    {
+      "username": "perf_load_user_02",
+      "action": "batch",
+      "started_at": "2026-05-11T18:07:22.097Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=ab190096048842c8a93164f135382deb&code_challenge=0bh-iJPVVDgJ06MM0fwRe31zsokDernV__Jot1A52Jc&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:13:28.216Z",
+      "since_global_start_ms": 366330
+    },
+    {
+      "username": "perf_load_user_03",
+      "action": "schedule",
+      "started_at": "2026-05-11T18:07:22.107Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=10e2072af7b248c58671ff88d9a5fbe7&code_challenge=gkS_46IZqnD67iFCYMkzkm_VtfctBbw0__rMjgXawbA&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:13:28.199Z",
+      "since_global_start_ms": 366313
+    },
+    {
+      "username": "perf_load_user_04",
+      "action": "schedule",
+      "started_at": "2026-05-11T18:07:22.149Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=31886ba58a65462ab661d286713a24cc&code_challenge=TWcDWDseBvHxeYtNzFp4aIK29aUq0c6cBZbuVvhKt0o&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:13:28.225Z",
+      "since_global_start_ms": 366339
+    },
+    {
+      "username": "perf_load_user_05",
+      "action": "single",
+      "started_at": "2026-05-11T18:07:22.174Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=8d1d71efee47455aa343135e4f11eaf2&code_challenge=jN2HyXwhOJZk9TlD-HRCyzSICSmPk75oj718pE4mXmo&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:13:28.193Z",
+      "since_global_start_ms": 366307
+    },
+    {
+      "username": "perf_load_user_06",
+      "action": "single",
+      "started_at": "2026-05-11T18:07:22.200Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=b56c2dade29b410e9af0618ce1645bb3&code_challenge=oEyt2G4hJs6MxwRIxFUi7b8-0THZKrXuFgbYvYAY0vk&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:13:28.208Z",
+      "since_global_start_ms": 366322
+    }
+  ]
+}

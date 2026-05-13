@@ -71,11 +71,11 @@ async function login(page, cred) {
     { timeout: STEP_TIMEOUT_MS, waitUntil: 'domcontentloaded' }
   );
 
-  const usernameInput = page.locator('input[name="username"]').first();
+  const usernameInput = page.locator('input[name="username"]:visible').first();
   await usernameInput.waitFor({ timeout: STEP_TIMEOUT_MS });
   await usernameInput.fill(cred.username, { timeout: STEP_TIMEOUT_MS });
 
-  const passwordInput = page.locator('input[name="password"]').first();
+  const passwordInput = page.locator('input[name="password"]:visible').first();
   if (!(await passwordInput.isVisible({ timeout: 2000 }).catch(() => false))) {
     const nextButton = page.getByRole('button', { name: /next|continue|sign in/i }).first();
     await nextButton.click({ timeout: STEP_TIMEOUT_MS });
@@ -91,8 +91,12 @@ async function login(page, cred) {
   await passwordInput.waitFor({ timeout: STEP_TIMEOUT_MS });
   await passwordInput.fill(cred.password, { timeout: STEP_TIMEOUT_MS });
 
-  const submitButton = page.getByRole('button', { name: /sign in|continue/i }).first();
-  await submitButton.click({ timeout: STEP_TIMEOUT_MS });
+  const submitButton = page.locator('input[name="signInSubmitButton"]:visible, button:visible').filter({ hasText: /sign in|continue/i }).first();
+  if (await submitButton.count()) {
+    await submitButton.click({ timeout: STEP_TIMEOUT_MS });
+  } else {
+    await page.locator('input[name="signInSubmitButton"]:visible').first().click({ timeout: STEP_TIMEOUT_MS });
+  }
 
   const base = new URL(BASE_URL);
   await page.waitForURL(

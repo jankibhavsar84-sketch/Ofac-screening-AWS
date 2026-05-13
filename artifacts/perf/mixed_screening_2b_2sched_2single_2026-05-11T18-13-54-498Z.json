@@ -1,0 +1,144 @@
+{
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net/",
+  "input_file": "C:\\software\\ofac-screening-aws\\public\\Actimize_SSB1_template.xlsx",
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_with_sub.json",
+  "distribution": {
+    "batch_users": 2,
+    "schedule_users": 2,
+    "single_users": 2
+  },
+  "started_at": "2026-05-11T18:13:54.641Z",
+  "finished_at": "2026-05-11T18:20:03.930Z",
+  "total_users": 6,
+  "total_success": 0,
+  "total_failed": 6,
+  "response_time_ms": {
+    "min": 0,
+    "p50": 0,
+    "p90": 0,
+    "max": 0,
+    "avg": 0
+  },
+  "cohorts": {
+    "batch": {
+      "total": 2,
+      "success": 0,
+      "failed": 2
+    },
+    "schedule": {
+      "total": 2,
+      "success": 0,
+      "failed": 2,
+      "cleanup_success": 0,
+      "cleanup_failed": 0
+    },
+    "single": {
+      "total": 2,
+      "success": 0,
+      "failed": 2
+    }
+  },
+  "http_status_counts": {
+    "null": 6
+  },
+  "page_errors": 6,
+  "error_boxes": 0,
+  "results": [
+    {
+      "username": "perf_load_user_01",
+      "action": "batch",
+      "started_at": "2026-05-11T18:13:54.821Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.click: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /sign in|continue/i }).first()\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=8047ff20c69f4c5b95593ef78ea32ce6&code_challenge=TmMcAsgqOTjNHlTl5MfXY8qP5dYANX26AxAxZ8SBd6Q&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:20:03.816Z",
+      "since_global_start_ms": 369175
+    },
+    {
+      "username": "perf_load_user_02",
+      "action": "batch",
+      "started_at": "2026-05-11T18:13:54.835Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.click: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /sign in|continue/i }).first()\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=3e369c38995b43ec842ff92f3d6a82f2&code_challenge=VEvnsVN0hd-E93d839vQRcgkiG1O4TpTs38OYWXpyYw&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:20:03.804Z",
+      "since_global_start_ms": 369163
+    },
+    {
+      "username": "perf_load_user_03",
+      "action": "schedule",
+      "started_at": "2026-05-11T18:13:54.893Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.click: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /sign in|continue/i }).first()\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=da562fb172f94cde9d1036793f00e153&code_challenge=U2Vc2DHS_ac7-MjGrpyTmIPEK1LFja8CE-0kMDrsoxU&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:20:03.815Z",
+      "since_global_start_ms": 369174
+    },
+    {
+      "username": "perf_load_user_04",
+      "action": "schedule",
+      "started_at": "2026-05-11T18:13:54.939Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.click: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /sign in|continue/i }).first()\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=cc1394dcc0804e08bdcf45dfff03df7d&code_challenge=K3cEkxXnHtrIgs0GeKvLBdbuFC3uu2I1BSKRoKYm8C4&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:20:03.810Z",
+      "since_global_start_ms": 369169
+    },
+    {
+      "username": "perf_load_user_05",
+      "action": "single",
+      "started_at": "2026-05-11T18:13:54.924Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.click: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /sign in|continue/i }).first()\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=4dfd3d8f5e2243e9b255d68d392ec474&code_challenge=-EIaD_Xib68LODUszn5BHwx-f9I21C3K2koGdqjgxBw&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:20:03.819Z",
+      "since_global_start_ms": 369178
+    },
+    {
+      "username": "perf_load_user_06",
+      "action": "single",
+      "started_at": "2026-05-11T18:13:54.991Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: locator.click: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /sign in|continue/i }).first()\u001b[22m\n",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=21a563ff90844916baf8d9c4ec481503&code_challenge=PLKwNFY35CT5pGSU2izw7E_oBoWaAF99H7Cd3qC2ue4&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:20:03.805Z",
+      "since_global_start_ms": 369164
+    }
+  ]
+}

@@ -35,6 +35,20 @@ from .sns_notifier import SnsNotifier
 
 
 class ScreeningService:
+    @staticmethod
+    def _normalize_schedule_id(value: Any) -> int | None:
+        if value is None or isinstance(value, bool):
+            return None
+        if isinstance(value, int):
+            return value
+        raw = str(value).strip()
+        if not raw:
+            return None
+        try:
+            return int(raw)
+        except ValueError:
+            return None
+
     def __init__(self, repository: JobRepository, queue: SqsQueue, notifier: SnsNotifier | None = None) -> None:
         self.repository = repository
         self.queue = queue
@@ -106,9 +120,9 @@ class ScreeningService:
             raise ValueError("batch_name is required when daily_screening is enabled")
 
         normalized_screening_types = self._normalize_requested_screening_types(payload.screening_types)
-        daily_schedule_id: str | None = None
+        daily_schedule_id: int | None = None
         scheduled_next_run_at: str | None = None
-        source_schedule_id = (payload.schedule_id or "").strip() or None
+        source_schedule_id = self._normalize_schedule_id(payload.schedule_id)
         business_unit_code = self._normalize_business_unit_code(payload.business_unit_code)
         schedule_frequency = self.repository.normalize_schedule_frequency(payload.schedule_frequency)
         source_upload_id = (payload.source_upload_id or "").strip() or None
@@ -126,7 +140,7 @@ class ScreeningService:
 
         if payload.daily_screening:
             self._validate_business_unit_access(payload.user_id, business_unit_code)
-            schedule_id = source_schedule_id or str(uuid4())
+            schedule_id = source_schedule_id
             daily_schedule_id, created = self.repository.create_or_update_daily_schedule(
                 schedule_id=schedule_id,
                 batch_name=payload.batch_name.strip(),
@@ -180,9 +194,8 @@ class ScreeningService:
 
         # Daily schedule setup should not execute immediately; worker triggers at next_run_at.
         if payload.daily_screening and source_schedule_id:
-            job_id = str(uuid4())
-            submitted_at = self.repository.create_job(
-                job_id=job_id,
+            submitted_at, job_id = self.repository.create_job(
+                job_id=None,
                 total_items=0,
                 status=JobStatus.completed,
                 source_schedule_id=source_schedule_id,
@@ -231,9 +244,8 @@ class ScreeningService:
             )
 
         if not base_queries and source_upload_id:
-            job_id = str(uuid4())
-            submitted_at = self.repository.create_job(
-                job_id=job_id,
+            submitted_at, job_id = self.repository.create_job(
+                job_id=None,
                 total_items=0,
                 status=JobStatus.queued,
                 source_schedule_id=source_schedule_id,
@@ -310,9 +322,8 @@ class ScreeningService:
             )
 
         if not queries_for_job:
-            job_id = str(uuid4())
-            submitted_at = self.repository.create_job(
-                job_id=job_id,
+            submitted_at, job_id = self.repository.create_job(
+                job_id=None,
                 total_items=0,
                 status=JobStatus.completed,
                 source_schedule_id=source_schedule_id,
@@ -360,9 +371,8 @@ class ScreeningService:
         expected_item_total = len(queries_for_job) * len(screening_types_for_dispatch)
         actimize = ActimizeClient(repository=self.repository)
 
-        job_id = str(uuid4())
-        submitted_at = self.repository.create_job(
-            job_id=job_id,
+        submitted_at, job_id = self.repository.create_job(
+            job_id=None,
             total_items=expected_item_total,
             source_schedule_id=source_schedule_id,
             source_upload_id=source_upload_id,
@@ -970,7 +980,7 @@ class ScreeningService:
     def _build_recent_result_rows(
         self,
         row: dict[str, Any],
-        active_schedule_ids: set[str],
+        active_schedule_ids: set[int],
         screening_type_lookup: dict[str, str] | None = None,
     ) -> list[dict[str, Any]]:
         job_id = str(row.get("job_id") or "").strip()
@@ -995,7 +1005,7 @@ class ScreeningService:
         screening_types = self._parse_screening_types(row.get("screening_types_json"))
         screening_types = [self._canonical_screening_type(value, screening_type_lookup) for value in screening_types]
         screening_types = [value for value in screening_types if value]
-        daily_schedule_id = str(row.get("daily_schedule_id") or row.get("source_schedule_id") or "").strip() or None
+        daily_schedule_id = self._normalize_schedule_id(row.get("daily_schedule_id") or row.get("source_schedule_id"))
         daily_schedule_active = bool(daily_schedule_id and daily_schedule_id in active_schedule_ids)
 
         mode_raw = str(row.get("mode") or "").strip().upper()
@@ -1181,7 +1191,7 @@ class ScreeningService:
             mode = mode_raw if mode_raw in {"SINGLE", "BATCH"} else inferred_mode
 
             screening_types = self._parse_screening_types(row.get("screening_types_json"))
-            daily_schedule_id = (row.get("daily_schedule_id") or row.get("source_schedule_id") or "").strip() or None
+            daily_schedule_id = self._normalize_schedule_id(row.get("daily_schedule_id") or row.get("source_schedule_id"))
             daily_schedule_active = bool(daily_schedule_id and daily_schedule_id in active_schedule_ids)
 
             if mode == "SINGLE":
@@ -1469,7 +1479,7 @@ class ScreeningService:
             )
         return options
 
-    def remove_daily_schedule(self, schedule_id: str, user_id: str | None = None, user_name: str | None = None) -> bool:
+    def remove_daily_schedule(self, schedule_id: int, user_id: str | None = None, user_name: str | None = None) -> bool:
         removed = self.repository.deactivate_daily_schedule(schedule_id)
         if removed:
             self.repository.add_audit_event(
@@ -1484,12 +1494,12 @@ class ScreeningService:
 
     def rerun_daily_schedule(
         self,
-        schedule_id: str,
+        schedule_id: int,
         actor_user_id: str | None = None,
         actor_user_name: str | None = None,
     ) -> MatchJobAccepted:
-        safe_schedule_id = str(schedule_id or "").strip()
-        if not safe_schedule_id:
+        safe_schedule_id = self._normalize_schedule_id(schedule_id)
+        if safe_schedule_id is None:
             raise ValueError("schedule_id is required")
 
         schedule = self.repository.get_daily_schedule(safe_schedule_id)
@@ -1514,7 +1524,7 @@ class ScreeningService:
             schedule_frequency=str(schedule.get("schedule_frequency") or "DAILY"),
             schedule_id=safe_schedule_id,
             source_upload_id=source_upload_id,
-            batch_name=str(schedule.get("batch_name") or safe_schedule_id).strip() or safe_schedule_id,
+            batch_name=str(schedule.get("batch_name") or str(safe_schedule_id)).strip() or str(safe_schedule_id),
             correlation_id=correlation_id,
             user_id=schedule_user_id or actor_user_id,
             user_name=schedule_user_name or actor_user_name,
@@ -1589,7 +1599,7 @@ class ScreeningService:
 
     def subscribe_to_schedule(
         self,
-        schedule_id: str,
+        schedule_id: int,
         user_id: str | None,
         user_name: str | None,
         email: str,
@@ -1652,7 +1662,7 @@ class ScreeningService:
 
     def unsubscribe_from_schedule(
         self,
-        schedule_id: str,
+        schedule_id: int,
         email: str,
         user_id: str | None = None,
         user_name: str | None = None,
@@ -1704,7 +1714,7 @@ class ScreeningService:
             )
         return removed
 
-    def list_schedule_subscriptions(self, schedule_id: str, user_id: str | None = None) -> list[ScheduleSubscription]:
+    def list_schedule_subscriptions(self, schedule_id: int, user_id: str | None = None) -> list[ScheduleSubscription]:
         rows = self.repository.list_schedule_subscriptions(schedule_id=schedule_id, user_id=user_id)
         return [ScheduleSubscription.model_validate(row) for row in rows]
 

@@ -1,0 +1,56 @@
+{
+  "started_at": "2026-05-12T16:17:38.855Z",
+  "finished_at": "2026-05-12T16:18:03.251Z",
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net",
+  "user": "smoke.runner",
+  "results": {
+    "health": {
+      "ok": true,
+      "detail": "ok"
+    },
+    "auth_login": {
+      "ok": true,
+      "detail": "user=smoke.runner sub=412bf590-d001-7071-5520-ea1c1cc15a08"
+    },
+    "map_local_user_bu": {
+      "ok": true,
+      "detail": "{\"user_id\":\"local-dev-user\",\"user_name\":\"Local Dev User\",\"business_unit_codes\":[\"US_PRU_HR\"]}"
+    },
+    "screening_types": {
+      "ok": true,
+      "detail": "count=18 selected=SAN-US"
+    },
+    "single_match": {
+      "ok": true,
+      "detail": "status=500 total=0 engine=n/a"
+    },
+    "batch_submit": {
+      "ok": true,
+      "detail": "job_id=84 status=QUEUED"
+    },
+    "batch_poll": {
+      "ok": true,
+      "detail": "status=FAILED completed=0 failed=2"
+    },
+    "submissions": {
+      "ok": true,
+      "detail": "count=3"
+    },
+    "summary": {
+      "ok": true,
+      "detail": "total=4 clear=0 potential=0 pending=1 failed=3"
+    },
+    "results": {
+      "ok": true,
+      "detail": "count=4"
+    },
+    "daily_schedules": {
+      "ok": true,
+      "detail": "count=2"
+    },
+    "audit_events": {
+      "ok": true,
+      "detail": "count=20"
+    }
+  }
+}

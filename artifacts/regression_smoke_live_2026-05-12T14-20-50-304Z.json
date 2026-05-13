@@ -1,0 +1,56 @@
+{
+  "started_at": "2026-05-12T14:20:43.167Z",
+  "finished_at": "2026-05-12T14:20:50.304Z",
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net",
+  "user": "smoke.runner",
+  "results": {
+    "health": {
+      "ok": true,
+      "detail": "ok"
+    },
+    "auth_login": {
+      "ok": true,
+      "detail": "user=smoke.runner"
+    },
+    "map_local_user_bu": {
+      "ok": true,
+      "detail": "{\"user_id\":\"local-dev-user\",\"user_name\":\"Local Dev User\",\"business_unit_codes\":[\"US_PRU_HR\"]}"
+    },
+    "screening_types": {
+      "ok": true,
+      "detail": "count=18 selected=SAN-US"
+    },
+    "single_match": {
+      "ok": false,
+      "detail": "403: Selected Business Unit is not mapped to this user"
+    },
+    "batch_submit": {
+      "ok": false,
+      "detail": "400: Selected Business Unit is not mapped to this user"
+    },
+    "batch_poll": {
+      "ok": false,
+      "detail": "No batch job id"
+    },
+    "submissions": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "summary": {
+      "ok": true,
+      "detail": "total=0 clear=0 potential=0 pending=0 failed=0"
+    },
+    "results": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "daily_schedules": {
+      "ok": false,
+      "detail": "500: Internal Server Error"
+    },
+    "audit_events": {
+      "ok": true,
+      "detail": "count=20"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "started_at": "2026-05-12T14:11:47.967Z",
+  "finished_at": "2026-05-12T14:12:54.855Z",
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net",
+  "user": "perf_load_user_01",
+  "results": {
+    "health": {
+      "ok": true,
+      "detail": "ok"
+    },
+    "auth_login": {
+      "ok": false,
+      "detail": "locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    121 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n"
+    },
+    "map_local_user_bu": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "screening_types": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "single_match": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "batch_submit": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "batch_poll": {
+      "ok": false,
+      "detail": "No batch job id"
+    },
+    "submissions": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "summary": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "results": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "daily_schedules": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    },
+    "audit_events": {
+      "ok": false,
+      "detail": "401: Missing bearer token"
+    }
+  }
+}

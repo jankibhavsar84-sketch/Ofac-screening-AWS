@@ -1,0 +1,96 @@
+{
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net/",
+  "input_file": "C:\\software\\ofac-screening-aws\\public\\Actimize_SSB1_template.xlsx",
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_with_sub.json",
+  "distribution": {
+    "batch_users": 1,
+    "schedule_users": 1,
+    "single_users": 1
+  },
+  "started_at": "2026-05-11T18:20:17.574Z",
+  "finished_at": "2026-05-11T18:26:24.405Z",
+  "total_users": 3,
+  "total_success": 0,
+  "total_failed": 3,
+  "response_time_ms": {
+    "min": 0,
+    "p50": 0,
+    "p90": 0,
+    "max": 0,
+    "avg": 0
+  },
+  "cohorts": {
+    "batch": {
+      "total": 1,
+      "success": 0,
+      "failed": 1
+    },
+    "schedule": {
+      "total": 1,
+      "success": 0,
+      "failed": 1,
+      "cleanup_success": 0,
+      "cleanup_failed": 0
+    },
+    "single": {
+      "total": 1,
+      "success": 0,
+      "failed": 1
+    }
+  },
+  "http_status_counts": {
+    "null": 3
+  },
+  "page_errors": 3,
+  "error_boxes": 0,
+  "results": [
+    {
+      "username": "perf_load_user_01",
+      "action": "batch",
+      "started_at": "2026-05-11T18:20:17.723Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: page.waitForURL: Timeout 120000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=55f9333e62204b6d9a2b7e51a6d35eb9&code_challenge=iRV0JZu7N5zcxYedFkSYnyzv4QemZx-pYtjC0ISlerg&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:26:24.333Z",
+      "since_global_start_ms": 366759
+    },
+    {
+      "username": "perf_load_user_02",
+      "action": "schedule",
+      "started_at": "2026-05-11T18:20:17.747Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: page.waitForURL: Timeout 120000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=b524c1af20e94a0aa0a1aa2aae45e1eb&code_challenge=ZF3ieglBlgRtnBXcGrQ2_yFP_NUmqpQ02htO5k5MIiE&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:26:24.331Z",
+      "since_global_start_ms": 366757
+    },
+    {
+      "username": "perf_load_user_03",
+      "action": "single",
+      "started_at": "2026-05-11T18:20:17.766Z",
+      "ok": false,
+      "business_unit_code": null,
+      "http_status": null,
+      "response_ms": null,
+      "response_body": null,
+      "error_box": null,
+      "page_error": "TimeoutError: page.waitForURL: Timeout 120000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================",
+      "cleanup": null,
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=58c0018a55344f25830da0164a5fa19c&code_challenge=WUEs37JbPHjdGLtQUunwX06ZXHfSCaeFNqtEW9UfbMM&code_challenge_method=S256",
+      "finished_at": "2026-05-11T18:26:24.259Z",
+      "since_global_start_ms": 366685
+    }
+  ]
+}

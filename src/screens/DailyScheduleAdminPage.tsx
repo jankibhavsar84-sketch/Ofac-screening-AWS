@@ -93,6 +93,10 @@ export function DailyScheduleAdminPage() {
     await Promise.all([loadSchedules(), loadBatchRuns()]);
   }
 
+  async function refreshBatchRuns() {
+    await loadBatchRuns();
+  }
+
   async function removeSchedule(schedule: DailySchedule) {
     if (!identity) return;
     setRemovingId(schedule.schedule_id);
@@ -241,8 +245,16 @@ export function DailyScheduleAdminPage() {
 
       {isAdmin ? (
         <div className="card">
-          <div className="cardHeader">
+          <div className="cardHeader" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <h2>Batch Run Status (Admin)</h2>
+            <button
+              type="button"
+              className="btnGhostSmall"
+              onClick={() => void refreshBatchRuns()}
+              disabled={batchRunsLoading}
+            >
+              {batchRunsLoading ? "Refreshing..." : "Refresh"}
+            </button>
           </div>
           <div className="cardBody">
             <p className="muted" style={{ marginTop: 0 }}>

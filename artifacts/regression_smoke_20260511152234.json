@@ -1,0 +1,46 @@
+{
+    "map_local_user_bu":  {
+                              "ok":  true,
+                              "detail":  "{\"user_id\":\"local-dev-user\",\"user_name\":\"Local Dev User\",\"business_unit_codes\":[\"US_PRU_OPES\"]}"
+                          },
+    "health":  {
+                   "ok":  true,
+                   "detail":  "{\"status\":\"ok\"}"
+               },
+    "screening_types":  {
+                            "ok":  true,
+                            "detail":  "count=18"
+                        },
+    "single_match":  {
+                         "ok":  true,
+                         "detail":  "status=500 error_text=prudential entity-screenings failed at http://mock-actimize.local/entity-screenings: HTTPConnectionPool(host=\u0027mock-actimize.local\u0027, port=80): Max retries exceeded with url: /entity-screenings (Caused by NameResolutionError(\"HTTPConnection(host=\u0027mock-actimize.local\u0027, port=80): Failed to resolve \u0027mock-actimize.local\u0027 ([Errno -2] Name or service not known)\"))"
+                     },
+    "batch_submit":  {
+                         "ok":  true,
+                         "detail":  "job_id=73 status=QUEUED"
+                     },
+    "batch_poll":  {
+                       "ok":  true,
+                       "detail":  "status=FAILED completed=0 failed=2"
+                   },
+    "submissions":  {
+                        "ok":  true,
+                        "detail":  "count=4"
+                    },
+    "summary":  {
+                    "ok":  false,
+                    "detail":  "The remote server returned an error: (500) Internal Server Error."
+                },
+    "results":  {
+                    "ok":  false,
+                    "detail":  "The remote server returned an error: (500) Internal Server Error."
+                },
+    "daily_schedules":  {
+                            "ok":  false,
+                            "detail":  "The remote server returned an error: (500) Internal Server Error."
+                        },
+    "audit_events":  {
+                         "ok":  true,
+                         "detail":  "count=20"
+                     }
+}

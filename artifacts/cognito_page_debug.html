@@ -1,0 +1,202 @@
+<!DOCTYPE html><html lang="en" class="a-ws a-js a-audio a-video a-canvas a-svg a-drag-drop a-geolocation a-history a-webworker a-autofocus a-input-placeholder a-textarea-placeholder a-local-storage a-gradients a-transform3d a-touch-scrolling a-text-shadow a-text-stroke a-box-shadow a-border-radius a-border-image a-opacity a-transform a-transition" data-aui-build-date="3.17.16.3-2017-10-11"><head>
+    <link href="https://d1lcia0inyjsq.cloudfront.net/20240614193835/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="https://d1lcia0inyjsq.cloudfront.net/20240614193835/css/cognito-login.css" rel="stylesheet" media="screen">
+    
+    <title>Signin</title>
+
+    <script src="https://d1lcia0inyjsq.cloudfront.net/20240614193835/js/amazon-cognito-advanced-security-data.min.js"></script>
+    <script>
+    function getAdvancedSecurityData(formReference) {
+        if (typeof AmazonCognitoAdvancedSecurityData === "undefined") {
+            return true;
+        }
+
+        // UserpoolId is not available on frontend for springboard. We do not use userPoolId
+        // anyway other than put in context data. 
+        var userPoolId = "";
+        var clientId = getUrlParameter("client_id");
+
+        var username = "";
+        var usernameInput = document.getElementsByName("username")[0];
+        if (usernameInput && usernameInput.value) {
+            username = usernameInput.value;
+        }
+
+        var asfData = AmazonCognitoAdvancedSecurityData.getData(username, userPoolId, clientId);
+        if (typeof asfData === "undefined") {
+            return true;
+        }
+
+        if (formReference && formReference.cognitoAsfData) {
+            formReference.cognitoAsfData.value = asfData
+        }
+
+        return true;
+    }
+
+    function getUrlParameter(name) {
+        name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+        var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+        var results = regex.exec(location.search);
+        return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+    }
+
+    function onSubmit(evt, formRef) {
+        formRef.querySelector('button[type="submit"]').disabled = true;
+        if (!!formRef.submitted) {
+            evt.preventDefault();
+            return false;
+        } else {
+            formRef.submitted = true;
+            return getAdvancedSecurityData(formRef);
+        }
+    }
+
+    function onSubmitLoginForm (formRef) {
+        formRef.querySelector('input[name="signInSubmitButton"]').disabled = true;
+        getAdvancedSecurityData(formRef)
+    }
+</script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body spellcheck="false">
+    <div class="container">
+        <div class="modal-dialog">
+            <div class="modal-content background-customizable modal-content-mobile visible-xs visible-sm">
+                <div><div>
+                    <div class="banner-customizable">
+                        <center>
+                            
+                        </center>
+                    </div>
+                </div></div>
+                <div class="modal-body">
+                    <div><div>
+    
+</div></div>
+                    <div>
+                        <div><div>
+    
+</div></div>
+                        <div><div>
+    
+</div></div>
+                        <div>
+                            
+                            <div><div>
+    
+        <span class="textDescription-customizable ">Sign in with your username and password</span>
+        <form action="/login?client_id=7j2irsbvt4qthf356jebnftbmn&amp;redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&amp;response_type=code&amp;scope=openid+profile+email&amp;state=49ac41d1fff74625a9825e996b5e9263&amp;code_challenge=DD4ZouN8cOelMntf7HOpyh31Xq9iYguHJTKIDBpF3lk&amp;code_challenge_method=S256" method="POST" name="cognitoSignInForm" class="cognito-asf" onsubmit="onSubmitLoginForm(this);"><input type="hidden" name="_csrf" value="2c393e0a-975b-42d9-bb6b-bff25d3011c1">
+
+            
+
+            
+            <label for="signInFormUsername" class="label-customizable">Username</label>
+            <div>
+                
+                
+                <input id="signInFormUsername" name="username" type="text" class="form-control inputField-customizable" placeholder="Username" autocapitalize="none" required="" value="">
+            </div>
+
+            <label for="signInFormPassword" class="label-customizable">Password</label>
+            <div><input id="signInFormPassword" name="password" type="password" class="form-control inputField-customizable" placeholder="Password" required=""></div>
+            <input type="hidden" class="form-control inputField-customizable" name="cognitoAsfData">
+            <div>
+                <a class="redirect-customizable" href="/forgotPassword?client_id=7j2irsbvt4qthf356jebnftbmn&amp;redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&amp;response_type=code&amp;scope=openid+profile+email&amp;state=49ac41d1fff74625a9825e996b5e9263&amp;code_challenge=DD4ZouN8cOelMntf7HOpyh31Xq9iYguHJTKIDBpF3lk&amp;code_challenge_method=S256">Forgot your password?</a>
+            </div>
+            <input name="signInSubmitButton" type="Submit" value="Sign in" class="btn btn-primary submitButton-customizable" aria-label="submit">
+            <br>
+            <div>
+                <p class="redirect-customizable"><span>Need an account?</span>&nbsp;<a href="/signup?client_id=7j2irsbvt4qthf356jebnftbmn&amp;redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&amp;response_type=code&amp;scope=openid+profile+email&amp;state=49ac41d1fff74625a9825e996b5e9263&amp;code_challenge=DD4ZouN8cOelMntf7HOpyh31Xq9iYguHJTKIDBpF3lk&amp;code_challenge_method=S256">Sign up</a></p>
+            </div>
+        </form>
+    
+</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+
+            <div class="modal-content background-customizable modal-content-mobile visible-md visible-lg">
+                <div><div>
+                    <div class="banner-customizable">
+                        <center>
+                            
+                        </center>
+                    </div>
+                </div></div>
+                <div class="modal-body">
+                    <div><div>
+    
+</div></div>
+                    <div>
+                        <div>
+                            <div><div>
+    
+</div></div>
+                            <div><div>
+    
+</div></div>
+                        </div>
+                        <div>
+                            <div><div>
+    
+        <span class="textDescription-customizable ">Sign in with your username and password</span>
+        <form action="/login?client_id=7j2irsbvt4qthf356jebnftbmn&amp;redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&amp;response_type=code&amp;scope=openid+profile+email&amp;state=49ac41d1fff74625a9825e996b5e9263&amp;code_challenge=DD4ZouN8cOelMntf7HOpyh31Xq9iYguHJTKIDBpF3lk&amp;code_challenge_method=S256" method="POST" name="cognitoSignInForm" class="cognito-asf" onsubmit="onSubmitLoginForm(this);"><input type="hidden" name="_csrf" value="2c393e0a-975b-42d9-bb6b-bff25d3011c1">
+
+            
+
+            
+            <label for="signInFormUsername" class="label-customizable">Username</label>
+            <div>
+                
+                
+                <input id="signInFormUsername" name="username" type="text" class="form-control inputField-customizable" placeholder="Username" autocapitalize="none" required="" value="">
+            </div>
+
+            <label for="signInFormPassword" class="label-customizable">Password</label>
+            <div><input id="signInFormPassword" name="password" type="password" class="form-control inputField-customizable" placeholder="Password" required=""></div>
+            <input type="hidden" class="form-control inputField-customizable" name="cognitoAsfData">
+            <div>
+                <a class="redirect-customizable" href="/forgotPassword?client_id=7j2irsbvt4qthf356jebnftbmn&amp;redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&amp;response_type=code&amp;scope=openid+profile+email&amp;state=49ac41d1fff74625a9825e996b5e9263&amp;code_challenge=DD4ZouN8cOelMntf7HOpyh31Xq9iYguHJTKIDBpF3lk&amp;code_challenge_method=S256">Forgot your password?</a>
+            </div>
+            <input name="signInSubmitButton" type="Submit" value="Sign in" class="btn btn-primary submitButton-customizable" aria-label="submit">
+            <br>
+            <div>
+                <p class="redirect-customizable"><span>Need an account?</span>&nbsp;<a href="/signup?client_id=7j2irsbvt4qthf356jebnftbmn&amp;redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&amp;response_type=code&amp;scope=openid+profile+email&amp;state=49ac41d1fff74625a9825e996b5e9263&amp;code_challenge=DD4ZouN8cOelMntf7HOpyh31Xq9iYguHJTKIDBpF3lk&amp;code_challenge_method=S256">Sign up</a></p>
+            </div>
+        </form>
+    
+</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var inputs = document.querySelectorAll("input");
+
+        inputs.forEach((input) => {
+            input.addEventListener("input", function () {
+                var name = this.name;
+                var value = this.value;
+                var matchingInputs = document.querySelectorAll(`input[name="${name}"]`);
+
+                matchingInputs.forEach((match) => {
+                    if (match !== this) {
+                        match.value = value;
+                    }
+                });
+            });
+        });
+    });
+</script>
+
+
+
+<div class="fwcim-container"></div></body></html>
