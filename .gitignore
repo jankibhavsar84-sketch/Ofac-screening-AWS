@@ -36,6 +36,13 @@ storybook-static
 # Generated artifacts
 artifacts/dependency-check-data/
 artifacts/**/dependency-check-data/
+artifacts/dependency-check-report/
+artifacts/deploy-clean/
+artifacts/deploy-clean-backend/
+artifacts/deploy-temp/
+artifacts/tmp_*.py
+artifacts/tmp_*.json
+artifacts/worker_logs_last2h.txt
 artifacts/*.tar
 artifacts/**/*.tar
 artifacts/**/app-secrets.json

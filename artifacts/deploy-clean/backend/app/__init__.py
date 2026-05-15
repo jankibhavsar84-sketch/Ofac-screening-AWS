@@ -1,2 +1,0 @@
-"""Enterprise screening backend package."""
-
