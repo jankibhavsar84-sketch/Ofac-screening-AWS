@@ -1,0 +1,228 @@
+{
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net",
+  "users_configured": 20,
+  "requests_per_user_configured": 20,
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_30.json",
+  "started_at": "2026-05-13T21:15:08.644Z",
+  "finished_at": "2026-05-13T21:21:18.666Z",
+  "total_users": 20,
+  "users_all_success": 0,
+  "users_with_any_failure": 20,
+  "total_requests_expected": 400,
+  "total_requests_attempted": 0,
+  "total_requests_success": 0,
+  "total_requests_failed": 0,
+  "response_time_ms": {
+    "min": 0,
+    "p50": 0,
+    "p90": 0,
+    "max": 0,
+    "avg": 0
+  },
+  "http_status_counts": {},
+  "request_error_boxes": 0,
+  "request_page_errors": 0,
+  "users_with_login_or_fatal_error": 20,
+  "users": [
+    {
+      "username": "perf_load_user_01",
+      "started_at": "2026-05-13T21:15:09.141Z",
+      "finished_at": "2026-05-13T21:21:18.581Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=539eed52688b4025a5c1f515163bb594&code_challenge=H7EzxbPcwN-N8H6nBRXgU8noYQXA18A3IA6tG8cayXU&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369937
+    },
+    {
+      "username": "perf_load_user_02",
+      "started_at": "2026-05-13T21:15:09.138Z",
+      "finished_at": "2026-05-13T21:21:18.464Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=39a5a1ecd8034344bb8119d040263480&code_challenge=N0FfC-fZGHCiSf25PhBkee9fIxgGrtYUbdIHhn8z2ls&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369820
+    },
+    {
+      "username": "perf_load_user_03",
+      "started_at": "2026-05-13T21:15:09.139Z",
+      "finished_at": "2026-05-13T21:21:18.445Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=82dda7d3f1f246b8a6559f9458faa5ad&code_challenge=k5vdwTth-r_qjFHciSQ5Ij-tZ2CBUT9H4rcWtkX9sYM&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369801
+    },
+    {
+      "username": "perf_load_user_04",
+      "started_at": "2026-05-13T21:15:09.140Z",
+      "finished_at": "2026-05-13T21:21:18.500Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=b60d4af616764cf7a141e50f51aba70d&code_challenge=NCoVKzEo7acDFvvOKpXYgRLNmaG4WbhH8UqkWlbkhhc&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369856
+    },
+    {
+      "username": "perf_load_user_05",
+      "started_at": "2026-05-13T21:15:09.133Z",
+      "finished_at": "2026-05-13T21:21:18.540Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=6cbafce7b358485ba8cc24fdbe3f7af4&code_challenge=XLGcUWV5y5ZqZYskhhMert82iwrNpjTAmxFT3GgkUjU&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369896
+    },
+    {
+      "username": "perf_load_user_06",
+      "started_at": "2026-05-13T21:15:09.137Z",
+      "finished_at": "2026-05-13T21:21:18.451Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=9390319140fe44cea6d957130733a248&code_challenge=RPlXrQNQ_r6sVsMJZ6iGI00EjgObtlpNcw_tEwbP2EE&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369807
+    },
+    {
+      "username": "perf_load_user_07",
+      "started_at": "2026-05-13T21:15:09.138Z",
+      "finished_at": "2026-05-13T21:21:18.542Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=50b0bc1e4f7841b3b9dd8aba41f963a0&code_challenge=5IH1NRJvDIZ-PPudJlFkW7cmdERao6ZPXiJ4OCo7T7o&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369898
+    },
+    {
+      "username": "perf_load_user_08",
+      "started_at": "2026-05-13T21:15:09.141Z",
+      "finished_at": "2026-05-13T21:21:18.453Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=b9fef5c180974f3098b7a5c0e8fbc07d&code_challenge=Vt2Radwj8RcrHKN3Fi-hwqTvEprA-Wg09PvLxiCkIhA&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369809
+    },
+    {
+      "username": "perf_load_user_09",
+      "started_at": "2026-05-13T21:15:09.143Z",
+      "finished_at": "2026-05-13T21:21:18.448Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=7549d5fa6d0b4628a5b3d825b1bc8266&code_challenge=9ai8DKk3PawtVDRXQDVot57fzryu10pAK1cfZqcyIjQ&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369804
+    },
+    {
+      "username": "perf_load_user_10",
+      "started_at": "2026-05-13T21:15:09.139Z",
+      "finished_at": "2026-05-13T21:21:18.515Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=24a722d2379c427aa3d10b0607b17ad4&code_challenge=EMLhBMx6pdebMbFY9bru-DJ1ICBinOhsmLRDmDjYcW8&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369871
+    },
+    {
+      "username": "perf_load_user_11",
+      "started_at": "2026-05-13T21:15:09.141Z",
+      "finished_at": "2026-05-13T21:21:18.474Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=4093e4e8d6664f3cb3f80528270e1d7c&code_challenge=RuGQS7k8nq8h-B91g6L6Kt9FyegsW8U-1_Rg6Bbcpas&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369830
+    },
+    {
+      "username": "perf_load_user_12",
+      "started_at": "2026-05-13T21:15:09.137Z",
+      "finished_at": "2026-05-13T21:21:18.447Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=a3458cb1ce7843e8b4ada0ae3844fb9e&code_challenge=9Xsusm6qnlEyDVoOuWT6K66C7g1Eb5tCeP9xVaUEZDc&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369803
+    },
+    {
+      "username": "perf_load_user_13",
+      "started_at": "2026-05-13T21:15:09.143Z",
+      "finished_at": "2026-05-13T21:21:18.512Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=e820daac70c4441192d74ee2aa2ae98c&code_challenge=9ysqPN1WZ12QHyYDX6TOPq3e3bx-a_jAGMem9goV0YQ&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369868
+    },
+    {
+      "username": "perf_load_user_14",
+      "started_at": "2026-05-13T21:15:09.142Z",
+      "finished_at": "2026-05-13T21:21:18.438Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=9a4293db1d0f4f50a3c360bfc122f973&code_challenge=eJU8CvurXrxVL2Ct1OlM8PZFgI8V1IcySaRS838Xpho&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369794
+    },
+    {
+      "username": "perf_load_user_15",
+      "started_at": "2026-05-13T21:15:09.140Z",
+      "finished_at": "2026-05-13T21:21:18.461Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=636a567d02984cd68daf4577305ba0d6&code_challenge=vf-Fon4OHYSl3Wo_1233TjTtBrGNCY6jHUpZm7vKL0I&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369817
+    },
+    {
+      "username": "perf_load_user_16",
+      "started_at": "2026-05-13T21:15:09.141Z",
+      "finished_at": "2026-05-13T21:21:18.544Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=d13befd47364465fb8827e7e2f6cad23&code_challenge=aOqdhKR95JyEquL8Og0EPNu1AWpmi85sEySVMZi2mqo&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369901
+    },
+    {
+      "username": "perf_load_user_17",
+      "started_at": "2026-05-13T21:15:09.138Z",
+      "finished_at": "2026-05-13T21:21:18.508Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=bdd47a16fffd4c1cb2a6f6ec26e67149&code_challenge=SjHU51KDqEqlcrgV1iPMbmeMQdtZja22yuqBY8X-DjQ&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369864
+    },
+    {
+      "username": "perf_load_user_18",
+      "started_at": "2026-05-13T21:15:09.142Z",
+      "finished_at": "2026-05-13T21:21:18.472Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=133b706ab6dc40b6894b295549f2c111&code_challenge=5DUcOvn8btonAq5uW8z8AWXQrRBk7n7Za15aIGra2_M&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369828
+    },
+    {
+      "username": "perf_load_user_19",
+      "started_at": "2026-05-13T21:15:09.142Z",
+      "finished_at": "2026-05-13T21:21:18.445Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=950b458e3c9941399b79bd8561d2a9b9&code_challenge=yz4e22kZI6b2qO7VWOJuSAVHbsSFLn0cK9N3Sui9cZY&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369801
+    },
+    {
+      "username": "perf_load_user_20",
+      "started_at": "2026-05-13T21:15:09.140Z",
+      "finished_at": "2026-05-13T21:21:18.470Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=4064f305842f46e2bbadb00596b19d17&code_challenge=lyJGPaQphZuLsKVav8omSQLCYfeG1GEVr9GkhBerx-w&code_challenge_method=S256",
+      "page_error": "TimeoutError: locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"username\"]').first() to be visible\u001b[22m\n\u001b[2m    236 × locator resolved to hidden <input value=\"\" type=\"text\" required=\"\" name=\"username\" autocapitalize=\"none\" placeholder=\"Username\" id=\"signInFormUsername\" class=\"form-control inputField-customizable\"/>\u001b[22m\n",
+      "since_global_start_ms": 369826
+    }
+  ]
+}

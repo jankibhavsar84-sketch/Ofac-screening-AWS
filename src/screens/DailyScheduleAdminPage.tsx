@@ -84,7 +84,8 @@ export function DailyScheduleAdminPage() {
     const safe = String(status || "").trim().toUpperCase();
     if (safe === "COMPLETED") return <span className="statusPill statusClear">Completed</span>;
     if (safe === "PARTIAL") return <span className="statusPill statusPotential">Partial</span>;
-    if (safe === "PROCESSING" || safe === "QUEUED") return <span className="statusPill statusPending">Processing</span>;
+    if (safe === "QUEUED") return <span className="statusPill statusPending">Queued</span>;
+    if (safe === "PROCESSING") return <span className="statusPill statusPending">Processing</span>;
     if (safe === "FAILED") return <span className="statusPill statusFailed">Failed</span>;
     return <span className="statusPill statusMatch">{safe || "Unknown"}</span>;
   }
@@ -184,7 +185,7 @@ export function DailyScheduleAdminPage() {
           {error ? <div className="errorBox" role="alert" aria-live="assertive">{error}</div> : null}
 
           <div className="tableWrap scheduleTableWrap" style={{ marginTop: 10 }}>
-            <table className="table scheduleTable">
+            <table className="table scheduleTable scheduleConfigTable">
               <thead>
                 <tr>
                   <th scope="col" style={{ width: 220 }}>Batch Name</th>

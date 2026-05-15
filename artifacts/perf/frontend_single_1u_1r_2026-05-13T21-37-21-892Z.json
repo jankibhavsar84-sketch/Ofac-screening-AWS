@@ -1,0 +1,126 @@
+{
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net",
+  "users_configured": 1,
+  "requests_per_user_configured": 1,
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_30.json",
+  "started_at": "2026-05-13T21:37:21.966Z",
+  "finished_at": "2026-05-13T21:37:27.585Z",
+  "total_users": 1,
+  "users_all_success": 1,
+  "users_with_any_failure": 0,
+  "total_requests_expected": 1,
+  "total_requests_attempted": 1,
+  "total_requests_success": 1,
+  "total_requests_failed": 0,
+  "response_time_ms": {
+    "min": 2988,
+    "p50": 2988,
+    "p90": 2988,
+    "max": 2988,
+    "avg": 2988
+  },
+  "http_status_counts": {
+    "200": 1
+  },
+  "request_error_boxes": 0,
+  "request_page_errors": 0,
+  "users_with_login_or_fatal_error": 0,
+  "users": [
+    {
+      "username": "perf_load_user_01",
+      "started_at": "2026-05-13T21:37:22.037Z",
+      "finished_at": "2026-05-13T21:37:27.527Z",
+      "ok": true,
+      "requests": [
+        {
+          "sequence": 1,
+          "ok": true,
+          "business_ok": true,
+          "business_unit_code": "US_PRU_OPES",
+          "http_status": 200,
+          "response_ms": 2988,
+          "response_body": {
+            "responses": {
+              "single_1": {
+                "results": [],
+                "total": {
+                  "value": 0,
+                  "relation": "eq"
+                },
+                "query": {
+                  "schema": "Person",
+                  "properties": {
+                    "name": [
+                      "PerfB LoadBD"
+                    ],
+                    "firstName": [
+                      "PerfB"
+                    ],
+                    "lastName": [
+                      "LoadBD"
+                    ],
+                    "fullName": [
+                      "PerfB LoadBD"
+                    ],
+                    "businessUnit": "US_PRU_OPES",
+                    "partyKey": "AMLP_OD_0A3638BF3D2F483F87180BC6012B7CEA_SAN-US",
+                    "partyKeysByScreeningType": {
+                      "SAN-US": "AMLP_OD_0A3638BF3D2F483F87180BC6012B7CEA_SAN-US"
+                    }
+                  }
+                },
+                "status": 200,
+                "engine_message": "NM",
+                "error_text": null,
+                "responses_by_screening_type": {
+                  "SAN-US": {
+                    "results": [],
+                    "total": {
+                      "value": 0,
+                      "relation": "eq"
+                    },
+                    "query": {
+                      "schema": "Person",
+                      "properties": {
+                        "name": [
+                          "PerfB LoadBD"
+                        ],
+                        "firstName": [
+                          "PerfB"
+                        ],
+                        "lastName": [
+                          "LoadBD"
+                        ],
+                        "fullName": [
+                          "PerfB LoadBD"
+                        ],
+                        "businessUnit": "US_PRU_OPES",
+                        "partyKey": "AMLP_OD_0A3638BF3D2F483F87180BC6012B7CEA_SAN-US",
+                        "partyKeysByScreeningType": {
+                          "SAN-US": "AMLP_OD_0A3638BF3D2F483F87180BC6012B7CEA_SAN-US"
+                        }
+                      }
+                    },
+                    "status": 200,
+                    "engine_message": "NM",
+                    "requested_screening_type": "SAN-US",
+                    "actimize_screening_type": "SD_US_Customers_Sanctions",
+                    "party_key": "AMLP_OD_0A3638BF3D2F483F87180BC6012B7CEA_SAN-US"
+                  }
+                }
+              }
+            },
+            "limit": 5
+          },
+          "error_box": null,
+          "page_error": null,
+          "started_at": "2026-05-13T21:37:24.155Z",
+          "finished_at": "2026-05-13T21:37:27.302Z"
+        }
+      ],
+      "final_url": "https://d2ibkkc5zn6dnw.cloudfront.net/screening",
+      "page_error": null,
+      "since_global_start_ms": 5561
+    }
+  ]
+}

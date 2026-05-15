@@ -592,9 +592,16 @@ function badge(status: UiStatus) {
   return <span className="statusPill statusMatch">Match</span>;
 }
 
-function modeBadge(mode: ResultMode) {
-  if (mode === "SINGLE") return <span className="modePill modePillSingle">Single</span>;
-  return <span className="modePill modePillBatch">Batch</span>;
+function resultModeLabel(row: Pick<ResultRow, "mode" | "dailyScheduleId">): "OnDemand" | "Batch" | "Schedule" {
+  if (safeTrim(String(row.dailyScheduleId || ""))) return "Schedule";
+  if (row.mode === "SINGLE") return "OnDemand";
+  return "Batch";
+}
+
+function modeBadge(row: Pick<ResultRow, "mode" | "dailyScheduleId">) {
+  const label = resultModeLabel(row);
+  if (label === "OnDemand") return <span className="modePill modePillSingle">OnDemand</span>;
+  return <span className="modePill modePillBatch">{label}</span>;
 }
 
 function formatMatchingScore(score: number | null) {
@@ -1800,7 +1807,7 @@ export function ScreeningDetailPage() {
 
       // Search on core visible fields to keep filtering fast.
       if (!q) return true;
-      const hay = `${r.entity} ${r.partyKey} ${r.mode} ${r.type} ${r.screeningType} ${r.country} ${r.uiStatus} ${r.date}`.toLowerCase();
+      const hay = `${r.entity} ${r.partyKey} ${r.mode} ${resultModeLabel(r)} ${r.type} ${r.screeningType} ${r.country} ${r.uiStatus} ${r.date}`.toLowerCase();
       return hay.includes(q);
     });
   }, [flattened, search, statusFilter, typeFilter]);
@@ -1822,7 +1829,7 @@ export function ScreeningDetailPage() {
         return aTime - bTime;
       }
       if (resultSortKey === "entity") return a.entity.localeCompare(b.entity);
-      if (resultSortKey === "mode") return a.mode.localeCompare(b.mode);
+      if (resultSortKey === "mode") return resultModeLabel(a).localeCompare(resultModeLabel(b));
       if (resultSortKey === "type") return a.type.localeCompare(b.type);
       return (a.country || "").localeCompare(b.country || "");
     });
@@ -1866,7 +1873,7 @@ export function ScreeningDetailPage() {
       return [
         row.entity,
         row.partyKey,
-        row.mode === "SINGLE" ? "Single" : "Batch",
+        resultModeLabel(row),
         row.type,
         screeningType,
         row.country || "",
@@ -3012,7 +3019,7 @@ export function ScreeningDetailPage() {
                         <td className="muted partyKeyCell">
                           <span className="partyKeyValue" title={r.partyKey || ""}>{r.partyKey || "\u2014"}</span>
                         </td>
-                        <td>{modeBadge(r.mode)}</td>
+                        <td>{modeBadge(r)}</td>
                         <td className="muted">{r.type}</td>
                         <td className="muted">{r.screeningType || "\u2014"}</td>
                         <td className="muted">{r.country || "\u2014"}</td>

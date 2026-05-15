@@ -1,0 +1,69 @@
+{
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net",
+  "users_configured": 1,
+  "requests_per_user_configured": 1,
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_30.json",
+  "preferred_business_unit_code": "US_PRU_OPES",
+  "started_at": "2026-05-13T22:43:35.489Z",
+  "finished_at": "2026-05-13T22:43:38.341Z",
+  "total_users": 1,
+  "users_all_success": 1,
+  "users_with_any_failure": 0,
+  "total_requests_expected": 1,
+  "total_requests_attempted": 1,
+  "total_requests_success": 1,
+  "total_requests_failed": 0,
+  "response_time_ms": {
+    "min": 210,
+    "p50": 210,
+    "p90": 210,
+    "max": 210,
+    "avg": 210
+  },
+  "http_status_counts": {
+    "200": 1
+  },
+  "request_error_boxes": 0,
+  "request_page_errors": 0,
+  "users_with_login_or_fatal_error": 0,
+  "users": [
+    {
+      "username": "perf_load_user_01",
+      "started_at": "2026-05-13T22:43:35.558Z",
+      "finished_at": "2026-05-13T22:43:38.287Z",
+      "ok": true,
+      "requests": [
+        {
+          "sequence": 1,
+          "ok": true,
+          "batch_name": "FRONT_BATCH_2026-05-13T22-43-35-414Z_01_01",
+          "file_path": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\tmp_batch_10x10\\batch_u01_r01.csv",
+          "business_unit_code": "US_PRU_OPES",
+          "http_status": 200,
+          "response_ms": 210,
+          "response_body": {
+            "job_id": "1281",
+            "status": "QUEUED",
+            "submitted_at": "2026-05-13T22:43:38.605966+00:00",
+            "total_items": 0,
+            "business_unit_code": "US_PRU_OPES",
+            "daily_schedule_id": null,
+            "screened_item_keys": [],
+            "source_upload_id": "9d5bb4e6-3ad4-4fab-b23a-1db369642ddf",
+            "file_name": "batch_u01_r01.csv",
+            "s3_uri": "s3://amzn-s3-quickscreen-batch-981450247094/screening-input/31fb5530-9021-70a2-0c1a-ea8af880a04c/9d5bb4e6-3ad4-4fab-b23a-1db369642ddf/20260513_224338_batch_u01_r01.csv",
+            "schedule_frequency": null,
+            "row_meta": []
+          },
+          "error_box": null,
+          "page_error": null,
+          "started_at": "2026-05-13T22:43:37.709Z",
+          "finished_at": "2026-05-13T22:43:38.046Z"
+        }
+      ],
+      "final_url": "https://d2ibkkc5zn6dnw.cloudfront.net/screening",
+      "page_error": null,
+      "since_global_start_ms": 2798
+    }
+  ]
+}

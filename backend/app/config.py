@@ -180,7 +180,7 @@ def load_settings() -> Settings:
         actimize_source_system=os.getenv("ACTIMIZE_SOURCE_SYSTEM", "AMLP").strip() or "AMLP",
         actimize_requester_name=os.getenv("ACTIMIZE_REQUESTER_NAME", "SCREENING_SYSTEM").strip() or "SCREENING_SYSTEM",
         actimize_alert_review_url=os.getenv("ACTIMIZE_ALERT_REVIEW_URL", "").strip(),
-        actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 10.0),
+        actimize_timeout_s=_to_float(os.getenv("ACTIMIZE_TIMEOUT_S"), 20.0),
         actimize_log_raw_api_io=_to_bool(
             os.getenv("ACTIMIZE_LOG_RAW_API_IO"),
             _to_bool(os.getenv("ACTIMIZE_LOG_RAW_SUCCESS_RESPONSE"), False),

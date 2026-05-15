@@ -413,7 +413,7 @@ class ActimizeClient:
                 attempt=attempt,
                 party_key=str(payload.get("partyKey") or "").strip(),
             )
-            if response.status_code in {429, 500, 502, 503, 504} and attempt < ACTIMIZE_POST_MAX_ATTEMPTS:
+            if response.status_code in {408, 429, 500, 502, 503, 504} and attempt < ACTIMIZE_POST_MAX_ATTEMPTS:
                 time.sleep(min(0.5 * (2 ** (attempt - 1)), 2.0))
                 continue
             return response

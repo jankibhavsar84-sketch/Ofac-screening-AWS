@@ -1,0 +1,3 @@
+DEPLOY_TAG=20260515090806
+BACKEND_IMAGE=981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-backend:20260515090806
+WORKER_IMAGE=981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-worker:20260515090806

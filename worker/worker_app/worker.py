@@ -15,7 +15,7 @@ import boto3
 from app.actimize import ActimizeClient, ExternalApiCallError
 from app.batch_upload_parser import BatchUploadValidationError, parse_batch_upload
 from app.config import settings
-from app.models import EntityExample, MatchJobRequest, ScreeningQueueMessage
+from app.models import EntityExample, JobStatus, MatchJobRequest, ScreeningQueueMessage
 from app.queue import SqsQueue
 from app.repository import JobRepository
 from app.screening_service import ScreeningService
@@ -23,7 +23,21 @@ from app.sns_notifier import SnsNotifier
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("screening-worker")
-_RETRYABLE_EXTERNAL_STATUS_CODES = {429, 500, 502, 503, 504}
+_RETRYABLE_EXTERNAL_STATUS_CODES = {408, 429, 500, 502, 503, 504}
+_RETRYABLE_DATABASE_ERROR_MARKERS = (
+    "couldn't get a connection after",
+    "connection timeout expired",
+    "timeout expired",
+    "server closed the connection unexpectedly",
+    "connection has been closed unexpectedly",
+    "ssl syscall error",
+    "too many clients already",
+    "remaining connection slots are reserved",
+    "connection refused",
+    "deadlock detected",
+    "canceling statement due to lock timeout",
+    "canceling statement due to statement timeout",
+)
 
 
 def _normalize_schedule_id(value: Any) -> int | None:
@@ -425,11 +439,15 @@ def _flush_dispatch_batch(
             next_items.append((per_type_item_key, screening_type, per_type_payload, per_type_query, record_hash))
             bulk_payloads.append((per_type_item_key, per_type_payload))
 
-    repository.add_job_items_bulk(job_id, bulk_payloads)
+    inserted_item_keys = repository.add_job_items_bulk(job_id, bulk_payloads)
+    if not inserted_item_keys:
+        return 0
 
     # Enqueue per-item screening tasks to allow parallelism across workers.
     pending: list[ScreeningQueueMessage] = []
     for item_key, screening_type, _payload, query, record_hash in next_items:
+        if item_key not in inserted_item_keys:
+            continue
         pending.append(
             ScreeningQueueMessage(
                 message_type="SCREEN_ITEM",
@@ -453,7 +471,7 @@ def _flush_dispatch_batch(
             pending = []
     if pending:
         queue.enqueue_batch(pending)
-    return len(next_items)
+    return len(inserted_item_keys)
 
 
 class FixedRateLimiter:
@@ -523,11 +541,37 @@ def _is_retryable_external_failure(status_code: int | None) -> bool:
     return status_code in _RETRYABLE_EXTERNAL_STATUS_CODES
 
 
+def _is_retryable_database_failure(repository: JobRepository, exc: Exception) -> bool:
+    try:
+        if repository._is_retryable_postgres_connect_error(exc):  # pylint: disable=protected-access
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    lowered = str(exc or "").strip().lower()
+    return any(marker in lowered for marker in _RETRYABLE_DATABASE_ERROR_MARKERS)
+
+
 def _compute_item_retry_delay_s(current_attempt: int) -> int:
     base_delay = max(int(settings.screening_item_retry_initial_delay_s), 1)
     max_delay = max(int(settings.screening_item_retry_max_delay_s), base_delay)
     # Exponential backoff capped by max delay.
     return min(base_delay * (2 ** max(int(current_attempt), 0)), max_delay)
+
+
+def _safe_add_audit_event(repository: JobRepository, **kwargs: Any) -> None:
+    try:
+        repository.add_audit_event(**kwargs)
+    except Exception as exc:  # noqa: BLE001
+        action = str(kwargs.get("action") or "").strip() or "UNKNOWN_AUDIT_ACTION"
+        entity_type = str(kwargs.get("entity_type") or "").strip() or "-"
+        entity_id = str(kwargs.get("entity_id") or "").strip() or "-"
+        logger.warning(
+            "audit event write skipped action=%s entity_type=%s entity_id=%s error=%s",
+            action,
+            entity_type,
+            entity_id,
+            exc,
+        )
 
 
 def _resolve_requester_name(message: ScreeningQueueMessage, repository: JobRepository) -> str | None:
@@ -717,7 +761,9 @@ def _process_received_message(
     if not receipt_handle:
         return
     message_id = str(raw.get("MessageId") or "").strip() or str(receipt_handle)
-    repository.add_audit_event(
+    delete_message = True
+    _safe_add_audit_event(
+        repository,
         action="SQS_MESSAGE_RECEIVED",
         entity_type="sqs_message",
         entity_id=message_id,
@@ -731,7 +777,8 @@ def _process_received_message(
         message = queue.decode(raw)
     except Exception as exc:  # noqa: BLE001
         logger.exception("invalid message payload: %s", exc)
-        repository.add_audit_event(
+        _safe_add_audit_event(
+            repository,
             action="SQS_MESSAGE_DECODE_FAILED",
             entity_type="sqs_message",
             entity_id=message_id,
@@ -745,12 +792,33 @@ def _process_received_message(
         queue.delete(str(receipt_handle))
         return
 
+    normalized_job_id = "" if message.job_id is None else str(message.job_id).strip()
+    if not normalized_job_id:
+        logger.error("invalid message payload: missing job_id")
+        _safe_add_audit_event(
+            repository,
+            action="SQS_MESSAGE_INVALID_JOB_ID",
+            entity_type="sqs_message",
+            entity_id=message_id,
+            details={
+                "queue_name": settings.aws_sqs_queue_name,
+                "receipt_handle": receipt_handle,
+                "body": raw.get("Body"),
+                "job_id": message.job_id,
+            },
+        )
+        queue.delete(str(receipt_handle))
+        return
+    if normalized_job_id != message.job_id:
+        message = message.model_copy(update={"job_id": normalized_job_id})
+
     resolved_requester_name = _resolve_requester_name(message, repository)
     if resolved_requester_name != str(message.user_name or "").strip():
         message = message.model_copy(update={"user_name": resolved_requester_name})
 
     if str(message.message_type or "").strip().upper() == "JOB_DISPATCH":
-        repository.add_audit_event(
+        _safe_add_audit_event(
+            repository,
             action="BATCH_DISPATCH_MESSAGE_PICKED",
             user_id=message.user_id,
             user_name=message.user_name,
@@ -773,7 +841,8 @@ def _process_received_message(
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("batch dispatch failed: %s", exc)
-            repository.add_audit_event(
+            _safe_add_audit_event(
+                repository,
                 action="BATCH_DISPATCH_FAILED",
                 user_id=message.user_id,
                 user_name=message.user_name,
@@ -799,9 +868,57 @@ def _process_received_message(
         next_props["businessUnit"] = safe_business_unit_code
         message = message.model_copy(update={"query": message.query.model_copy(update={"properties": next_props})})
     request_payload = message.query.model_dump(mode="json")
-    # Keep SCREEN_ITEM invisible long enough to avoid SQS redelivery while processing.
     screen_item_visibility_timeout_s = max(int(settings.screening_item_visibility_timeout_s), 300)
     try:
+        current_item_status = repository.get_job_item_status(message.job_id, message.item_key)
+    except Exception as exc:  # noqa: BLE001
+        if _is_retryable_database_failure(repository, exc):
+            delete_message = False
+            logger.warning(
+                "transient db read failure before screening job=%s key=%s correlation_id=%s; leaving message for retry: %s",
+                message.job_id,
+                message.item_key,
+                correlation_id,
+                exc,
+            )
+            return
+        raise
+
+    if current_item_status in {JobStatus.completed.value, JobStatus.failed.value}:
+        logger.info(
+            "screening item skipped job=%s key=%s existing_status=%s correlation_id=%s",
+            message.job_id,
+            message.item_key,
+            current_item_status,
+            correlation_id,
+        )
+        try:
+            _safe_add_audit_event(
+                repository,
+                action="SCREENING_ITEM_SKIPPED_ALREADY_TERMINAL",
+                user_id=message.user_id,
+                user_name=message.user_name,
+                entity_type="screening_job",
+                entity_id=message.job_id,
+                details={
+                    "item_key": message.item_key,
+                    "existing_status": current_item_status,
+                    "correlation_id": correlation_id,
+                },
+            )
+        except Exception as audit_exc:  # noqa: BLE001
+            logger.warning(
+                "failed to write terminal-item audit event job=%s key=%s correlation_id=%s: %s",
+                message.job_id,
+                message.item_key,
+                correlation_id,
+                audit_exc,
+            )
+        queue.delete(str(receipt_handle))
+        return
+
+    try:
+        # Keep SCREEN_ITEM invisible long enough to avoid SQS redelivery while processing.
         queue.change_visibility(receipt_handle, timeout_seconds=screen_item_visibility_timeout_s)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
@@ -876,6 +993,16 @@ def _process_received_message(
                     message.source_schedule_id,
                 )
     except Exception as exc:  # noqa: BLE001
+        if _is_retryable_database_failure(repository, exc):
+            delete_message = False
+            logger.warning(
+                "transient database failure while processing screening item job=%s key=%s correlation_id=%s; leaving message for retry: %s",
+                message.job_id,
+                message.item_key,
+                correlation_id,
+                exc,
+            )
+            return
         logger.exception(
             "screening failed for job=%s key=%s: %s",
             message.job_id,
@@ -922,7 +1049,8 @@ def _process_received_message(
                     correlation_id,
                     requeue_exc,
                 )
-                repository.add_audit_event(
+                _safe_add_audit_event(
+                    repository,
                     action="SCREENING_ITEM_REQUEUE_FAILED",
                     user_id=message.user_id,
                     user_name=message.user_name,
@@ -942,11 +1070,31 @@ def _process_received_message(
                         "requeue_error": str(requeue_exc),
                     },
                 )
-                repository.mark_item_failed(
-                    message.job_id,
-                    message.item_key,
-                    f"{exc}; retry requeue failed: {requeue_exc}",
-                )
+                try:
+                    repository.mark_item_failed(
+                        message.job_id,
+                        message.item_key,
+                        f"{exc}; retry requeue failed: {requeue_exc}",
+                    )
+                except Exception as mark_failed_exc:  # noqa: BLE001
+                    if _is_retryable_database_failure(repository, mark_failed_exc):
+                        delete_message = False
+                        logger.warning(
+                            "transient database failure while marking failed job=%s key=%s correlation_id=%s; leaving message for retry: %s",
+                            message.job_id,
+                            message.item_key,
+                            correlation_id,
+                            mark_failed_exc,
+                        )
+                        return
+                    delete_message = False
+                    logger.exception(
+                        "non-retryable database failure while marking failed job=%s key=%s correlation_id=%s; leaving message for retry",
+                        message.job_id,
+                        message.item_key,
+                        correlation_id,
+                    )
+                    return
                 if message.source_schedule_id is not None:
                     created_notifications = repository.maybe_publish_schedule_job_notification(
                         job_id=message.job_id,
@@ -960,7 +1108,8 @@ def _process_received_message(
                             job_id=message.job_id,
                         )
                 return
-            repository.add_audit_event(
+            _safe_add_audit_event(
+                repository,
                 action="SCREENING_ITEM_REQUEUED",
                 user_id=message.user_id,
                 user_name=message.user_name,
@@ -991,7 +1140,27 @@ def _process_received_message(
             )
             return
 
-        repository.mark_item_failed(message.job_id, message.item_key, str(exc))
+        try:
+            repository.mark_item_failed(message.job_id, message.item_key, str(exc))
+        except Exception as mark_failed_exc:  # noqa: BLE001
+            if _is_retryable_database_failure(repository, mark_failed_exc):
+                delete_message = False
+                logger.warning(
+                    "transient database failure while marking failed job=%s key=%s correlation_id=%s; leaving message for retry: %s",
+                    message.job_id,
+                    message.item_key,
+                    correlation_id,
+                    mark_failed_exc,
+                )
+                return
+            delete_message = False
+            logger.exception(
+                "non-retryable database failure while marking failed job=%s key=%s correlation_id=%s; leaving message for retry",
+                message.job_id,
+                message.item_key,
+                correlation_id,
+            )
+            return
         if message.source_schedule_id is not None:
             created_notifications = repository.maybe_publish_schedule_job_notification(
                 job_id=message.job_id,
@@ -1011,7 +1180,15 @@ def _process_received_message(
                     message.source_schedule_id,
                 )
     finally:
-        queue.delete(str(receipt_handle))
+        if delete_message:
+            queue.delete(str(receipt_handle))
+        else:
+            logger.info(
+                "screening item message retained for retry job=%s key=%s message_id=%s",
+                message.job_id if 'message' in locals() else "-",
+                message.item_key if 'message' in locals() else "-",
+                message_id,
+            )
 
 
 def run() -> None:

@@ -1,0 +1,56 @@
+{
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net",
+  "users_configured": 1,
+  "requests_per_user_configured": 1,
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_30.json",
+  "preferred_business_unit_code": "US_PRU_OPES",
+  "started_at": "2026-05-13T22:39:54.844Z",
+  "finished_at": "2026-05-13T22:42:01.092Z",
+  "total_users": 1,
+  "users_all_success": 0,
+  "users_with_any_failure": 1,
+  "total_requests_expected": 1,
+  "total_requests_attempted": 1,
+  "total_requests_success": 0,
+  "total_requests_failed": 1,
+  "response_time_ms": {
+    "min": 0,
+    "p50": 0,
+    "p90": 0,
+    "max": 0,
+    "avg": 0
+  },
+  "http_status_counts": {
+    "null": 1
+  },
+  "request_error_boxes": 0,
+  "request_page_errors": 1,
+  "users_with_login_or_fatal_error": 0,
+  "users": [
+    {
+      "username": "perf_load_user_01",
+      "started_at": "2026-05-13T22:39:54.925Z",
+      "finished_at": "2026-05-13T22:42:01.051Z",
+      "ok": false,
+      "requests": [
+        {
+          "sequence": 1,
+          "ok": false,
+          "batch_name": null,
+          "file_path": null,
+          "business_unit_code": null,
+          "http_status": null,
+          "response_ms": null,
+          "response_body": null,
+          "error_box": null,
+          "page_error": "TimeoutError: page.waitForResponse: Timeout 120000ms exceeded while waiting for event \"response\"",
+          "started_at": "2026-05-13T22:40:00.646Z",
+          "finished_at": "2026-05-13T22:42:00.803Z"
+        }
+      ],
+      "final_url": "https://d2ibkkc5zn6dnw.cloudfront.net/screening",
+      "page_error": null,
+      "since_global_start_ms": 126207
+    }
+  ]
+}

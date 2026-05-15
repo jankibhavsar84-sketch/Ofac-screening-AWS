@@ -184,6 +184,7 @@ def _is_technical_identifier(value: str | None) -> bool:
 
 
 _TRANSIENT_POSTGRES_CONNECT_MARKERS: tuple[str, ...] = (
+    "couldn't get a connection after",
     "connection timeout expired",
     "could not connect",
     "server closed the connection unexpectedly",
@@ -1821,144 +1822,84 @@ class JobRepository:
 
     def list_daily_schedule_batch_runs(self, limit: int = 200) -> list[dict[str, Any]]:
         safe_limit = max(min(int(limit), 1000), 1)
-        if self.is_postgres:
-            with self._connect() as conn:
-                if self._postgres_materialized_view_exists(conn, "mv_daily_schedule_batch_runs"):
-                    rows = self._execute(
-                        conn,
-                        """
-                        SELECT
-                          job_id,
-                          schedule_id,
-                          job_status,
-                          created_at,
-                          updated_at,
-                          total_items,
-                          source_upload_id,
-                          user_id,
-                          user_name,
-                          batch_name,
-                          schedule_frequency,
-                          source_file_name,
-                          completed_items,
-                          failed_items,
-                          pending_items,
-                          processing_items
-                        FROM mv_daily_schedule_batch_runs
-                        ORDER BY created_at DESC
-                        LIMIT ?
-                        """,
-                        (safe_limit,),
-                    ).fetchall()
-                else:
-                    grouped_job_key = "job_id"
-                    grouped_join = "js.job_id = j.job_id"
-                    metadata_join = "jm.job_id = j.job_id"
-                    upload_join = "bu.upload_id = j.source_upload_id"
-                    rows = self._execute(
-                        conn,
-                        f"""
-                        SELECT
-                          j.job_id,
-                          COALESCE(jm.daily_schedule_id, j.source_schedule_id) AS schedule_id,
-                          UPPER(COALESCE(j.status, '')) AS job_status,
-                          j.created_at,
-                          j.updated_at,
-                          j.total_items,
-                          j.source_upload_id,
-                          au.old_id AS user_id,
-                          COALESCE(au.name, au.old_id) AS user_name,
-                          COALESCE(
-                            NULLIF(jm.batch_name, ''),
-                            NULLIF(ds.batch_name, ''),
-                            NULLIF(jm.file_name, ''),
-                            NULLIF(bu.file_name, ''),
-                            'Scheduled Batch'
-                          ) AS batch_name,
-                          NULLIF(COALESCE(NULLIF(jm.schedule_frequency, ''), NULLIF(ds.schedule_frequency, '')), '') AS schedule_frequency,
-                          NULLIF(COALESCE(NULLIF(bu.file_name, ''), NULLIF(ds.source_file_name, ''), NULLIF(jm.file_name, '')), '') AS source_file_name,
-                          COALESCE(js.completed_items, 0) AS completed_items,
-                          COALESCE(js.failed_items, 0) AS failed_items,
-                          COALESCE(js.pending_items, 0) AS pending_items,
-                          COALESCE(js.processing_items, 0) AS processing_items
-                        FROM jobs j
-                        LEFT JOIN app_users au ON au.user_id = j.user_ref_id
-                        LEFT JOIN job_metadata jm ON {metadata_join}
-                        LEFT JOIN daily_schedules ds
-                          ON ds.schedule_id = COALESCE(jm.daily_schedule_id, j.source_schedule_id)
-                        LEFT JOIN batch_file_uploads bu ON {upload_join}
-                        LEFT JOIN (
-                          SELECT
-                            {grouped_job_key},
-                            SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_items,
-                            SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS failed_items,
-                            SUM(CASE WHEN status = 'QUEUED' THEN 1 ELSE 0 END) AS pending_items,
-                            SUM(CASE WHEN status = 'PROCESSING' THEN 1 ELSE 0 END) AS processing_items
-                          FROM job_items
-                          GROUP BY {grouped_job_key}
-                        ) js ON {grouped_join}
-                        WHERE COALESCE(jm.daily_schedule_id, j.source_schedule_id) IS NOT NULL
-                          AND UPPER(COALESCE(jm.mode, 'BATCH')) = 'BATCH'
-                        ORDER BY j.created_at DESC
-                        LIMIT ?
-                        """,
-                        (safe_limit,),
-                    ).fetchall()
-        else:
-            with self._connect() as conn:
-                grouped_job_key = "job_id"
-                grouped_join = "js.job_id = j.job_id"
-                metadata_join = "jm.job_id = j.job_id"
-                upload_join = "bu.upload_id = j.source_upload_id"
-                rows = self._execute(
-                    conn,
-                    f"""
-                    SELECT
-                      j.job_id,
-                      COALESCE(jm.daily_schedule_id, j.source_schedule_id) AS schedule_id,
-                      UPPER(COALESCE(j.status, '')) AS job_status,
-                      j.created_at,
-                      j.updated_at,
-                      j.total_items,
-                      j.source_upload_id,
-                      au.old_id AS user_id,
-                      COALESCE(au.name, au.old_id) AS user_name,
-                      COALESCE(
-                        NULLIF(jm.batch_name, ''),
-                        NULLIF(ds.batch_name, ''),
-                        NULLIF(jm.file_name, ''),
-                        NULLIF(bu.file_name, ''),
-                        'Scheduled Batch'
-                      ) AS batch_name,
-                      NULLIF(COALESCE(NULLIF(jm.schedule_frequency, ''), NULLIF(ds.schedule_frequency, '')), '') AS schedule_frequency,
-                      NULLIF(COALESCE(NULLIF(bu.file_name, ''), NULLIF(ds.source_file_name, ''), NULLIF(jm.file_name, '')), '') AS source_file_name,
-                      COALESCE(js.completed_items, 0) AS completed_items,
-                      COALESCE(js.failed_items, 0) AS failed_items,
-                      COALESCE(js.pending_items, 0) AS pending_items,
-                      COALESCE(js.processing_items, 0) AS processing_items
-                    FROM jobs j
-                    LEFT JOIN app_users au ON au.user_id = j.user_ref_id
-                    LEFT JOIN job_metadata jm ON {metadata_join}
-                    LEFT JOIN daily_schedules ds
-                      ON ds.schedule_id = COALESCE(jm.daily_schedule_id, j.source_schedule_id)
-                    LEFT JOIN batch_file_uploads bu ON {upload_join}
-                    LEFT JOIN (
-                      SELECT
-                        {grouped_job_key},
-                        SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_items,
-                        SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS failed_items,
-                        SUM(CASE WHEN status = 'QUEUED' THEN 1 ELSE 0 END) AS pending_items,
-                        SUM(CASE WHEN status = 'PROCESSING' THEN 1 ELSE 0 END) AS processing_items
-                      FROM job_items
-                      GROUP BY {grouped_job_key}
-                    ) js ON {grouped_join}
-                    WHERE COALESCE(jm.daily_schedule_id, j.source_schedule_id) IS NOT NULL
-                      AND UPPER(COALESCE(jm.mode, 'BATCH')) = 'BATCH'
-                    ORDER BY j.created_at DESC
-                    LIMIT ?
-                    """,
-                    (safe_limit,),
-                ).fetchall()
+        with self._connect() as conn:
+            grouped_job_key = "job_id"
+            grouped_join = "js.job_id = j.job_id"
+            metadata_join = "jm.job_id = j.job_id"
+            upload_join = "bu.upload_id = j.source_upload_id"
+            rows = self._execute(
+                conn,
+                f"""
+                SELECT
+                  j.job_id,
+                  COALESCE(jm.daily_schedule_id, j.source_schedule_id) AS schedule_id,
+                  UPPER(COALESCE(j.status, '')) AS job_status,
+                  j.created_at,
+                  j.updated_at,
+                  CASE
+                    WHEN COALESCE(j.total_items, 0) > 0 THEN COALESCE(j.total_items, 0)
+                    WHEN (
+                      COALESCE(js.completed_items, 0) +
+                      COALESCE(js.failed_items, 0) +
+                      COALESCE(js.pending_items, 0) +
+                      COALESCE(js.processing_items, 0)
+                    ) > 0 THEN (
+                      COALESCE(js.completed_items, 0) +
+                      COALESCE(js.failed_items, 0) +
+                      COALESCE(js.pending_items, 0) +
+                      COALESCE(js.processing_items, 0)
+                    )
+                    WHEN COALESCE(bu.record_count, 0) > 0 THEN COALESCE(bu.record_count, 0)
+                    ELSE 0
+                  END AS total_items,
+                  j.source_upload_id,
+                  au.old_id AS user_id,
+                  COALESCE(au.name, au.old_id) AS user_name,
+                  COALESCE(
+                    NULLIF(jm.batch_name, ''),
+                    NULLIF(ds.batch_name, ''),
+                    NULLIF(jm.file_name, ''),
+                    NULLIF(bu.file_name, ''),
+                    'Scheduled Batch'
+                  ) AS batch_name,
+                  NULLIF(COALESCE(NULLIF(jm.schedule_frequency, ''), NULLIF(ds.schedule_frequency, '')), '') AS schedule_frequency,
+                  NULLIF(COALESCE(NULLIF(bu.file_name, ''), NULLIF(ds.source_file_name, ''), NULLIF(jm.file_name, '')), '') AS source_file_name,
+                  COALESCE(js.completed_items, 0) AS completed_items,
+                  COALESCE(js.failed_items, 0) AS failed_items,
+                  COALESCE(js.pending_items, 0) AS pending_items,
+                  COALESCE(js.processing_items, 0) AS processing_items
+                FROM jobs j
+                LEFT JOIN app_users au ON au.user_id = j.user_ref_id
+                LEFT JOIN job_metadata jm ON {metadata_join}
+                LEFT JOIN daily_schedules ds
+                  ON ds.schedule_id = COALESCE(jm.daily_schedule_id, j.source_schedule_id)
+                LEFT JOIN batch_file_uploads bu ON {upload_join}
+                LEFT JOIN (
+                  SELECT
+                    {grouped_job_key},
+                    SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_items,
+                    SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS failed_items,
+                    SUM(CASE WHEN status = 'QUEUED' THEN 1 ELSE 0 END) AS pending_items,
+                    SUM(CASE WHEN status = 'PROCESSING' THEN 1 ELSE 0 END) AS processing_items
+                  FROM job_items
+                  GROUP BY {grouped_job_key}
+                ) js ON {grouped_join}
+                WHERE COALESCE(jm.daily_schedule_id, j.source_schedule_id) IS NOT NULL
+                  AND UPPER(COALESCE(jm.mode, 'BATCH')) = 'BATCH'
+                  AND NOT (
+                    COALESCE(jm.daily_screening, FALSE) = TRUE
+                    AND jm.deferred_until IS NOT NULL
+                    AND COALESCE(j.total_items, 0) = 0
+                    AND COALESCE(js.completed_items, 0) = 0
+                    AND COALESCE(js.failed_items, 0) = 0
+                    AND COALESCE(js.pending_items, 0) = 0
+                    AND COALESCE(js.processing_items, 0) = 0
+                  )
+                ORDER BY j.created_at DESC
+                LIMIT ?
+                """,
+                (safe_limit,),
+            ).fetchall()
 
         out: list[dict[str, Any]] = []
         for row in rows:
@@ -3174,37 +3115,73 @@ class JobRepository:
         }
 
     def _refresh_job_status(self, job_id: str) -> None:
-        snapshot = self.get_job_snapshot(job_id)
-        if not snapshot:
+        safe_job_id = (job_id or "").strip()
+        if not safe_job_id:
             return
 
-        pending = snapshot["counts"]["pending"]
-        processing = snapshot["counts"]["processing"]
-        completed = snapshot["counts"]["completed"]
-        failed = snapshot["counts"]["failed"]
-        total_items = int(snapshot.get("total_items") or 0)
-
-        if pending > 0 or processing > 0:
-            status = JobStatus.processing.value
-        elif total_items == 0:
-            status = JobStatus.completed.value
-        elif completed > 0:
-            status = JobStatus.completed.value
-        elif failed > 0:
-            status = JobStatus.failed.value
-        else:
-            status = JobStatus.queued.value
-
-        ts = now_iso()
         with self._connect() as conn:
+            row = self._execute(
+                conn,
+                """
+                SELECT
+                  COALESCE(j.total_items, 0) AS total_items,
+                  COALESCE(js.pending_items, 0) AS pending_items,
+                  COALESCE(js.processing_items, 0) AS processing_items,
+                  COALESCE(js.completed_items, 0) AS completed_items,
+                  COALESCE(js.failed_items, 0) AS failed_items
+                FROM jobs j
+                LEFT JOIN (
+                  SELECT
+                    ji.job_id,
+                    SUM(CASE WHEN ji.status = ? THEN 1 ELSE 0 END) AS pending_items,
+                    SUM(CASE WHEN ji.status = ? THEN 1 ELSE 0 END) AS processing_items,
+                    SUM(CASE WHEN ji.status = ? THEN 1 ELSE 0 END) AS completed_items,
+                    SUM(CASE WHEN ji.status = ? THEN 1 ELSE 0 END) AS failed_items
+                  FROM job_items ji
+                  WHERE ji.job_id = ?
+                  GROUP BY ji.job_id
+                ) js
+                  ON js.job_id = j.job_id
+                WHERE j.job_id = ?
+                """,
+                (
+                    JobStatus.queued.value,
+                    JobStatus.processing.value,
+                    JobStatus.completed.value,
+                    JobStatus.failed.value,
+                    safe_job_id,
+                    safe_job_id,
+                ),
+            ).fetchone()
+            if not row:
+                return
+
+            pending = int(row["pending_items"] or 0)
+            processing = int(row["processing_items"] or 0)
+            completed = int(row["completed_items"] or 0)
+            failed = int(row["failed_items"] or 0)
+            total_items = int(row["total_items"] or 0)
+
+            if pending > 0 or processing > 0:
+                status = JobStatus.processing.value
+            elif total_items == 0:
+                status = JobStatus.completed.value
+            elif completed > 0:
+                status = JobStatus.completed.value
+            elif failed > 0:
+                status = JobStatus.failed.value
+            else:
+                status = JobStatus.queued.value
+
+            ts = now_iso()
             self._execute(
                 conn,
                 f"UPDATE jobs SET status = ?, updated_at = ?{', updated_at_ts = ?' if self._jobs_has_updated_at_ts else ''} WHERE job_id = ?",
                 (
                     status,
                     ts,
-                    *( [ts] if self._jobs_has_updated_at_ts else [] ),
-                    job_id,
+                    *([ts] if self._jobs_has_updated_at_ts else []),
+                    safe_job_id,
                 ),
             )
 
@@ -3968,14 +3945,16 @@ class JobRepository:
                 details={"error": (error_text or "")[:2000]},
             )
 
-    def add_job_items_bulk(self, job_id: str, items: list[tuple[str, dict[str, Any]]]) -> None:
+    def add_job_items_bulk(self, job_id: str, items: list[tuple[str, dict[str, Any]]]) -> set[str]:
         safe_job_id = (job_id or "").strip()
         if not safe_job_id or not items:
-            return
+            return set()
         ts = now_iso()
         extra_col = ", updated_at_ts" if self._job_items_has_updated_at_ts else ""
         extra_placeholder_pg = ", %s" if self._job_items_has_updated_at_ts else ""
         extra_placeholder_sqlite = ", ?" if self._job_items_has_updated_at_ts else ""
+        candidate_item_keys = [(item_key or "").strip() for item_key, _ in items if (item_key or "").strip()]
+        existing_before = self.list_existing_job_item_keys(safe_job_id, candidate_item_keys)
         with self._connect() as conn:
             _ = conn
             job_columns = "job_id"
@@ -4056,10 +4035,66 @@ class JobRepository:
                     if (item_key or "").strip()
                 ]
             if not params:
-                return
+                return set()
             cur = conn.cursor()
             cur.executemany(self._sql(query), params)
         self._maybe_refresh_postgres_result_materialized_views()
+        existing_after = self.list_existing_job_item_keys(safe_job_id, candidate_item_keys)
+        return existing_after.difference(existing_before)
+
+    def list_existing_job_item_keys(self, job_id: str, item_keys: list[str]) -> set[str]:
+        safe_job_id = (job_id or "").strip()
+        normalized_item_keys = [str(item_key or "").strip() for item_key in item_keys if str(item_key or "").strip()]
+        if not safe_job_id or not normalized_item_keys:
+            return set()
+        normalized_item_keys = list(dict.fromkeys(normalized_item_keys))
+
+        with self._connect() as conn:
+            if self.is_postgres:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT item_key
+                    FROM job_items
+                    WHERE job_id = ? AND item_key = ANY(?)
+                    """,
+                    (safe_job_id, normalized_item_keys),
+                ).fetchall()
+            else:
+                placeholders = ", ".join("?" for _ in normalized_item_keys)
+                rows = self._execute(
+                    conn,
+                    f"""
+                    SELECT item_key
+                    FROM job_items
+                    WHERE job_id = ? AND item_key IN ({placeholders})
+                    """,
+                    tuple([safe_job_id, *normalized_item_keys]),
+                ).fetchall()
+
+        return {str(row["item_key"] or "").strip() for row in rows if str(row["item_key"] or "").strip()}
+
+    def get_job_item_status(self, job_id: str, item_key: str) -> str | None:
+        safe_job_id = (job_id or "").strip()
+        safe_item_key = (item_key or "").strip()
+        if not safe_job_id or not safe_item_key:
+            return None
+
+        with self._connect() as conn:
+            row = self._execute(
+                conn,
+                """
+                SELECT status
+                FROM job_items
+                WHERE job_id = ? AND item_key = ?
+                LIMIT 1
+                """,
+                (safe_job_id, safe_item_key),
+            ).fetchone()
+        if not row:
+            return None
+        safe_status = str(row["status"] or "").strip().upper()
+        return safe_status or None
 
     def attach_upload_to_job(self, upload_id: str, job_id: str) -> bool:
         with self._connect() as conn:

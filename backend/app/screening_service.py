@@ -1392,10 +1392,22 @@ class ScreeningService:
         processing_items: int,
     ) -> str:
         safe_job_status = str(job_status or "").strip().upper()
-        if pending_items > 0 or processing_items > 0:
+        if processing_items > 0:
+            return "PROCESSING"
+        if pending_items > 0:
+            if safe_job_status == JobStatus.queued.value and completed_items <= 0 and failed_items <= 0:
+                return "QUEUED"
             return "PROCESSING"
         if total_items <= 0:
-            return "COMPLETED" if safe_job_status == JobStatus.completed.value else safe_job_status or "QUEUED"
+            if safe_job_status == JobStatus.completed.value:
+                return "COMPLETED"
+            if safe_job_status == JobStatus.failed.value:
+                return "FAILED"
+            if safe_job_status == JobStatus.processing.value:
+                return "PROCESSING"
+            if safe_job_status == JobStatus.queued.value:
+                return "QUEUED"
+            return safe_job_status or "QUEUED"
         if failed_items > 0 and completed_items <= 0:
             return "FAILED"
         if failed_items > 0 and completed_items > 0:

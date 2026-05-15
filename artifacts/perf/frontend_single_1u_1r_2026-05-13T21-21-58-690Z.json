@@ -1,0 +1,38 @@
+{
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net",
+  "users_configured": 1,
+  "requests_per_user_configured": 1,
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_30.json",
+  "started_at": "2026-05-13T21:21:58.759Z",
+  "finished_at": "2026-05-13T21:28:04.561Z",
+  "total_users": 1,
+  "users_all_success": 0,
+  "users_with_any_failure": 1,
+  "total_requests_expected": 1,
+  "total_requests_attempted": 0,
+  "total_requests_success": 0,
+  "total_requests_failed": 0,
+  "response_time_ms": {
+    "min": 0,
+    "p50": 0,
+    "p90": 0,
+    "max": 0,
+    "avg": 0
+  },
+  "http_status_counts": {},
+  "request_error_boxes": 0,
+  "request_page_errors": 0,
+  "users_with_login_or_fatal_error": 1,
+  "users": [
+    {
+      "username": "perf_load_user_01",
+      "started_at": "2026-05-13T21:21:58.844Z",
+      "finished_at": "2026-05-13T21:28:04.510Z",
+      "ok": false,
+      "requests": [],
+      "final_url": "https://ofac-screening-981450247094.auth.us-east-2.amazoncognito.com/login?client_id=7j2irsbvt4qthf356jebnftbmn&redirect_uri=https%3A%2F%2Fd2ibkkc5zn6dnw.cloudfront.net%2F&response_type=code&scope=openid+profile+email&state=522aa68d05f547838785de35128ddf39&code_challenge=87R4C_NjilJt8Vki2HB_fQQIUB9PDK9bo5KoiN-eEWg&code_challenge_method=S256",
+      "page_error": "TimeoutError: page.waitForURL: Timeout 120000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"domcontentloaded\"\n============================================================",
+      "since_global_start_ms": 365751
+    }
+  ]
+}

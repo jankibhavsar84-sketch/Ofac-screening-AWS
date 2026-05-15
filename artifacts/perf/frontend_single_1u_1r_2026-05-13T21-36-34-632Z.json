@@ -1,0 +1,90 @@
+{
+  "base_url": "https://d2ibkkc5zn6dnw.cloudfront.net",
+  "users_configured": 1,
+  "requests_per_user_configured": 1,
+  "credentials_file": "C:\\software\\ofac-screening-aws\\artifacts\\perf\\aws_perf_users_30.json",
+  "started_at": "2026-05-13T21:36:34.722Z",
+  "finished_at": "2026-05-13T21:36:45.016Z",
+  "total_users": 1,
+  "users_all_success": 1,
+  "users_with_any_failure": 0,
+  "total_requests_expected": 1,
+  "total_requests_attempted": 1,
+  "total_requests_success": 1,
+  "total_requests_failed": 0,
+  "response_time_ms": {
+    "min": 7175,
+    "p50": 7175,
+    "p90": 7175,
+    "max": 7175,
+    "avg": 7175
+  },
+  "http_status_counts": {
+    "200": 1
+  },
+  "request_error_boxes": 0,
+  "request_page_errors": 0,
+  "users_with_login_or_fatal_error": 0,
+  "users": [
+    {
+      "username": "perf_load_user_01",
+      "started_at": "2026-05-13T21:36:34.794Z",
+      "finished_at": "2026-05-13T21:36:44.962Z",
+      "ok": true,
+      "requests": [
+        {
+          "sequence": 1,
+          "ok": true,
+          "business_unit_code": "US_PRU_OPES",
+          "http_status": 200,
+          "response_ms": 7175,
+          "response_body": {
+            "responses": {
+              "single_1": {
+                "results": [],
+                "total": {
+                  "value": 0,
+                  "relation": "eq"
+                },
+                "query": {
+                  "schema": "Person",
+                  "properties": {
+                    "name": [
+                      "PerfU01 Req01_1778708197555"
+                    ],
+                    "firstName": [
+                      "PerfU01"
+                    ],
+                    "lastName": [
+                      "Req01_1778708197555"
+                    ],
+                    "fullName": [
+                      "PerfU01 Req01_1778708197555"
+                    ],
+                    "businessUnit": "US_PRU_OPES",
+                    "partyKey": "AMLP_OD_9367D8D479F84A4CA80B20E31D8A5768_SAN-US",
+                    "partyKeysByScreeningType": {
+                      "SAN-US": "AMLP_OD_9367D8D479F84A4CA80B20E31D8A5768_SAN-US"
+                    }
+                  }
+                },
+                "status": 500,
+                "engine_message": null,
+                "error_text": "prudential entity-screenings failed (400) at https://us-dev.apis.prudential.com/financial-governance/sanctions-screening/v1/entity-screenings: lastName contains invalid characters (32)",
+                "responses_by_screening_type": null
+              }
+            },
+            "limit": 5
+          },
+          "error_box": null,
+          "page_error": null,
+          "started_at": "2026-05-13T21:36:37.410Z",
+          "finished_at": "2026-05-13T21:36:44.740Z"
+        }
+      ],
+      "final_url": "https://d2ibkkc5zn6dnw.cloudfront.net/screening",
+      "page_error": null,
+      "since_global_start_ms": 10240
+    }
+  ]
+}

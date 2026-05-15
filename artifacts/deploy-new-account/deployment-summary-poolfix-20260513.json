@@ -1,0 +1,13 @@
+{
+    "deployed_at_utc":  "2026-05-13T19:18:50.2502425Z",
+    "backend_taskdef":  "ofac-screening-backend:42",
+    "worker_taskdef":  "ofac-screening-worker:29",
+    "image_tag":  "20260513151159",
+    "cluster":  "Screening",
+    "backend_service":  "ofac-screening-backend-svc",
+    "worker_service":  "ofac-screening-worker-svc",
+    "verification":  {
+                         "pool_timeout_after_2026_05_13T19_17_00Z":  0,
+                         "worker_pool_timeout_log_hits_after_19_17":  0
+                     }
+}
