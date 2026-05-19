@@ -27,8 +27,8 @@ from .models import (
     BusinessUnit,
     BusinessUnitUpdateRequest,
     BusinessUnitUpsertRequest,
-    DailyScheduleBatchRunStatus,
-    DailyScheduleInfo,
+    DailyScheduleBatchRunStatusPage,
+    DailyScheduleInfoPage,
     EntityMatchResponse,
     JobStatus,
     MatchJobAccepted,
@@ -783,21 +783,24 @@ def get_screening_job(
     return progress
 
 
-@app.get("/api/v1/screenings/daily-schedules", response_model=list[DailyScheduleInfo])
+@app.get("/api/v1/screenings/daily-schedules", response_model=DailyScheduleInfoPage)
 def list_daily_schedules(
+    page: int = Query(default=1, ge=1),
     _: AuthPrincipal = Depends(require_any_scope("screening.read")),
     svc: ScreeningService = Depends(get_service),
-) -> list[DailyScheduleInfo]:
-    return svc.list_daily_schedules()
+) -> DailyScheduleInfoPage:
+    # Enforce fixed-size paging for configured daily schedules to keep payloads bounded.
+    return svc.list_daily_schedules(page=page, page_size=10)
 
 
-@app.get("/api/v1/screenings/daily-schedules/batch-runs", response_model=list[DailyScheduleBatchRunStatus])
+@app.get("/api/v1/screenings/daily-schedules/batch-runs", response_model=DailyScheduleBatchRunStatusPage)
 def list_daily_schedule_batch_runs(
-    limit: int = Query(default=200, ge=1, le=1000),
+    page: int = Query(default=1, ge=1),
     _: AuthPrincipal = Depends(require_any_scope("screening.admin")),
     svc: ScreeningService = Depends(get_service),
-) -> list[DailyScheduleBatchRunStatus]:
-    return svc.list_daily_schedule_batch_runs(limit=limit)
+) -> DailyScheduleBatchRunStatusPage:
+    # Enforce fixed-size paging for admin batch-run status to keep payloads bounded.
+    return svc.list_daily_schedule_batch_runs(page=page, page_size=50)
 
 
 @app.get("/api/v1/business-units", response_model=list[BusinessUnit])
@@ -933,10 +936,17 @@ def get_screening_summary(
 
 @app.get("/api/v1/screenings/types", response_model=list[ScreeningTypeOption])
 def list_screening_types(
-    _: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    business_unit_code: str = Query(default=""),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
     svc: ScreeningService = Depends(get_service),
 ) -> list[ScreeningTypeOption]:
-    return svc.list_screening_type_options()
+    try:
+        return svc.list_screening_type_options(
+            user_id=principal.user_id,
+            business_unit_code=_normalize_business_unit_code(business_unit_code) or None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/v1/screenings/results", response_model=list[dict[str, Any]])

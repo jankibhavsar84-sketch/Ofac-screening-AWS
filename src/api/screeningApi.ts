@@ -65,9 +65,17 @@ export type DailySchedule = {
   source_upload_id?: string | null;
 };
 
+export type DailySchedulePage = {
+  items: DailySchedule[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
 export type DailyScheduleBatchRunStatus = {
   job_id: string;
-  schedule_id: string;
+  schedule_id: number;
   batch_name: string;
   schedule_frequency?: string | null;
   source_file_name?: string | null;
@@ -83,6 +91,14 @@ export type DailyScheduleBatchRunStatus = {
   updated_at: string;
   user_id?: string | null;
   user_name?: string | null;
+};
+
+export type DailyScheduleBatchRunStatusPage = {
+  items: DailyScheduleBatchRunStatus[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 };
 
 export type ScheduleSubscription = {
@@ -502,8 +518,10 @@ export async function listAuditEventPage(limit = 100, userId?: string, offset = 
   return (await resp.json()) as AuditEventPage;
 }
 
-export async function listDailySchedules(): Promise<DailySchedule[]> {
+export async function listDailySchedules(page = 1): Promise<DailySchedulePage> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
+  const url = new URL(`${baseUrl}/screenings/daily-schedules`, window.location.origin);
+  url.searchParams.set("page", String(Math.max(1, Math.floor(page))));
   const transientStatuses = new Set([429, 500, 502, 503, 504]);
   const maxAttempts = 3;
 
@@ -511,13 +529,20 @@ export async function listDailySchedules(): Promise<DailySchedule[]> {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 15000);
     try {
-      const resp = await fetch(`${baseUrl}/screenings/daily-schedules`, {
+      const resp = await fetch(url.toString(), {
         headers: withAuthHeaders(),
         cache: "no-store",
         signal: controller.signal,
       });
       if (resp.ok) {
-        return (await resp.json()) as DailySchedule[];
+        const parsed = (await resp.json()) as Partial<DailySchedulePage>;
+        return {
+          items: Array.isArray(parsed?.items) ? (parsed.items as DailySchedule[]) : [],
+          total: Number(parsed?.total || 0),
+          page: Number(parsed?.page || 1),
+          page_size: Number(parsed?.page_size || 10),
+          total_pages: Number(parsed?.total_pages || 1),
+        };
       }
 
       const parsedError = await parseApiError(resp);
@@ -542,10 +567,10 @@ export async function listDailySchedules(): Promise<DailySchedule[]> {
   throw new Error("Failed to load daily schedules: Request failed");
 }
 
-export async function listDailyScheduleBatchRuns(limit = 200): Promise<DailyScheduleBatchRunStatus[]> {
+export async function listDailyScheduleBatchRuns(page = 1): Promise<DailyScheduleBatchRunStatusPage> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
   const url = new URL(`${baseUrl}/screenings/daily-schedules/batch-runs`, window.location.origin);
-  url.searchParams.set("limit", String(Math.max(1, Math.min(limit, 1000))));
+  url.searchParams.set("page", String(Math.max(1, Math.floor(page))));
 
   const resp = await fetch(url.toString(), {
     headers: withAuthHeaders(),
@@ -554,8 +579,14 @@ export async function listDailyScheduleBatchRuns(limit = 200): Promise<DailySche
   if (!resp.ok) {
     throw new Error(`Failed to load daily schedule batch runs: ${await parseApiError(resp)}`);
   }
-  const parsed = (await resp.json()) as unknown;
-  return Array.isArray(parsed) ? (parsed as DailyScheduleBatchRunStatus[]) : [];
+  const parsed = (await resp.json()) as Partial<DailyScheduleBatchRunStatusPage>;
+  return {
+    items: Array.isArray(parsed?.items) ? (parsed.items as DailyScheduleBatchRunStatus[]) : [],
+    total: Number(parsed?.total || 0),
+    page: Number(parsed?.page || 1),
+    page_size: Number(parsed?.page_size || 50),
+    total_pages: Number(parsed?.total_pages || 1),
+  };
 }
 
 export async function listMyBusinessUnits(): Promise<BusinessUnit[]> {
@@ -801,9 +832,12 @@ export async function getScreeningSummary(): Promise<ScreeningSummaryCounts> {
   };
 }
 
-export async function listScreeningTypes(): Promise<ScreeningTypeOption[]> {
+export async function listScreeningTypes(businessUnitCode?: string): Promise<ScreeningTypeOption[]> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));
   const url = new URL(`${baseUrl}/screenings/types`, window.location.origin);
+  if (businessUnitCode && businessUnitCode.trim()) {
+    url.searchParams.set("business_unit_code", businessUnitCode.trim());
+  }
   const resp = await fetch(url.toString(), {
     headers: withAuthHeaders(),
     cache: "no-store",

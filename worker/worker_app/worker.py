@@ -108,7 +108,7 @@ def _build_worker_health_handler(health_state: WorkerHealthState) -> type[BaseHT
                 },
             )
 
-        def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
+        def log_message(self, format: str, *args: Any) -> None:  # pylint: disable=redefined-builtin,arguments-differ
             # Keep worker logs focused on screening events.
             return
 

@@ -14,6 +14,8 @@ CREATE INDEX idx_audit_events_event_id ON public.audit_events USING btree (event
 CREATE INDEX idx_audit_events_user_ref_event ON public.audit_events USING btree (user_ref_id, event_id DESC);
 CREATE INDEX idx_batch_file_uploads_job_seq_id ON public.batch_file_uploads USING btree (job_seq_id);
 CREATE INDEX idx_batch_file_uploads_user_ref ON public.batch_file_uploads USING btree (user_ref_id, created_at DESC, upload_id);
+CREATE INDEX idx_business_unit_screening_types_bu_active ON public.business_unit_screening_types USING btree (business_unit_code, is_active, "Screening_Type");
+CREATE INDEX idx_business_unit_screening_types_screening_active ON public.business_unit_screening_types USING btree ("Screening_Type", is_active, business_unit_code);
 CREATE INDEX idx_batch_schedule_active_created ON public."Batch_Schedule" USING btree (is_active, created_at DESC, schedule_id);
 CREATE INDEX idx_batch_schedule_next_run ON public."Batch_Schedule" USING btree (next_run_at);
 CREATE INDEX idx_batch_schedule_user_ref ON public."Batch_Schedule" USING btree (user_ref_id, created_at DESC, schedule_id);

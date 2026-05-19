@@ -16,8 +16,10 @@ from .models import (
     AuditEvent,
     AuditEventPage,
     BusinessUnit,
+    DailyScheduleBatchRunStatusPage,
     DailyScheduleBatchRunStatus,
     DailyScheduleInfo,
+    DailyScheduleInfoPage,
     EntityMatchResponse,
     EntityMatches,
     JobStatus,
@@ -54,8 +56,15 @@ class ScreeningService:
         self.queue = queue
         self.notifier = notifier
 
-    def _normalize_requested_screening_types(self, screening_types: list[str] | None) -> list[str]:
-        normalized_types, unresolved_types = self.repository.normalize_active_screening_types(screening_types)
+    def _normalize_requested_screening_types(
+        self,
+        screening_types: list[str] | None,
+        business_unit_code: str | None = None,
+    ) -> list[str]:
+        normalized_types, unresolved_types = self.repository.normalize_active_screening_types(
+            screening_types,
+            business_unit_code=business_unit_code,
+        )
         if unresolved_types and not normalized_types:
             unresolved = ", ".join(unresolved_types)
             raise ValueError(f"Unsupported or inactive screening type(s): {unresolved}")
@@ -119,11 +128,14 @@ class ScreeningService:
         if payload.daily_screening and not (payload.batch_name and payload.batch_name.strip()):
             raise ValueError("batch_name is required when daily_screening is enabled")
 
-        normalized_screening_types = self._normalize_requested_screening_types(payload.screening_types)
         daily_schedule_id: int | None = None
         scheduled_next_run_at: str | None = None
         source_schedule_id = self._normalize_schedule_id(payload.schedule_id)
         business_unit_code = self._normalize_business_unit_code(payload.business_unit_code)
+        normalized_screening_types = self._normalize_requested_screening_types(
+            payload.screening_types,
+            business_unit_code=business_unit_code or None,
+        )
         schedule_frequency = self.repository.normalize_schedule_frequency(payload.schedule_frequency)
         source_upload_id = (payload.source_upload_id or "").strip() or None
         base_queries = {k: v.model_dump(mode="json") for k, v in payload.queries.items()}
@@ -189,6 +201,11 @@ class ScreeningService:
             business_unit_code = self._normalize_business_unit_code(schedule_snapshot.get("business_unit_code"))
             if not business_unit_code:
                 raise ValueError("Business Unit is required for scheduled screening")
+            normalized_screening_types = self._normalize_requested_screening_types(
+                payload.screening_types,
+                business_unit_code=business_unit_code,
+            )
+            payload = payload.model_copy(update={"screening_types": normalized_screening_types})
         else:
             self._validate_business_unit_access(payload.user_id, business_unit_code)
 
@@ -1351,8 +1368,14 @@ class ScreeningService:
 
         return submissions
 
-    def list_daily_schedules(self) -> list[DailyScheduleInfo]:
-        schedules = self.repository.list_active_daily_schedules()
+    def list_daily_schedules(
+        self,
+        page: int = 1,
+        page_size: int = 10,
+    ) -> DailyScheduleInfoPage:
+        safe_page_size = max(min(int(page_size), 1000), 1)
+        safe_page = max(int(page), 1)
+        schedules, total, effective_page = self.repository.list_active_daily_schedules(page=safe_page, page_size=safe_page_size)
         items: list[DailyScheduleInfo] = []
         for s in schedules:
             total_items = len(s["queries"]) if isinstance(s["queries"], dict) else 0
@@ -1380,7 +1403,14 @@ class ScreeningService:
                     source_upload_id=s.get("source_upload_id"),
                 )
             )
-        return items
+        total_pages = max((total + safe_page_size - 1) // safe_page_size, 1)
+        return DailyScheduleInfoPage(
+            items=items,
+            total=total,
+            page=effective_page,
+            page_size=safe_page_size,
+            total_pages=total_pages,
+        )
 
     @staticmethod
     def _derive_batch_run_status(
@@ -1408,16 +1438,22 @@ class ScreeningService:
             if safe_job_status == JobStatus.queued.value:
                 return "QUEUED"
             return safe_job_status or "QUEUED"
-        if failed_items > 0 and completed_items <= 0:
+        if failed_items > 0:
+            if completed_items > 0:
+                return "PARTIAL"
             return "FAILED"
-        if failed_items > 0 and completed_items > 0:
-            return "PARTIAL"
         if completed_items > 0:
             return "COMPLETED"
         return safe_job_status or "QUEUED"
 
-    def list_daily_schedule_batch_runs(self, limit: int = 200) -> list[DailyScheduleBatchRunStatus]:
-        rows = self.repository.list_daily_schedule_batch_runs(limit=limit)
+    def list_daily_schedule_batch_runs(
+        self,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> DailyScheduleBatchRunStatusPage:
+        safe_page_size = max(min(int(page_size), 1000), 1)
+        safe_page = max(int(page), 1)
+        rows, total, effective_page = self.repository.list_daily_schedule_batch_runs(page=safe_page, page_size=safe_page_size)
         runs: list[DailyScheduleBatchRunStatus] = []
 
         for row in rows:
@@ -1439,7 +1475,7 @@ class ScreeningService:
             runs.append(
                 DailyScheduleBatchRunStatus(
                     job_id=str(row.get("job_id") or "").strip(),
-                    schedule_id=str(row.get("schedule_id") or "").strip(),
+                    schedule_id=int(row.get("schedule_id") or 0),
                     batch_name=str(row.get("batch_name") or "").strip() or "Scheduled Batch",
                     schedule_frequency=(str(row.get("schedule_frequency") or "").strip() or None),
                     source_file_name=(str(row.get("source_file_name") or "").strip() or None),
@@ -1457,10 +1493,27 @@ class ScreeningService:
                     user_name=(str(row.get("user_name") or "").strip() or None),
                 )
             )
-        return runs
+        total_pages = max((total + safe_page_size - 1) // safe_page_size, 1)
+        return DailyScheduleBatchRunStatusPage(
+            items=runs,
+            total=total,
+            page=effective_page,
+            page_size=safe_page_size,
+            total_pages=total_pages,
+        )
 
-    def list_screening_type_options(self) -> list[ScreeningTypeOption]:
-        rows = self.repository.list_active_actimize_screening_type_mappings()
+    def list_screening_type_options(
+        self,
+        user_id: str | None = None,
+        business_unit_code: str | None = None,
+    ) -> list[ScreeningTypeOption]:
+        safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
+        if safe_business_unit_code and user_id:
+            self._validate_business_unit_access(user_id=user_id, business_unit_code=safe_business_unit_code)
+
+        rows = self.repository.list_active_actimize_screening_type_mappings(
+            business_unit_code=safe_business_unit_code or None
+        )
         options: list[ScreeningTypeOption] = []
         seen_types: set[str] = set()
 

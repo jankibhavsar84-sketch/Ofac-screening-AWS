@@ -104,6 +104,14 @@ class DailyScheduleInfo(BaseModel):
     source_upload_id: str | None = None
 
 
+class DailyScheduleInfoPage(BaseModel):
+    items: list[DailyScheduleInfo] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 10
+    total_pages: int = 1
+
+
 class DailyScheduleBatchRunStatus(BaseModel):
     job_id: str | int
     schedule_id: int
@@ -122,6 +130,14 @@ class DailyScheduleBatchRunStatus(BaseModel):
     updated_at: str
     user_id: str | None = None
     user_name: str | None = None
+
+
+class DailyScheduleBatchRunStatusPage(BaseModel):
+    items: list[DailyScheduleBatchRunStatus] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 50
+    total_pages: int = 1
 
 
 class ScreeningQueueMessage(BaseModel):

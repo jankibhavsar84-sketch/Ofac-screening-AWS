@@ -82,6 +82,22 @@ DEFAULT_ACTIMIZE_SCREENING_TYPE_MAPPINGS: tuple[tuple[str, str, int, str], ...] 
     ("PLUX", "SD_US_Customers_Sanctions_PGIM_RE", 18, "Customer Sanctions PGIM Real Estate"),
 )
 
+GLOBAL_BUSINESS_UNIT_SCREENING_TYPES: frozenset[str] = frozenset({"san", "san-us", "pep", "pep-g", "ame", "314a", "mpin"})
+DEFAULT_SCREENING_TYPE_TO_BUSINESS_UNIT_CODE: tuple[tuple[str, str], ...] = (
+    ("SD_US_CUSTOMERS_SANCTIONS_PGIM_APAC", "US_PRU_PGIM_RE_APAC"),
+    ("SD_US_CUSTOMERS_SANCTIONS_PGIM_CIO", "US_PRU_PGIM_CIO"),
+    ("SD_US_CUSTOMERS_SANCTIONS_PGIM_FI", "US_PRU_PGIM_FI"),
+    ("SD_US_CUSTOMERS_SANCTIONS_PGIM_JK_ASC", "US_PRU_PGIM_JK_ASC"),
+    ("SD_US_CUSTOMERS_SANCTIONS_PGIM_LATAM", "US_PRU_PGIM_LATAM"),
+    ("SD_US_CUSTOMERS_SANCTIONS_PGIM_MA", "US_PRU_PGIM_MA"),
+    ("SD_US_CUSTOMERS_SANCTIONS_PGIM_NE_FI", "US_PRU_PGIM_NE_FI"),
+    ("SD_CUSTOMERS_SANCTIONS_PGIM_HK", "US_PRU_PGIM"),
+    ("SD_CUSTOMERS_SANCTIONS_PGIM_JAPAN", "US_PRU_PGIM_JAPAN"),
+    ("SD_US_CUSTOMERS_SANCTIONS_PGIM_PP_FI", "US_PRU_PGIM_PP_FI"),
+    ("SD_US_CUSTOMERS_SANCTIONS_PGIM_QUANT", "US_PRU_PGIM_QUANT"),
+    ("SD_US_CUSTOMERS_SANCTIONS_PGIM_RE", "US_PRU_PGIM_RE"),
+)
+
 REQUIRED_TABLES: tuple[str, ...] = (
     "app_users",
     "jobs",
@@ -540,13 +556,13 @@ class JobRepository:
                 f"Target={location}. Missing {'; '.join(details)}"
             )
 
-    def initialize_schema(self) -> None:
+    def initialize_schema(self) -> None:  # pylint: disable=unreachable
         raise RuntimeError(
             "Database schema management is not supported in backend/worker runtime. "
             "Run schema migrations separately before starting services."
         )
 
-        with self._connect() as conn:
+        with self._connect() as conn:  # pylint: disable=unreachable
             self._ensure_table(
                 conn,
                 "jobs",
@@ -925,6 +941,20 @@ class JobRepository:
                 );
                 """,
             )
+            self._ensure_table(
+                conn,
+                "business_unit_screening_types",
+                """
+                CREATE TABLE IF NOT EXISTS business_unit_screening_types (
+                  business_unit_code TEXT NOT NULL,
+                  "Screening_Type" TEXT NOT NULL,
+                  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL,
+                  PRIMARY KEY(business_unit_code, "Screening_Type")
+                );
+                """,
+            )
 
             self._ensure_index(
                 conn,
@@ -980,6 +1010,22 @@ class JobRepository:
                 """
                 CREATE INDEX IF NOT EXISTS idx_user_business_units_code
                 ON user_business_units(business_unit_code, is_active);
+                """,
+            )
+            self._ensure_index(
+                conn,
+                "idx_business_unit_screening_types_bu_active",
+                """
+                CREATE INDEX IF NOT EXISTS idx_business_unit_screening_types_bu_active
+                ON business_unit_screening_types(business_unit_code, is_active, "Screening_Type");
+                """,
+            )
+            self._ensure_index(
+                conn,
+                "idx_business_unit_screening_types_screening_active",
+                """
+                CREATE INDEX IF NOT EXISTS idx_business_unit_screening_types_screening_active
+                ON business_unit_screening_types("Screening_Type", is_active, business_unit_code);
                 """,
             )
             self._ensure_index(
@@ -1096,9 +1142,15 @@ class JobRepository:
             self._ensure_column(conn, "actimize_screening_type_mappings", "is_active", "BOOLEAN NOT NULL DEFAULT TRUE")
             self._ensure_column(conn, "actimize_screening_type_mappings", "created_at", "TEXT NOT NULL")
             self._ensure_column(conn, "actimize_screening_type_mappings", "updated_at", "TEXT NOT NULL")
+            self._ensure_column(conn, "business_unit_screening_types", "business_unit_code", "TEXT NOT NULL")
+            self._ensure_column(conn, "business_unit_screening_types", "Screening_Type", "TEXT NOT NULL")
+            self._ensure_column(conn, "business_unit_screening_types", "is_active", "BOOLEAN NOT NULL DEFAULT TRUE")
+            self._ensure_column(conn, "business_unit_screening_types", "created_at", "TEXT NOT NULL")
+            self._ensure_column(conn, "business_unit_screening_types", "updated_at", "TEXT NOT NULL")
 
             self._seed_default_business_units(conn)
             self._seed_default_actimize_screening_type_mappings(conn)
+            self._seed_default_business_unit_screening_type_mappings(conn)
 
     def _ensure_column(self, conn: Any, table_name: str, column_name: str, column_def: str) -> None:
         if self._column_exists(conn, table_name, column_name):
@@ -1266,6 +1318,161 @@ class JobRepository:
                 (safe_search_definition_name, safe_screening_type),
             )
 
+    def _resolve_default_business_unit_codes_for_screening_mapping(
+        self,
+        screening_type: str,
+        search_definition_id: str,
+        all_business_unit_codes: list[str],
+    ) -> list[str]:
+        normalized_type = self._normalize_screening_type_key(screening_type)
+        if normalized_type in GLOBAL_BUSINESS_UNIT_SCREENING_TYPES:
+            return list(all_business_unit_codes)
+
+        upper_search_definition_id = str(search_definition_id or "").strip().upper()
+        for prefix, business_unit_code in DEFAULT_SCREENING_TYPE_TO_BUSINESS_UNIT_CODE:
+            if upper_search_definition_id == prefix or upper_search_definition_id.startswith(prefix):
+                return [business_unit_code]
+
+        if DEFAULT_FALLBACK_BUSINESS_UNIT_CODE in all_business_unit_codes:
+            return [DEFAULT_FALLBACK_BUSINESS_UNIT_CODE]
+        return all_business_unit_codes[:1]
+
+    def _seed_default_business_unit_screening_type_mappings(self, conn: Any) -> None:
+        if not self._table_exists(conn, "business_unit_screening_types"):
+            return
+
+        existing_rows = self._execute(
+            conn,
+            """
+            SELECT COUNT(*) AS total
+            FROM business_unit_screening_types
+            """,
+        ).fetchone()
+        try:
+            existing_total = int(existing_rows["total"] or 0) if existing_rows else 0
+        except Exception:  # noqa: BLE001 - defensive fallback
+            existing_total = int(dict(existing_rows or {}).get("total", 0))
+        if existing_total > 0:
+            return
+
+        business_unit_rows = self._execute(
+            conn,
+            """
+            SELECT business_unit_code
+            FROM business_units
+            WHERE is_active = TRUE
+            ORDER BY business_unit_code ASC
+            """,
+        ).fetchall()
+        business_unit_codes = [
+            self._normalize_business_unit_code(row["business_unit_code"])
+            for row in business_unit_rows
+            if self._normalize_business_unit_code(row["business_unit_code"])
+        ]
+        if not business_unit_codes:
+            return
+        active_business_unit_codes = set(business_unit_codes)
+
+        mapping_rows = self._execute(
+            conn,
+            """
+            SELECT
+              "Screening_Type" AS screening_type,
+              "Search_Definition_ID" AS search_definition_id
+            FROM actimize_screening_type_mappings
+            WHERE is_active = TRUE
+              AND TRIM(COALESCE("Screening_Type", '')) <> ''
+              AND TRIM(COALESCE("Search_Definition_ID", '')) <> ''
+            ORDER BY display_order ASC, "Screening_Type" ASC
+            """,
+        ).fetchall()
+        if not mapping_rows:
+            return
+
+        ts = now_iso()
+        pending_inserts: set[tuple[str, str]] = set()
+        for row in mapping_rows:
+            screening_type = str(row["screening_type"] or "").strip()
+            search_definition_id = str(row["search_definition_id"] or "").strip()
+            if not screening_type:
+                continue
+            target_business_units = self._resolve_default_business_unit_codes_for_screening_mapping(
+                screening_type=screening_type,
+                search_definition_id=search_definition_id,
+                all_business_unit_codes=business_unit_codes,
+            )
+            for business_unit_code in target_business_units:
+                safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
+                if not safe_business_unit_code or safe_business_unit_code not in active_business_unit_codes:
+                    continue
+                pending_inserts.add((safe_business_unit_code, screening_type))
+
+        if not pending_inserts:
+            return
+
+        for business_unit_code, screening_type in pending_inserts:
+            self._execute(
+                conn,
+                """
+                INSERT INTO business_unit_screening_types(
+                  business_unit_code, "Screening_Type", is_active, created_at, updated_at
+                ) VALUES(?, ?, TRUE, ?, ?)
+                ON CONFLICT(business_unit_code, "Screening_Type")
+                DO UPDATE SET
+                  is_active = TRUE,
+                  updated_at = excluded.updated_at
+                """,
+                (business_unit_code, screening_type, ts, ts),
+            )
+
+    def is_screening_type_allowed_for_business_unit(
+        self,
+        screening_type: str | None,
+        business_unit_code: str | None,
+    ) -> bool:
+        safe_screening_type = str(screening_type or "").strip()
+        safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
+        if not safe_screening_type or not safe_business_unit_code:
+            return False
+
+        with self._connect() as conn:
+            if not self._table_exists(conn, "business_unit_screening_types"):
+                return True
+
+            has_mapping_rows = self._execute(
+                conn,
+                """
+                SELECT 1
+                FROM business_unit_screening_types
+                WHERE business_unit_code = ?
+                  AND is_active = TRUE
+                LIMIT 1
+                """,
+                (safe_business_unit_code,),
+            ).fetchone()
+            if not has_mapping_rows:
+                return True
+
+            row = self._execute(
+                conn,
+                """
+                SELECT 1
+                FROM business_unit_screening_types bust
+                JOIN actimize_screening_type_mappings astm
+                  ON astm."Screening_Type" = bust."Screening_Type"
+                 AND astm.is_active = TRUE
+                JOIN business_units bu
+                  ON bu.business_unit_code = bust.business_unit_code
+                 AND bu.is_active = TRUE
+                WHERE bust.business_unit_code = ?
+                  AND bust."Screening_Type" = ?
+                  AND bust.is_active = TRUE
+                LIMIT 1
+                """,
+                (safe_business_unit_code, safe_screening_type),
+            ).fetchone()
+            return bool(row)
+
     def resolve_actimize_screening_type_mapping(self, source_screening_type: str | None) -> dict[str, str]:
         safe_source = str(source_screening_type or "").strip()
         if not safe_source:
@@ -1293,10 +1500,15 @@ class JobRepository:
         mapping = self.resolve_actimize_screening_type_mapping(source_screening_type)
         return str(mapping.get("party_key_suffix") or "").strip()
 
-    def normalize_active_screening_types(self, requested_screening_types: list[str] | None) -> tuple[list[str], list[str]]:
+    def normalize_active_screening_types(
+        self,
+        requested_screening_types: list[str] | None,
+        business_unit_code: str | None = None,
+    ) -> tuple[list[str], list[str]]:
         normalized: list[str] = []
         unresolved: list[str] = []
         seen: set[str] = set()
+        safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
 
         for raw_value in requested_screening_types or []:
             safe_value = str(raw_value or "").strip()
@@ -1309,6 +1521,13 @@ class JobRepository:
                 unresolved.append(safe_value)
                 continue
 
+            if safe_business_unit_code and not self.is_screening_type_allowed_for_business_unit(
+                normalized_type,
+                safe_business_unit_code,
+            ):
+                unresolved.append(safe_value)
+                continue
+
             dedupe_key = self._normalize_screening_type_key(normalized_type)
             if dedupe_key in seen:
                 continue
@@ -1317,23 +1536,52 @@ class JobRepository:
 
         return normalized, unresolved
 
-    def list_active_actimize_screening_type_mappings(self) -> list[dict[str, Any]]:
+    def list_active_actimize_screening_type_mappings(
+        self,
+        business_unit_code: str | None = None,
+    ) -> list[dict[str, Any]]:
+        safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
         with self._connect() as conn:
-            rows = self._execute(
-                conn,
-                """
-                SELECT
-                  "Screening_Type" AS screening_type,
-                  "Search_Definition_ID" AS search_definition_id,
-                  search_definition_name,
-                  display_order
-                FROM actimize_screening_type_mappings
-                WHERE is_active = TRUE
-                  AND TRIM(COALESCE("Screening_Type", '')) <> ''
-                  AND TRIM(COALESCE("Search_Definition_ID", '')) <> ''
-                ORDER BY display_order ASC, "Screening_Type" ASC
-                """,
-            ).fetchall()
+            if safe_business_unit_code and self._table_exists(conn, "business_unit_screening_types"):
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT
+                      astm."Screening_Type" AS screening_type,
+                      astm."Search_Definition_ID" AS search_definition_id,
+                      astm.search_definition_name,
+                      astm.display_order
+                    FROM actimize_screening_type_mappings astm
+                    JOIN business_unit_screening_types bust
+                      ON bust."Screening_Type" = astm."Screening_Type"
+                    JOIN business_units bu
+                      ON bu.business_unit_code = bust.business_unit_code
+                    WHERE astm.is_active = TRUE
+                      AND bust.is_active = TRUE
+                      AND bu.is_active = TRUE
+                      AND bust.business_unit_code = ?
+                      AND TRIM(COALESCE(astm."Screening_Type", '')) <> ''
+                      AND TRIM(COALESCE(astm."Search_Definition_ID", '')) <> ''
+                    ORDER BY astm.display_order ASC, astm."Screening_Type" ASC
+                    """,
+                    (safe_business_unit_code,),
+                ).fetchall()
+            else:
+                rows = self._execute(
+                    conn,
+                    """
+                    SELECT
+                      "Screening_Type" AS screening_type,
+                      "Search_Definition_ID" AS search_definition_id,
+                      search_definition_name,
+                      display_order
+                    FROM actimize_screening_type_mappings
+                    WHERE is_active = TRUE
+                      AND TRIM(COALESCE("Screening_Type", '')) <> ''
+                      AND TRIM(COALESCE("Search_Definition_ID", '')) <> ''
+                    ORDER BY display_order ASC, "Screening_Type" ASC
+                    """,
+                ).fetchall()
 
         out: list[dict[str, Any]] = []
         for row in rows:
@@ -1665,7 +1913,7 @@ class JobRepository:
                 elif safe_user_name:
                     rows = self._execute(
                         conn,
-                        f"""
+                        """
                         SELECT
                           job_id,
                           created_at,
@@ -1820,13 +2068,57 @@ class JobRepository:
             )
         return out
 
-    def list_daily_schedule_batch_runs(self, limit: int = 200) -> list[dict[str, Any]]:
-        safe_limit = max(min(int(limit), 1000), 1)
+    def list_daily_schedule_batch_runs(self, page: int = 1, page_size: int = 50) -> tuple[list[dict[str, Any]], int, int]:
+        safe_page_size = max(min(int(page_size), 1000), 1)
+        safe_page = max(int(page), 1)
+
         with self._connect() as conn:
             grouped_job_key = "job_id"
             grouped_join = "js.job_id = j.job_id"
             metadata_join = "jm.job_id = j.job_id"
             upload_join = "bu.upload_id = j.source_upload_id"
+            from_where_sql = f"""
+                FROM jobs j
+                LEFT JOIN app_users au ON au.user_id = j.user_ref_id
+                LEFT JOIN job_metadata jm ON {metadata_join}
+                LEFT JOIN daily_schedules ds
+                  ON ds.schedule_id = COALESCE(jm.daily_schedule_id, j.source_schedule_id)
+                LEFT JOIN batch_file_uploads bu ON {upload_join}
+                LEFT JOIN (
+                  SELECT
+                    {grouped_job_key},
+                    SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_items,
+                    SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS failed_items,
+                    SUM(CASE WHEN status = 'QUEUED' THEN 1 ELSE 0 END) AS pending_items,
+                    SUM(CASE WHEN status = 'PROCESSING' THEN 1 ELSE 0 END) AS processing_items
+                  FROM job_items
+                  GROUP BY {grouped_job_key}
+                ) js ON {grouped_join}
+                WHERE COALESCE(jm.daily_schedule_id, j.source_schedule_id) IS NOT NULL
+                  AND UPPER(COALESCE(jm.mode, 'BATCH')) = 'BATCH'
+                  AND NOT (
+                    COALESCE(jm.daily_screening, FALSE) = TRUE
+                    AND jm.deferred_until IS NOT NULL
+                    AND COALESCE(j.total_items, 0) = 0
+                    AND COALESCE(js.completed_items, 0) = 0
+                    AND COALESCE(js.failed_items, 0) = 0
+                    AND COALESCE(js.pending_items, 0) = 0
+                    AND COALESCE(js.processing_items, 0) = 0
+                  )
+            """
+            count_row = self._execute(
+                conn,
+                f"""
+                SELECT COUNT(*) AS total
+                {from_where_sql}
+                """,
+            ).fetchone()
+            total = int((count_row or {}).get("total") or 0)
+            # Keep the requested page as-is so callers can page forward deterministically.
+            # If page exceeds available rows, query naturally returns an empty set.
+            effective_page = safe_page
+            safe_offset = (effective_page - 1) * safe_page_size
+
             rows = self._execute(
                 conn,
                 f"""
@@ -1868,37 +2160,11 @@ class JobRepository:
                   COALESCE(js.failed_items, 0) AS failed_items,
                   COALESCE(js.pending_items, 0) AS pending_items,
                   COALESCE(js.processing_items, 0) AS processing_items
-                FROM jobs j
-                LEFT JOIN app_users au ON au.user_id = j.user_ref_id
-                LEFT JOIN job_metadata jm ON {metadata_join}
-                LEFT JOIN daily_schedules ds
-                  ON ds.schedule_id = COALESCE(jm.daily_schedule_id, j.source_schedule_id)
-                LEFT JOIN batch_file_uploads bu ON {upload_join}
-                LEFT JOIN (
-                  SELECT
-                    {grouped_job_key},
-                    SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_items,
-                    SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS failed_items,
-                    SUM(CASE WHEN status = 'QUEUED' THEN 1 ELSE 0 END) AS pending_items,
-                    SUM(CASE WHEN status = 'PROCESSING' THEN 1 ELSE 0 END) AS processing_items
-                  FROM job_items
-                  GROUP BY {grouped_job_key}
-                ) js ON {grouped_join}
-                WHERE COALESCE(jm.daily_schedule_id, j.source_schedule_id) IS NOT NULL
-                  AND UPPER(COALESCE(jm.mode, 'BATCH')) = 'BATCH'
-                  AND NOT (
-                    COALESCE(jm.daily_screening, FALSE) = TRUE
-                    AND jm.deferred_until IS NOT NULL
-                    AND COALESCE(j.total_items, 0) = 0
-                    AND COALESCE(js.completed_items, 0) = 0
-                    AND COALESCE(js.failed_items, 0) = 0
-                    AND COALESCE(js.pending_items, 0) = 0
-                    AND COALESCE(js.processing_items, 0) = 0
-                  )
+                {from_where_sql}
                 ORDER BY j.created_at DESC
-                LIMIT ?
+                LIMIT ? OFFSET ?
                 """,
-                (safe_limit,),
+                (safe_page_size, safe_offset),
             ).fetchall()
 
         out: list[dict[str, Any]] = []
@@ -1923,7 +2189,7 @@ class JobRepository:
                     "processing_items": int(row["processing_items"] or 0),
                 }
             )
-        return out
+        return out, total, effective_page
 
     def list_job_items_for_jobs(self, job_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
         normalized_job_ids = [str(job_id).strip() for job_id in job_ids if str(job_id).strip()]
@@ -1996,7 +2262,7 @@ class JobRepository:
                         user_ref_id = self._lookup_user_ref_id(conn, safe_user_id)
                         if user_ref_id is None:
                             return []
-                        recent_cte = """
+                        recent_cte = f"""
                         WITH recent AS (
                           SELECT {recent_select_cols}
                           FROM mv_user_recent_results
@@ -2004,10 +2270,10 @@ class JobRepository:
                           ORDER BY sort_ts DESC, {recent_sort_key} DESC, item_key ASC
                           LIMIT ?
                         )
-                        """.format(recent_select_cols=recent_select_cols, recent_sort_key=recent_sort_key)
+                        """
                         params: tuple[Any, ...] = (user_ref_id, safe_limit)
                     elif safe_user_name:
-                        recent_cte = """
+                        recent_cte = f"""
                         WITH recent AS (
                           SELECT {recent_select_cols_from_r}
                           FROM mv_user_recent_results r
@@ -2016,17 +2282,17 @@ class JobRepository:
                           ORDER BY r.sort_ts DESC, r.{recent_sort_key} DESC, r.item_key ASC
                           LIMIT ?
                         )
-                        """.format(recent_select_cols_from_r=recent_select_cols_from_r, recent_sort_key=recent_sort_key)
+                        """
                         params = (safe_user_name, safe_limit)
                     else:
-                        recent_cte = """
+                        recent_cte = f"""
                         WITH recent AS (
                           SELECT {recent_select_cols}
                           FROM mv_user_recent_results
                           ORDER BY sort_ts DESC, {recent_sort_key} DESC, item_key ASC
                           LIMIT ?
                         )
-                        """.format(recent_select_cols=recent_select_cols, recent_sort_key=recent_sort_key)
+                        """
                         params = (safe_limit,)
 
                     rows = self._execute(
@@ -3192,7 +3458,7 @@ class JobRepository:
         with self._connect() as conn:
             job = self._execute(
                 conn,
-                f"""
+                """
                 SELECT
                   j.job_id, j.status, j.created_at, j.updated_at, j.total_items,
                   j.source_schedule_id, j.source_upload_id,
@@ -3300,7 +3566,6 @@ class JobRepository:
         safe_schedule_id = self._normalize_schedule_id(schedule_id)
         safe_hash = (record_hash or "").strip()
         safe_job_id_int = self._normalize_job_id(job_id)
-        safe_job_id = str(safe_job_id_int) if safe_job_id_int is not None else None
         if safe_schedule_id is None or not safe_hash:
             return
 
@@ -3702,15 +3967,43 @@ class JobRepository:
             "business_unit_code": business_unit_code,
         }
 
-    def list_active_daily_schedules(self, user_id: str | None = None) -> list[dict[str, Any]]:
+    def list_active_daily_schedules(
+        self,
+        user_id: str | None = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> tuple[list[dict[str, Any]], int, int]:
+        safe_page_size = max(min(int(page_size), 1000), 1)
+        safe_page = max(int(page), 1)
         with self._connect() as conn:
             safe_user_old_id = self._normalize_user_old_id(user_id)
             user_ref_id = self._lookup_user_ref_id(conn, safe_user_old_id) if safe_user_old_id else None
             if safe_user_old_id and user_ref_id is None:
                 rows = []
-            elif safe_user_old_id:
-                user_filter_sql = "ds.user_ref_id = ?"
-                user_filter_param = user_ref_id
+            else:
+                user_filter_sql = " AND ds.user_ref_id = ? " if safe_user_old_id else ""
+                user_filter_params: tuple[Any, ...] = (user_ref_id,) if safe_user_old_id else tuple()
+                from_where_sql = f"""
+                    FROM daily_schedules ds
+                    LEFT JOIN app_users au
+                      ON au.user_id = ds.user_ref_id
+                    LEFT JOIN batch_file_uploads bu
+                      ON bu.upload_id = ds.source_upload_id
+                    WHERE ds.is_active = TRUE
+                    {user_filter_sql}
+                """
+                count_row = self._execute(
+                    conn,
+                    f"""
+                    SELECT COUNT(*) AS total
+                    {from_where_sql}
+                    """,
+                    user_filter_params,
+                ).fetchone()
+                total = int((count_row or {}).get("total") or 0)
+                total_pages = max((total + safe_page_size - 1) // safe_page_size, 1)
+                effective_page = min(safe_page, total_pages)
+                safe_offset = (effective_page - 1) * safe_page_size
                 rows = self._execute(
                     conn,
                     f"""
@@ -3722,40 +4015,15 @@ class JobRepository:
                       ds.schedule_frequency, ds.timezone, ds.run_hour, ds.run_minute, ds.created_at, ds.last_run_at, ds.next_run_at, ds.is_active,
                       ds.source_upload_id, ds.source_file_name, ds.source_s3_uri, ds.business_unit_code,
                       bu.record_count AS source_upload_record_count
-                    FROM daily_schedules ds
-                    LEFT JOIN app_users au
-                      ON au.user_id = ds.user_ref_id
-                    LEFT JOIN batch_file_uploads bu
-                      ON bu.upload_id = ds.source_upload_id
-                    WHERE ds.is_active = TRUE
-                      AND {user_filter_sql}
+                    {from_where_sql}
                     ORDER BY ds.created_at DESC
+                    LIMIT ? OFFSET ?
                     """,
-                    (user_filter_param,),
+                    (*user_filter_params, safe_page_size, safe_offset),
                 ).fetchall()
-            else:
-                rows = self._execute(
-                    conn,
-                    """
-                    SELECT
-                      ds.schedule_id, ds.batch_name,
-                      au.old_id AS user_id,
-                      COALESCE(au.name, au.old_id) AS user_name,
-                      ds.queries_json, ds.screening_types_json, ds.mock_screening,
-                      ds.schedule_frequency, ds.timezone, ds.run_hour, ds.run_minute, ds.created_at, ds.last_run_at, ds.next_run_at, ds.is_active,
-                      ds.source_upload_id, ds.source_file_name, ds.source_s3_uri, ds.business_unit_code,
-                      bu.record_count AS source_upload_record_count
-                    FROM daily_schedules ds
-                    LEFT JOIN app_users au
-                      ON au.user_id = ds.user_ref_id
-                    LEFT JOIN batch_file_uploads bu
-                      ON bu.upload_id = ds.source_upload_id
-                    WHERE ds.is_active = TRUE
-                    ORDER BY ds.created_at DESC
-                    """,
-                ).fetchall()
+                return [self._parse_daily_schedule_row(row) for row in rows], total, effective_page
 
-        return [self._parse_daily_schedule_row(row) for row in rows]
+        return [], 0, 1
 
     def list_active_daily_schedule_ids(self, user_id: str | None = None) -> set[int]:
         with self._connect() as conn:
@@ -3870,7 +4138,7 @@ class JobRepository:
         with self._connect() as conn:
             row = self._execute(
                 conn,
-                f"""
+                """
                 SELECT
                   b.upload_id,
                   b.schedule_id,
@@ -3963,49 +4231,27 @@ class JobRepository:
 
             base_placeholders = ", ".join("%s" if self.is_postgres else "?" for _ in fixed_values)
             if self._job_items_has_parsed_status and self.is_postgres:
-                query = """
+                query = f"""
                     INSERT INTO job_items({job_columns}, item_key, request_json, response_json, status, parsed_status, error_text, updated_at{extra_col})
                     VALUES({base_placeholders}, %s, %s, NULL, %s, %s, NULL, %s{extra_placeholder_pg})
                     ON CONFLICT ({conflict_key}) DO NOTHING
-                    """.format(
-                    job_columns=job_columns,
-                    base_placeholders=base_placeholders,
-                    extra_col=extra_col,
-                    extra_placeholder_pg=extra_placeholder_pg,
-                    conflict_key=conflict_key,
-                )
+                    """
             elif self._job_items_has_parsed_status:
-                query = """
+                query = f"""
                     INSERT OR IGNORE INTO job_items({job_columns}, item_key, request_json, response_json, status, parsed_status, error_text, updated_at{extra_col})
                     VALUES({base_placeholders}, ?, ?, NULL, ?, ?, NULL, ?{extra_placeholder_sqlite})
-                    """.format(
-                    job_columns=job_columns,
-                    base_placeholders=base_placeholders,
-                    extra_col=extra_col,
-                    extra_placeholder_sqlite=extra_placeholder_sqlite,
-                )
+                    """
             elif self.is_postgres:
-                query = """
+                query = f"""
                     INSERT INTO job_items({job_columns}, item_key, request_json, response_json, status, error_text, updated_at{extra_col})
                     VALUES({base_placeholders}, %s, %s, NULL, %s, NULL, %s{extra_placeholder_pg})
                     ON CONFLICT ({conflict_key}) DO NOTHING
-                    """.format(
-                    job_columns=job_columns,
-                    base_placeholders=base_placeholders,
-                    extra_col=extra_col,
-                    extra_placeholder_pg=extra_placeholder_pg,
-                    conflict_key=conflict_key,
-                )
+                    """
             else:
-                query = """
+                query = f"""
                     INSERT OR IGNORE INTO job_items({job_columns}, item_key, request_json, response_json, status, error_text, updated_at{extra_col})
                     VALUES({base_placeholders}, ?, ?, NULL, ?, NULL, ?{extra_placeholder_sqlite})
-                    """.format(
-                    job_columns=job_columns,
-                    base_placeholders=base_placeholders,
-                    extra_col=extra_col,
-                    extra_placeholder_sqlite=extra_placeholder_sqlite,
-                )
+                    """
 
             if self._job_items_has_parsed_status:
                 params = [
@@ -5467,4 +5713,5 @@ class JobRepository:
                 (last_run_at, next_run_at, self._normalize_schedule_id(schedule_id), expected_next_run_at),
             )
             return cur.rowcount > 0
+
 

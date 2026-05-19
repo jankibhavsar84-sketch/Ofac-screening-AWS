@@ -24,21 +24,33 @@ export function DailyScheduleAdminPage() {
   const isAdmin = hasPermission(identity, "screening.admin");
 
   const [schedules, setSchedules] = useState<DailySchedule[]>([]);
+  const [schedulesPage, setSchedulesPage] = useState(1);
+  const [schedulesTotal, setSchedulesTotal] = useState(0);
+  const [schedulesPageSize, setSchedulesPageSize] = useState(10);
+  const [schedulesTotalPages, setSchedulesTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [batchRuns, setBatchRuns] = useState<DailyScheduleBatchRunStatus[]>([]);
   const [batchRunsLoading, setBatchRunsLoading] = useState(false);
   const [batchRunsError, setBatchRunsError] = useState<string | null>(null);
+  const [batchRunsPage, setBatchRunsPage] = useState(1);
+  const [batchRunsTotal, setBatchRunsTotal] = useState(0);
+  const [batchRunsPageSize, setBatchRunsPageSize] = useState(50);
+  const [batchRunsTotalPages, setBatchRunsTotalPages] = useState(1);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [rerunningId, setRerunningId] = useState<string | null>(null);
 
-  async function loadSchedules() {
+  async function loadSchedules(page = 1) {
     setError(null);
     setLoading(true);
     try {
-      const rows = await listDailySchedules();
-      setSchedules(rows);
+      const pageData = await listDailySchedules(page);
+      setSchedules(pageData.items);
+      setSchedulesTotal(Math.max(0, Number(pageData.total || 0)));
+      setSchedulesPageSize(Math.max(1, Number(pageData.page_size || 10)));
+      setSchedulesTotalPages(Math.max(1, Number(pageData.total_pages || 1)));
+      setSchedulesPage(Math.max(1, Number(pageData.page || page)));
     } catch (err: any) {
       setError(err?.message ?? "Failed to load daily schedules.");
     } finally {
@@ -46,17 +58,25 @@ export function DailyScheduleAdminPage() {
     }
   }
 
-  async function loadBatchRuns() {
+  async function loadBatchRuns(page = 1) {
     if (!isAdmin) {
       setBatchRuns([]);
+      setBatchRunsPage(1);
+      setBatchRunsTotal(0);
+      setBatchRunsPageSize(50);
+      setBatchRunsTotalPages(1);
       setBatchRunsError(null);
       return;
     }
     setBatchRunsError(null);
     setBatchRunsLoading(true);
     try {
-      const rows = await listDailyScheduleBatchRuns(300);
-      setBatchRuns(rows);
+      const pageData = await listDailyScheduleBatchRuns(page);
+      setBatchRuns(pageData.items);
+      setBatchRunsTotal(Math.max(0, Number(pageData.total || 0)));
+      setBatchRunsPageSize(Math.max(1, Number(pageData.page_size || 50)));
+      setBatchRunsTotalPages(Math.max(1, Number(pageData.total_pages || 1)));
+      setBatchRunsPage(Math.max(1, page));
     } catch (err: any) {
       setBatchRunsError(err?.message ?? "Failed to load batch run status.");
     } finally {
@@ -66,19 +86,26 @@ export function DailyScheduleAdminPage() {
 
   useEffect(() => {
     if (!allowed) return;
-    void loadSchedules();
-    void loadBatchRuns();
-  }, [allowed, isAdmin]);
+    void loadSchedules(schedulesPage);
+  }, [allowed, schedulesPage]);
+
+  useEffect(() => {
+    if (!allowed || !isAdmin) return;
+    void loadBatchRuns(batchRunsPage);
+  }, [allowed, isAdmin, batchRunsPage]);
 
   const sorted = useMemo(
     () => [...schedules].sort((a, b) => (b.created_at || "").localeCompare(a.created_at || "")),
     [schedules]
   );
 
-  const sortedBatchRuns = useMemo(
-    () => [...batchRuns].sort((a, b) => (b.submitted_at || "").localeCompare(a.submitted_at || "")),
-    [batchRuns]
-  );
+  const schedulesPageSafe = Math.min(Math.max(1, schedulesPage), Math.max(1, schedulesTotalPages));
+  const schedulesStartIdx = (schedulesPageSafe - 1) * Math.max(1, schedulesPageSize);
+  const sortedBatchRuns = useMemo(() => batchRuns, [batchRuns]);
+  const batchRunsPageSafe = Math.min(Math.max(1, batchRunsPage), Math.max(1, batchRunsTotalPages));
+  const batchRunsStartIdx = (batchRunsPageSafe - 1) * Math.max(1, batchRunsPageSize);
+  const batchRunsHasNext = (batchRunsPageSafe < Math.max(1, batchRunsTotalPages))
+    || (sortedBatchRuns.length >= batchRunsPageSize);
 
   function renderRunStatus(status: string) {
     const safe = String(status || "").trim().toUpperCase();
@@ -91,11 +118,11 @@ export function DailyScheduleAdminPage() {
   }
 
   async function refreshAll() {
-    await Promise.all([loadSchedules(), loadBatchRuns()]);
+    await Promise.all([loadSchedules(schedulesPageSafe), loadBatchRuns(batchRunsPageSafe)]);
   }
 
   async function refreshBatchRuns() {
-    await loadBatchRuns();
+    await loadBatchRuns(batchRunsPageSafe);
   }
 
   async function removeSchedule(schedule: DailySchedule) {
@@ -105,7 +132,7 @@ export function DailyScheduleAdminPage() {
     setNotice(null);
     try {
       await removeDailySchedule(schedule.schedule_id, { id: identity.id, name: identity.name });
-      setSchedules((prev) => prev.filter((s) => s.schedule_id !== schedule.schedule_id));
+      await loadSchedules(schedulesPageSafe);
     } catch (err: any) {
       setError(err?.message ?? "Failed to remove schedule.");
     } finally {
@@ -121,8 +148,9 @@ export function DailyScheduleAdminPage() {
     try {
       const accepted = await rerunDailySchedule(schedule.schedule_id);
       setNotice(`Ad-hoc re-run submitted for ${schedule.batch_name}. Job ID: ${accepted.job_id}`);
-      await loadSchedules();
-      await loadBatchRuns();
+      await loadSchedules(schedulesPageSafe);
+      setBatchRunsPage(1);
+      await loadBatchRuns(1);
     } catch (err: any) {
       setError(err?.message ?? "Failed to re-run daily schedule.");
     } finally {
@@ -166,7 +194,7 @@ export function DailyScheduleAdminPage() {
           <p className="pageHeroSub">Review active schedules, monitor next-run timing, and remove scheduled batch jobs when business changes require it.</p>
         </div>
         <div className="pageHeroMeta">
-          <span className="pageHeroPill">{sorted.length} Active Schedules</span>
+          <span className="pageHeroPill">{schedulesTotal} Active Schedules</span>
           <button type="button" className="btnGhost" onClick={() => void refreshAll()} disabled={loading || batchRunsLoading}>
             {loading || batchRunsLoading ? "Refreshing..." : "Refresh"}
           </button>
@@ -184,11 +212,49 @@ export function DailyScheduleAdminPage() {
           {notice ? <div className="successBox" role="status" aria-live="polite">{notice}</div> : null}
           {error ? <div className="errorBox" role="alert" aria-live="assertive">{error}</div> : null}
 
+          <div className="auditPagerRow">
+            <div className="pagerText">
+              Showing {schedulesTotal === 0 ? 0 : schedulesStartIdx + 1} to{" "}
+              {Math.min(schedulesTotal, schedulesStartIdx + schedulesPageSize)} of {schedulesTotal} schedules
+            </div>
+            <div className="auditPagerRight">
+              <div className="auditPagerMeta">{schedulesPageSize} records per page</div>
+              <div className="auditPagerNav">
+                <button
+                  className="auditPagerArrow"
+                  disabled={schedulesPageSafe <= 1 || loading}
+                  onClick={() => setSchedulesPage((prev) => Math.max(1, prev - 1))}
+                  type="button"
+                  aria-label="Previous schedules page"
+                  title="Previous page"
+                >
+                  <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                    <path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <div className="auditPagerMeta">Page {schedulesPageSafe} of {Math.max(1, schedulesTotalPages)}</div>
+                <button
+                  className="auditPagerArrow"
+                  disabled={schedulesPageSafe >= Math.max(1, schedulesTotalPages) || loading}
+                  onClick={() => setSchedulesPage((prev) => Math.min(Math.max(1, schedulesTotalPages), prev + 1))}
+                  type="button"
+                  aria-label="Next schedules page"
+                  title="Next page"
+                >
+                  <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                    <path d="m7.5 4.5 5.5 5.5-5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="tableWrap scheduleTableWrap" style={{ marginTop: 10 }}>
             <table className="table scheduleTable scheduleConfigTable">
               <thead>
                 <tr>
                   <th scope="col" style={{ width: 220 }}>Batch Name</th>
+                  <th scope="col" style={{ width: 170 }}>Scheduled By</th>
                   <th scope="col" style={{ width: 120 }}>Frequency</th>
                   <th scope="col" style={{ width: 220 }}>Screening Types</th>
                   <th scope="col" style={{ width: 220 }}>Source File</th>
@@ -201,7 +267,7 @@ export function DailyScheduleAdminPage() {
               <tbody>
                 {sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="emptyRow">
+                    <td colSpan={9} className="emptyRow">
                       {loading ? "Loading schedules..." : "No active daily schedules found."}
                     </td>
                   </tr>
@@ -209,6 +275,7 @@ export function DailyScheduleAdminPage() {
                   sorted.map((row) => (
                     <tr key={row.schedule_id}>
                       <td>{row.batch_name}</td>
+                      <td className="muted">{row.user_name || row.user_id || "-"}</td>
                       <td className="muted">{row.schedule_frequency || "DAILY"}</td>
                       <td className="muted">{row.screening_types.join(", ") || "-"}</td>
                       <td className="muted">{row.source_file_name || "-"}</td>
@@ -262,8 +329,44 @@ export function DailyScheduleAdminPage() {
               Recent scheduled and ad-hoc schedule runs across all users.
             </p>
             {batchRunsError ? <div className="errorBox" role="alert" aria-live="assertive">{batchRunsError}</div> : null}
+            <div className="auditPagerRow">
+              <div className="pagerText">
+                Showing {batchRunsTotal === 0 ? 0 : batchRunsStartIdx + 1} to{" "}
+                {Math.min(batchRunsTotal, batchRunsStartIdx + batchRunsPageSize)} of {batchRunsTotal} batch runs
+              </div>
+              <div className="auditPagerRight">
+                <div className="auditPagerMeta">50 records per page</div>
+                <div className="auditPagerNav">
+                  <button
+                    className="auditPagerArrow"
+                    disabled={batchRunsPageSafe <= 1 || batchRunsLoading}
+                    onClick={() => setBatchRunsPage((prev) => Math.max(1, prev - 1))}
+                    type="button"
+                    aria-label="Previous batch runs page"
+                    title="Previous page"
+                  >
+                    <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                      <path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <div className="auditPagerMeta">Page {batchRunsPageSafe} of {Math.max(1, batchRunsTotalPages)}</div>
+                  <button
+                    className="auditPagerArrow"
+                    disabled={!batchRunsHasNext || batchRunsLoading}
+                    onClick={() => setBatchRunsPage((prev) => prev + 1)}
+                    type="button"
+                    aria-label="Next batch runs page"
+                    title="Next page"
+                  >
+                    <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                      <path d="m7.5 4.5 5.5 5.5-5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
             <div className="tableWrap scheduleTableWrap" style={{ marginTop: 10 }}>
-              <table className="table scheduleTable" style={{ minWidth: 1650 }}>
+              <table className="table scheduleTable scheduleBatchRunsTable" style={{ minWidth: 1650 }}>
                 <thead>
                   <tr>
                     <th scope="col" style={{ width: 180 }}>Submitted</th>

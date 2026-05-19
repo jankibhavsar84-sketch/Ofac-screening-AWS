@@ -28,6 +28,12 @@ ALTER TABLE ONLY public."batch_file_uploads" ADD CONSTRAINT "fk_batch_file_uploa
 
 ALTER TABLE ONLY public."business_units" ADD CONSTRAINT "business_units_pkey" PRIMARY KEY (business_unit_code);
 
+ALTER TABLE ONLY public."business_unit_screening_types" ADD CONSTRAINT "business_unit_screening_types_pkey" PRIMARY KEY (business_unit_code, "Screening_Type");
+
+ALTER TABLE ONLY public."business_unit_screening_types" ADD CONSTRAINT "fk_business_unit_screening_types_business_unit_code" FOREIGN KEY (business_unit_code) REFERENCES business_units(business_unit_code) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+ALTER TABLE ONLY public."business_unit_screening_types" ADD CONSTRAINT "fk_business_unit_screening_types_screening_type" FOREIGN KEY ("Screening_Type") REFERENCES "actimize_screening_type_mappings"("Screening_Type") ON UPDATE CASCADE ON DELETE RESTRICT;
+
 ALTER TABLE ONLY public."Batch_Schedule" ADD CONSTRAINT "Batch_Schedule_pkey" PRIMARY KEY (schedule_id);
 
 ALTER TABLE ONLY public."Batch_Schedule" ADD CONSTRAINT "fk_Batch_Schedule_business_unit_code" FOREIGN KEY (business_unit_code) REFERENCES business_units(business_unit_code) ON UPDATE CASCADE ON DELETE RESTRICT;
