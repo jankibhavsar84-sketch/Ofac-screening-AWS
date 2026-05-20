@@ -1,0 +1,27 @@
+%%{init: {"theme": "base", "flowchart": {"curve": "linear", "nodeSpacing": 45, "rankSpacing": 55}}}%%
+flowchart TB
+  classDef browser fill:#EAF4FF,stroke:#2F74B5,stroke-width:1px,color:#0F243E;
+  classDef edge fill:#F3ECFF,stroke:#7B61FF,stroke-width:1px,color:#251A4A;
+  classDef compute fill:#EFFFF4,stroke:#2E8B57,stroke-width:1px,color:#14351F;
+  classDef queue fill:#FFF4E5,stroke:#C77700,stroke-width:1px,color:#3D2600;
+  classDef data fill:#F7F7F7,stroke:#666666,stroke-width:1px,color:#202020;
+  classDef external fill:#FFECEC,stroke:#B94A48,stroke-width:1px,color:#4A1515;
+
+  U["User Browser"]:::browser
+  EDGE["CloudFront + ALB<br/>public HTTPS entry"]:::edge
+  COG["Cognito / Enterprise IdP<br/>OIDC + PKCE"]:::edge
+  FE["Frontend ECS Service<br/>React + Nginx"]:::compute
+  API["Backend ECS Service<br/>FastAPI API"]:::compute
+  ASYNC["Async Processing<br/>SQS dispatch/screening queues<br/>dispatcher + worker ECS services"]:::queue
+  AWS["AWS Shared Services<br/>RDS PostgreSQL, S3 uploads<br/>SNS notifications, CloudWatch logs"]:::data
+  ACT["Actimize Watchlist API"]:::external
+
+  U --> EDGE --> FE --> API
+  U -.-> COG
+  COG -.-> API
+  API --> ASYNC
+  API --> ACT
+  API --> AWS
+  ASYNC --> AWS
+  ASYNC --> ACT
+  ACT -.-> API

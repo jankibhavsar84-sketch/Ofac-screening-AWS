@@ -10,7 +10,7 @@ from .models import ScreeningQueueMessage
 
 
 class SqsQueue:
-    def __init__(self) -> None:
+    def __init__(self, queue_name: str | None = None) -> None:
         client_kwargs: dict[str, Any] = {
             "service_name": "sqs",
             "region_name": settings.aws_region,
@@ -22,12 +22,13 @@ class SqsQueue:
         if settings.aws_endpoint_url:
             client_kwargs["endpoint_url"] = settings.aws_endpoint_url
         self.client = boto3.client(**client_kwargs)
+        self.queue_name = str(queue_name or "").strip() or settings.aws_sqs_queue_name
         self.queue_url: str | None = None
 
     def ensure_queue(self) -> str:
         if self.queue_url:
             return self.queue_url
-        created = self.client.create_queue(QueueName=settings.aws_sqs_queue_name)
+        created = self.client.create_queue(QueueName=self.queue_name)
         self.queue_url = str(created["QueueUrl"])
         return self.queue_url
 

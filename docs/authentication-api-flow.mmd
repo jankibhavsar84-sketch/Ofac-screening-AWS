@@ -1,0 +1,50 @@
+%%{init: {"theme": "base", "flowchart": {"curve": "linear", "nodeSpacing": 35, "rankSpacing": 45}}}%%
+flowchart TB
+  classDef browser fill:#EAF4FF,stroke:#2F74B5,stroke-width:1px,color:#0F243E;
+  classDef identity fill:#F3ECFF,stroke:#7B61FF,stroke-width:1px,color:#251A4A;
+  classDef api fill:#EFFFF4,stroke:#2E8B57,stroke-width:1px,color:#14351F;
+  classDef async fill:#FFF4E5,stroke:#C77700,stroke-width:1px,color:#3D2600;
+  classDef data fill:#F7F7F7,stroke:#666666,stroke-width:1px,color:#202020;
+  classDef external fill:#FFECEC,stroke:#B94A48,stroke-width:1px,color:#4A1515;
+
+  B["User Browser"]:::browser
+  SPA["React SPA<br/>served through CloudFront / ALB"]:::browser
+  OIDC["Cognito / Enterprise IdP<br/>OIDC Authorization Code + PKCE"]:::identity
+  TOKEN["ID token + access token<br/>stored per frontend session config"]:::identity
+
+  APIREQ["/api/v1 request<br/>Authorization: Bearer access_token"]:::api
+  JWT["Backend JWT validation<br/>issuer + JWKS + algorithm + aud/client_id/azp"]:::api
+  AUTHZ["Scope, role, and BU authorization<br/>require_any_scope + user mapping"]:::api
+
+  DECISION{"Screening flow"}:::api
+  SYNC["Synchronous screening<br/>/screenings/match"]:::api
+  ASYNCJOB["Async batch / scheduled job<br/>job + metadata + upload rows"]:::async
+  SQS["SQS work queues<br/>JOB_DISPATCH / SCREEN_ITEM"]:::async
+  WORKER["Worker / dispatcher ECS runtime"]:::async
+
+  ACTAUTH["Actimize authentication<br/>1. static Bearer token<br/>2. OAuth client_credentials<br/>3. ApiKey fallback"]:::external
+  OAUTH["Optional OAuth token request<br/>client_secret or JWT client assertion<br/>token cached until expiry"]:::external
+  ACTAPI["Actimize API<br/>POST /entity-screenings<br/>X-Request-ID + redacted logs"]:::external
+  RESPONSE["Normalize PM / NM / error<br/>return response or expose pollable result"]:::api
+  DB[("PostgreSQL<br/>jobs, items, metadata, audit, access logs")]:::data
+  CALLBACK["Actimize alert callback<br/>/api/v1/integrations/actimize/alerts/callback"]:::external
+
+  B --> SPA
+  B --> OIDC
+  OIDC --> TOKEN
+  TOKEN --> APIREQ
+  APIREQ --> JWT --> AUTHZ --> DECISION
+
+  DECISION --> SYNC
+  DECISION --> ASYNCJOB
+  ASYNCJOB --> DB
+  ASYNCJOB --> SQS --> WORKER
+
+  SYNC --> ACTAUTH
+  WORKER --> ACTAUTH
+  ACTAUTH --> OAUTH
+  ACTAUTH --> ACTAPI
+  OAUTH --> ACTAPI
+  ACTAPI --> RESPONSE --> DB
+  ACTAPI -. review status .-> CALLBACK
+  CALLBACK --> DB

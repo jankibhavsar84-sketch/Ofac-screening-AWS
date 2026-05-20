@@ -220,13 +220,14 @@ def _build_screening_item_key(base_item_key: str, screening_type: str) -> str:
 def _handle_job_dispatch(
     *,
     repository: JobRepository,
-    queue: SqsQueue,
+    dispatch_queue: SqsQueue,
+    screening_queue: SqsQueue,
     actimize: ActimizeClient,
     message: ScreeningQueueMessage,
     receipt_handle: str,
 ) -> None:
     # Large batch dispatch can take longer than the default 60s visibility timeout.
-    queue.change_visibility(receipt_handle, timeout_seconds=3600)
+    dispatch_queue.change_visibility(receipt_handle, timeout_seconds=3600)
 
     job_id = str(message.job_id or "").strip()
     upload_id = str(message.source_upload_id or "").strip()
@@ -320,7 +321,8 @@ def _handle_job_dispatch(
             "query_count": expected_query_count,
             "screening_type_count": len(screening_types_for_dispatch),
             "skipped_existing_records": skipped_existing_records,
-            "queue_name": settings.aws_sqs_queue_name,
+            "queue_name": dispatch_queue.queue_name,
+            "screening_queue_name": screening_queue.queue_name,
         },
     )
 
@@ -356,7 +358,7 @@ def _handle_job_dispatch(
         if len(batch) >= 500:
             dispatched_items += _flush_dispatch_batch(
                 repository=repository,
-                queue=queue,
+                screening_queue=screening_queue,
                 actimize=actimize,
                 job_id=job_id,
                 submitted_at=submitted_at,
@@ -369,7 +371,7 @@ def _handle_job_dispatch(
     if batch:
         dispatched_items += _flush_dispatch_batch(
             repository=repository,
-            queue=queue,
+            screening_queue=screening_queue,
             actimize=actimize,
             job_id=job_id,
             submitted_at=submitted_at,
@@ -408,7 +410,7 @@ def _handle_job_dispatch(
 def _flush_dispatch_batch(
     *,
     repository: JobRepository,
-    queue: SqsQueue,
+    screening_queue: SqsQueue,
     actimize: ActimizeClient,
     job_id: str,
     submitted_at: str,
@@ -467,10 +469,10 @@ def _flush_dispatch_batch(
             )
         )
         if len(pending) == 10:
-            queue.enqueue_batch(pending)
+            screening_queue.enqueue_batch(pending)
             pending = []
     if pending:
-        queue.enqueue_batch(pending)
+        screening_queue.enqueue_batch(pending)
     return len(inserted_item_keys)
 
 
@@ -752,10 +754,12 @@ def _process_received_message(
     *,
     raw: dict[str, Any],
     queue: SqsQueue,
+    screening_queue: SqsQueue | None,
     repository: JobRepository,
     notifier: SnsNotifier,
     actimize: ActimizeClient,
     limiter: FixedRateLimiter,
+    dispatch_only: bool = False,
 ) -> None:
     receipt_handle = raw.get("ReceiptHandle")
     if not receipt_handle:
@@ -768,7 +772,7 @@ def _process_received_message(
         entity_type="sqs_message",
         entity_id=message_id,
         details={
-            "queue_name": settings.aws_sqs_queue_name,
+            "queue_name": queue.queue_name,
             "receipt_handle": receipt_handle,
         },
     )
@@ -783,7 +787,7 @@ def _process_received_message(
             entity_type="sqs_message",
             entity_id=message_id,
             details={
-                "queue_name": settings.aws_sqs_queue_name,
+                "queue_name": queue.queue_name,
                 "receipt_handle": receipt_handle,
                 "body": raw.get("Body"),
                 "error": str(exc),
@@ -801,7 +805,7 @@ def _process_received_message(
             entity_type="sqs_message",
             entity_id=message_id,
             details={
-                "queue_name": settings.aws_sqs_queue_name,
+                "queue_name": queue.queue_name,
                 "receipt_handle": receipt_handle,
                 "body": raw.get("Body"),
                 "job_id": message.job_id,
@@ -816,7 +820,43 @@ def _process_received_message(
     if resolved_requester_name != str(message.user_name or "").strip():
         message = message.model_copy(update={"user_name": resolved_requester_name})
 
-    if str(message.message_type or "").strip().upper() == "JOB_DISPATCH":
+    message_type = str(message.message_type or "").strip().upper()
+    if dispatch_only and message_type != "JOB_DISPATCH":
+        if (
+            message_type == "SCREEN_ITEM"
+            and screening_queue is not None
+            and screening_queue.queue_name != queue.queue_name
+        ):
+            screening_queue.enqueue(message)
+            _safe_add_audit_event(
+                repository,
+                action="DISPATCH_QUEUE_SCREEN_ITEM_FORWARDED",
+                entity_type="sqs_message",
+                entity_id=message_id,
+                details={
+                    "source_queue_name": queue.queue_name,
+                    "target_queue_name": screening_queue.queue_name,
+                    "job_id": message.job_id,
+                    "item_key": message.item_key,
+                },
+            )
+        else:
+            _safe_add_audit_event(
+                repository,
+                action="DISPATCH_QUEUE_UNEXPECTED_MESSAGE_TYPE",
+                entity_type="sqs_message",
+                entity_id=message_id,
+                details={
+                    "queue_name": queue.queue_name,
+                    "message_type": message_type or "(empty)",
+                    "job_id": message.job_id,
+                    "item_key": message.item_key,
+                },
+            )
+        queue.delete(str(receipt_handle))
+        return
+
+    if message_type == "JOB_DISPATCH":
         _safe_add_audit_event(
             repository,
             action="BATCH_DISPATCH_MESSAGE_PICKED",
@@ -827,14 +867,15 @@ def _process_received_message(
             details={
                 "job_id": message.job_id,
                 "source_upload_id": message.source_upload_id,
-                "queue_name": settings.aws_sqs_queue_name,
+                "queue_name": queue.queue_name,
                 "message_id": message_id,
             },
         )
         try:
             _handle_job_dispatch(
                 repository=repository,
-                queue=queue,
+                dispatch_queue=queue,
+                screening_queue=screening_queue or queue,
                 actimize=actimize,
                 message=message,
                 receipt_handle=str(receipt_handle),
@@ -1192,14 +1233,17 @@ def _process_received_message(
 
 
 def run() -> None:
-    queue = SqsQueue()
+    queue = SqsQueue(settings.aws_sqs_queue_name)
+    screening_queue = SqsQueue(settings.aws_screening_sqs_queue_name)
     queue.ensure_queue()
+    if screening_queue.queue_name != queue.queue_name:
+        screening_queue.ensure_queue()
     repository = JobRepository(
         settings.app_db_path,
         settings.app_db_url,
     )
     notifier = SnsNotifier()
-    service = ScreeningService(repository=repository, queue=queue, notifier=notifier)
+    service = ScreeningService(repository=repository, queue=screening_queue, notifier=notifier)
     actimize = ActimizeClient(repository=repository)
     limiter = FixedRateLimiter(settings.screening_tps)
     last_schedule_check = 0.0
@@ -1225,6 +1269,7 @@ def run() -> None:
                             _process_received_message,
                             raw=raw,
                             queue=queue,
+                            screening_queue=screening_queue,
                             repository=repository,
                             notifier=notifier,
                             actimize=actimize,

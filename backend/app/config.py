@@ -68,6 +68,8 @@ class Settings:
 
     aws_region: str
     aws_sqs_queue_name: str
+    aws_dispatch_sqs_queue_name: str
+    aws_screening_sqs_queue_name: str
     aws_endpoint_url: str
     aws_access_key_id: str
     aws_secret_access_key: str
@@ -131,6 +133,16 @@ class Settings:
 
 
 def load_settings() -> Settings:
+    base_sqs_queue_name = os.getenv("AWS_SQS_QUEUE_NAME", "screening-requests").strip() or "screening-requests"
+    dispatch_sqs_queue_name = (
+        os.getenv("AWS_DISPATCH_SQS_QUEUE_NAME", "").strip()
+        or base_sqs_queue_name
+    )
+    screening_sqs_queue_name = (
+        os.getenv("AWS_SCREENING_SQS_QUEUE_NAME", "").strip()
+        or base_sqs_queue_name
+    )
+
     return Settings(
         app_name=os.getenv("APP_NAME", "OFAC Screening Enterprise API"),
         app_version=os.getenv("APP_VERSION", "1.0.0"),
@@ -146,7 +158,9 @@ def load_settings() -> Settings:
         cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*"),
         multipart_max_part_size_bytes=_to_bytes(os.getenv("MULTIPART_MAX_PART_SIZE", "25m"), 25 * 1024 * 1024),
         aws_region=os.getenv("AWS_REGION", "us-east-1"),
-        aws_sqs_queue_name=os.getenv("AWS_SQS_QUEUE_NAME", "screening-requests"),
+        aws_sqs_queue_name=base_sqs_queue_name,
+        aws_dispatch_sqs_queue_name=dispatch_sqs_queue_name,
+        aws_screening_sqs_queue_name=screening_sqs_queue_name,
         aws_endpoint_url=os.getenv("AWS_ENDPOINT_URL", "").strip(),
         aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "").strip(),
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "").strip(),

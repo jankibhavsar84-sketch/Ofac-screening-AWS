@@ -1,0 +1,57 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SqsCreateScreeningQueue",
+      "Effect": "Allow",
+      "Action": ["sqs:CreateQueue"],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "sqs:QueueName": ["screening-requests", "screening-dispatch-requests"]
+        }
+      }
+    },
+    {
+      "Sid": "SqsWorkerQueueAccess",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes",
+        "sqs:SendMessage",
+        "sqs:SendMessageBatch",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:ChangeMessageVisibility"
+      ],
+      "Resource": [
+        "arn:aws:sqs:us-east-2:981450247094:screening-requests",
+        "arn:aws:sqs:us-east-2:981450247094:screening-dispatch-requests"
+      ]
+    },
+    {
+      "Sid": "S3ReadUploadObjects",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::amzn-s3-quickscreen-batch-981450247094/screening-input/*"
+    },
+    {
+      "Sid": "SnsScheduleNotification",
+      "Effect": "Allow",
+      "Action": ["sns:CreateTopic", "sns:GetTopicAttributes", "sns:Publish", "sns:Subscribe", "sns:ListSubscriptionsByTopic"],
+      "Resource": "arn:aws:sns:us-east-2:981450247094:ofac-screening-schedule*"
+    },
+    {
+      "Sid": "SnsUnsubscribe",
+      "Effect": "Allow",
+      "Action": ["sns:Unsubscribe"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SesSendEmail",
+      "Effect": "Allow",
+      "Action": ["ses:SendEmail", "ses:SendRawEmail"],
+      "Resource": "*"
+    }
+  ]
+}

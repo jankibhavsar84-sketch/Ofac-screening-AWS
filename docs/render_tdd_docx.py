@@ -5,8 +5,8 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
-from docx.enum.text import WD_BREAK
-from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
+from docx.shared import Inches, Pt
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -102,6 +102,15 @@ def _add_table(document: Document, rows: list[list[str]]) -> None:
                         run.bold = True
 
 
+def _add_image(document: Document, image_path: Path, alt_text: str = "") -> None:
+    if not image_path.exists():
+        _add_rich_text_paragraph(document, alt_text or f"Image not found: {image_path}")
+        return
+    document.add_picture(str(image_path), width=Inches(6.5))
+    if document.paragraphs:
+        document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+
 def render(md_path: Path = DEFAULT_MD, docx_path: Path = DEFAULT_DOCX) -> None:
     md_text = md_path.read_text(encoding="utf-8")
     lines = md_text.splitlines()
@@ -160,6 +169,21 @@ def render(md_path: Path = DEFAULT_MD, docx_path: Path = DEFAULT_DOCX) -> None:
             pending_table.append(line)
             continue
         flush_table()
+
+        # Images
+        image_match = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", line.strip())
+        if image_match:
+            flush_paragraph()
+            alt_text = image_match.group(1).strip()
+            image_ref = image_match.group(2).strip()
+            if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", image_ref):
+                image_path = Path(image_ref)
+                if not image_path.is_absolute():
+                    image_path = md_path.parent / image_path
+                _add_image(document, image_path.resolve(), alt_text)
+            else:
+                _add_rich_text_paragraph(document, alt_text or image_ref)
+            continue
 
         # Headings
         heading_match = re.match(r"^(#{1,6})\s+(.*)$", line.strip())

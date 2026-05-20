@@ -1,0 +1,53 @@
+%%{init: {"theme": "base", "flowchart": {"defaultRenderer": "elk", "curve": "linear", "nodeSpacing": 35, "rankSpacing": 50}}}%%
+flowchart TB
+  classDef identity fill:#EAF4FF,stroke:#2F74B5,stroke-width:1px,color:#0F243E;
+  classDef reference fill:#F3ECFF,stroke:#7B61FF,stroke-width:1px,color:#251A4A;
+  classDef core fill:#EFFFF4,stroke:#2E8B57,stroke-width:1px,color:#14351F;
+  classDef schedule fill:#FFF4E5,stroke:#C77700,stroke-width:1px,color:#3D2600;
+  classDef ops fill:#F7F7F7,stroke:#666666,stroke-width:1px,color:#202020;
+  classDef external fill:#FFECEC,stroke:#B94A48,stroke-width:1px,color:#4A1515;
+
+  U["app_users<br/>PK user_id<br/>UK old_id"]:::identity
+  BU["business_units<br/>PK business_unit_code"]:::reference
+  UBU["user_business_units<br/>PK user_ref_id + business_unit_code"]:::reference
+  STM["actimize_screening_type_mappings<br/>PK Screening_Type"]:::reference
+  BUST["business_unit_screening_types<br/>PK business_unit_code + Screening_Type"]:::reference
+
+  DS["daily_schedules<br/>PK schedule_id<br/>FK user_ref_id, business_unit_code"]:::schedule
+  J["jobs<br/>PK job_id<br/>AK job_seq_id<br/>FK user_ref_id, source_schedule_id"]:::core
+  JM["job_metadata<br/>PK/FK job_id<br/>FK daily_schedule_id, business_unit_code"]:::core
+  JI["job_items<br/>PK job_id + item_key<br/>FK job_id, user_ref_id"]:::core
+
+  BFU["batch_file_uploads<br/>PK upload_id<br/>FK schedule_id, job_id, user_ref_id"]:::schedule
+  SRS["schedule_record_state<br/>PK schedule_id + record_hash<br/>FK last_job_id"]:::schedule
+  SS["schedule_subscriptions<br/>PK subscription_id<br/>FK schedule_id, user_ref_id"]:::schedule
+  NOTIF["notification tables<br/>schedule_notifications<br/>job_schedule_notifications"]:::ops
+  OPS["audit and telemetry tables<br/>audit_events<br/>api_access_logs<br/>external_api_errors"]:::ops
+  AAC["actimize_alert_callbacks<br/>PK callback_id<br/>logical match by unique_key"]:::external
+
+  U --> UBU
+  BU --> UBU
+  BU --> BUST
+  STM --> BUST
+
+  U --> DS
+  BU --> DS
+  U --> J
+  DS --> J
+
+  BU --> JM
+  DS --> JM
+  J --> JM
+  J --> JI
+
+  DS --> BFU
+  J --> BFU
+  DS --> SRS
+  J --> SRS
+  DS --> SS
+
+  DS --> NOTIF
+  J --> NOTIF
+  U --> OPS
+  J --> OPS
+  AAC -.-> JI

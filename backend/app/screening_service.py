@@ -51,9 +51,16 @@ class ScreeningService:
         except ValueError:
             return None
 
-    def __init__(self, repository: JobRepository, queue: SqsQueue, notifier: SnsNotifier | None = None) -> None:
+    def __init__(
+        self,
+        repository: JobRepository,
+        queue: SqsQueue,
+        notifier: SnsNotifier | None = None,
+        dispatch_queue: SqsQueue | None = None,
+    ) -> None:
         self.repository = repository
         self.queue = queue
+        self.dispatch_queue = dispatch_queue or queue
         self.notifier = notifier
 
     def _normalize_requested_screening_types(
@@ -282,7 +289,7 @@ class ScreeningService:
                 query_count=0,
                 business_unit_code=business_unit_code,
             )
-            self.queue.enqueue(
+            self.dispatch_queue.enqueue(
                 ScreeningQueueMessage(
                     message_type="JOB_DISPATCH",
                     job_id=job_id,
@@ -314,6 +321,7 @@ class ScreeningService:
                     "skipped_existing_records": 0,
                     "business_unit_code": business_unit_code,
                     "correlation_id": correlation_id,
+                    "queue_name": self.dispatch_queue.queue_name,
                     "dispatch_mode": "DEFERRED_SOURCE_UPLOAD",
                 },
             )
@@ -472,7 +480,7 @@ class ScreeningService:
                         "job_id": job_id,
                         "item_key": per_type_item_key,
                         "source_item_key": item_key,
-                        "queue_name": settings.aws_sqs_queue_name,
+                        "queue_name": self.queue.queue_name,
                         "source_schedule_id": source_schedule_id,
                         "screening_types": [screening_type],
                         "mock_screening": payload.mock_screening,
@@ -492,7 +500,7 @@ class ScreeningService:
                             "job_id": job_id,
                             "item_key": per_type_item_key,
                             "source_item_key": item_key,
-                            "queue_name": settings.aws_sqs_queue_name,
+                            "queue_name": self.queue.queue_name,
                             "source_schedule_id": source_schedule_id,
                             "correlation_id": correlation_id,
                         },
@@ -508,7 +516,7 @@ class ScreeningService:
                             "job_id": job_id,
                             "item_key": per_type_item_key,
                             "source_item_key": item_key,
-                            "queue_name": settings.aws_sqs_queue_name,
+                            "queue_name": self.queue.queue_name,
                             "source_schedule_id": source_schedule_id,
                             "correlation_id": correlation_id,
                             "error": str(exc),

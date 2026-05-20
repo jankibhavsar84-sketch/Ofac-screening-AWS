@@ -49,9 +49,15 @@ repository = JobRepository(
     settings.app_db_path,
     settings.app_db_url,
 )
-queue = SqsQueue()
+screening_queue = SqsQueue(settings.aws_sqs_queue_name)
+dispatch_queue = SqsQueue(settings.aws_dispatch_sqs_queue_name)
 notifier = SnsNotifier()
-service = ScreeningService(repository=repository, queue=queue, notifier=notifier)
+service = ScreeningService(
+    repository=repository,
+    queue=screening_queue,
+    notifier=notifier,
+    dispatch_queue=dispatch_queue,
+)
 actimize = ActimizeClient(repository=repository)
 file_store = S3FileStore()
 
@@ -68,7 +74,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup() -> None:
-    queue.ensure_queue()
+    screening_queue.ensure_queue()
+    dispatch_queue.ensure_queue()
 
 
 _SENSITIVE_QUERY_KEYS = {
@@ -676,7 +683,7 @@ async def create_batch_job_with_upload(
             business_unit_code=safe_bu or None,
             source_upload_id=upload_id,
         )
-        queue.enqueue(dispatch)
+        dispatch_queue.enqueue(dispatch)
 
     deferred_until: str | None = None
     if accepted.daily_schedule_id:

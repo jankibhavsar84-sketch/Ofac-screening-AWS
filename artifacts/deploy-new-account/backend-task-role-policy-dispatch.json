@@ -1,0 +1,55 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Sid": "SqsCreateScreeningQueue",
+      "Action": ["sqs:CreateQueue"],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "sqs:QueueName": ["screening-requests", "screening-dispatch-requests"]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Sid": "SqsSendScreeningQueue",
+      "Action": ["sqs:GetQueueUrl", "sqs:GetQueueAttributes", "sqs:SendMessage", "sqs:SendMessageBatch"],
+      "Resource": [
+        "arn:aws:sqs:us-east-2:981450247094:screening-requests",
+        "arn:aws:sqs:us-east-2:981450247094:screening-dispatch-requests"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Sid": "S3BucketProbe",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::amzn-s3-quickscreen-batch-981450247094"
+    },
+    {
+      "Effect": "Allow",
+      "Sid": "S3UploadObjects",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::amzn-s3-quickscreen-batch-981450247094/screening-input/*"
+    },
+    {
+      "Effect": "Allow",
+      "Sid": "SnsSubscriptionManagement",
+      "Action": ["sns:CreateTopic", "sns:GetTopicAttributes", "sns:Subscribe", "sns:ListSubscriptionsByTopic"],
+      "Resource": "arn:aws:sns:us-east-2:981450247094:ofac-screening-schedule*"
+    },
+    {
+      "Effect": "Allow",
+      "Sid": "SnsUnsubscribe",
+      "Action": ["sns:Unsubscribe"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Sid": "CognitoListUsers",
+      "Action": ["cognito-idp:ListUsers"],
+      "Resource": "arn:aws:cognito-idp:us-east-2:981450247094:userpool/us-east-2_v084mzgci"
+    }
+  ]
+}

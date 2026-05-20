@@ -1,0 +1,95 @@
+﻿{
+    "service": {
+        "serviceArn": "arn:aws:ecs:us-east-2:981450247094:service/Screening/ofac-screening-dispatch-svc",
+        "serviceName": "ofac-screening-dispatch-svc",
+        "clusterArn": "arn:aws:ecs:us-east-2:981450247094:cluster/Screening",
+        "loadBalancers": [],
+        "serviceRegistries": [],
+        "status": "ACTIVE",
+        "desiredCount": 1,
+        "runningCount": 0,
+        "pendingCount": 0,
+        "launchType": "FARGATE",
+        "platformVersion": "LATEST",
+        "platformFamily": "Linux",
+        "taskDefinition": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-dispatch:1",
+        "deploymentConfiguration": {
+            "deploymentCircuitBreaker": {
+                "enable": false,
+                "rollback": false
+            },
+            "maximumPercent": 200,
+            "minimumHealthyPercent": 100,
+            "strategy": "ROLLING",
+            "bakeTimeInMinutes": 0
+        },
+        "deployments": [
+            {
+                "id": "ecs-svc/3599496083084186747",
+                "status": "PRIMARY",
+                "taskDefinition": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-dispatch:1",
+                "desiredCount": 0,
+                "pendingCount": 0,
+                "runningCount": 0,
+                "failedTasks": 0,
+                "createdAt": "2026-05-19T16:02:03.388000-04:00",
+                "updatedAt": "2026-05-19T16:02:03.388000-04:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-06bdaa50498eee553",
+                            "subnet-07407d7c1fee08b84",
+                            "subnet-077a31f206a66fbc9"
+                        ],
+                        "securityGroups": [
+                            "sg-0d43d92ac903692ea"
+                        ],
+                        "assignPublicIp": "ENABLED"
+                    }
+                },
+                "rolloutState": "IN_PROGRESS",
+                "rolloutStateReason": "ECS deployment ecs-svc/3599496083084186747 in progress."
+            }
+        ],
+        "roleArn": "arn:aws:iam::981450247094:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+        "events": [],
+        "createdAt": "2026-05-19T16:02:03.388000-04:00",
+        "currentServiceRevisions": [
+            {
+                "arn": "arn:aws:ecs:us-east-2:981450247094:service-revision/Screening/ofac-screening-dispatch-svc/3599496083084186747",
+                "requestedTaskCount": 0,
+                "runningTaskCount": 0,
+                "pendingTaskCount": 0
+            }
+        ],
+        "placementConstraints": [],
+        "placementStrategy": [],
+        "networkConfiguration": {
+            "awsvpcConfiguration": {
+                "subnets": [
+                    "subnet-06bdaa50498eee553",
+                    "subnet-07407d7c1fee08b84",
+                    "subnet-077a31f206a66fbc9"
+                ],
+                "securityGroups": [
+                    "sg-0d43d92ac903692ea"
+                ],
+                "assignPublicIp": "ENABLED"
+            }
+        },
+        "healthCheckGracePeriodSeconds": 0,
+        "schedulingStrategy": "REPLICA",
+        "deploymentController": {
+            "type": "ECS"
+        },
+        "createdBy": "arn:aws:iam::981450247094:user/deployer",
+        "enableECSManagedTags": false,
+        "propagateTags": "NONE",
+        "enableExecuteCommand": false,
+        "availabilityZoneRebalancing": "ENABLED",
+        "resourceManagementType": "CUSTOMER"
+    }
+}

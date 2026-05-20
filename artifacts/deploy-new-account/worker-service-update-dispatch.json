@@ -1,0 +1,631 @@
+﻿{
+    "service": {
+        "serviceArn": "arn:aws:ecs:us-east-2:981450247094:service/Screening/ofac-screening-worker-svc",
+        "serviceName": "ofac-screening-worker-svc",
+        "clusterArn": "arn:aws:ecs:us-east-2:981450247094:cluster/Screening",
+        "loadBalancers": [],
+        "serviceRegistries": [],
+        "status": "ACTIVE",
+        "desiredCount": 1,
+        "runningCount": 1,
+        "pendingCount": 0,
+        "launchType": "FARGATE",
+        "platformVersion": "LATEST",
+        "platformFamily": "Linux",
+        "taskDefinition": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-worker:35",
+        "deploymentConfiguration": {
+            "deploymentCircuitBreaker": {
+                "enable": false,
+                "rollback": false
+            },
+            "maximumPercent": 200,
+            "minimumHealthyPercent": 100,
+            "strategy": "ROLLING",
+            "bakeTimeInMinutes": 0
+        },
+        "deployments": [
+            {
+                "id": "ecs-svc/4868118798915773406",
+                "status": "PRIMARY",
+                "taskDefinition": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-worker:35",
+                "desiredCount": 0,
+                "pendingCount": 0,
+                "runningCount": 0,
+                "failedTasks": 0,
+                "createdAt": "2026-05-19T16:01:47.093000-04:00",
+                "updatedAt": "2026-05-19T16:01:47.093000-04:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-06bdaa50498eee553",
+                            "subnet-07407d7c1fee08b84",
+                            "subnet-077a31f206a66fbc9"
+                        ],
+                        "securityGroups": [
+                            "sg-0d43d92ac903692ea"
+                        ],
+                        "assignPublicIp": "ENABLED"
+                    }
+                },
+                "rolloutState": "IN_PROGRESS",
+                "rolloutStateReason": "ECS deployment ecs-svc/4868118798915773406 in progress."
+            },
+            {
+                "id": "ecs-svc/7437649924295812189",
+                "status": "ACTIVE",
+                "taskDefinition": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-worker:34",
+                "desiredCount": 1,
+                "pendingCount": 0,
+                "runningCount": 1,
+                "failedTasks": 0,
+                "createdAt": "2026-05-15T09:23:45.655000-04:00",
+                "updatedAt": "2026-05-16T14:23:20.563000-04:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-06bdaa50498eee553",
+                            "subnet-07407d7c1fee08b84",
+                            "subnet-077a31f206a66fbc9"
+                        ],
+                        "securityGroups": [
+                            "sg-0d43d92ac903692ea"
+                        ],
+                        "assignPublicIp": "ENABLED"
+                    }
+                },
+                "rolloutState": "COMPLETED",
+                "rolloutStateReason": "ECS deployment ecs-svc/7437649924295812189 completed."
+            }
+        ],
+        "roleArn": "arn:aws:iam::981450247094:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+        "events": [
+            {
+                "id": "ad6dc140-ed8e-4824-a0b9-4329a113145a",
+                "createdAt": "2026-05-19T14:25:30.444000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "a6440132-a883-44b5-b4a0-495d1abea8ad",
+                "createdAt": "2026-05-19T08:25:28.212000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "c8f4740e-c701-4888-9cbf-c6a086d223fe",
+                "createdAt": "2026-05-19T02:25:11.674000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "19f55946-da36-4167-acde-1f4fcfd9f265",
+                "createdAt": "2026-05-18T20:25:09.884000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "2ca1343a-7432-49fe-96e6-df4a7673ce25",
+                "createdAt": "2026-05-18T14:24:48.495000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "b4b02106-8eaa-4796-98fd-3b2e4997b9cb",
+                "createdAt": "2026-05-18T08:24:33.367000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "40a7941c-f512-42be-8796-5ece0e4f1d16",
+                "createdAt": "2026-05-18T02:24:16.664000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "6073da60-693c-4709-979f-c64613f85324",
+                "createdAt": "2026-05-17T20:24:05.116000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "f1b98faf-17c6-44c7-936c-aff16467c999",
+                "createdAt": "2026-05-17T14:23:47.183000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "235f8d87-de23-48c7-ba1f-553f702ec75d",
+                "createdAt": "2026-05-17T08:23:42.003000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "84d7e857-5e3c-4c30-9153-cc06e69754c9",
+                "createdAt": "2026-05-17T02:23:34.560000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "a8e0b779-91b4-430d-be51-c522d84e3c3b",
+                "createdAt": "2026-05-16T20:23:26.316000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "495cf3fa-4ee8-41a8-a58c-a3d244ade0e9",
+                "createdAt": "2026-05-16T14:23:20.572000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "603cb418-fc8e-4d42-9a92-3f7dcebc84a3",
+                "createdAt": "2026-05-16T14:23:11.312000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 1 running tasks: (task 863c99b878e943f6ba4d1c6d6ab5c796)."
+            },
+            {
+                "id": "bd303904-9ecd-48ca-8531-7a9d7fcfb0a1",
+                "createdAt": "2026-05-16T14:20:07.550000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "4f42d798-be2f-4874-9cac-ce4b3fce647e",
+                "createdAt": "2026-05-16T14:18:38.208000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 863c99b878e943f6ba4d1c6d6ab5c796)."
+            },
+            {
+                "id": "d95f4d42-d1d3-4dd2-b628-93ac50e30ba0",
+                "createdAt": "2026-05-16T11:12:43.361000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "b76728d3-bb94-4921-b998-fc92ead82faf",
+                "createdAt": "2026-05-16T05:12:36.215000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "97e5cf7b-6bb0-4953-a8ad-36c373e452c4",
+                "createdAt": "2026-05-15T23:12:15.079000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "e00594bb-08a2-479f-9309-7733355e03c5",
+                "createdAt": "2026-05-15T17:11:58.326000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "882ac200-7d7c-4ddc-8000-a242192cb126",
+                "createdAt": "2026-05-15T17:11:48.734000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 3 running tasks: (task ea82594d704147ddae8fe4edab1e5ebb) (task bfc6a8b01b81428384eaa600f84e29c3) (task c02442cd042b479baec075894eb0101a)."
+            },
+            {
+                "id": "868e6356-bb89-4dbb-8b68-d15b56a83bcd",
+                "createdAt": "2026-05-15T16:41:02.948000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "2bbd64f8-fb05-4232-b085-584c37d37a2e",
+                "createdAt": "2026-05-15T16:39:42.969000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 3 tasks: (task bfc6a8b01b81428384eaa600f84e29c3) (task c02442cd042b479baec075894eb0101a) (task ea82594d704147ddae8fe4edab1e5ebb)."
+            },
+            {
+                "id": "112b72b8-6131-4a55-a786-f5916105581e",
+                "createdAt": "2026-05-15T15:27:17.415000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "d179ad88-8ef6-40e1-9fe2-8df5ea76f8ee",
+                "createdAt": "2026-05-15T09:27:02.793000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "15d37958-9636-49a9-ac43-aca053f846c2",
+                "createdAt": "2026-05-15T09:27:02.792000-04:00",
+                "message": "(service ofac-screening-worker-svc) (deployment ecs-svc/7437649924295812189) deployment completed."
+            },
+            {
+                "id": "936a2ad7-bbe0-4faa-98c3-00e37fc6d56b",
+                "createdAt": "2026-05-15T09:25:10.141000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 1 running tasks: (task 0f02e2467aab4098968bd79b6e335909)."
+            },
+            {
+                "id": "85c3aad9-21dd-4446-bfb6-a9e3abf430bb",
+                "createdAt": "2026-05-15T09:23:59.214000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task def4e086486b4d96bcb59d6ccc09d050)."
+            },
+            {
+                "id": "a48c0338-48ff-4e3c-a2fd-63437d81f0b6",
+                "createdAt": "2026-05-15T09:12:21.718000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "559a8b6c-8b77-4a88-88cf-5a0b2629888e",
+                "createdAt": "2026-05-15T09:12:21.717000-04:00",
+                "message": "(service ofac-screening-worker-svc) (deployment ecs-svc/0757928996446791704) deployment completed."
+            },
+            {
+                "id": "88e3ce49-163d-4cba-85e4-0eb5bf90b055",
+                "createdAt": "2026-05-15T09:10:37.956000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 1 running tasks: (task 378d88ac65ea47848470d12f99370194)."
+            },
+            {
+                "id": "ae568ce4-5363-4063-836a-10e10a252513",
+                "createdAt": "2026-05-15T09:09:26.695000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 0f02e2467aab4098968bd79b6e335909)."
+            },
+            {
+                "id": "d60660ec-835d-4d59-927a-d4cd9e3a39f6",
+                "createdAt": "2026-05-15T06:13:54.751000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "a73953ea-4341-4152-acd5-98af6e1a8fcf",
+                "createdAt": "2026-05-15T06:13:44.755000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 3 running tasks: (task 8359feb630254b2da726433ce36b280f) (task 17560f019c5e42eaa50ec1f4dcd6cf7a) (task 2a630657dc6f4b3c842bfbcf772e11f7)."
+            },
+            {
+                "id": "3d243c5e-8efa-491d-abd8-38c4fc84c5a0",
+                "createdAt": "2026-05-15T06:05:00.239000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "485670b3-a14a-4dc0-8ab1-5dc3b46c1183",
+                "createdAt": "2026-05-15T06:03:28.630000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 3 tasks: (task 17560f019c5e42eaa50ec1f4dcd6cf7a) (task 2a630657dc6f4b3c842bfbcf772e11f7) (task 378d88ac65ea47848470d12f99370194)."
+            },
+            {
+                "id": "51f7308e-8af6-43c3-aee1-8a17e2f67777",
+                "createdAt": "2026-05-15T02:34:11.389000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "c1188dc1-619f-49a8-a376-a709a6108b5a",
+                "createdAt": "2026-05-14T20:33:48.360000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "ac32c83b-b6b4-422b-a506-b5fd8d63931f",
+                "createdAt": "2026-05-14T14:33:21.873000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "d48541c2-3fd4-4c88-b13d-30746cde247e",
+                "createdAt": "2026-05-14T14:33:12.941000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 3 running tasks: (task 36ed616bd2f844e49d05a05c48ab407b) (task 523bd6859ebb45ecab852760ed2aa5f3) (task 9525fae6eca443318df8347e5b14a0df)."
+            },
+            {
+                "id": "d64ef102-05aa-4065-a4cb-dd207d828f9c",
+                "createdAt": "2026-05-14T14:19:54.971000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "a70b4d29-2e94-415d-866a-70bb1ef27c9f",
+                "createdAt": "2026-05-14T14:18:28.202000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 3 tasks: (task 36ed616bd2f844e49d05a05c48ab407b) (task 8359feb630254b2da726433ce36b280f) (task 9525fae6eca443318df8347e5b14a0df)."
+            },
+            {
+                "id": "06e55311-35ab-472d-8762-007144b9971b",
+                "createdAt": "2026-05-14T12:54:50.311000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "2a432118-73f0-4033-8074-a00bd91f9c0c",
+                "createdAt": "2026-05-14T06:54:33.221000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "81e1a773-f623-42a0-8f22-befcdbb10d10",
+                "createdAt": "2026-05-14T00:54:24.536000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "3f689104-1316-44f4-94b9-eed2fb220049",
+                "createdAt": "2026-05-13T18:54:22.809000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "1a550836-2bb1-4f8b-8515-8a1a0f2002db",
+                "createdAt": "2026-05-13T18:54:13.006000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 2 running tasks: (task 84c743befd6e44f48cb45befd29023da) (task 50fd48c6dc2a4845b7909a0679f69c9a)."
+            },
+            {
+                "id": "5dd37668-312a-4657-9395-68704f4b3cc7",
+                "createdAt": "2026-05-13T18:49:19.004000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "e33657a3-b28d-4e0f-8a4f-ed21ab2659fc",
+                "createdAt": "2026-05-13T18:47:31.684000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 2 tasks: (task 523bd6859ebb45ecab852760ed2aa5f3) (task 84c743befd6e44f48cb45befd29023da)."
+            },
+            {
+                "id": "8dd3d55c-3659-41a4-90f0-7217254010f5",
+                "createdAt": "2026-05-13T16:21:16.392000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "907907bd-c711-4722-96b0-66632c77faa2",
+                "createdAt": "2026-05-13T16:21:16.391000-04:00",
+                "message": "(service ofac-screening-worker-svc) (deployment ecs-svc/1873945152598961027) deployment completed."
+            },
+            {
+                "id": "5a0ae240-01a5-4c21-8be5-cc12d167befb",
+                "createdAt": "2026-05-13T16:19:22.476000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 1 running tasks: (task 6f9fd4c53619493d8589af6584e0f82e)."
+            },
+            {
+                "id": "941ace97-b4ae-4080-90b1-8ea75e88437d",
+                "createdAt": "2026-05-13T16:18:10.781000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 50fd48c6dc2a4845b7909a0679f69c9a)."
+            },
+            {
+                "id": "4d9dd473-a39d-4602-93aa-6f8cd51ffde1",
+                "createdAt": "2026-05-13T16:11:21.073000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "6e1e851c-a208-4053-a109-e2a3c6319576",
+                "createdAt": "2026-05-13T16:11:21.072000-04:00",
+                "message": "(service ofac-screening-worker-svc) (deployment ecs-svc/8859751486053840089) deployment completed."
+            },
+            {
+                "id": "79e476e9-6661-4d79-9aef-c0ab6ef50df8",
+                "createdAt": "2026-05-13T16:11:10.948000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 3 running tasks: (task 0ef3fb1fc86445a6a27b28783a15ced6) (task da8d589cbf9b4303a16c5a38a897425d) (task ca72ebbd16cf494ea523901bdd3971cc)."
+            },
+            {
+                "id": "afdd2c18-ffaf-4219-b160-b8503e897fe8",
+                "createdAt": "2026-05-13T16:09:57.740000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 3 running tasks: (task 85078053492a4a599025d8e7fac3adbf) (task 2306b34ef58d48acab3b46f5ad569361) (task 76ee36f2ae814deb8f22735d33fcc38e)."
+            },
+            {
+                "id": "48189e03-9e96-4497-9931-15c4f45abfdc",
+                "createdAt": "2026-05-13T16:09:27.577000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 1 running tasks: (task beb4f25783c9414588762000a73f0c0a)."
+            },
+            {
+                "id": "b24dc062-caee-41ea-ac6a-b98410ad0192",
+                "createdAt": "2026-05-13T16:08:47.057000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 3 tasks: (task 0ef3fb1fc86445a6a27b28783a15ced6) (task 6f9fd4c53619493d8589af6584e0f82e) (task ca72ebbd16cf494ea523901bdd3971cc)."
+            },
+            {
+                "id": "4cba0ec2-be06-4e97-9b36-0bc5df1492ac",
+                "createdAt": "2026-05-13T16:08:17.212000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task da8d589cbf9b4303a16c5a38a897425d)."
+            },
+            {
+                "id": "b540b9ea-b4aa-4d5b-aed6-ab2277316b7d",
+                "createdAt": "2026-05-13T15:57:30.875000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "192d8380-b721-478a-be7c-05a0a73399cb",
+                "createdAt": "2026-05-13T15:57:30.874000-04:00",
+                "message": "(service ofac-screening-worker-svc) (deployment ecs-svc/2802176835828899138) deployment completed."
+            },
+            {
+                "id": "cad59266-4f59-4559-be00-71fd8c203c06",
+                "createdAt": "2026-05-13T15:55:42.134000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 3 running tasks: (task e4f23dc52fa143c8852b3b4bbb921b5e) (task 736ef5036bc446c7897cde6a16546e4a) (task a890d4bfd1394316a55ea0ab3fa0ba8d)."
+            },
+            {
+                "id": "8ff01c0a-7f7c-4dd5-8069-66f348329b78",
+                "createdAt": "2026-05-13T15:55:23.130000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 1 running tasks: (task f6b86f3038464af6b6f6b4e8bf6ced72)."
+            },
+            {
+                "id": "b75c1b35-76e3-4d82-99b6-4611e5e38286",
+                "createdAt": "2026-05-13T15:54:14.432000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 3 tasks: (task 76ee36f2ae814deb8f22735d33fcc38e) (task 85078053492a4a599025d8e7fac3adbf) (task beb4f25783c9414588762000a73f0c0a)."
+            },
+            {
+                "id": "d62f2e29-3d12-441c-9222-b707e32401e0",
+                "createdAt": "2026-05-13T15:53:42.829000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 2306b34ef58d48acab3b46f5ad569361)."
+            },
+            {
+                "id": "ae428695-e55e-4ad4-bda4-8a3b313f0a92",
+                "createdAt": "2026-05-13T15:16:30.897000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "20f7b995-a95e-421b-bfa8-bc45ce4fb849",
+                "createdAt": "2026-05-13T15:16:30.896000-04:00",
+                "message": "(service ofac-screening-worker-svc) (deployment ecs-svc/3755840950636847397) deployment completed."
+            },
+            {
+                "id": "0d84cb82-6f4f-44ec-af3d-34b0db5bc182",
+                "createdAt": "2026-05-13T15:14:37.734000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 3 running tasks: (task 3730148bbc3243daa348ae694b763df0) (task 1d0c7248c27349c7954ae2ea38ba6fea) (task 4afbbd985ed349aa95edf06d07da83c1)."
+            },
+            {
+                "id": "e5cf87d1-8b24-4670-a448-c71d7a479a69",
+                "createdAt": "2026-05-13T15:14:16.739000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 1 running tasks: (task 589d27fcb4a74744b03308e27fe85da9)."
+            },
+            {
+                "id": "998530b2-f3ee-41b8-9e62-a101beac8b3c",
+                "createdAt": "2026-05-13T15:13:26.910000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 3 tasks: (task 736ef5036bc446c7897cde6a16546e4a) (task e4f23dc52fa143c8852b3b4bbb921b5e) (task f6b86f3038464af6b6f6b4e8bf6ced72)."
+            },
+            {
+                "id": "677d95c3-6970-49a7-ad53-f63a70fa894e",
+                "createdAt": "2026-05-13T15:13:04.764000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task a890d4bfd1394316a55ea0ab3fa0ba8d)."
+            },
+            {
+                "id": "477beb5b-a425-4e87-866d-d64fff2e4f1a",
+                "createdAt": "2026-05-13T14:12:58.282000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "41bd588e-7ddb-4ea3-8f29-1397d61b59df",
+                "createdAt": "2026-05-13T14:11:28.126000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 3 tasks: (task 3730148bbc3243daa348ae694b763df0) (task 4afbbd985ed349aa95edf06d07da83c1) (task 589d27fcb4a74744b03308e27fe85da9)."
+            },
+            {
+                "id": "ad9497a3-65ac-4c2b-a5d2-f3c7beb2e7cf",
+                "createdAt": "2026-05-13T13:37:43.672000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "c31ba35e-4f9f-4906-be1d-504f5d3b8ac6",
+                "createdAt": "2026-05-13T13:37:43.671000-04:00",
+                "message": "(service ofac-screening-worker-svc) (deployment ecs-svc/3029700435677081620) deployment completed."
+            },
+            {
+                "id": "56c43db9-bd2a-4001-8425-2465478c2e79",
+                "createdAt": "2026-05-13T13:35:51.069000-04:00",
+                "message": "(service ofac-screening-worker-svc) has stopped 1 running tasks: (task 24b431c564bd40b9bfb20e0a188330f2)."
+            },
+            {
+                "id": "19adacf1-8eb4-4aee-baa4-fa730a8ec0cb",
+                "createdAt": "2026-05-13T13:34:40.424000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 1d0c7248c27349c7954ae2ea38ba6fea)."
+            },
+            {
+                "id": "2be20be8-35a9-4a0a-bda9-53af580d2fd6",
+                "createdAt": "2026-05-13T12:04:40.207000-04:00",
+                "message": "(service ofac-screening-worker-svc) has reached a steady state."
+            },
+            {
+                "id": "0c92f2bd-abe0-4a2a-912f-98ceb82d7b16",
+                "createdAt": "2026-05-13T12:03:13.570000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 24b431c564bd40b9bfb20e0a188330f2)."
+            },
+            {
+                "id": "0cb4c2ac-41bc-4d49-8f27-bc9b7f835857",
+                "createdAt": "2026-05-13T12:02:14.110000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 61ca3e0f2a0a43958f01d3203cf7589e)."
+            },
+            {
+                "id": "649d6de9-9758-410a-bd22-67d3e5d1d0ca",
+                "createdAt": "2026-05-13T12:00:52.189000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task e0af99c6c60048d1bc9eaf556a352274)."
+            },
+            {
+                "id": "a0af392e-996a-4159-8afb-34e9901f0204",
+                "createdAt": "2026-05-13T11:59:31.218000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 7782fa57560945c8821f972a1caa6e32)."
+            },
+            {
+                "id": "046c8bbe-c504-49c3-b60d-b545187ceca5",
+                "createdAt": "2026-05-13T11:58:31.602000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 0091dd18737344e7915829a640827b13)."
+            },
+            {
+                "id": "1a8ee35d-abbc-4a2b-8e6b-7bf3197bdbc4",
+                "createdAt": "2026-05-13T11:57:33.226000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task f77abd6629984850958f5796bf55fd68)."
+            },
+            {
+                "id": "a80cbeef-b846-4879-adaa-8d80b5dac813",
+                "createdAt": "2026-05-13T11:56:33.694000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 32f248978fab467e8bb7a8efe07fec19)."
+            },
+            {
+                "id": "eeb52338-b2a5-48b0-85f8-eeef162cbb98",
+                "createdAt": "2026-05-13T11:55:12.084000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task be1f8bc6f9af43939fae269d968f4e09)."
+            },
+            {
+                "id": "b7116409-9138-4861-8f77-febaf3c6a694",
+                "createdAt": "2026-05-13T11:53:50.740000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 26a978b9a4c548eab27a516d32ecb6f5)."
+            },
+            {
+                "id": "5e65dd70-a175-4e3e-91db-8c96af1d24da",
+                "createdAt": "2026-05-13T11:52:50.173000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task e2435b35e5f04ec594fe4152aa1d953c)."
+            },
+            {
+                "id": "1845b93c-6c52-4061-a586-e94b83d4654b",
+                "createdAt": "2026-05-13T11:51:28.122000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 4f1195acad8b4573a69c25970cd4533f)."
+            },
+            {
+                "id": "c174c910-fbc9-453e-90cb-677cac1e0ea1",
+                "createdAt": "2026-05-13T11:50:06.623000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 5462a7462c1b438da80095d644a4d3c8)."
+            },
+            {
+                "id": "644586fd-9a74-4410-8f24-3323a773dfcf",
+                "createdAt": "2026-05-13T11:49:06.089000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task ac3bf5070fb641fc8f663e3e42b44f94)."
+            },
+            {
+                "id": "e5fb60e1-3bc0-47e0-b78e-992022ab9825",
+                "createdAt": "2026-05-13T11:47:45.507000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task ef094a8b06ff48f6bc9f717635ebef6e)."
+            },
+            {
+                "id": "7553c229-e62b-431c-bdfc-6518edf6de2d",
+                "createdAt": "2026-05-13T11:46:46.445000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 6fb859e948634025bcba604e3889f826)."
+            },
+            {
+                "id": "4dd51632-6cf4-43f0-a656-ab67a31e3e98",
+                "createdAt": "2026-05-13T11:45:17.726000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task f1eded7d42504e0c861d92c7c6b9bf63)."
+            },
+            {
+                "id": "bf477fb1-a929-4db0-8b1c-744377ccb2fc",
+                "createdAt": "2026-05-13T11:44:17.050000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 6d48b73555d64bc79e4eeefb267d0545)."
+            },
+            {
+                "id": "a6e32469-e32b-48d4-ba1b-5e94dbae187e",
+                "createdAt": "2026-05-13T11:43:25.980000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 1c707702d8cc41b2a7b560c185aebcfb)."
+            },
+            {
+                "id": "1efa9eb0-8704-4bf1-8a92-62af1bfe2b67",
+                "createdAt": "2026-05-13T11:42:04.392000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task c869d7fa65ea423bb72523c40d3a3806)."
+            },
+            {
+                "id": "505f3e40-df3c-4f1c-9e5f-b11be3889039",
+                "createdAt": "2026-05-13T11:41:02.759000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task 365de0c6eec243a0adf22f619b9e8671)."
+            },
+            {
+                "id": "aaa57e30-efd5-45a0-bb5a-30c7e88257bc",
+                "createdAt": "2026-05-13T11:40:04.180000-04:00",
+                "message": "(service ofac-screening-worker-svc) has started 1 tasks: (task d0317f1f1227486a8906156484d75b06)."
+            }
+        ],
+        "createdAt": "2026-04-17T18:57:43.757000-04:00",
+        "currentServiceRevisions": [
+            {
+                "arn": "arn:aws:ecs:us-east-2:981450247094:service-revision/Screening/ofac-screening-worker-svc/4868118798915773406",
+                "requestedTaskCount": 0,
+                "runningTaskCount": 0,
+                "pendingTaskCount": 0
+            },
+            {
+                "arn": "arn:aws:ecs:us-east-2:981450247094:service-revision/Screening/ofac-screening-worker-svc/7437649924295812189",
+                "requestedTaskCount": 1,
+                "runningTaskCount": 1,
+                "pendingTaskCount": 0
+            }
+        ],
+        "placementConstraints": [],
+        "placementStrategy": [],
+        "networkConfiguration": {
+            "awsvpcConfiguration": {
+                "subnets": [
+                    "subnet-06bdaa50498eee553",
+                    "subnet-07407d7c1fee08b84",
+                    "subnet-077a31f206a66fbc9"
+                ],
+                "securityGroups": [
+                    "sg-0d43d92ac903692ea"
+                ],
+                "assignPublicIp": "ENABLED"
+            }
+        },
+        "healthCheckGracePeriodSeconds": 0,
+        "schedulingStrategy": "REPLICA",
+        "deploymentController": {
+            "type": "ECS"
+        },
+        "createdBy": "arn:aws:iam::981450247094:user/deployer",
+        "enableECSManagedTags": false,
+        "propagateTags": "NONE",
+        "enableExecuteCommand": false,
+        "availabilityZoneRebalancing": "ENABLED",
+        "resourceManagementType": "CUSTOMER"
+    }
+}
