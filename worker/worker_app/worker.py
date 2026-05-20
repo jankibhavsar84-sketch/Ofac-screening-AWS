@@ -263,8 +263,6 @@ def _handle_job_dispatch(
         return
 
     s3 = _s3_client()
-    skipped_existing_records = 0
-    record_hashes: dict[str, str] = {}
     try:
         parsed = _load_batch_queries(repository=repository, upload_id=upload_id, upload=upload, s3=s3)
     except BatchUploadValidationError as exc:
@@ -290,12 +288,6 @@ def _handle_job_dispatch(
         repository.mark_job_failed(job_id, f"Failed to parse batch payload: {exc}")
         return
 
-    if message.source_schedule_id is not None:
-        parsed, record_hashes, skipped_existing_records = repository.filter_unscreened_schedule_queries(
-            message.source_schedule_id,
-            parsed,
-        )
-
     screening_types_for_dispatch = _resolve_dispatch_screening_types(message.screening_types)
     if screening_types_for_dispatch != list(message.screening_types or []):
         message = message.model_copy(update={"screening_types": screening_types_for_dispatch})
@@ -320,7 +312,6 @@ def _handle_job_dispatch(
             "total_items": expected_total,
             "query_count": expected_query_count,
             "screening_type_count": len(screening_types_for_dispatch),
-            "skipped_existing_records": skipped_existing_records,
             "queue_name": dispatch_queue.queue_name,
             "screening_queue_name": screening_queue.queue_name,
         },
@@ -330,7 +321,7 @@ def _handle_job_dispatch(
     correlation_id = str(message.correlation_id or "").strip() or str(uuid4())
 
     # Expand and enqueue in chunks to keep memory bounded.
-    batch: list[tuple[str, dict[str, object], EntityExample, str | None]] = []
+    batch: list[tuple[str, dict[str, object], EntityExample]] = []
     dispatched_query_count = 0
     dispatched_items = 0
     for item_key, raw_query in parsed.items():
@@ -353,7 +344,7 @@ def _handle_job_dispatch(
             )
             continue
         request_payload = query.model_dump(mode="json")
-        batch.append((safe_key, request_payload, query, record_hashes.get(safe_key)))
+        batch.append((safe_key, request_payload, query))
         dispatched_query_count += 1
         if len(batch) >= 500:
             dispatched_items += _flush_dispatch_batch(
@@ -402,7 +393,6 @@ def _handle_job_dispatch(
             "total_items": dispatched_items,
             "query_count": dispatched_query_count,
             "screening_type_count": len(screening_types_for_dispatch),
-            "skipped_existing_records": skipped_existing_records,
         },
     )
 
@@ -416,12 +406,12 @@ def _flush_dispatch_batch(
     submitted_at: str,
     correlation_id: str,
     message: ScreeningQueueMessage,
-    items: list[tuple[str, dict[str, object], EntityExample, str | None]],
+    items: list[tuple[str, dict[str, object], EntityExample]],
 ) -> int:
     screening_types = _resolve_dispatch_screening_types(message.screening_types)
-    next_items: list[tuple[str, str, dict[str, object], EntityExample, str | None]] = []
+    next_items: list[tuple[str, str, dict[str, object], EntityExample]] = []
     bulk_payloads: list[tuple[str, dict[str, object]]] = []
-    for item_key, payload, query, record_hash in items:
+    for item_key, payload, query in items:
         base_props = query.properties if isinstance(query.properties, dict) else {}
         safe_business_unit_code = str(message.business_unit_code or "").strip().upper()
         for screening_type in screening_types:
@@ -438,7 +428,7 @@ def _flush_dispatch_batch(
             per_type_payload = dict(payload)
             per_type_payload["properties"] = dict(per_type_props)
 
-            next_items.append((per_type_item_key, screening_type, per_type_payload, per_type_query, record_hash))
+            next_items.append((per_type_item_key, screening_type, per_type_payload, per_type_query))
             bulk_payloads.append((per_type_item_key, per_type_payload))
 
     inserted_item_keys = repository.add_job_items_bulk(job_id, bulk_payloads)
@@ -447,7 +437,7 @@ def _flush_dispatch_batch(
 
     # Enqueue per-item screening tasks to allow parallelism across workers.
     pending: list[ScreeningQueueMessage] = []
-    for item_key, screening_type, _payload, query, record_hash in next_items:
+    for item_key, screening_type, _payload, query in next_items:
         if item_key not in inserted_item_keys:
             continue
         pending.append(
@@ -464,7 +454,6 @@ def _flush_dispatch_batch(
                 correlation_id=correlation_id,
                 business_unit_code=message.business_unit_code,
                 source_schedule_id=message.source_schedule_id,
-                source_record_hash=record_hash,
                 source_upload_id=message.source_upload_id,
             )
         )
@@ -1010,12 +999,7 @@ def _process_received_message(
             correlation_id,
             result_count,
         )
-        if message.source_schedule_id is not None and message.source_record_hash:
-            repository.mark_schedule_record_screened(
-                schedule_id=message.source_schedule_id,
-                record_hash=message.source_record_hash,
-                job_id=message.job_id,
-            )
+        if message.source_schedule_id is not None:
             created_notifications = repository.maybe_publish_schedule_job_notification(
                 job_id=message.job_id,
                 schedule_id=message.source_schedule_id,

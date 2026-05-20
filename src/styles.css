@@ -969,6 +969,10 @@ textarea{min-height:90px;resize:vertical}
 .inlineTrashBtn{
   margin-bottom:2px;
 }
+.inlineItemRow .field > label{
+  display:block;
+  min-height:16px;
+}
 .orDivider{
   display:flex;
   align-items:center;

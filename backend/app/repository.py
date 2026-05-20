@@ -1607,7 +1607,7 @@ class JobRepository:
     @staticmethod
     def normalize_schedule_frequency(value: str | None) -> str:
         raw = (value or "").strip().upper()
-        if raw in {"DAILY", "WEEKLY", "MONTHLY"}:
+        if raw in {"DAILY", "WEEKLY", "MONTHLY", "QUARTERLY"}:
             return raw
         return "DAILY"
 
@@ -1646,6 +1646,8 @@ class JobRepository:
                 local_target = local_target + timedelta(days=7)
             elif frequency == "MONTHLY":
                 local_target = JobRepository._add_months(local_target, 1)
+            elif frequency == "QUARTERLY":
+                local_target = JobRepository._add_months(local_target, 3)
             else:
                 local_target = local_target + timedelta(days=1)
 

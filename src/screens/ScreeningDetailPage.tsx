@@ -27,7 +27,7 @@ import { useBusinessUnits } from "../context/BusinessUnitsContext";
 type Mode = "SINGLE" | "BATCH" | "SCHEDULE";
 type UiType = "Individual" | "Organization" | "Unknown" | "Vessel" | "Aircraft";
 type ScreeningType = string;
-type ScheduleFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
+type ScheduleFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY";
 
 type IdDoc = { idType: string; idNumber: string; idCountry: string };
 type NameItem =
@@ -301,6 +301,16 @@ function normalizeScreeningTypeKey(value: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
+function normalizeBusinessUnitCode(value: string): string {
+  return safeTrim(value).toUpperCase();
+}
+
+function screeningTypeCacheKey(userId: string | undefined, businessUnitCode: string): string {
+  const safeUser = safeTrim(userId || "").toLowerCase() || "anonymous";
+  const safeBusinessUnit = normalizeBusinessUnitCode(businessUnitCode);
+  return `${safeUser}::${safeBusinessUnit}`;
+}
+
 function screeningTypeOptionFromApi(row: ScreeningTypeOption): DashboardScreeningTypeOption | null {
   const screeningType = safeTrim(String(row?.screening_type || row?.value || row?.label || ""));
   const searchDefinition = safeTrim(String(row?.search_definition_id || ""));
@@ -330,6 +340,7 @@ const SCHEDULE_FREQUENCY_OPTIONS: { value: ScheduleFrequency; label: string; hin
   { value: "DAILY", label: "Daily", hint: "Runs every day at configured schedule time." },
   { value: "WEEKLY", label: "Weekly", hint: "Runs once every 7 days at configured schedule time." },
   { value: "MONTHLY", label: "Monthly", hint: "Runs once each month at configured schedule time." },
+  { value: "QUARTERLY", label: "Quarterly", hint: "Runs once every 3 months at configured schedule time." },
 ];
 
 const ID_TYPE_OPTIONS = [
@@ -361,21 +372,9 @@ function parseISODate(s: string): Date | null {
   return d;
 }
 
-// map country -> ISO2 if user types full name
+// Keep caller-provided country code (ISO3 from dropdown) without conversion.
 function toCountryCode(input: string) {
-  const v = safeTrim(input).toLowerCase();
-  if (!v) return "";
-  if (v.length === 2) return v;
-  const map: Record<string, string> = {
-    "united states": "us",
-    usa: "us",
-    america: "us",
-    india: "in",
-    "united kingdom": "gb",
-    uk: "gb",
-    canada: "ca",
-  };
-  return map[v] ?? v;
+  return safeTrim(input).toUpperCase();
 }
 
 function uiTypeToSchema(ui: UiType): EntityExample["schema"] {
@@ -988,46 +987,6 @@ export function ScreeningDetailPage() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const rows = await listScreeningTypes();
-        if (cancelled || !Array.isArray(rows) || rows.length === 0) {
-          setScreeningTypeOptions([]);
-          return;
-        }
-        const sortedRows = rows.slice().sort((left, right) => {
-          const leftOrder = Number(left?.display_order);
-          const rightOrder = Number(right?.display_order);
-          const safeLeftOrder = Number.isFinite(leftOrder) ? leftOrder : 1000;
-          const safeRightOrder = Number.isFinite(rightOrder) ? rightOrder : 1000;
-          if (safeLeftOrder !== safeRightOrder) return safeLeftOrder - safeRightOrder;
-          const leftType = safeTrim(String(left?.screening_type || left?.value || ""));
-          const rightType = safeTrim(String(right?.screening_type || right?.value || ""));
-          return leftType.localeCompare(rightType);
-        });
-        const deduped = new Map<string, DashboardScreeningTypeOption>();
-        sortedRows.forEach((row) => {
-          const mapped = screeningTypeOptionFromApi(row);
-          if (!mapped) return;
-          const dedupeKey = normalizeScreeningTypeKey(mapped.value || "");
-          if (!deduped.has(dedupeKey)) {
-            deduped.set(dedupeKey, mapped);
-          }
-        });
-        const nextOptions = Array.from(deduped.values());
-        if (!nextOptions.length || cancelled) return;
-        setScreeningTypeOptions(nextOptions);
-      } catch {
-        setScreeningTypeOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     writeLocalStorageJson(RECENT_RESULT_ROWS_STORAGE_KEY, recentResultRows);
   }, [recentResultRows]);
 
@@ -1054,7 +1013,10 @@ export function ScreeningDetailPage() {
   ]);
 
   const [notes, setNotes] = useState("");
-  const [screeningTypeOptions, setScreeningTypeOptions] = useState<DashboardScreeningTypeOption[]>([]);
+  const [screeningTypeOptionsByBusinessUnit, setScreeningTypeOptionsByBusinessUnit] = useState<
+    Record<string, DashboardScreeningTypeOption[]>
+  >({});
+  const screeningTypeLoadsInFlightRef = useRef<Set<string>>(new Set());
   const [singleScreeningTypes, setSingleScreeningTypes] = useState<ScreeningType[]>([]);
   const [singleMockScreening, setSingleMockScreening] = useState(true);
   const [singleBusinessUnitCode, setSingleBusinessUnitCode] = useState("");
@@ -1067,6 +1029,7 @@ export function ScreeningDetailPage() {
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [batchFileName, setBatchFileName] = useState("");
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [batchSuccess, setBatchSuccess] = useState<string | null>(null);
 
   // SCHEDULE
   const [scheduleTemplatesOpen, setScheduleTemplatesOpen] = useState(false);
@@ -1081,30 +1044,10 @@ export function ScreeningDetailPage() {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   useEffect(() => {
-    const validTypes = new Set(screeningTypeOptions.map((option) => option.value));
-    const fallbackType = screeningTypeOptions[0]?.value || "";
-    const normalizeSelection = (values: ScreeningType[]): ScreeningType[] => {
-      const filtered = values.filter((value) => validTypes.has(value));
-      if (filtered.length) {
-        return Array.from(new Set(filtered));
-      }
-      return fallbackType ? [fallbackType] : [];
-    };
-
-    setSingleScreeningTypes((prev) => {
-      const next = normalizeSelection(prev);
-      return areScreeningTypeSelectionsEqual(prev, next) ? prev : next;
-    });
-    setBatchScreeningTypes((prev) => {
-      const next = normalizeSelection(prev);
-      return areScreeningTypeSelectionsEqual(prev, next) ? prev : next;
-    });
-    setScheduleScreeningTypes((prev) => {
-      const next = normalizeSelection(prev);
-      return areScreeningTypeSelectionsEqual(prev, next) ? prev : next;
-    });
-  }, [screeningTypeOptions]);
-  const defaultScreeningType = screeningTypeOptions[0]?.value || "";
+    // Clear screening-type cache when auth user changes to avoid stale options across sessions.
+    setScreeningTypeOptionsByBusinessUnit({});
+    screeningTypeLoadsInFlightRef.current.clear();
+  }, [currentUser?.id]);
 
   const [singleError, setSingleError] = useState<string | null>(null);
   const [singleSubmitting, setSingleSubmitting] = useState(false);
@@ -1199,6 +1142,145 @@ export function ScreeningDetailPage() {
     if (!validCodes.has(batchBusinessUnitCode)) setBatchBusinessUnitCode(firstCode);
     if (!validCodes.has(scheduleBusinessUnitCode)) setScheduleBusinessUnitCode(firstCode);
   }, [selectableBusinessUnitOptions, singleBusinessUnitCode, batchBusinessUnitCode, scheduleBusinessUnitCode]);
+
+  const loadScreeningTypeOptionsForBusinessUnit = useCallback(async (businessUnitCode: string) => {
+    const safeBusinessUnitCode = normalizeBusinessUnitCode(businessUnitCode);
+    if (!safeBusinessUnitCode) return;
+    const cacheKey = screeningTypeCacheKey(currentUser?.id, safeBusinessUnitCode);
+    if (screeningTypeLoadsInFlightRef.current.has(cacheKey)) return;
+    if (Object.prototype.hasOwnProperty.call(screeningTypeOptionsByBusinessUnit, cacheKey)) return;
+    screeningTypeLoadsInFlightRef.current.add(cacheKey);
+    try {
+      // Build union from the BU options currently shown in UI so screening types
+      // always stay aligned with visible BU access for the signed-in user.
+      const buCodesFromUi = Array.from(
+        new Set(
+          selectableBusinessUnitOptions
+            .map((row) => normalizeBusinessUnitCode(row.code))
+            .filter(Boolean)
+        )
+      );
+      const buCodesForUnion = buCodesFromUi.length ? buCodesFromUi : [safeBusinessUnitCode];
+
+      const responses = await Promise.allSettled(
+        buCodesForUnion.map((code) => listScreeningTypes(code))
+      );
+      const rows: ScreeningTypeOption[] = [];
+      responses.forEach((result) => {
+        if (result.status === "fulfilled" && Array.isArray(result.value)) {
+          rows.push(...result.value);
+        }
+      });
+      const sortedRows = (Array.isArray(rows) ? rows : []).slice().sort((left, right) => {
+        const leftOrder = Number(left?.display_order);
+        const rightOrder = Number(right?.display_order);
+        const safeLeftOrder = Number.isFinite(leftOrder) ? leftOrder : 1000;
+        const safeRightOrder = Number.isFinite(rightOrder) ? rightOrder : 1000;
+        if (safeLeftOrder !== safeRightOrder) return safeLeftOrder - safeRightOrder;
+        const leftType = safeTrim(String(left?.screening_type || left?.value || ""));
+        const rightType = safeTrim(String(right?.screening_type || right?.value || ""));
+        return leftType.localeCompare(rightType);
+      });
+      const deduped = new Map<string, DashboardScreeningTypeOption>();
+      sortedRows.forEach((row) => {
+        const mapped = screeningTypeOptionFromApi(row);
+        if (!mapped) return;
+        const dedupeKey = normalizeScreeningTypeKey(mapped.value || "");
+        if (!deduped.has(dedupeKey)) {
+          deduped.set(dedupeKey, mapped);
+        }
+      });
+      const unionOptions = Array.from(deduped.values());
+      setScreeningTypeOptionsByBusinessUnit((prev) => {
+        const next = { ...prev };
+        buCodesForUnion.forEach((code) => {
+          next[screeningTypeCacheKey(currentUser?.id, code)] = unionOptions;
+        });
+        next[cacheKey] = unionOptions;
+        return next;
+      });
+    } catch {
+      setScreeningTypeOptionsByBusinessUnit((prev) => ({
+        ...prev,
+        [cacheKey]: [],
+      }));
+    } finally {
+      screeningTypeLoadsInFlightRef.current.delete(cacheKey);
+    }
+  }, [currentUser?.id, screeningTypeOptionsByBusinessUnit, selectableBusinessUnitOptions]);
+
+  useEffect(() => {
+    const targetCodes = [
+      normalizeBusinessUnitCode(singleBusinessUnitCode),
+      normalizeBusinessUnitCode(batchBusinessUnitCode),
+      normalizeBusinessUnitCode(scheduleBusinessUnitCode),
+    ].filter(Boolean);
+    const dedupedCodes = Array.from(new Set(targetCodes));
+    dedupedCodes.forEach((code) => {
+      void loadScreeningTypeOptionsForBusinessUnit(code);
+    });
+  }, [
+    singleBusinessUnitCode,
+    batchBusinessUnitCode,
+    scheduleBusinessUnitCode,
+    loadScreeningTypeOptionsForBusinessUnit,
+  ]);
+
+  const singleScreeningTypeOptions = useMemo(
+    () =>
+      screeningTypeOptionsByBusinessUnit[
+        screeningTypeCacheKey(currentUser?.id, normalizeBusinessUnitCode(singleBusinessUnitCode))
+      ] ?? [],
+    [currentUser?.id, screeningTypeOptionsByBusinessUnit, singleBusinessUnitCode]
+  );
+  const batchScreeningTypeOptions = useMemo(
+    () =>
+      screeningTypeOptionsByBusinessUnit[
+        screeningTypeCacheKey(currentUser?.id, normalizeBusinessUnitCode(batchBusinessUnitCode))
+      ] ?? [],
+    [currentUser?.id, screeningTypeOptionsByBusinessUnit, batchBusinessUnitCode]
+  );
+  const scheduleScreeningTypeOptions = useMemo(
+    () =>
+      screeningTypeOptionsByBusinessUnit[
+        screeningTypeCacheKey(currentUser?.id, normalizeBusinessUnitCode(scheduleBusinessUnitCode))
+      ] ?? [],
+    [currentUser?.id, screeningTypeOptionsByBusinessUnit, scheduleBusinessUnitCode]
+  );
+
+  useEffect(() => {
+    const validTypes = new Set(singleScreeningTypeOptions.map((option) => option.value));
+    const fallbackType = singleScreeningTypeOptions[0]?.value || "";
+    const next = singleScreeningTypes.filter((value) => validTypes.has(value));
+    const normalized = next.length ? Array.from(new Set(next)) : (fallbackType ? [fallbackType] : []);
+    if (!areScreeningTypeSelectionsEqual(singleScreeningTypes, normalized)) {
+      setSingleScreeningTypes(normalized);
+    }
+  }, [singleScreeningTypeOptions, singleScreeningTypes]);
+
+  useEffect(() => {
+    const validTypes = new Set(batchScreeningTypeOptions.map((option) => option.value));
+    const fallbackType = batchScreeningTypeOptions[0]?.value || "";
+    const next = batchScreeningTypes.filter((value) => validTypes.has(value));
+    const normalized = next.length ? Array.from(new Set(next)) : (fallbackType ? [fallbackType] : []);
+    if (!areScreeningTypeSelectionsEqual(batchScreeningTypes, normalized)) {
+      setBatchScreeningTypes(normalized);
+    }
+  }, [batchScreeningTypeOptions, batchScreeningTypes]);
+
+  useEffect(() => {
+    const validTypes = new Set(scheduleScreeningTypeOptions.map((option) => option.value));
+    const fallbackType = scheduleScreeningTypeOptions[0]?.value || "";
+    const next = scheduleScreeningTypes.filter((value) => validTypes.has(value));
+    const normalized = next.length ? Array.from(new Set(next)) : (fallbackType ? [fallbackType] : []);
+    if (!areScreeningTypeSelectionsEqual(scheduleScreeningTypes, normalized)) {
+      setScheduleScreeningTypes(normalized);
+    }
+  }, [scheduleScreeningTypeOptions, scheduleScreeningTypes]);
+
+  const singleDefaultScreeningType = singleScreeningTypeOptions[0]?.value || "";
+  const batchDefaultScreeningType = batchScreeningTypeOptions[0]?.value || "";
+  const scheduleDefaultScreeningType = scheduleScreeningTypeOptions[0]?.value || "";
 
   const loadRecentResults = useCallback(
     async ({
@@ -1394,17 +1476,17 @@ export function ScreeningDetailPage() {
         },
       ]);
       setNotes("");
-      setSingleScreeningTypes(defaultScreeningType ? [defaultScreeningType] : []);
+      setSingleScreeningTypes(singleDefaultScreeningType ? [singleDefaultScreeningType] : []);
       setSingleMockScreening(true);
     } else if (mode === "BATCH") {
       setBatchName("");
-      setBatchScreeningTypes(defaultScreeningType ? [defaultScreeningType] : []);
+      setBatchScreeningTypes(batchDefaultScreeningType ? [batchDefaultScreeningType] : []);
       setBatchFile(null);
       setBatchFileName("");
       setTemplatesOpen(false);
     } else {
       setScheduleName("");
-      setScheduleScreeningTypes(defaultScreeningType ? [defaultScreeningType] : []);
+      setScheduleScreeningTypes(scheduleDefaultScreeningType ? [scheduleDefaultScreeningType] : []);
       setScheduleFrequency("DAILY");
       setScheduleRunAt(defaultScheduleRunAtValue());
       setScheduleSubscriptionEmails("");
@@ -1648,6 +1730,7 @@ export function ScreeningDetailPage() {
   async function submitBatch(e: React.FormEvent) {
     e.preventDefault();
     setBatchError(null);
+    setBatchSuccess(null);
 
     if (!canBatchScreen) {
       setBatchError("You do not have permission to run batch screening.");
@@ -1676,7 +1759,7 @@ export function ScreeningDetailPage() {
 
     setBatchSubmitting(true);
     try {
-      await uploadBatchAndSubmitJob({
+      const accepted = await uploadBatchAndSubmitJob({
         file: batchFile,
         screeningTypes: batchScreeningTypes,
         batchName,
@@ -1686,15 +1769,20 @@ export function ScreeningDetailPage() {
         subscribeResults: false,
         userName: currentUser.name,
       });
+      const safeFileName = safeTrim(accepted.file_name) || safeTrim(batchFile?.name) || "Batch file";
+      setBatchSuccess(
+        `${safeFileName} file upload completed successfully. Batch screening job ${accepted.job_id} is submitted.`
+      );
       void loadRecentResults({ silent: false, updateTimestamp: true, resetPage: true, requestUserId: currentUser.id });
 
       // reset batch inputs after success
       setBatchFile(null);
       setBatchFileName("");
       setBatchName("");
-      setBatchScreeningTypes(defaultScreeningType ? [defaultScreeningType] : []);
+      setBatchScreeningTypes(batchDefaultScreeningType ? [batchDefaultScreeningType] : []);
       setTemplatesOpen(false);
     } catch (err: any) {
+      setBatchSuccess(null);
       setBatchError(err?.message ?? "Batch screening failed.");
     } finally {
       setBatchSubmitting(false);
@@ -1767,7 +1855,7 @@ export function ScreeningDetailPage() {
       void loadRecentResults({ silent: false, updateTimestamp: true, resetPage: true, requestUserId: currentUser.id });
 
       setScheduleName("");
-      setScheduleScreeningTypes(defaultScreeningType ? [defaultScreeningType] : []);
+      setScheduleScreeningTypes(scheduleDefaultScreeningType ? [scheduleDefaultScreeningType] : []);
       setScheduleFrequency("DAILY");
       setScheduleRunAt(defaultScheduleRunAtValue());
       setScheduleSubscriptionEmails("");
@@ -2166,7 +2254,7 @@ export function ScreeningDetailPage() {
               <ScreeningTypeCards
                 selected={singleScreeningTypes}
                 onToggle={(value) => toggleScreeningType(value, setSingleScreeningTypes)}
-                options={screeningTypeOptions}
+                options={singleScreeningTypeOptions}
               />
 
               <div className="mockModeCard">
@@ -2410,7 +2498,7 @@ export function ScreeningDetailPage() {
                       <div className="inlineItemRow" key={i}>
                         <div className="grid3 inlineFieldFill">
                           <div className="field">
-                            <label>{i === 0 ? "ID Type" : ""}</label>
+                            <label>{i === 0 ? "ID Type" : "\u00A0"}</label>
                             <select
                               className="idTypeSelect"
                               value={doc.idType}
@@ -2428,7 +2516,7 @@ export function ScreeningDetailPage() {
                             </select>
                           </div>
                           <div className="field">
-                            <label>{i === 0 ? "ID Number" : ""}</label>
+                            <label>{i === 0 ? "ID Number" : "\u00A0"}</label>
                             <input
                               value={doc.idNumber}
                               onChange={(e) => {
@@ -2541,7 +2629,7 @@ export function ScreeningDetailPage() {
             <ScreeningTypeCards
               selected={batchScreeningTypes}
               onToggle={(value) => toggleScreeningType(value, setBatchScreeningTypes)}
-              options={screeningTypeOptions}
+              options={batchScreeningTypeOptions}
             />
 
             {/* Dropzone */}
@@ -2560,6 +2648,7 @@ export function ScreeningDetailPage() {
                 setBatchFile(f);
                 setBatchFileName(f.name);
                 setBatchError(null);
+                setBatchSuccess(null);
               }}
               onClick={openFilePicker}
               onKeyDown={handleDropzoneKeyDown}
@@ -2593,6 +2682,7 @@ export function ScreeningDetailPage() {
                     setBatchFile(f);
                     setBatchFileName(f.name);
                     setBatchError(null);
+                    setBatchSuccess(null);
                   }
                   e.currentTarget.value = "";
                 }}
@@ -2619,6 +2709,7 @@ export function ScreeningDetailPage() {
                 No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
               </div>
             ) : null}
+            {batchSuccess ? <div className="successBox" role="status" aria-live="polite">{batchSuccess}</div> : null}
             {batchError ? <div className="errorBox" role="alert" aria-live="assertive">{batchError}</div> : null}
             <form onSubmit={submitBatch}>
               <button className="btnBatchWide" type="submit" disabled={batchSubmitting || !businessUnitsEffectiveAvailable}>
@@ -2689,7 +2780,7 @@ export function ScreeningDetailPage() {
               <ScreeningTypeCards
                 selected={scheduleScreeningTypes}
                 onToggle={(value) => toggleScreeningType(value, setScheduleScreeningTypes)}
-                options={screeningTypeOptions}
+                options={scheduleScreeningTypeOptions}
               />
 
               <div className="grid2" style={{ marginTop: 10 }}>

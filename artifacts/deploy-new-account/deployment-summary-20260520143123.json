@@ -1,0 +1,8 @@
+{
+    "deployed_at":  "2026-05-20T14:31:40",
+    "tag":  "20260520142947",
+    "backend_task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-backend:48",
+    "worker_task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-worker:37",
+    "dispatch_task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-dispatch:2",
+    "frontend_task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:39"
+}

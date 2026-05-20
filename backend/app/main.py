@@ -807,7 +807,7 @@ def list_daily_schedule_batch_runs(
     svc: ScreeningService = Depends(get_service),
 ) -> DailyScheduleBatchRunStatusPage:
     # Enforce fixed-size paging for admin batch-run status to keep payloads bounded.
-    return svc.list_daily_schedule_batch_runs(page=page, page_size=50)
+    return svc.list_daily_schedule_batch_runs(page=page, page_size=10)
 
 
 @app.get("/api/v1/business-units", response_model=list[BusinessUnit])
@@ -1004,7 +1004,7 @@ def unsubscribe_daily_schedule(
     email: str = Query(default=""),
     principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
     svc: ScreeningService = Depends(get_service),
-) -> dict[str, str]:
+) -> dict[str, str | int]:
     safe_email = _normalize_subscription_email(email) or _normalize_subscription_email(principal.email)
     if not safe_email:
         raise HTTPException(status_code=400, detail="email is required")
@@ -1028,7 +1028,7 @@ def remove_daily_schedule(
     user_name: str | None = Query(default=None),
     principal: AuthPrincipal = Depends(require_any_scope("screening.daily", "screening.admin")),
     svc: ScreeningService = Depends(get_service),
-) -> dict[str, str]:
+) -> dict[str, str | int]:
     actor_user_id = principal.user_id if principal.user_id else user_id
     actor_user_name = _preferred_actor_name(principal, user_name)
     removed = svc.remove_daily_schedule(schedule_id, user_id=actor_user_id, user_name=actor_user_name)

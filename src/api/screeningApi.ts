@@ -316,7 +316,7 @@ type BatchUploadRequest = {
   screeningTypes?: string[];
   batchName: string;
   dailyScreening?: boolean;
-  scheduleFrequency?: "DAILY" | "WEEKLY" | "MONTHLY";
+  scheduleFrequency?: "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY";
   scheduleRunAt?: string;
   scheduleId?: string;
   businessUnitCode?: string;
@@ -580,14 +580,14 @@ export async function listDailyScheduleBatchRuns(page = 1): Promise<DailySchedul
     throw new Error(`Failed to load daily schedule batch runs: ${await parseApiError(resp)}`);
   }
   const parsed = (await resp.json()) as Partial<DailyScheduleBatchRunStatusPage>;
-  return {
-    items: Array.isArray(parsed?.items) ? (parsed.items as DailyScheduleBatchRunStatus[]) : [],
-    total: Number(parsed?.total || 0),
-    page: Number(parsed?.page || 1),
-    page_size: Number(parsed?.page_size || 50),
-    total_pages: Number(parsed?.total_pages || 1),
-  };
-}
+    return {
+      items: Array.isArray(parsed?.items) ? (parsed.items as DailyScheduleBatchRunStatus[]) : [],
+      total: Number(parsed?.total || 0),
+      page: Number(parsed?.page || 1),
+      page_size: Number(parsed?.page_size || 10),
+      total_pages: Number(parsed?.total_pages || 1),
+    };
+  }
 
 export async function listMyBusinessUnits(): Promise<BusinessUnit[]> {
   const baseUrl = normalizeBaseUrl(env("VITE_SCREENING_API_BASE_URL", "/api/v1"));

@@ -61,43 +61,6 @@ class ExternalApiCallError(RuntimeError):
         super().__init__(f"{base}: {message}")
 
 
-_ISO2_TO_ISO3: dict[str, str] = {
-    "US": "USA",
-    "CA": "CAN",
-    "GB": "GBR",
-    "UK": "GBR",
-    "IN": "IND",
-    "AU": "AUS",
-    "DE": "DEU",
-    "FR": "FRA",
-    "IT": "ITA",
-    "ES": "ESP",
-    "NL": "NLD",
-    "BE": "BEL",
-    "CH": "CHE",
-    "IE": "IRL",
-    "SE": "SWE",
-    "NO": "NOR",
-    "DK": "DNK",
-    "FI": "FIN",
-    "JP": "JPN",
-    "CN": "CHN",
-    "HK": "HKG",
-    "SG": "SGP",
-    "AE": "ARE",
-    "SA": "SAU",
-    "BR": "BRA",
-    "MX": "MEX",
-    "AR": "ARG",
-    "ZA": "ZAF",
-    "RU": "RUS",
-    "UA": "UKR",
-    "TR": "TUR",
-    "KR": "KOR",
-    "TW": "TWN",
-}
-
-
 def _as_list(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
@@ -189,14 +152,9 @@ def _to_party_type(schema_name: str | None) -> str:
 
 
 def _to_iso3(country: str) -> str:
-    safe = str(country or "").strip().upper()
-    if not safe:
-        return ""
-    if len(safe) == 3:
-        return safe
-    if len(safe) == 2:
-        return _ISO2_TO_ISO3.get(safe, "")
-    return ""
+    # ISO-2 to ISO-3 conversion is intentionally disabled.
+    # Preserve the caller-provided country value (trimmed only).
+    return str(country or "").strip()
 
 
 def _sanitize_source_system(value: str | None) -> str:
@@ -895,9 +853,9 @@ class ActimizeClient:
         countries_raw = _as_list(props.get("nationality")) + _as_list(props.get("country")) + _as_list(props.get("jurisdiction"))
         countries: list[str] = []
         for country in countries_raw:
-            iso3 = _to_iso3(country)
-            if iso3:
-                countries.append(iso3)
+            safe_country = _to_iso3(country)
+            if safe_country:
+                countries.append(safe_country)
         countries = _dedupe(countries)
         if party_type == "I" and countries:
             payload["nationalities"] = [{"country": country} for country in countries[:5]]
@@ -932,7 +890,7 @@ class ActimizeClient:
                     _as_list(raw_id.get("idCountry"))
                     + _as_list(raw_id.get("idIssueCountry"))
                 )
-                id_country = _to_iso3(raw_country) or raw_country or default_id_country
+                id_country = _to_iso3(raw_country) or default_id_country
                 id_entry: dict[str, str] = {"idType": id_type, "idValue": id_value}
                 if id_country:
                     id_entry["idCountry"] = id_country
@@ -965,7 +923,7 @@ class ActimizeClient:
             + _as_list(props.get("BirthLocation"))
         )
         if birth_location:
-            payload["countryofBirth"] = _to_iso3(birth_location) or birth_location
+            payload["countryofBirth"] = _to_iso3(birth_location)
 
         gender = _first_non_empty(_as_list(props.get("gender")) + _as_list(props.get("Gender")))
         if gender:

@@ -318,7 +318,6 @@ class ScreeningService:
                     "mock_screening": payload.mock_screening,
                     "source_schedule_id": source_schedule_id,
                     "source_upload_id": source_upload_id,
-                    "skipped_existing_records": 0,
                     "business_unit_code": business_unit_code,
                     "correlation_id": correlation_id,
                     "queue_name": self.dispatch_queue.queue_name,
@@ -335,16 +334,9 @@ class ScreeningService:
                 screened_item_keys=[],
             )
 
+        # Always re-screen scheduled/batch inputs on every run.
+        # Do not suppress rows based on prior schedule_record_state hashes.
         queries_for_job = base_queries
-        record_hashes: dict[str, str] = {
-            item_key: self.repository.hash_query_payload(query_payload) for item_key, query_payload in base_queries.items()
-        }
-        skipped_existing_records = 0
-        if source_schedule_id:
-            queries_for_job, record_hashes, skipped_existing_records = self.repository.filter_unscreened_schedule_queries(
-                source_schedule_id,
-                base_queries,
-            )
 
         if not queries_for_job:
             submitted_at, job_id = self.repository.create_job(
@@ -377,7 +369,6 @@ class ScreeningService:
                 details={
                     "source_schedule_id": source_schedule_id,
                     "total_items": 0,
-                    "skipped_existing_records": skipped_existing_records,
                     "business_unit_code": business_unit_code,
                     "correlation_id": correlation_id,
                 },
@@ -468,7 +459,6 @@ class ScreeningService:
                     correlation_id=correlation_id,
                     business_unit_code=safe_business_unit_code or None,
                     source_schedule_id=source_schedule_id,
-                    source_record_hash=record_hashes.get(item_key),
                 )
                 self.repository.add_audit_event(
                     action="SQS_ENQUEUE_STARTED",
@@ -540,7 +530,6 @@ class ScreeningService:
                 "mock_screening": payload.mock_screening,
                 "source_schedule_id": source_schedule_id,
                 "source_upload_id": source_upload_id,
-                "skipped_existing_records": skipped_existing_records,
                 "business_unit_code": business_unit_code,
                 "correlation_id": correlation_id,
             },
@@ -1518,14 +1507,46 @@ class ScreeningService:
         safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
         if safe_business_unit_code and user_id:
             self._validate_business_unit_access(user_id=user_id, business_unit_code=safe_business_unit_code)
-
-        rows = self.repository.list_active_actimize_screening_type_mappings(
-            business_unit_code=safe_business_unit_code or None
-        )
+        if safe_business_unit_code:
+            rows = self.repository.list_active_actimize_screening_type_mappings(
+                business_unit_code=safe_business_unit_code
+            )
+        elif user_id:
+            # Default to BU-scoped options for the current user (union across assigned BUs)
+            # so callers never receive globally unscoped screening types.
+            user_business_unit_codes = self.repository.list_user_business_unit_codes(user_id)
+            merged_rows: list[dict[str, Any]] = []
+            for code in user_business_unit_codes:
+                merged_rows.extend(
+                    self.repository.list_active_actimize_screening_type_mappings(
+                        business_unit_code=code
+                    )
+                )
+            rows = merged_rows
+        else:
+            rows = self.repository.list_active_actimize_screening_type_mappings(
+                business_unit_code=None
+            )
         options: list[ScreeningTypeOption] = []
+        def _safe_display_order(row: dict[str, Any]) -> int:
+            raw_value = row.get("display_order")
+            if raw_value is None:
+                return 1000
+            try:
+                return int(raw_value)
+            except (TypeError, ValueError):
+                return 1000
+
+        rows_sorted = sorted(
+            rows,
+            key=lambda row: (
+                _safe_display_order(row),
+                str(row.get("screening_type") or "").strip().upper(),
+            ),
+        )
         seen_types: set[str] = set()
 
-        for row in rows:
+        for row in rows_sorted:
             screening_type = str(row.get("screening_type") or "").strip()
             search_definition_id = str(row.get("search_definition_id") or "").strip()
             search_definition_name = str(row.get("search_definition_name") or "").strip()

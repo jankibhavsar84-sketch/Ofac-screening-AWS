@@ -36,7 +36,7 @@ export function DailyScheduleAdminPage() {
   const [batchRunsError, setBatchRunsError] = useState<string | null>(null);
   const [batchRunsPage, setBatchRunsPage] = useState(1);
   const [batchRunsTotal, setBatchRunsTotal] = useState(0);
-  const [batchRunsPageSize, setBatchRunsPageSize] = useState(50);
+  const [batchRunsPageSize, setBatchRunsPageSize] = useState(10);
   const [batchRunsTotalPages, setBatchRunsTotalPages] = useState(1);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [rerunningId, setRerunningId] = useState<string | null>(null);
@@ -63,7 +63,7 @@ export function DailyScheduleAdminPage() {
       setBatchRuns([]);
       setBatchRunsPage(1);
       setBatchRunsTotal(0);
-      setBatchRunsPageSize(50);
+      setBatchRunsPageSize(10);
       setBatchRunsTotalPages(1);
       setBatchRunsError(null);
       return;
@@ -74,7 +74,7 @@ export function DailyScheduleAdminPage() {
       const pageData = await listDailyScheduleBatchRuns(page);
       setBatchRuns(pageData.items);
       setBatchRunsTotal(Math.max(0, Number(pageData.total || 0)));
-      setBatchRunsPageSize(Math.max(1, Number(pageData.page_size || 50)));
+      setBatchRunsPageSize(Math.max(1, Number(pageData.page_size || 10)));
       setBatchRunsTotalPages(Math.max(1, Number(pageData.total_pages || 1)));
       setBatchRunsPage(Math.max(1, page));
     } catch (err: any) {
@@ -335,7 +335,7 @@ export function DailyScheduleAdminPage() {
                 {Math.min(batchRunsTotal, batchRunsStartIdx + batchRunsPageSize)} of {batchRunsTotal} batch runs
               </div>
               <div className="auditPagerRight">
-                <div className="auditPagerMeta">50 records per page</div>
+                <div className="auditPagerMeta">10 records per page</div>
                 <div className="auditPagerNav">
                   <button
                     className="auditPagerArrow"
