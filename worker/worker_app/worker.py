@@ -23,7 +23,7 @@ from app.sns_notifier import SnsNotifier
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("screening-worker")
-_RETRYABLE_EXTERNAL_STATUS_CODES = {408, 429, 500, 502, 503, 504}
+_RETRYABLE_EXTERNAL_STATUS_CODES = {400, 408, 429, 500, 502, 503, 504}
 _RETRYABLE_DATABASE_ERROR_MARKERS = (
     "couldn't get a connection after",
     "connection timeout expired",

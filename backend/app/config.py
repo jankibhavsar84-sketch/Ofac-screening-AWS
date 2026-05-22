@@ -212,7 +212,7 @@ def load_settings() -> Settings:
         worker_health_port=_to_int(os.getenv("WORKER_HEALTH_PORT"), 8081),
         worker_healthcheck_timeout_s=_to_float(os.getenv("WORKER_HEALTHCHECK_TIMEOUT_S"), 5.0),
         worker_health_max_age_s=_to_int(os.getenv("WORKER_HEALTH_MAX_AGE_S"), 180),
-        screening_item_retry_max_attempts=_to_int(os.getenv("SCREENING_ITEM_RETRY_MAX_ATTEMPTS"), 2),
+        screening_item_retry_max_attempts=_to_int(os.getenv("SCREENING_ITEM_RETRY_MAX_ATTEMPTS"), 5),
         screening_item_retry_initial_delay_s=_to_int(os.getenv("SCREENING_ITEM_RETRY_INITIAL_DELAY_S"), 3),
         screening_item_retry_max_delay_s=_to_int(os.getenv("SCREENING_ITEM_RETRY_MAX_DELAY_S"), 60),
         screening_item_visibility_timeout_s=_to_int(os.getenv("SCREENING_ITEM_VISIBILITY_TIMEOUT_S"), 300),
