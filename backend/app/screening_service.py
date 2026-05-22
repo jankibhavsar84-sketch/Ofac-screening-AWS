@@ -160,22 +160,34 @@ class ScreeningService:
         if payload.daily_screening:
             self._validate_business_unit_access(payload.user_id, business_unit_code)
             schedule_id = source_schedule_id
-            daily_schedule_id, created = self.repository.create_or_update_daily_schedule(
-                schedule_id=schedule_id,
-                batch_name=payload.batch_name.strip(),
-                user_id=payload.user_id,
-                user_name=payload.user_name,
-                business_unit_code=business_unit_code,
-                queries=base_queries,
-                screening_types=payload.screening_types,
-                mock_screening=payload.mock_screening,
-                timezone_name=settings.daily_screening_timezone,
-                run_hour=settings.daily_screening_hour,
-                run_minute=settings.daily_screening_minute,
-                schedule_frequency=schedule_frequency,
-                schedule_run_at=payload.schedule_run_at,
-                source_upload_id=source_upload_id,
-            )
+            try:
+                daily_schedule_id, created = self.repository.create_or_update_daily_schedule(
+                    schedule_id=schedule_id,
+                    batch_name=payload.batch_name.strip(),
+                    user_id=payload.user_id,
+                    user_name=payload.user_name,
+                    business_unit_code=business_unit_code,
+                    queries=base_queries,
+                    screening_types=payload.screening_types,
+                    mock_screening=payload.mock_screening,
+                    timezone_name=settings.daily_screening_timezone,
+                    run_hour=settings.daily_screening_hour,
+                    run_minute=settings.daily_screening_minute,
+                    schedule_frequency=schedule_frequency,
+                    schedule_run_at=payload.schedule_run_at,
+                    source_upload_id=source_upload_id,
+                )
+            except Exception as exc:  # noqa: BLE001
+                # Surface DB constraint mismatch as a 400 instead of generic 500.
+                # This protects users when runtime accepts QUARTERLY but DB check
+                # constraint is not yet aligned.
+                lowered = str(exc or "").strip().lower()
+                if "chk_daily_schedules_schedule_frequency" in lowered and "check" in lowered:
+                    raise ValueError(
+                        "Database constraint does not allow this schedule frequency. "
+                        "Please update daily_schedules schedule_frequency constraint to include QUARTERLY."
+                    ) from exc
+                raise
             source_schedule_id = daily_schedule_id
             schedule_snapshot = self.repository.get_daily_schedule(daily_schedule_id)
             scheduled_next_run_at = (schedule_snapshot or {}).get("next_run_at")
@@ -1369,10 +1381,15 @@ class ScreeningService:
         self,
         page: int = 1,
         page_size: int = 10,
+        user_id: str | None = None,
     ) -> DailyScheduleInfoPage:
         safe_page_size = max(min(int(page_size), 1000), 1)
         safe_page = max(int(page), 1)
-        schedules, total, effective_page = self.repository.list_active_daily_schedules(page=safe_page, page_size=safe_page_size)
+        schedules, total, effective_page = self.repository.list_active_daily_schedules(
+            user_id=user_id,
+            page=safe_page,
+            page_size=safe_page_size,
+        )
         items: list[DailyScheduleInfo] = []
         for s in schedules:
             total_items = len(s["queries"]) if isinstance(s["queries"], dict) else 0

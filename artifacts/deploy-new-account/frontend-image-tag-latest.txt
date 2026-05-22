@@ -1,1 +1,1 @@
-981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260520145100
+981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260522093530

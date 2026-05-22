@@ -715,6 +715,33 @@ select option{
   position:relative;
 }
 
+.countryInputRow{
+  display:flex;
+  align-items:stretch;
+  gap:6px;
+}
+
+.countryInputRow input{
+  flex:1;
+  min-width:0;
+}
+
+.countryToggleBtn{
+  width:40px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--card);
+  color:var(--muted);
+  cursor:pointer;
+  font-size:11px;
+  line-height:1;
+}
+
+.countryToggleBtn:hover{
+  background:var(--app-surface);
+  border-color:#d8e3f2;
+}
+
 .countrySuggestions{
   position:absolute;
   top:calc(100% + 6px);
@@ -732,17 +759,65 @@ select option{
 .countryOption{
   width:100%;
   text-align:left;
-  padding:9px 12px;
+  padding:8px 12px;
   border:0;
   background:var(--card);
   color:var(--text);
   font-family:inherit;
   font-size:14px;
   cursor:pointer;
+  display:grid;
+  grid-template-columns:74px minmax(0, 1fr);
+  align-items:center;
+  gap:10px;
 }
 
 .countryOption:hover{
   background:var(--app-surface);
+}
+
+.countryOption.active{
+  background:var(--nav-active-bg);
+  color:var(--nav-active-fg);
+}
+
+.countryOptionCode{
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  padding:2px 8px;
+  border-radius:999px;
+  border:1px solid #d7e1ef;
+  background:var(--app-surface);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.05em;
+}
+
+.countryOption.active .countryOptionCode{
+  border-color:#b8c8e6;
+  background:#ffffff;
+  color:#1f3353;
+}
+
+.countryOptionName{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.countryNoResults{
+  padding:10px 12px;
+  font-size:12px;
+  color:var(--muted);
+}
+
+.countryAssistText{
+  margin-top:4px;
+  font-size:11px;
+  color:var(--muted);
+  min-height:14px;
 }
 
 /* cleaner focus for accessibility without looking “browser default” */
@@ -2624,6 +2699,29 @@ html[data-theme="dark"] .buPrimaryBtn{
 html[data-theme="dark"] .searchBox input{
   background:transparent;
   color:var(--text);
+}
+
+html[data-theme="dark"] .countryToggleBtn{
+  background:#13243e;
+  border-color:#314763;
+  color:#c7d4e8;
+}
+
+html[data-theme="dark"] .countryToggleBtn:hover{
+  background:#1a2d4d;
+  border-color:#3b5479;
+}
+
+html[data-theme="dark"] .countryOptionCode{
+  background:#182b48;
+  border-color:#395277;
+  color:#d5e2f6;
+}
+
+html[data-theme="dark"] .countryOption.active .countryOptionCode{
+  background:#2a4268;
+  border-color:#5c7aa7;
+  color:#f1f5f9;
 }
 
 html[data-theme="dark"] .table thead th,

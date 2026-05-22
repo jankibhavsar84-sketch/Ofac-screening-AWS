@@ -1042,6 +1042,7 @@ export function ScreeningDetailPage() {
   const [scheduleFile, setScheduleFile] = useState<File | null>(null);
   const [scheduleFileName, setScheduleFileName] = useState("");
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduleSuccess, setScheduleSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     // Clear screening-type cache when auth user changes to avoid stale options across sessions.
@@ -1457,6 +1458,8 @@ export function ScreeningDetailPage() {
     setSingleError(null);
     setBatchError(null);
     setScheduleError(null);
+    setBatchSuccess(null);
+    setScheduleSuccess(null);
 
     if (mode === "SINGLE") {
       setNames([
@@ -1793,6 +1796,7 @@ export function ScreeningDetailPage() {
   async function submitSchedule(e: React.FormEvent) {
     e.preventDefault();
     setScheduleError(null);
+    setScheduleSuccess(null);
 
     if (!canDailyScreening) {
       setScheduleError("Only Compliance/Admin can configure scheduled screening.");
@@ -1839,7 +1843,7 @@ export function ScreeningDetailPage() {
     const subscriptionEmails = parsedSubscriptions.validEmails;
     setScheduleSubmitting(true);
     try {
-      await uploadBatchAndSubmitJob({
+      const accepted = await uploadBatchAndSubmitJob({
         file: scheduleFile,
         screeningTypes: scheduleScreeningTypes,
         batchName: scheduleName,
@@ -1852,6 +1856,11 @@ export function ScreeningDetailPage() {
         subscribeEmails: subscriptionEmails,
         userName: currentUser.name,
       });
+      const safeFileName = safeTrim(accepted.file_name) || safeTrim(scheduleFile?.name) || "Batch file";
+      const safeFrequency = safeTrim(String(accepted.schedule_frequency || scheduleFrequency)).toUpperCase() || "DAILY";
+      const safeScheduleId = safeTrim(String(accepted.daily_schedule_id || ""));
+      const scheduleIdMsg = safeScheduleId ? ` Schedule ID ${safeScheduleId} created.` : "";
+      setScheduleSuccess(`${safeFileName} scheduled batch submitted successfully.${scheduleIdMsg} Frequency: ${safeFrequency}.`);
       void loadRecentResults({ silent: false, updateTimestamp: true, resetPage: true, requestUserId: currentUser.id });
 
       setScheduleName("");
@@ -1863,6 +1872,7 @@ export function ScreeningDetailPage() {
       setScheduleFileName("");
       setScheduleTemplatesOpen(false);
     } catch (err: any) {
+      setScheduleSuccess(null);
       setScheduleError(err?.message ?? "Scheduled screening failed.");
     } finally {
       setScheduleSubmitting(false);
@@ -2871,6 +2881,7 @@ export function ScreeningDetailPage() {
                   setScheduleFile(f);
                   setScheduleFileName(f.name);
                   setScheduleError(null);
+                  setScheduleSuccess(null);
                 }}
                 onClick={openFilePicker}
                 onKeyDown={handleDropzoneKeyDown}
@@ -2904,6 +2915,7 @@ export function ScreeningDetailPage() {
                       setScheduleFile(f);
                       setScheduleFileName(f.name);
                       setScheduleError(null);
+                      setScheduleSuccess(null);
                     }
                     e.currentTarget.value = "";
                   }}
@@ -2930,6 +2942,7 @@ export function ScreeningDetailPage() {
                   No Business Unit is mapped to your user. Please contact an administrator. (User ID: {currentUser.id})
                 </div>
               ) : null}
+              {scheduleSuccess ? <div className="successBox" role="status" aria-live="polite">{scheduleSuccess}</div> : null}
               {scheduleError ? <div className="errorBox" role="alert" aria-live="assertive">{scheduleError}</div> : null}
               <button className="btnBatchWide" type="submit" disabled={scheduleSubmitting || !businessUnitsEffectiveAvailable}>
                 {scheduleSubmitting ? "Starting..." : "Create Scheduled Screening"}

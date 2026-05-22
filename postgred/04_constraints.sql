@@ -40,6 +40,10 @@ ALTER TABLE ONLY public."Batch_Schedule" ADD CONSTRAINT "fk_Batch_Schedule_busin
 
 ALTER TABLE ONLY public."Batch_Schedule" ADD CONSTRAINT "fk_Batch_Schedule_user_ref_id" FOREIGN KEY (user_ref_id) REFERENCES app_users(user_id);
 
+ALTER TABLE ONLY public."daily_schedules" DROP CONSTRAINT IF EXISTS "chk_daily_schedules_schedule_frequency";
+
+ALTER TABLE ONLY public."daily_schedules" ADD CONSTRAINT "chk_daily_schedules_schedule_frequency" CHECK ((upper((schedule_frequency)::text) = ANY ((ARRAY['DAILY'::text, 'WEEKLY'::text, 'MONTHLY'::text, 'QUARTERLY'::text, 'ONCE'::text]))));
+
 ALTER TABLE ONLY public."external_api_errors" ADD CONSTRAINT "external_api_errors_pkey" PRIMARY KEY (error_id);
 
 ALTER TABLE ONLY public."external_api_errors" ADD CONSTRAINT "fk_external_api_errors_job_seq_id" FOREIGN KEY (job_seq_id) REFERENCES jobs(job_seq_id) ON DELETE SET NULL;

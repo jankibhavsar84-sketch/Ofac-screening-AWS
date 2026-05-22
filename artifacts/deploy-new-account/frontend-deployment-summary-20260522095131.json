@@ -1,0 +1,13 @@
+{
+    "deployed_at":  "2026-05-22T09:51:31",
+    "account":  "981450247094",
+    "region":  "us-east-2",
+    "cluster":  "Screening",
+    "service":  "ofac-screening-frontend-svc",
+    "task_definition":  "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:41",
+    "image":  "981450247094.dkr.ecr.us-east-2.amazonaws.com/ofac-screening-frontend:20260522093530",
+    "rollout_state":  "COMPLETED",
+    "rollout_reason":  "ECS deployment ecs-svc/6534045965965914979 completed.",
+    "running_count":  1,
+    "desired_count":  1
+}

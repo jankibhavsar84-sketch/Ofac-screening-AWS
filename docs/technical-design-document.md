@@ -1,7 +1,7 @@
 # Technical Design Document (TDD): OFAC / Watchlist Screening Platform
 
-**Version:** 2.2
-**Date:** 2026-05-19
+**Version:** 2.3
+**Date:** 2026-05-20
 **Repo:** `ofac-screening-aws`
 
 This document describes the current technical design for the OFAC / watchlist screening platform. It is aligned to the latest repository code for the FastAPI backend, React/Vite frontend, SQS worker, PostgreSQL schema, and AWS deployment artifacts.
@@ -11,8 +11,8 @@ This document describes the current technical design for the OFAC / watchlist sc
 | Field | Value |
 |---|---|
 | Document Name | OFAC / Watchlist Screening Platform Technical Design Document |
-| Current Version | 2.2 |
-| Version Date | 2026-05-19 |
+| Current Version | 2.3 |
+| Version Date | 2026-05-20 |
 | Repository | `ofac-screening-aws` |
 | Primary Audience | Engineering, QA, DevOps, Security, Compliance stakeholders |
 | Source of Truth | Latest committed and in-work repository code plus deployment artifacts |
@@ -22,6 +22,7 @@ This document describes the current technical design for the OFAC / watchlist sc
 
 | Version | Date | Change Summary |
 |---|---|---|
+| 2.3 | 2026-05-20 | Added detailed field-mapping documentation for single screening and batch screening (Excel/CSV to internal payload to Actimize request payload). |
 | 2.2 | 2026-05-19 | Added explicit OIDC authentication flow, Actimize authentication behavior, and end-to-end API flow diagram. |
 | 2.1 | 2026-05-19 | Added database ER diagram source and rendered image under the Data Model section. |
 | 2.0 | 2026-05-19 | Aligned TDD to current backend, frontend, worker, split queue dispatcher, paged daily schedule admin, BU-scoped screening types, Actimize callback handling, and updated QA coverage. Added architecture image, document index, and explicit version history. |
@@ -73,6 +74,7 @@ This document describes the current technical design for the OFAC / watchlist sc
 - Runtime validates database schema on startup; schema creation/migration is expected to run as a separate setup/deployment step.
 - Added a database ER diagram to the Data Model section for stakeholder review.
 - Added explicit OIDC authentication, Actimize authentication, and API flow documentation for review.
+- Added explicit single-screening and batch-screening field mapping tables from source input through Actimize request construction.
 
 ## 1. System Overview
 
@@ -417,22 +419,83 @@ Runtime performs best-effort refresh of known materialized views at an interval 
 
 Screening type options are stored in `actimize_screening_type_mappings` and exposed through `/api/v1/screenings/types`. The API accepts an optional `business_unit_code` to support business-unit-aware options and validates that the current user can access the requested BU.
 
-Actimize request construction preserves structured identity data:
+Actimize request construction preserves structured identity data and follows the mapping below.
 
-| Source Field | Actimize Target |
-|---|---|
-| `properties.partyKey` | `partyKey` |
-| `schema` | `partyType` (`I` for person, `E` for entity) |
-| `firstName`, `middleName`, `lastName`, `maidenName`, `fullName` | `names` |
-| `alias`, `aliases` | `aliases[]` |
-| `nationality`, `country` | `nationalities[]` |
-| `address` | `addresses[]` |
-| `idNumber`, `registrationNumber`, `ids` | `ids[]` |
-| `birthDate` | `dateOfBirth` or `yearOfBirth` |
-| `birthLocation` | `countryofBirth` |
-| `gender` | Uppercase `gender` |
-| selected screening type | Resolved `screeningType` |
-| selected business unit | `businessUnit` |
+### 9.1 Single Screening Field Mapping
+
+| Single Screening Source | Internal Request (`queries[*].properties`) | Actimize Request Field | Mapping Rule |
+|---|---|---|---|
+| Screening Type picker (`SAN-US`, `PEP`, `AME`, etc.) | Top-level `screening_types[]` | `screeningType` | Each selected screening type is resolved through `actimize_screening_type_mappings` to active `Search_Definition_ID`. |
+| Business Unit picker | Top-level `business_unit_code` and `properties.businessUnit` | `businessUnit` | Business unit is required and validated against user-to-BU mapping before call submission. |
+| First/Middle/Last/Full Name | `name[]`, `firstName[]`, `middleName[]`, `lastName[]`, `fullName[]` | `names.firstName`, `names.middleName`, `names.lastName`, `names.fullName` | Individual requests keep split name fields and full name. Non-individual requests map `fullName` only. |
+| Alias free text and additional AKA entries | `alias[]` and `aliases[]` | `aliases[]` | Structured alias objects are preserved and deduplicated. |
+| Nationality/Country selections | `nationality[]` (person) or `country[]` (non-person) | `nationalities[].country` | Country values are passed through as provided by frontend (ISO3 dropdown values). |
+| Address inputs | `address[]` | `addresses[].street1` | Each address line is sent as one address object; optional country is derived from available country list. |
+| ID rows (`idType`, `idNumber`, `idCountry`) | `ids[]` plus helper `idNumber[]` or `registrationNumber[]` | `ids[].idType`, `ids[].idValue`, `ids[].idCountry` | `ids[]` is primary; helper `idNumber`/`registrationNumber` is fallback only if `ids[]` is missing. |
+| Date of Birth | `birthDate[]` | `dateOfBirth` or `yearOfBirth` | Normalized to Prudential format; year-only fallback is supported. |
+| Birth Location/Country of Birth | `birthLocation[]` or `countryOfBirth[]` | `countryofBirth` | First non-empty value is used. |
+| Gender | `gender[]` | `gender` | Normalized and sent uppercase. |
+| Title | `title[]` | `title` | Direct map. |
+| Notes | `screeningNotes[]` | `screeningNotes` | Direct map. |
+| Mock toggle | Top-level `mock_screening` | `mock` | Boolean passthrough. |
+| Party Key | `properties.partyKey` and `properties.partyKeysByScreeningType` | `partyKey` | Backend generates one key per selected type using `AMLP_OD_<UNIQUE>_<SCREENING_TYPE_SUFFIX>`. |
+
+### 9.2 Batch Screening Field Mapping
+
+Batch flow has three mapping stages: upload metadata, file-row parsing, and per-screening-type enrichment.
+
+#### 9.2.1 Batch Upload Form Metadata
+
+| Upload Form Field | Backend Field | Usage |
+|---|---|---|
+| `file` | Source file bytes | Stored in S3 (`batch_file_uploads`) and parsed by worker/dispatcher. |
+| `screening_types_json` | `screening_types[]` | Normalized against active DB mappings and business-unit allowlist. |
+| `business_unit_code` | `business_unit_code` | Required; validated against current user BU mappings. |
+| `batch_name` | `batch_name` | Job metadata and schedule display. |
+| `daily_screening`, `schedule_frequency`, `schedule_run_at`, `schedule_id` | Schedule metadata | Controls immediate batch vs scheduled batch behavior. |
+| `mock_screening` | `mock_screening` | Passed through to Actimize `mock`. |
+| `user_name` | Audit display metadata | Stored for audit and operations visibility. |
+
+#### 9.2.2 File Column to Internal Query Mapping
+
+| CSV/XLSX Column(s) | Internal Query Field (`EntityExample.properties`) | Notes |
+|---|---|---|
+| `PartyKey` | Base record key (query key) | Required and unique within file; becomes base for per-type item/party keys. |
+| `PartyType` / `CustomerType` | `schema` (`Person` or `Company`/other) | Determines individual vs non-individual mapping behavior. |
+| `PrimaryFirstName`, `PrimaryMiddleName`, `PrimaryLastName`, `PrimaryFullName`, `PrimaryMaidenName` | `name[]`, `firstName[]`, `middleName[]`, `lastName[]`, `fullName[]`, `maidenName[]` | Split and full names are both preserved for persons. |
+| `AliasName`, `Alias1*`, `Alias2*`, `Alias3*` | `alias[]`, `aliases[]` | Structured aliases are built as objects. |
+| `DateOfBirth` / `YearOfBirth` | `birthDate[]` | Date/year input preserved for downstream normalization. |
+| `BirthLocation` / `BirthCountry` | `birthLocation[]` | First non-empty source is used. |
+| `NationalityCountry1..3`, `Countries`, `Country`, address countries | `nationality[]` (person) or `country[]` (non-person) | Parser normalizes and deduplicates country list from multiple template columns. |
+| `Address1*`, `Address2*`, `Address3*`, `Addresses` | `address[]` | Address components are composed into comma-separated lines. |
+| `PartyId1*`, `PartyId2*`, `PartyId3*` | `ids[]` and helper `idNumber[]`/`registrationNumber[]` | `ids[]` stores `idType`, `idValue`, `idCountry`. |
+| `Gender` | `gender[]` | Valid values enforced by parser (`Male`, `Female`, `Other`, or blank). |
+| `Title` | `title[]` | Direct map. |
+| `Notes` / `ScreeningNotes` | `notes[]` | Later mapped to Actimize `screeningNotes`. |
+
+#### 9.2.3 Worker Per-Screening-Type Enrichment
+
+For each parsed row and each selected screening type, worker creates a distinct item:
+
+- `item_key = <PartyKey>_<Screening_Type>`
+- `partyKey = build_batch_party_key(<PartyKey>, <Screening_Type>)`
+- `partyKeysByScreeningType = { <Screening_Type>: <partyKey> }`
+- `screeningType = <Screening_Type>`
+- `businessUnit = <business_unit_code>`
+
+`screeningType` is resolved by DB mapping when constructing Actimize payload:
+
+- Source screening type key: `actimize_screening_type_mappings.Screening_Type`
+- Actimize outbound value: `actimize_screening_type_mappings.Search_Definition_ID`
+
+#### 9.2.4 Internal Helper Fields vs Outbound Fields
+
+| Internal Field | Sent to Actimize | Purpose |
+|---|---|---|
+| `idNumber[]` / `registrationNumber[]` | No (used as fallback only) | Backward-compatible ID helper if `ids[]` is missing. |
+| `partyKeysByScreeningType` | No | Internal tracing across multi-type requests. |
+| `notes[]` | No (mapped to `screeningNotes`) | Internal input alias for screening notes. |
+| `name[]` | Indirect (`names`) | Internal canonical name list used to build Actimize `names` object and aliases. |
 
 Classification rules:
 

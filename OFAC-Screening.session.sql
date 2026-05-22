@@ -32,3 +32,5 @@ SELECT * FROM information_schema.columns
 SELECT * FROM business_units
 
 SELECt * FROM actimize_screening_type_mappings
+
+SELECT * FROM business_unit_screening_types 

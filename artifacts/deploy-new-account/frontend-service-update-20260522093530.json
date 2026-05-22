@@ -1,0 +1,637 @@
+{
+    "service": {
+        "serviceArn": "arn:aws:ecs:us-east-2:981450247094:service/Screening/ofac-screening-frontend-svc",
+        "serviceName": "ofac-screening-frontend-svc",
+        "clusterArn": "arn:aws:ecs:us-east-2:981450247094:cluster/Screening",
+        "loadBalancers": [
+            {
+                "targetGroupArn": "arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0",
+                "containerName": "frontend",
+                "containerPort": 80
+            }
+        ],
+        "serviceRegistries": [],
+        "status": "ACTIVE",
+        "desiredCount": 1,
+        "runningCount": 1,
+        "pendingCount": 0,
+        "launchType": "FARGATE",
+        "platformVersion": "LATEST",
+        "platformFamily": "Linux",
+        "taskDefinition": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:41",
+        "deploymentConfiguration": {
+            "deploymentCircuitBreaker": {
+                "enable": false,
+                "rollback": false
+            },
+            "maximumPercent": 200,
+            "minimumHealthyPercent": 100,
+            "strategy": "ROLLING",
+            "bakeTimeInMinutes": 0
+        },
+        "deployments": [
+            {
+                "id": "ecs-svc/6534045965965914979",
+                "status": "PRIMARY",
+                "taskDefinition": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:41",
+                "desiredCount": 0,
+                "pendingCount": 0,
+                "runningCount": 0,
+                "failedTasks": 0,
+                "createdAt": "2026-05-22T09:35:40.086000-04:00",
+                "updatedAt": "2026-05-22T09:35:40.086000-04:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-06bdaa50498eee553",
+                            "subnet-07407d7c1fee08b84",
+                            "subnet-077a31f206a66fbc9"
+                        ],
+                        "securityGroups": [
+                            "sg-040d2bb348eeee691"
+                        ],
+                        "assignPublicIp": "ENABLED"
+                    }
+                },
+                "rolloutState": "IN_PROGRESS",
+                "rolloutStateReason": "ECS deployment ecs-svc/6534045965965914979 in progress."
+            },
+            {
+                "id": "ecs-svc/6736053981913560984",
+                "status": "ACTIVE",
+                "taskDefinition": "arn:aws:ecs:us-east-2:981450247094:task-definition/ofac-screening-frontend:40",
+                "desiredCount": 1,
+                "pendingCount": 0,
+                "runningCount": 1,
+                "failedTasks": 0,
+                "createdAt": "2026-05-20T14:51:31.508000-04:00",
+                "updatedAt": "2026-05-20T14:53:58.654000-04:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-06bdaa50498eee553",
+                            "subnet-07407d7c1fee08b84",
+                            "subnet-077a31f206a66fbc9"
+                        ],
+                        "securityGroups": [
+                            "sg-040d2bb348eeee691"
+                        ],
+                        "assignPublicIp": "ENABLED"
+                    }
+                },
+                "rolloutState": "COMPLETED",
+                "rolloutStateReason": "ECS deployment ecs-svc/6736053981913560984 completed."
+            }
+        ],
+        "roleArn": "arn:aws:iam::981450247094:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+        "events": [
+            {
+                "id": "e255c6f9-480d-42c3-8c70-15c2e50e00ae",
+                "createdAt": "2026-05-22T08:56:41.576000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "34b9dfb4-0e7d-4f12-b45d-c909db0ba65d",
+                "createdAt": "2026-05-22T02:56:12.568000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "0a764279-c3c1-4a3f-863c-2226100a4700",
+                "createdAt": "2026-05-21T20:55:51.142000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "d5498ec4-9568-49ab-a2f6-f9535750b3ff",
+                "createdAt": "2026-05-21T14:55:24.689000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "a7501578-6541-4de0-ae83-dfbc975de260",
+                "createdAt": "2026-05-21T08:54:55.733000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "5859982f-bdcd-48be-a7ff-783da945c439",
+                "createdAt": "2026-05-21T02:54:41.988000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "fac458af-eb73-469c-85c2-9a59405095f7",
+                "createdAt": "2026-05-20T20:54:16.219000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "1bed3d71-70b1-4908-8e2f-020460bbf0e2",
+                "createdAt": "2026-05-20T14:53:58.661000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "6d1a060e-48e8-4f6a-85d7-644e2a4c5ae3",
+                "createdAt": "2026-05-20T14:53:58.660000-04:00",
+                "message": "(service ofac-screening-frontend-svc) (deployment ecs-svc/6736053981913560984) deployment completed."
+            },
+            {
+                "id": "885d87b2-42c1-4fb4-820a-26d6293e3312",
+                "createdAt": "2026-05-20T14:53:07.300000-04:00",
+                "message": "(service ofac-screening-frontend-svc, taskSet ecs-svc/8462912752166390661) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "80f0dfec-f692-4384-aafc-db19462d4047",
+                "createdAt": "2026-05-20T14:53:07.297000-04:00",
+                "message": "(service ofac-screening-frontend-svc) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "7eab7d6d-0366-4c08-a85a-85884ca123c0",
+                "createdAt": "2026-05-20T14:52:56.223000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has stopped 1 running tasks: (task 154ffb53ef16477bbfb29684de8625ac)."
+            },
+            {
+                "id": "563f27ea-1b15-4833-bda5-d75e94160d3f",
+                "createdAt": "2026-05-20T14:52:05.299000-04:00",
+                "message": "(service ofac-screening-frontend-svc) registered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "2a3d732a-81c5-4203-948b-aec584ba5bbe",
+                "createdAt": "2026-05-20T14:51:44.889000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task ac62ddb731174960a1f20c613bc2f36a)."
+            },
+            {
+                "id": "1f55e195-7577-4764-a554-298c6cb12ef3",
+                "createdAt": "2026-05-20T14:34:08.808000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "3c8c6b66-5b4a-4c7f-8e79-ba20c65c36ee",
+                "createdAt": "2026-05-20T14:34:08.807000-04:00",
+                "message": "(service ofac-screening-frontend-svc) (deployment ecs-svc/8462912752166390661) deployment completed."
+            },
+            {
+                "id": "a1876a7e-ad97-4fb8-9270-39982cbb21de",
+                "createdAt": "2026-05-20T14:33:16.971000-04:00",
+                "message": "(service ofac-screening-frontend-svc, taskSet ecs-svc/8302727904095265752) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "07698a87-1760-46bd-ad69-bc577a03fae5",
+                "createdAt": "2026-05-20T14:33:16.966000-04:00",
+                "message": "(service ofac-screening-frontend-svc) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "ea4faa4e-1e9b-4d24-84f1-1733713ed328",
+                "createdAt": "2026-05-20T14:33:05.878000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has stopped 1 running tasks: (task 8634e3d5c2bd475e99192194c791dfcf)."
+            },
+            {
+                "id": "4001dcf7-48db-4d9f-b7a0-fd45e85cd047",
+                "createdAt": "2026-05-20T14:32:15.155000-04:00",
+                "message": "(service ofac-screening-frontend-svc) registered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "3bbd623d-a032-4385-90c8-48fb233abb31",
+                "createdAt": "2026-05-20T14:31:55.225000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task 154ffb53ef16477bbfb29684de8625ac)."
+            },
+            {
+                "id": "5169298b-2cb5-43c5-9ff4-8011ab6574ea",
+                "createdAt": "2026-05-20T11:52:24.925000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "9c897e3c-efcd-45fc-8ef5-a1dba876342e",
+                "createdAt": "2026-05-20T11:52:24.924000-04:00",
+                "message": "(service ofac-screening-frontend-svc) (deployment ecs-svc/8302727904095265752) deployment completed."
+            },
+            {
+                "id": "5a0f621e-fe54-4bbe-9d05-ebe26ac42bce",
+                "createdAt": "2026-05-20T11:51:32.374000-04:00",
+                "message": "(service ofac-screening-frontend-svc, taskSet ecs-svc/4988700086205564551) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "88d2b115-67fb-46fc-bfc5-35f5d0143d26",
+                "createdAt": "2026-05-20T11:51:32.370000-04:00",
+                "message": "(service ofac-screening-frontend-svc) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "67726f0f-ad7a-4269-92ad-8be52b342f20",
+                "createdAt": "2026-05-20T11:51:23.233000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has stopped 1 running tasks: (task b36281d053584ca4875c2974f9f92177)."
+            },
+            {
+                "id": "ce97fe15-8e2a-4f53-9301-0dffd2e729e4",
+                "createdAt": "2026-05-20T11:50:32.192000-04:00",
+                "message": "(service ofac-screening-frontend-svc) registered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "b34bcd9b-b55f-42ab-875c-ab555267caeb",
+                "createdAt": "2026-05-20T11:50:01.555000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task 8634e3d5c2bd475e99192194c791dfcf)."
+            },
+            {
+                "id": "9e0d6fbc-8a90-4270-8f13-d93278cdc1e6",
+                "createdAt": "2026-05-20T10:46:44.979000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "57f3e5b6-f2cf-4701-b190-9d61dbd374d2",
+                "createdAt": "2026-05-20T10:46:44.978000-04:00",
+                "message": "(service ofac-screening-frontend-svc) (deployment ecs-svc/4988700086205564551) deployment completed."
+            },
+            {
+                "id": "524268f4-f125-4148-8709-91cde927f2a0",
+                "createdAt": "2026-05-20T10:45:53.400000-04:00",
+                "message": "(service ofac-screening-frontend-svc, taskSet ecs-svc/6034359900041412307) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "a9ecf054-1fc8-4dc1-8a0e-7655637d5bba",
+                "createdAt": "2026-05-20T10:45:53.395000-04:00",
+                "message": "(service ofac-screening-frontend-svc) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "5beafb56-be7b-46f3-8305-54aa5d2fbcde",
+                "createdAt": "2026-05-20T10:45:42.854000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has stopped 1 running tasks: (task c34765ab22b2467ea96c0b9ee1f27585)."
+            },
+            {
+                "id": "a776a0ff-c6a7-469b-b788-25c9082e639f",
+                "createdAt": "2026-05-20T10:44:52.152000-04:00",
+                "message": "(service ofac-screening-frontend-svc) registered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "d6b3af01-802d-4d12-ae67-6de9a29e4222",
+                "createdAt": "2026-05-20T10:44:30.718000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task b36281d053584ca4875c2974f9f92177)."
+            },
+            {
+                "id": "f82efbed-706f-4d1c-8a3d-f9afea38b16a",
+                "createdAt": "2026-05-20T10:43:28.729000-04:00",
+                "message": "(service ofac-screening-frontend-svc, taskSet ecs-svc/3631758682962675354) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "6a962b8f-ce0e-400f-9f95-8d757f0d510e",
+                "createdAt": "2026-05-20T10:43:28.725000-04:00",
+                "message": "(service ofac-screening-frontend-svc) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "da3ab4de-9882-4c54-b4ad-4ddcfafa09c0",
+                "createdAt": "2026-05-20T10:43:18.013000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has stopped 1 running tasks: (task 59e371ffd6ea46d6a4367755deb99f7b)."
+            },
+            {
+                "id": "5dca34d6-0052-4460-833b-9ab2648352f9",
+                "createdAt": "2026-05-20T10:42:28.951000-04:00",
+                "message": "(service ofac-screening-frontend-svc) registered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "2b174c74-eaa6-4c6d-80c1-f53359f85b41",
+                "createdAt": "2026-05-20T10:41:43.044000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task 59e371ffd6ea46d6a4367755deb99f7b)."
+            },
+            {
+                "id": "2c3a1095-6143-4ced-8ae1-f895ef1618a6",
+                "createdAt": "2026-05-20T10:41:03.747000-04:00",
+                "message": "(service ofac-screening-frontend-svc) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): invalid character 'V' looking for beginning of object key string."
+            },
+            {
+                "id": "98bea278-321d-4f3f-95af-53d3919fb039",
+                "createdAt": "2026-05-20T10:40:36.577000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task 1224c44cd3cc43f9b36dba0df1f5daea)."
+            },
+            {
+                "id": "8c4f1c46-a1c5-460d-ad8a-2b49fc2c1010",
+                "createdAt": "2026-05-20T10:39:35.795000-04:00",
+                "message": "(service ofac-screening-frontend-svc) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): invalid character 'V' looking for beginning of object key string."
+            },
+            {
+                "id": "ce041edd-5cb2-4c14-8e5e-331d8f4a9e0f",
+                "createdAt": "2026-05-20T10:39:07.173000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task a9ec0b9be38e40b98c1ba8c64d1766f9)."
+            },
+            {
+                "id": "43616354-ece8-4da0-ad68-f301122a358e",
+                "createdAt": "2026-05-20T10:34:00.511000-04:00",
+                "message": "(service ofac-screening-frontend-svc) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): invalid character 'V' looking for beginning of object key string."
+            },
+            {
+                "id": "e7547bd4-dab7-4b77-8fae-0ecac47d364a",
+                "createdAt": "2026-05-20T10:33:22.880000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task 197411636a5d4a3db0894ab51dee51ec)."
+            },
+            {
+                "id": "83d60e44-7cb7-4812-9136-7fe20345b93a",
+                "createdAt": "2026-05-20T10:32:49.904000-04:00",
+                "message": "(service ofac-screening-frontend-svc) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): invalid character 'V' looking for beginning of object key string."
+            },
+            {
+                "id": "e625eafb-9b15-49a6-accb-d794c508b353",
+                "createdAt": "2026-05-20T10:32:22.897000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task f5652e9048494203a9874c4ec433d325)."
+            },
+            {
+                "id": "5e9b9f4c-99f9-4489-be37-4f3580b8fc6e",
+                "createdAt": "2026-05-20T10:31:51.833000-04:00",
+                "message": "(service ofac-screening-frontend-svc) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): invalid character 'V' looking for beginning of object key string."
+            },
+            {
+                "id": "39b4ff2b-9f2d-4171-ac02-8746167a25dd",
+                "createdAt": "2026-05-20T10:31:22.243000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task 4fd9a2146ead440188189537f878050d)."
+            },
+            {
+                "id": "6ecbed95-fd67-4489-aa04-fa7ae5e1016a",
+                "createdAt": "2026-05-20T10:24:00.852000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "b12b4563-701f-4b31-b63d-460abeac61e2",
+                "createdAt": "2026-05-20T10:24:00.851000-04:00",
+                "message": "(service ofac-screening-frontend-svc) (deployment ecs-svc/6034359900041412307) deployment completed."
+            },
+            {
+                "id": "76c7192c-0bf6-4a80-ab2b-b96268317ca2",
+                "createdAt": "2026-05-20T10:23:08.924000-04:00",
+                "message": "(service ofac-screening-frontend-svc, taskSet ecs-svc/0676531525129385970) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "1de47746-eeff-4b4c-a049-f4387a803ec9",
+                "createdAt": "2026-05-20T10:23:08.919000-04:00",
+                "message": "(service ofac-screening-frontend-svc) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "cabd0f6f-8917-4b0c-b1ca-91446e10c9ea",
+                "createdAt": "2026-05-20T10:22:58.023000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has stopped 1 running tasks: (task d49595094fce4ea690919f882efeb133)."
+            },
+            {
+                "id": "219b7cad-3026-4f3b-bdc8-83420299cd87",
+                "createdAt": "2026-05-20T10:22:08.351000-04:00",
+                "message": "(service ofac-screening-frontend-svc) registered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "f0e4d7a0-9ecd-4b59-b53c-b1f2266be53e",
+                "createdAt": "2026-05-20T10:21:47.225000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task c34765ab22b2467ea96c0b9ee1f27585)."
+            },
+            {
+                "id": "fc36b829-8c95-406b-bf9c-4e6734ba3177",
+                "createdAt": "2026-05-20T09:55:07.320000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "458cdc87-b1b2-4484-b404-4e98e1630262",
+                "createdAt": "2026-05-20T09:55:07.319000-04:00",
+                "message": "(service ofac-screening-frontend-svc) (deployment ecs-svc/0676531525129385970) deployment completed."
+            },
+            {
+                "id": "61730a7c-2ffd-4e79-adfc-3fe44e5ec212",
+                "createdAt": "2026-05-20T09:54:14.663000-04:00",
+                "message": "(service ofac-screening-frontend-svc, taskSet ecs-svc/7534269759956897574) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "5086fc5e-6b5c-462a-a773-0562b5b46d31",
+                "createdAt": "2026-05-20T09:54:14.659000-04:00",
+                "message": "(service ofac-screening-frontend-svc) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "36024faa-7afe-4fb0-97d2-3e004e87bd21",
+                "createdAt": "2026-05-20T09:54:04.678000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has stopped 1 running tasks: (task e9cd1f48cc8e4b19b2470c08d0251421)."
+            },
+            {
+                "id": "231fe3e8-330d-4fb9-a64d-63ddff4fe6bb",
+                "createdAt": "2026-05-20T09:53:14.442000-04:00",
+                "message": "(service ofac-screening-frontend-svc) registered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "224ab84f-94bc-4b28-8220-c2d4bbeced18",
+                "createdAt": "2026-05-20T09:52:43.246000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task d49595094fce4ea690919f882efeb133)."
+            },
+            {
+                "id": "689f2009-3e6a-4bf0-acf1-025faa88ec8c",
+                "createdAt": "2026-05-20T09:48:47.803000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "14307a15-d0ae-428c-b066-4694cdbf17fc",
+                "createdAt": "2026-05-20T09:48:47.802000-04:00",
+                "message": "(service ofac-screening-frontend-svc) (deployment ecs-svc/7534269759956897574) deployment completed."
+            },
+            {
+                "id": "3270bb36-b061-4649-9bcf-48e83e62cf9d",
+                "createdAt": "2026-05-20T09:47:55.954000-04:00",
+                "message": "(service ofac-screening-frontend-svc, taskSet ecs-svc/0884368910032690767) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "602ce4df-efa1-42ee-a280-2e3f11fa2eca",
+                "createdAt": "2026-05-20T09:47:55.949000-04:00",
+                "message": "(service ofac-screening-frontend-svc) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "6dbd1b83-8021-4682-a823-59cb37f44119",
+                "createdAt": "2026-05-20T09:47:45.561000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has stopped 1 running tasks: (task 014eccd01b2344678441a4b7baea1420)."
+            },
+            {
+                "id": "c42cbd1d-35d0-4cda-ba4e-a8e443242ebe",
+                "createdAt": "2026-05-20T09:46:55.044000-04:00",
+                "message": "(service ofac-screening-frontend-svc) registered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "dfbeb134-36d1-49eb-a577-bfe4dc37da86",
+                "createdAt": "2026-05-20T09:46:35.256000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task e9cd1f48cc8e4b19b2470c08d0251421)."
+            },
+            {
+                "id": "4cfcccb5-486a-457f-95dc-dc763bdd6e69",
+                "createdAt": "2026-05-20T07:02:12.864000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "a4209581-69e7-4767-ae59-b6c3a88302a5",
+                "createdAt": "2026-05-20T01:01:35.143000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "38ebd70b-00e0-4093-82c7-54d14c4fdfd3",
+                "createdAt": "2026-05-19T19:01:21.650000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "33a0c78d-a4e6-4554-8ad6-209bc889491f",
+                "createdAt": "2026-05-19T13:01:09.441000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "bcdfdc34-7fc0-4287-bdd0-ae33e984422f",
+                "createdAt": "2026-05-19T07:00:41.737000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "8a7d7041-8de0-4053-b071-986a636bf669",
+                "createdAt": "2026-05-19T01:00:11.859000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "41a463f2-3ff5-4405-9941-a4c30dababb9",
+                "createdAt": "2026-05-18T18:59:33.380000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "fd68e08f-6da4-4acb-a1bc-a9bbd1919e19",
+                "createdAt": "2026-05-18T12:59:27.968000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "397d3b2d-a14f-4b90-a237-cca27ecb40c8",
+                "createdAt": "2026-05-18T06:58:46.034000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "f7ca8ca6-84b1-41e7-862e-ce1ac977e0bb",
+                "createdAt": "2026-05-18T00:58:13.726000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "5d327a59-4fd3-4ccd-8cef-509ee0cb6bc9",
+                "createdAt": "2026-05-17T18:58:04.420000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "32c28e7a-82d5-4268-8d14-a1ef7a432799",
+                "createdAt": "2026-05-17T12:57:37.599000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "850bc56e-969b-4cc0-8395-29dbc906b4f2",
+                "createdAt": "2026-05-17T06:57:28.410000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "42a19a03-2ee0-4382-8970-9634f80e20ba",
+                "createdAt": "2026-05-17T00:56:51.471000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "c8897cf0-5291-4efc-8262-7a408a683d5a",
+                "createdAt": "2026-05-16T18:56:26.229000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "a6cb1640-9159-44dc-be8d-8d095b2f7853",
+                "createdAt": "2026-05-16T12:56:22.694000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "b29ff18e-a56c-41da-ba4d-0236a1c78129",
+                "createdAt": "2026-05-16T06:56:09.301000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "717dcdcc-93e0-4d9d-8e0e-4520562d7b75",
+                "createdAt": "2026-05-16T00:55:24.720000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "5d4538aa-5a61-4e48-8f32-54e98c8d93f4",
+                "createdAt": "2026-05-15T18:55:24.001000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "aca093a0-95ab-4c56-91da-859060a7c751",
+                "createdAt": "2026-05-15T12:55:16.624000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "245acf87-987b-4e50-9f72-d5e2a2105583",
+                "createdAt": "2026-05-15T12:55:16.623000-04:00",
+                "message": "(service ofac-screening-frontend-svc) (deployment ecs-svc/0884368910032690767) deployment completed."
+            },
+            {
+                "id": "1d185216-cb02-4acf-b333-11e4c53f2da4",
+                "createdAt": "2026-05-15T12:54:24.245000-04:00",
+                "message": "(service ofac-screening-frontend-svc, taskSet ecs-svc/6202953505097580681) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "29799630-ed40-4a96-a213-adcbd99d013f",
+                "createdAt": "2026-05-15T12:54:24.240000-04:00",
+                "message": "(service ofac-screening-frontend-svc) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "3cae229c-b497-426c-9f98-9b940986cbc3",
+                "createdAt": "2026-05-15T12:54:15.067000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has stopped 1 running tasks: (task 26436bb7b31b43189f535db4abe1877c)."
+            },
+            {
+                "id": "d1ff76cd-546e-49b5-abf6-a10ec839d408",
+                "createdAt": "2026-05-15T12:53:24.010000-04:00",
+                "message": "(service ofac-screening-frontend-svc) registered 1 targets in (target-group arn:aws:elasticloadbalancing:us-east-2:981450247094:targetgroup/ofac-screening-frontend-tg/19301156461dbcc0)"
+            },
+            {
+                "id": "1ae2c667-5354-427b-a520-a6c2aab32167",
+                "createdAt": "2026-05-15T12:53:03.446000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has started 1 tasks: (task 014eccd01b2344678441a4b7baea1420)."
+            },
+            {
+                "id": "62fd239a-f525-48df-8487-aaf7e727f0ff",
+                "createdAt": "2026-05-15T11:41:15.879000-04:00",
+                "message": "(service ofac-screening-frontend-svc) has reached a steady state."
+            },
+            {
+                "id": "6f57bcf1-f691-45ff-b057-0d07214d67a8",
+                "createdAt": "2026-05-15T11:41:15.878000-04:00",
+                "message": "(service ofac-screening-frontend-svc) (deployment ecs-svc/6202953505097580681) deployment completed."
+            },
+            {
+                "id": "ac623977-70ab-4e5a-87c3-fb99a72b825d",
+                "createdAt": "2026-05-15T11:40:23.794000-04:00",
+                "message": "(service ofac-screening-frontend-svc, taskSet ecs-svc/6874474725791426796) has begun draining connections on 1 tasks."
+            }
+        ],
+        "createdAt": "2026-04-17T18:57:37.720000-04:00",
+        "currentServiceRevisions": [
+            {
+                "arn": "arn:aws:ecs:us-east-2:981450247094:service-revision/Screening/ofac-screening-frontend-svc/6534045965965914979",
+                "requestedTaskCount": 0,
+                "runningTaskCount": 0,
+                "pendingTaskCount": 0
+            },
+            {
+                "arn": "arn:aws:ecs:us-east-2:981450247094:service-revision/Screening/ofac-screening-frontend-svc/6736053981913560984",
+                "requestedTaskCount": 1,
+                "runningTaskCount": 1,
+                "pendingTaskCount": 0
+            }
+        ],
+        "placementConstraints": [],
+        "placementStrategy": [],
+        "networkConfiguration": {
+            "awsvpcConfiguration": {
+                "subnets": [
+                    "subnet-06bdaa50498eee553",
+                    "subnet-07407d7c1fee08b84",
+                    "subnet-077a31f206a66fbc9"
+                ],
+                "securityGroups": [
+                    "sg-040d2bb348eeee691"
+                ],
+                "assignPublicIp": "ENABLED"
+            }
+        },
+        "healthCheckGracePeriodSeconds": 60,
+        "schedulingStrategy": "REPLICA",
+        "deploymentController": {
+            "type": "ECS"
+        },
+        "createdBy": "arn:aws:iam::981450247094:user/deployer",
+        "enableECSManagedTags": false,
+        "propagateTags": "NONE",
+        "enableExecuteCommand": false,
+        "availabilityZoneRebalancing": "ENABLED",
+        "resourceManagementType": "CUSTOMER"
+    }
+}

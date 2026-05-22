@@ -793,11 +793,13 @@ def get_screening_job(
 @app.get("/api/v1/screenings/daily-schedules", response_model=DailyScheduleInfoPage)
 def list_daily_schedules(
     page: int = Query(default=1, ge=1),
-    _: AuthPrincipal = Depends(require_any_scope("screening.read")),
+    principal: AuthPrincipal = Depends(require_any_scope("screening.read")),
     svc: ScreeningService = Depends(get_service),
 ) -> DailyScheduleInfoPage:
     # Enforce fixed-size paging for configured daily schedules to keep payloads bounded.
-    return svc.list_daily_schedules(page=page, page_size=10)
+    # Admins can view all schedules; non-admin users can view only schedules they created.
+    user_scope_filter = None if principal_has_permission(principal, "screening.admin") else principal.user_id
+    return svc.list_daily_schedules(page=page, page_size=10, user_id=user_scope_filter)
 
 
 @app.get("/api/v1/screenings/daily-schedules/batch-runs", response_model=DailyScheduleBatchRunStatusPage)
