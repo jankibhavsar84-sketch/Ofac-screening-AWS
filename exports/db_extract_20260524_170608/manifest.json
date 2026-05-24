@@ -1,0 +1,17 @@
+﻿{
+    "generated_at_utc":  "2026-05-24T21:06:20.0055817Z",
+    "host":  "screening-postgres-dev.czqoaymkk4o6.us-east-2.rds.amazonaws.com",
+    "database":  "screening",
+    "user":  "screening_admin",
+    "output_dir":  "C:\\software\\ofac-screening-aws\\exports\\db_extract_20260524_170608",
+    "files":  [
+                  "01_full_ddl.sql",
+                  "02_reference_data_dml.sql",
+                  "03_full_ddl_with_reference_data.sql"
+              ],
+    "reference_tables":  [
+                             "public.business_units",
+                             "public.actimize_screening_type_mappings",
+                             "public.business_unit_screening_types"
+                         ]
+}
