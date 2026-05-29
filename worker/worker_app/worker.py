@@ -409,13 +409,19 @@ def _flush_dispatch_batch(
     items: list[tuple[str, dict[str, object], EntityExample]],
 ) -> int:
     screening_types = _resolve_dispatch_screening_types(message.screening_types)
+    safe_business_unit_code = str(message.business_unit_code or "").strip().upper()
+    safe_business_unit_short_code = repository.resolve_business_unit_short_code(safe_business_unit_code)
     next_items: list[tuple[str, str, dict[str, object], EntityExample]] = []
     bulk_payloads: list[tuple[str, dict[str, object]]] = []
     for item_key, payload, query in items:
         base_props = query.properties if isinstance(query.properties, dict) else {}
-        safe_business_unit_code = str(message.business_unit_code or "").strip().upper()
         for screening_type in screening_types:
-            per_type_party_key = actimize.build_batch_party_key(item_key, screening_type)
+            per_type_party_key = actimize.build_batch_party_key(
+                item_key,
+                screening_type,
+                business_unit_short_code=safe_business_unit_short_code,
+                business_unit_code=safe_business_unit_code,
+            )
             per_type_item_key = _build_screening_item_key(item_key, screening_type)
             per_type_props = dict(base_props)
             per_type_props["partyKey"] = per_type_party_key

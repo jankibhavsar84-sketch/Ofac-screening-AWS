@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS public."batch_file_uploads" (
 CREATE TABLE IF NOT EXISTS public."business_units" (
     "business_unit_code" character varying(50) NOT NULL,
     "business_unit_name" character varying(255) NOT NULL,
+    "bu_short_code" character varying(4),
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT now() NOT NULL

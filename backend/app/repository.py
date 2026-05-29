@@ -267,6 +267,7 @@ class JobRepository:
         self._jobs_has_created_at_ts = self._runtime_column_exists("jobs", "created_at_ts")
         self._jobs_has_updated_at_ts = self._runtime_column_exists("jobs", "updated_at_ts")
         self._job_items_has_updated_at_ts = self._runtime_column_exists("job_items", "updated_at_ts")
+        self._business_units_has_short_code = self._runtime_column_exists("business_units", "bu_short_code")
         # Single-path schema mode: use canonical job_id columns only.
         self._job_items_has_job_id = True
         self._pg_mv_refresh_lock = Lock()
@@ -906,6 +907,7 @@ class JobRepository:
                 CREATE TABLE IF NOT EXISTS business_units (
                   business_unit_code TEXT PRIMARY KEY,
                   business_unit_name TEXT NOT NULL,
+                  bu_short_code TEXT,
                   is_active BOOLEAN NOT NULL DEFAULT TRUE,
                   created_at TEXT NOT NULL,
                   updated_at TEXT NOT NULL
@@ -1131,6 +1133,7 @@ class JobRepository:
             self._ensure_column(conn, "daily_schedules", "source_file_name", "TEXT")
             self._ensure_column(conn, "daily_schedules", "source_s3_uri", "TEXT")
             self._ensure_column(conn, "daily_schedules", "business_unit_code", "TEXT")
+            self._ensure_column(conn, "business_units", "bu_short_code", "TEXT")
 
             self._ensure_column(conn, "batch_file_uploads", "queries_s3_bucket", "TEXT")
             self._ensure_column(conn, "batch_file_uploads", "queries_s3_key", "TEXT")
@@ -1167,6 +1170,69 @@ class JobRepository:
         return str(value or "").strip().upper()
 
     @staticmethod
+    def _normalize_business_unit_short_code(value: str | None) -> str:
+        return re.sub(r"[^A-Za-z0-9]+", "", str(value or "").strip()).upper()
+
+    @classmethod
+    def _derive_business_unit_short_code(cls, business_unit_code: str | None) -> str:
+        safe_code = cls._normalize_business_unit_code(business_unit_code)
+        if not safe_code:
+            return ""
+        digest = hashlib.sha1(safe_code.encode("utf-8")).hexdigest().upper()
+        return digest[:4]
+
+    def _resolve_unique_business_unit_short_code(
+        self,
+        conn: Any,
+        business_unit_code: str,
+        preferred_short_code: str | None = None,
+        exclude_business_unit_code: str | None = None,
+    ) -> str:
+        safe_code = self._normalize_business_unit_code(business_unit_code)
+        if not safe_code:
+            return ""
+
+        preferred = self._normalize_business_unit_short_code(preferred_short_code)
+        if preferred_short_code is not None and len(preferred) != 4:
+            raise ValueError("Business Unit short code must be exactly 4 alphanumeric characters")
+
+        if not self._business_units_has_short_code:
+            return preferred or self._derive_business_unit_short_code(safe_code)
+
+        safe_exclude = self._normalize_business_unit_code(exclude_business_unit_code)
+
+        def _is_available(candidate: str) -> bool:
+            row = self._execute(
+                conn,
+                """
+                SELECT business_unit_code
+                FROM business_units
+                WHERE bu_short_code = ?
+                LIMIT 1
+                """,
+                (candidate,),
+            ).fetchone()
+            if not row:
+                return True
+            existing_code = self._normalize_business_unit_code(row["business_unit_code"])
+            return existing_code == safe_exclude
+
+        candidate = preferred or self._derive_business_unit_short_code(safe_code)
+        if not candidate:
+            raise ValueError("Unable to resolve Business Unit short code")
+        if _is_available(candidate):
+            return candidate
+        if preferred:
+            raise ValueError(f"Business Unit short code {preferred} already exists")
+
+        for attempt in range(1, 1000):
+            digest = hashlib.sha1(f"{safe_code}:{attempt}".encode("utf-8")).hexdigest().upper()
+            next_candidate = digest[:4]
+            if _is_available(next_candidate):
+                return next_candidate
+        raise ValueError(f"Unable to auto-generate a unique short code for Business Unit {safe_code}")
+
+    @staticmethod
     def _normalize_screening_type_key(value: str | None) -> str:
         return re.sub(r"\s+", " ", str(value or "").strip()).lower()
 
@@ -1175,22 +1241,43 @@ class JobRepository:
         if not safe_code:
             return None
         with self._connect() as conn:
-            row = self._execute(
-                conn,
-                """
-                SELECT business_unit_code, business_unit_name, is_active
-                FROM business_units
-                WHERE business_unit_code = ?
-                  AND (? = TRUE OR is_active = TRUE)
-                LIMIT 1
-                """,
-                (safe_code, include_inactive),
-            ).fetchone()
+            if self._business_units_has_short_code:
+                row = self._execute(
+                    conn,
+                    """
+                    SELECT business_unit_code, business_unit_name, bu_short_code, is_active
+                    FROM business_units
+                    WHERE business_unit_code = ?
+                      AND (? = TRUE OR is_active = TRUE)
+                    LIMIT 1
+                    """,
+                    (safe_code, include_inactive),
+                ).fetchone()
+            else:
+                row = self._execute(
+                    conn,
+                    """
+                    SELECT business_unit_code, business_unit_name, is_active
+                    FROM business_units
+                    WHERE business_unit_code = ?
+                      AND (? = TRUE OR is_active = TRUE)
+                    LIMIT 1
+                    """,
+                    (safe_code, include_inactive),
+                ).fetchone()
         if not row:
             return None
+        safe_short_code = (
+            self._normalize_business_unit_short_code(row["bu_short_code"])
+            if self._business_units_has_short_code
+            else ""
+        )
+        if len(safe_short_code) != 4:
+            safe_short_code = self._derive_business_unit_short_code(safe_code)
         return {
             "business_unit_code": str(row["business_unit_code"] or "").strip(),
             "business_unit_name": str(row["business_unit_name"] or "").strip(),
+            "bu_short_code": safe_short_code or None,
             "is_active": _as_bool(row["is_active"]),
         }
 
@@ -1200,6 +1287,24 @@ class JobRepository:
             safe_code = self._normalize_business_unit_code(code)
             safe_name = str(name or "").strip()
             if not safe_code or not safe_name:
+                continue
+            if self._business_units_has_short_code:
+                safe_short_code = self._resolve_unique_business_unit_short_code(
+                    conn,
+                    safe_code,
+                    preferred_short_code=None,
+                    exclude_business_unit_code=safe_code,
+                )
+                self._execute(
+                    conn,
+                    """
+                    INSERT INTO business_units(
+                      business_unit_code, business_unit_name, bu_short_code, is_active, created_at, updated_at
+                    ) VALUES(?, ?, ?, TRUE, ?, ?)
+                    ON CONFLICT(business_unit_code) DO NOTHING
+                    """,
+                    (safe_code, safe_name, safe_short_code, ts, ts),
+                )
                 continue
             if self.is_postgres:
                 self._execute(
@@ -4787,6 +4892,9 @@ class JobRepository:
     def list_business_units(self, user_id: str | None = None, include_inactive: bool = False) -> list[dict[str, Any]]:
         safe_user_old_id = self._normalize_user_old_id(user_id)
         with self._connect() as conn:
+            selected_columns = "bu.business_unit_code, bu.business_unit_name, bu.is_active"
+            if self._business_units_has_short_code:
+                selected_columns = f"{selected_columns}, bu.bu_short_code"
             user_ref_id = self._lookup_user_ref_id(conn, safe_user_old_id) if safe_user_old_id else None
             if safe_user_old_id and user_ref_id is None:
                 rows = []
@@ -4796,7 +4904,7 @@ class JobRepository:
                 rows = self._execute(
                     conn,
                     f"""
-                    SELECT bu.business_unit_code, bu.business_unit_name, bu.is_active
+                    SELECT {selected_columns}
                     FROM business_units bu
                     JOIN user_business_units ubu
                       ON ubu.business_unit_code = bu.business_unit_code
@@ -4811,6 +4919,15 @@ class JobRepository:
                 rows = self._execute(
                     conn,
                     """
+                    SELECT business_unit_code, business_unit_name, is_active, bu_short_code
+                    FROM business_units bu
+                    WHERE (? = TRUE OR is_active = TRUE)
+                    ORDER BY business_unit_name ASC, business_unit_code ASC
+                    """,
+                    (include_inactive,),
+                ).fetchall() if self._business_units_has_short_code else self._execute(
+                    conn,
+                    """
                     SELECT business_unit_code, business_unit_name, is_active
                     FROM business_units
                     WHERE (? = TRUE OR is_active = TRUE)
@@ -4819,15 +4936,26 @@ class JobRepository:
                     (include_inactive,),
                 ).fetchall()
 
-        results = [
-            {
-                "business_unit_code": str(row["business_unit_code"] or "").strip(),
-                "business_unit_name": str(row["business_unit_name"] or "").strip(),
-                "is_active": _as_bool(row["is_active"]),
-            }
-            for row in rows
-            if str(row["business_unit_code"] or "").strip()
-        ]
+        results: list[dict[str, Any]] = []
+        for row in rows:
+            safe_code = str(row["business_unit_code"] or "").strip()
+            if not safe_code:
+                continue
+            safe_short = (
+                self._normalize_business_unit_short_code(row["bu_short_code"])
+                if self._business_units_has_short_code
+                else ""
+            )
+            if len(safe_short) != 4:
+                safe_short = self._derive_business_unit_short_code(safe_code)
+            results.append(
+                {
+                    "business_unit_code": safe_code,
+                    "business_unit_name": str(row["business_unit_name"] or "").strip(),
+                    "bu_short_code": safe_short or None,
+                    "is_active": _as_bool(row["is_active"]),
+                }
+            )
         if safe_user_old_id and not results:
             fallback = self._get_business_unit_row(DEFAULT_FALLBACK_BUSINESS_UNIT_CODE, include_inactive=False)
             if fallback:
@@ -4840,6 +4968,17 @@ class JobRepository:
             return []
         rows = self.list_business_units(user_id=safe_user_old_id, include_inactive=False)
         return [str(row["business_unit_code"]).strip() for row in rows if str(row.get("business_unit_code") or "").strip()]
+
+    def resolve_business_unit_short_code(self, business_unit_code: str | None) -> str:
+        safe_code = self._normalize_business_unit_code(business_unit_code)
+        if not safe_code:
+            return ""
+        row = self._get_business_unit_row(safe_code, include_inactive=True)
+        if row:
+            safe_short = self._normalize_business_unit_short_code(row.get("bu_short_code"))
+            if len(safe_short) == 4:
+                return safe_short
+        return self._derive_business_unit_short_code(safe_code)
 
     def user_has_business_unit(self, user_id: str | None, business_unit_code: str | None) -> bool:
         safe_user_old_id = self._normalize_user_old_id(user_id)
@@ -4903,7 +5042,12 @@ class JobRepository:
             ).fetchone()
         return bool(fallback)
 
-    def upsert_business_unit(self, business_unit_code: str, business_unit_name: str) -> dict[str, Any]:
+    def upsert_business_unit(
+        self,
+        business_unit_code: str,
+        business_unit_name: str,
+        business_unit_short_code: str | None = None,
+    ) -> dict[str, Any]:
         safe_code = self._normalize_business_unit_code(business_unit_code)
         safe_name = str(business_unit_name or "").strip()
         if not safe_code:
@@ -4913,20 +5057,46 @@ class JobRepository:
 
         ts = now_iso()
         with self._connect() as conn:
-            if self.is_postgres:
+            resolved_short_code = ""
+            if self._business_units_has_short_code:
+                existing = self._execute(
+                    conn,
+                    """
+                    SELECT bu_short_code
+                    FROM business_units
+                    WHERE business_unit_code = ?
+                    LIMIT 1
+                    """,
+                    (safe_code,),
+                ).fetchone()
+                existing_short_code = (
+                    self._normalize_business_unit_short_code(existing["bu_short_code"])
+                    if existing and str(existing["bu_short_code"] or "").strip()
+                    else ""
+                )
+                preferred_short_code = business_unit_short_code
+                if preferred_short_code is None and existing_short_code:
+                    preferred_short_code = existing_short_code
+                resolved_short_code = self._resolve_unique_business_unit_short_code(
+                    conn,
+                    safe_code,
+                    preferred_short_code=preferred_short_code,
+                    exclude_business_unit_code=safe_code,
+                )
                 self._execute(
                     conn,
                     """
                     INSERT INTO business_units(
-                      business_unit_code, business_unit_name, is_active, created_at, updated_at
-                    ) VALUES(?, ?, TRUE, ?, ?)
+                      business_unit_code, business_unit_name, bu_short_code, is_active, created_at, updated_at
+                    ) VALUES(?, ?, ?, TRUE, ?, ?)
                     ON CONFLICT(business_unit_code)
                     DO UPDATE SET
                       business_unit_name = excluded.business_unit_name,
+                      bu_short_code = excluded.bu_short_code,
                       is_active = TRUE,
                       updated_at = excluded.updated_at
                     """,
-                    (safe_code, safe_name, ts, ts),
+                    (safe_code, safe_name, resolved_short_code, ts, ts),
                 )
             else:
                 self._execute(
@@ -4954,6 +5124,7 @@ class JobRepository:
         business_unit_code: str,
         next_business_unit_code: str | None,
         next_business_unit_name: str | None,
+        next_business_unit_short_code: str | None = None,
     ) -> dict[str, Any] | None:
         safe_code = self._normalize_business_unit_code(business_unit_code)
         if not safe_code:
@@ -4965,15 +5136,18 @@ class JobRepository:
 
         ts = now_iso()
         with self._connect() as conn:
-            existing = self._execute(
-                conn,
-                """
+            existing_query = """
                 SELECT business_unit_code
                 FROM business_units
                 WHERE business_unit_code = ?
-                """,
-                (safe_code,),
-            ).fetchone()
+                """
+            if self._business_units_has_short_code:
+                existing_query = """
+                SELECT business_unit_code, bu_short_code
+                FROM business_units
+                WHERE business_unit_code = ?
+                """
+            existing = self._execute(conn, existing_query, (safe_code,)).fetchone()
             if not existing:
                 return None
 
@@ -4990,15 +5164,36 @@ class JobRepository:
                 if duplicate:
                     raise ValueError(f"Business Unit code {desired_code} already exists")
 
-            self._execute(
-                conn,
-                """
-                UPDATE business_units
-                SET business_unit_code = ?, business_unit_name = ?, is_active = TRUE, updated_at = ?
-                WHERE business_unit_code = ?
-                """,
-                (desired_code, desired_name, ts, safe_code),
-            )
+            if self._business_units_has_short_code:
+                existing_short_code = self._normalize_business_unit_short_code(existing["bu_short_code"])
+                preferred_short_code = next_business_unit_short_code
+                if preferred_short_code is None and existing_short_code:
+                    preferred_short_code = existing_short_code
+                resolved_short_code = self._resolve_unique_business_unit_short_code(
+                    conn,
+                    desired_code,
+                    preferred_short_code=preferred_short_code,
+                    exclude_business_unit_code=safe_code,
+                )
+                self._execute(
+                    conn,
+                    """
+                    UPDATE business_units
+                    SET business_unit_code = ?, business_unit_name = ?, bu_short_code = ?, is_active = TRUE, updated_at = ?
+                    WHERE business_unit_code = ?
+                    """,
+                    (desired_code, desired_name, resolved_short_code, ts, safe_code),
+                )
+            else:
+                self._execute(
+                    conn,
+                    """
+                    UPDATE business_units
+                    SET business_unit_code = ?, business_unit_name = ?, is_active = TRUE, updated_at = ?
+                    WHERE business_unit_code = ?
+                    """,
+                    (desired_code, desired_name, ts, safe_code),
+                )
             if desired_code != safe_code:
                 self._execute(
                     conn,

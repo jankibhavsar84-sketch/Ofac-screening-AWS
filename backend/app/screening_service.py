@@ -421,6 +421,7 @@ class ScreeningService:
         )
 
         safe_business_unit_code = self._normalize_business_unit_code(business_unit_code)
+        safe_business_unit_short_code = self.repository.resolve_business_unit_short_code(safe_business_unit_code)
         is_single_mode = inferred_mode == "SINGLE"
         for item_key in queries_for_job:
             query = payload.queries[item_key]
@@ -432,7 +433,12 @@ class ScreeningService:
                 if is_single_mode:
                     party_key = actimize.build_on_demand_party_key(screening_type)
                 else:
-                    party_key = actimize.build_batch_party_key(safe_item_key, screening_type)
+                    party_key = actimize.build_batch_party_key(
+                        safe_item_key,
+                        screening_type,
+                        business_unit_short_code=safe_business_unit_short_code,
+                        business_unit_code=safe_business_unit_code,
+                    )
                 if party_key:
                     party_keys_by_screening_type[screening_type] = party_key
 
@@ -1841,17 +1847,25 @@ class ScreeningService:
         self,
         business_unit_code: str,
         business_unit_name: str,
+        business_unit_short_code: str | None,
         actor_user_id: str | None,
         actor_user_name: str | None,
     ) -> BusinessUnit:
-        row = self.repository.upsert_business_unit(business_unit_code=business_unit_code, business_unit_name=business_unit_name)
+        row = self.repository.upsert_business_unit(
+            business_unit_code=business_unit_code,
+            business_unit_name=business_unit_name,
+            business_unit_short_code=business_unit_short_code,
+        )
         self.repository.add_audit_event(
             action="BUSINESS_UNIT_UPSERTED",
             user_id=actor_user_id,
             user_name=actor_user_name,
             entity_type="business_unit",
             entity_id=row.get("business_unit_code"),
-            details={"business_unit_name": row.get("business_unit_name")},
+            details={
+                "business_unit_name": row.get("business_unit_name"),
+                "bu_short_code": row.get("bu_short_code"),
+            },
         )
         return BusinessUnit.model_validate(row)
 
@@ -1860,6 +1874,7 @@ class ScreeningService:
         business_unit_code: str,
         next_business_unit_code: str | None,
         next_business_unit_name: str,
+        next_business_unit_short_code: str | None,
         actor_user_id: str | None,
         actor_user_name: str | None,
     ) -> BusinessUnit | None:
@@ -1867,6 +1882,7 @@ class ScreeningService:
             business_unit_code=business_unit_code,
             next_business_unit_code=next_business_unit_code,
             next_business_unit_name=next_business_unit_name,
+            next_business_unit_short_code=next_business_unit_short_code,
         )
         if not row:
             return None
@@ -1876,7 +1892,10 @@ class ScreeningService:
             user_name=actor_user_name,
             entity_type="business_unit",
             entity_id=row.get("business_unit_code"),
-            details={"business_unit_name": row.get("business_unit_name")},
+            details={
+                "business_unit_name": row.get("business_unit_name"),
+                "bu_short_code": row.get("bu_short_code"),
+            },
         )
         return BusinessUnit.model_validate(row)
 

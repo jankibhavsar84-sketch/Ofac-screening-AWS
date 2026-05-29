@@ -255,17 +255,20 @@ class ActimizeAlertCallbackAccepted(BaseModel):
 class BusinessUnit(BaseModel):
     business_unit_code: str
     business_unit_name: str
+    bu_short_code: str | None = None
     is_active: bool = True
 
 
 class BusinessUnitUpsertRequest(BaseModel):
     business_unit_code: str
     business_unit_name: str
+    bu_short_code: str | None = None
 
 
 class BusinessUnitUpdateRequest(BaseModel):
     business_unit_code: str | None = None
     business_unit_name: str
+    bu_short_code: str | None = None
 
 
 class UserBusinessUnitMapping(BaseModel):

@@ -19,6 +19,9 @@ from .config import settings
 from .models import EntityExample
 
 ACTIMIZE_POST_MAX_ATTEMPTS = 3
+ACTIMIZE_PARTY_KEY_MAX_LENGTH = 50
+ACTIMIZE_BUSINESS_UNIT_SHORT_CODE_LENGTH = 4
+ACTIMIZE_BATCH_PARTY_KEY_DIGEST_LENGTH = 14
 # Use Uvicorn's logger so backend API calls reach CloudWatch without extra app logging config.
 logger = logging.getLogger("uvicorn.error")
 _REDACTED = "***redacted***"
@@ -956,6 +959,23 @@ class ActimizeClient:
             return f"{canonical_prefix}{remainder}" if remainder else canonical_prefix
         return f"{canonical_prefix}{safe_key}"
 
+    @staticmethod
+    def _normalize_business_unit_short_code(value: str | None) -> str:
+        safe = re.sub(r"[^A-Za-z0-9]+", "", str(value or "").strip()).upper()
+        if not safe:
+            return "GENR"
+        if len(safe) >= ACTIMIZE_BUSINESS_UNIT_SHORT_CODE_LENGTH:
+            return safe[:ACTIMIZE_BUSINESS_UNIT_SHORT_CODE_LENGTH]
+        return (safe + ("X" * ACTIMIZE_BUSINESS_UNIT_SHORT_CODE_LENGTH))[:ACTIMIZE_BUSINESS_UNIT_SHORT_CODE_LENGTH]
+
+    @staticmethod
+    def _build_batch_party_key_digest(base_party_key: str, business_unit_code: str | None = None) -> str:
+        canonical_base = str(base_party_key or "").strip().upper()
+        canonical_bu = str(business_unit_code or "").strip().upper()
+        canonical = f"{canonical_bu}|{canonical_base}"
+        digest = hashlib.sha1(canonical.encode("utf-8")).hexdigest().upper()
+        return digest[:ACTIMIZE_BATCH_PARTY_KEY_DIGEST_LENGTH]
+
     def build_on_demand_party_key(self, screening_type: str | None = None) -> str:
         unique_key = uuid4().hex.upper()
         mapped_suffix = self._resolve_party_key_suffix(screening_type)
@@ -967,21 +987,33 @@ class ActimizeClient:
             return self._normalize_party_key(f"OD_{unique_key}_{derived_suffix}")
         return self._normalize_party_key(f"OD_{unique_key}")
 
-    def build_batch_party_key(self, base_party_key: str, screening_type: str | None = None) -> str:
-        safe_base = self._normalize_party_key(base_party_key)
-        if not safe_base:
+    def build_batch_party_key(
+        self,
+        base_party_key: str,
+        screening_type: str | None = None,
+        business_unit_short_code: str | None = None,
+        business_unit_code: str | None = None,
+    ) -> str:
+        safe_base_raw = str(base_party_key or "").strip()
+        if not safe_base_raw:
             return self.build_on_demand_party_key(screening_type)
 
         suffix = self._resolve_party_key_suffix(screening_type)
         if not suffix:
             suffix = self._normalize_party_key_suffix(screening_type)
-        if not suffix:
-            return safe_base
+        safe_suffix = self._normalize_party_key_suffix(suffix)
 
-        safe_suffix = suffix.upper()
-        if safe_base.upper().endswith(f"_{safe_suffix}"):
-            return safe_base
-        return f"{safe_base}_{safe_suffix}"
+        safe_bu_short = self._normalize_business_unit_short_code(business_unit_short_code or business_unit_code)
+        digest_source_bu = str(business_unit_code or business_unit_short_code or "").strip()
+        safe_digest = self._build_batch_party_key_digest(safe_base_raw, digest_source_bu)
+        base_value = f"AMLP_{safe_bu_short}_{safe_digest}"
+        if safe_suffix:
+            remaining_suffix_len = ACTIMIZE_PARTY_KEY_MAX_LENGTH - len(base_value) - 1
+            if remaining_suffix_len > 0:
+                safe_suffix = safe_suffix[:remaining_suffix_len]
+                base_value = f"{base_value}_{safe_suffix}"
+        safe_party_key = self._normalize_party_key(base_value)
+        return safe_party_key[:ACTIMIZE_PARTY_KEY_MAX_LENGTH]
 
     def _build_party_key(self, query: EntityExample) -> str:
         normalized = query.model_dump(mode="json")

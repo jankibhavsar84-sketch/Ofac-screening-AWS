@@ -839,6 +839,7 @@ def create_admin_business_unit(
         return svc.create_business_unit(
             business_unit_code=payload.business_unit_code,
             business_unit_name=payload.business_unit_name,
+            business_unit_short_code=payload.bu_short_code,
             actor_user_id=principal.user_id,
             actor_user_name=_preferred_actor_name(principal),
         )
@@ -858,6 +859,7 @@ def update_admin_business_unit(
             business_unit_code=business_unit_code,
             next_business_unit_code=payload.business_unit_code,
             next_business_unit_name=payload.business_unit_name,
+            next_business_unit_short_code=payload.bu_short_code,
             actor_user_id=principal.user_id,
             actor_user_name=_preferred_actor_name(principal),
         )

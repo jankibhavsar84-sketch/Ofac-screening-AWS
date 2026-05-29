@@ -28,6 +28,11 @@ ALTER TABLE ONLY public."batch_file_uploads" ADD CONSTRAINT "fk_batch_file_uploa
 
 ALTER TABLE ONLY public."business_units" ADD CONSTRAINT "business_units_pkey" PRIMARY KEY (business_unit_code);
 
+ALTER TABLE ONLY public."business_units" ADD CONSTRAINT "business_units_bu_short_code_key" UNIQUE (bu_short_code);
+
+ALTER TABLE ONLY public."business_units" ADD CONSTRAINT "chk_business_units_bu_short_code_format"
+CHECK (bu_short_code IS NULL OR bu_short_code ~ '^[A-Z0-9]{4}$');
+
 ALTER TABLE ONLY public."business_unit_screening_types" ADD CONSTRAINT "business_unit_screening_types_pkey" PRIMARY KEY (business_unit_code, "Screening_Type");
 
 ALTER TABLE ONLY public."business_unit_screening_types" ADD CONSTRAINT "fk_business_unit_screening_types_business_unit_code" FOREIGN KEY (business_unit_code) REFERENCES business_units(business_unit_code) ON UPDATE CASCADE ON DELETE RESTRICT;
